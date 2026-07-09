@@ -1,0 +1,188 @@
+import type { CommunityPost, PostCategory, WritablePostCategory } from "@/lib/community/types";
+
+export type { CommunityPost, PostCategory, WritablePostCategory };
+
+export const CATEGORY_LABELS: Record<PostCategory, string> = {
+  all: "전체",
+  party: "동행 모집",
+  question: "질문",
+  review: "후기",
+  tip: "팁",
+};
+
+export const CATEGORY_COLORS: Record<WritablePostCategory, string> = {
+  party: "bg-violet-50 text-violet-700",
+  question: "bg-surface-soft text-brand-strong",
+  review: "bg-emerald-50 text-success",
+  tip: "bg-amber-50 text-amber-700",
+};
+
+export const MOCK_COMMUNITY_POSTS: CommunityPost[] = [
+  {
+    id: "post-party-1",
+    category: "party",
+    authorId: "seed-author-1",
+    author: "도쿄러버",
+    avatar: "🎮",
+    destination: "도쿄",
+    title: "8월 도쿄 3박4일 같이 다닐 파티원 2명 구해요",
+    preview:
+      "맛집·쇼핑 위주로 여유롭게 다니려고 해요. 20대 후반~30대 초반, 비슷한 예산대면 좋겠어요!",
+    likes: 24,
+    comments: 2,
+    likedBy: [],
+    commentList: [
+      {
+        id: "comment-seed-1",
+        authorId: "seed-comment-1",
+        author: "도쿄초보",
+        avatar: "🙋",
+        content: "일정 공유 가능할까요? 비슷한 스타일이에요!",
+        createdAt: "40분 전",
+        createdAtIso: new Date(Date.now() - 2_400_000).toISOString(),
+      },
+      {
+        id: "comment-seed-2",
+        authorId: "seed-comment-2",
+        author: "맛집탐험",
+        avatar: "🍣",
+        content: "저도 도쿄 가려고 하는데 같이 다니면 좋겠어요.",
+        createdAt: "20분 전",
+        createdAtIso: new Date(Date.now() - 1_200_000).toISOString(),
+      },
+    ],
+    createdAt: "1시간 전",
+    createdAtIso: new Date(Date.now() - 3_600_000).toISOString(),
+    party: {
+      startDate: "2026-08-12",
+      endDate: "2026-08-15",
+      needed: 4,
+      current: 2,
+      budgetPerPerson: "80만원",
+      members: [
+        {
+          id: "seed-author-1",
+          name: "도쿄러버",
+          avatar: "🎮",
+          joinedAtIso: new Date(Date.now() - 3_600_000).toISOString(),
+          isHost: true,
+        },
+        {
+          id: "seed-member-party-1",
+          name: "맛집러",
+          avatar: "🍜",
+          joinedAtIso: new Date(Date.now() - 1_800_000).toISOString(),
+        },
+      ],
+    },
+  },
+  {
+    id: "post-party-2",
+    category: "party",
+    authorId: "seed-author-2",
+    author: "유럽첫걸음",
+    avatar: "⚔️",
+    destination: "파리",
+    title: "파리+루브르 5일 파티 모집 (1명 남음)",
+    preview:
+      "사진 찍고 카페 위주로 천천히 다닐 분! 루브르·몽마르트·센강 야경 코스 짜뒀어요.",
+    likes: 18,
+    comments: 2,
+    likedBy: [],
+    commentList: [
+      {
+        id: "comment-seed-3",
+        authorId: "seed-comment-3",
+        author: "카페러버",
+        avatar: "☕",
+        content: "루브르 예약 도와주실 수 있나요?",
+        createdAt: "2시간 전",
+        createdAtIso: new Date(Date.now() - 7_200_000).toISOString(),
+      },
+      {
+        id: "comment-seed-4",
+        authorId: "seed-comment-4",
+        author: "사진작가",
+        avatar: "📷",
+        content: "몽마르트 코스 너무 좋네요. 참여하고 싶어요!",
+        createdAt: "1시간 전",
+        createdAtIso: new Date(Date.now() - 3_600_000).toISOString(),
+      },
+    ],
+    createdAt: "3시간 전",
+    createdAtIso: new Date(Date.now() - 10_800_000).toISOString(),
+    party: {
+      startDate: "2026-09-03",
+      endDate: "2026-09-07",
+      needed: 3,
+      current: 2,
+      budgetPerPerson: "180만원",
+      members: [
+        {
+          id: "seed-author-2",
+          name: "유럽첫걸음",
+          avatar: "⚔️",
+          joinedAtIso: new Date(Date.now() - 10_800_000).toISOString(),
+          isHost: true,
+        },
+        {
+          id: "seed-member-party-2",
+          name: "카페러버",
+          avatar: "☕",
+          joinedAtIso: new Date(Date.now() - 5_400_000).toISOString(),
+        },
+      ],
+    },
+  },
+  {
+    id: "post-1",
+    category: "tip",
+    authorId: "seed-author-3",
+    author: "여행러버",
+    avatar: "🧳",
+    destination: "런던",
+    title: "런던 오이스터 카드 꿀팁 공유해요",
+    preview:
+      "7일권보다 페이애즈뉴가 훨씬 저렴했어요. 존1~2만 다니면 일반 카드보다 40% 절약됩니다.",
+    likes: 42,
+    comments: 0,
+    likedBy: [],
+    commentList: [],
+    createdAt: "2시간 전",
+    createdAtIso: new Date(Date.now() - 7_200_000).toISOString(),
+  },
+  {
+    id: "post-2",
+    category: "question",
+    authorId: "seed-author-4",
+    author: "지민",
+    avatar: "✈️",
+    destination: "오사카",
+    title: "유니버설 입장권 미리 사는 게 나을까요?",
+    preview:
+      "다음 달 오사카 가는데 익스프레스 패스 포함해서 사야 할지 고민이에요. 현장 구매 경험 있으신 분?",
+    likes: 15,
+    comments: 0,
+    likedBy: [],
+    commentList: [],
+    createdAt: "5시간 전",
+    createdAtIso: new Date(Date.now() - 18_000_000).toISOString(),
+  },
+  {
+    id: "post-3",
+    category: "review",
+    authorId: "seed-author-5",
+    author: "해외나들이",
+    avatar: "🌏",
+    destination: "방콕",
+    title: "방콕 3박4일 60만원 예산 후기",
+    preview:
+      "항공+숙소+식비 포함해서 58만원 썼어요. 야시장이랑 왓포사원 위주로 다녔습니다.",
+    likes: 89,
+    comments: 0,
+    likedBy: [],
+    commentList: [],
+    createdAt: "1일 전",
+    createdAtIso: new Date(Date.now() - 86_400_000).toISOString(),
+  },
+];

@@ -1,0 +1,87 @@
+import Link from "next/link";
+import { Suspense } from "react";
+import { Bell, Plus } from "lucide-react";
+import { MobileShell } from "@/components/layout/MobileShell";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import { ActiveTripSection } from "@/components/home/ActiveTripSection";
+import { AISmartTipsShortcut } from "@/components/home/AISmartTipsShortcut";
+import { HomeGreeting } from "@/components/home/HomeGreeting";
+import { ActiveTripSmartTips } from "@/components/home/ActiveTripSmartTips";
+import { RecommendedGrid } from "@/components/home/RecommendedGrid";
+import { loadHomeData } from "@/lib/mock/loaders";
+
+/** Screen 3: 홈 대시보드 */
+export default async function HomePage() {
+  const { recommended } = await loadHomeData();
+
+  return (
+    <MobileShell
+      rightSlot={
+        <button
+          type="button"
+          aria-label="알림"
+          className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-heading transition-colors active:bg-surface-soft"
+        >
+          <Bell className="h-5 w-5" strokeWidth={2.2} />
+          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand" />
+        </button>
+      }
+    >
+      <div className="flex flex-col gap-7 px-5 pt-5">
+        {/* Hero */}
+        <section className="flex flex-col gap-1">
+          <HomeGreeting />
+          <h2 className="text-2xl font-extrabold leading-snug text-ink-heading">
+            다음 여행은
+            <br />
+            어디로 떠날까요?
+          </h2>
+        </section>
+
+        {/* 새 여행 계획 CTA */}
+        <Link
+          href="/onboarding"
+          className="flex items-center justify-between rounded-xl2 bg-brand px-5 py-4 shadow-soft transition-all active:brightness-95"
+        >
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-surface-white">
+              새로운 여행 계획하기
+            </span>
+            <span className="text-xs font-medium text-surface-white/80">
+              예산만 알려주면 AI가 코스를 짜드려요
+            </span>
+          </div>
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-white/20">
+            <Plus className="h-5 w-5 text-surface-white" strokeWidth={2.6} />
+          </span>
+        </Link>
+
+        {/* 진행 중인 여행 */}
+        <Suspense
+          fallback={
+            <section className="flex flex-col gap-3">
+              <SectionHeader title="진행 중인 여행" actionLabel="전체보기" />
+              <div className="h-52 animate-pulse rounded-xl2 bg-surface-soft" />
+            </section>
+          }
+        >
+          <ActiveTripSection />
+        </Suspense>
+
+        {/* AI Smart Tips (퀵 액션) */}
+        <AISmartTipsShortcut />
+
+        {/* AI Tip (진행 중인 여행 기준) */}
+        <section className="flex flex-col gap-3">
+          <ActiveTripSmartTips />
+        </section>
+
+        {/* AI 예산별 추천 */}
+        <section className="flex flex-col gap-3">
+          <SectionHeader title="AI 예산별 추천 여행지" actionLabel="더보기" />
+          <RecommendedGrid places={recommended} />
+        </section>
+      </div>
+    </MobileShell>
+  );
+}

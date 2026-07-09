@@ -1,0 +1,31 @@
+# Render Blueprint — FastAPI backend
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: budgettrip-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: DATA_GO_KR_SERVICE_KEY
+        sync: false
+      - key: HOTELBEDS_API_KEY
+        sync: false
+      - key: HOTELBEDS_API_SECRET
+        sync: false
+      - key: HOTELBEDS_API_BASE
+        value: https://api.test.hotelbeds.com
