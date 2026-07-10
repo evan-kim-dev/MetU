@@ -1,5 +1,7 @@
 import { CommunityListPage } from "@/components/community/CommunityListPage";
 
+export const dynamic = "force-dynamic";
+
 export default function OpodPage() {
   return (
     <CommunityListPage

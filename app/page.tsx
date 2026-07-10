@@ -10,6 +10,8 @@ import { ActiveTripSmartTips } from "@/components/home/ActiveTripSmartTips";
 import { RecommendedGrid } from "@/components/home/RecommendedGrid";
 import { loadHomeData } from "@/lib/mock/loaders";
 
+export const dynamic = "force-dynamic";
+
 /** Screen 3: 홈 대시보드 */
 export default async function HomePage() {
   const { recommended } = await loadHomeData();

@@ -5,6 +5,25 @@ import { dirname } from "node:path";
 const nextConfig = {
   // 상위 디렉터리의 lockfile로 인한 workspace root 추론 경고 방지
   outputFileTracingRoot: dirname(fileURLToPath(import.meta.url)),
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+      static: 0,
+    },
+  },
+  async headers() {
+    return [
+      {
+        source: "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-cache, no-store, max-age=0, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { MetULogo } from "@/components/ui/MetULogo";
@@ -15,7 +15,6 @@ const TAGLINES = [
 const FEATURES = ["예산 맞춤", "AI 일정", "동행·게시판"] as const;
 
 export function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { loginWithKakao, loginAsGuest } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +49,7 @@ export function LoginContent() {
   const handleGuest = () => {
     loginAsGuest();
     const next = searchParams.get("next");
-    router.replace(next?.startsWith("/") ? next : "/");
+    window.location.assign(next?.startsWith("/") ? next : "/");
   };
 
   return (
