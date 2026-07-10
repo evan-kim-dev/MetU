@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { AppProviders } from "@/components/providers/AppProviders";
+import { BuildRevalidator } from "@/components/ui/BuildRevalidator";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -32,6 +33,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className={jakarta.variable} suppressHydrationWarning>
       <body>
+        <BuildRevalidator />
         {/* 데스크톱에서도 모바일 캔버스를 중앙 정렬하기 위한 바깥 래퍼 */}
         <div className="flex min-h-dvh justify-center bg-canvas">
           <div className="relative flex h-dvh w-full max-w-mobile flex-col overflow-hidden bg-surface-base shadow-soft">

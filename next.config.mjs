@@ -1,10 +1,9 @@
-import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 상위 디렉터리의 lockfile로 인한 workspace root 추론 경고 방지
-  outputFileTracingRoot: dirname(fileURLToPath(import.meta.url)),
+  env: {
+    NEXT_PUBLIC_BUILD_TAG:
+      process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_BUILD_TAG ?? "",
+  },
   generateBuildId: async () => {
     return process.env.VERCEL_GIT_COMMIT_SHA ?? `local-${Date.now()}`;
   },
