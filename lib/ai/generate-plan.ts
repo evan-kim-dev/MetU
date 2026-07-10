@@ -1,4 +1,5 @@
 import type { OnboardingForm } from "@/components/onboarding/types";
+import { normalizeFlexibleYear } from "@/components/onboarding/types";
 import { AIRPORT_PLACES } from "@/lib/airports/data";
 import { STYLE_LABELS } from "@/lib/trips/data";
 import { retrieveBudgetRag } from "@/lib/rag/budgetBands";
@@ -210,6 +211,10 @@ export function generateTripPlan(form: OnboardingForm): TripRecommendation {
   const pricePerNight = Math.round(hotelAmount / nights);
 
   const month = new Date().getMonth() + 1;
+  const selectedYear =
+    form.dateType === "flexible"
+      ? normalizeFlexibleYear(form.flexibleYear)
+      : new Date().getFullYear();
   const selectedMonth =
     form.dateType === "flexible" &&
     form.flexibleMonth >= 1 &&
@@ -224,7 +229,7 @@ export function generateTripPlan(form: OnboardingForm): TripRecommendation {
       : `${month + 1}월 12일 - ${month + 1}월 ${12 + nights - 1}일`;
   const dateRange =
     form.dateType === "flexible"
-      ? `${selectedMonth}월 중순 · ${nights}박 ${nights + 1}일 (유연 일정)`
+      ? `${selectedYear}년 ${selectedMonth}월 중순 · ${nights}박 ${nights + 1}일 (유연 일정)`
       : specificDateRange;
 
   const styleLabels = form.styles.map((s) => STYLE_LABELS[s] ?? s);

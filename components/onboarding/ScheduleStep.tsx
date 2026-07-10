@@ -18,6 +18,7 @@ import {
   formatMonthDealInsight,
   getMonthDealTip,
 } from "@/lib/rag/monthDeals";
+import { getFlexibleYearOptions } from "./types";
 import type { DateType } from "./types";
 
 interface ScheduleStepProps {
@@ -26,12 +27,14 @@ interface ScheduleStepProps {
   dateType: DateType;
   startDate: string;
   endDate: string;
+  flexibleYear: number;
   flexibleMonth: number;
   onOriginChange: (value: string) => void;
   onDestinationChange: (value: string) => void;
   onDateTypeChange: (value: DateType) => void;
   onStartDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
+  onFlexibleYearChange: (value: number) => void;
   onFlexibleMonthChange: (value: number) => void;
 }
 
@@ -40,6 +43,7 @@ const DATE_OPTIONS = [
   { value: "flexible" as const, label: "언제든지" },
 ];
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+const YEAR_OPTIONS = getFlexibleYearOptions();
 const WEEK_DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 function toIsoDate(date: Date): string {
@@ -66,14 +70,19 @@ export function ScheduleStep({
   dateType,
   startDate,
   endDate,
+  flexibleYear,
   flexibleMonth,
   onOriginChange,
   onDestinationChange,
   onDateTypeChange,
   onStartDateChange,
   onEndDateChange,
+  onFlexibleYearChange,
   onFlexibleMonthChange,
 }: ScheduleStepProps) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
   const [viewDate, setViewDate] = useState(() => {
     const target = parseIsoDate(startDate);
     return target ?? new Date();
@@ -298,25 +307,57 @@ export function ScheduleStep({
           </>
         ) : (
           <div className="w-full flex flex-col gap-3">
-            <div className="grid grid-cols-4 gap-2">
-              {MONTH_OPTIONS.map((month) => {
-                const active = month === flexibleMonth;
-                return (
-                  <button
-                    key={month}
-                    type="button"
-                    onClick={() => onFlexibleMonthChange(month)}
-                    className={[
-                      "rounded-lg px-2 py-2 text-sm font-bold transition-colors",
-                      active
-                        ? "bg-brand text-surface-white"
-                        : "border border-line-muted bg-surface-base text-ink-caption",
-                    ].join(" ")}
-                  >
-                    {month}월
-                  </button>
-                );
-              })}
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold text-ink-caption">연도</span>
+              <div className="grid grid-cols-3 gap-2">
+                {YEAR_OPTIONS.map((year) => {
+                  const active = year === flexibleYear;
+                  return (
+                    <button
+                      key={year}
+                      type="button"
+                      onClick={() => onFlexibleYearChange(year)}
+                      className={[
+                        "rounded-lg px-2 py-2 text-sm font-bold transition-colors",
+                        active
+                          ? "bg-brand text-surface-white"
+                          : "border border-line-muted bg-surface-base text-ink-caption",
+                      ].join(" ")}
+                    >
+                      {year}년
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold text-ink-caption">월</span>
+              <div className="grid grid-cols-4 gap-2">
+                {MONTH_OPTIONS.map((month) => {
+                  const active = month === flexibleMonth;
+                  const isPast =
+                    flexibleYear === currentYear && month < currentMonth;
+                  return (
+                    <button
+                      key={month}
+                      type="button"
+                      disabled={isPast}
+                      onClick={() => onFlexibleMonthChange(month)}
+                      className={[
+                        "rounded-lg px-2 py-2 text-sm font-bold transition-colors",
+                        isPast
+                          ? "cursor-not-allowed border border-line-soft bg-surface-soft text-line-muted"
+                          : active
+                          ? "bg-brand text-surface-white"
+                          : "border border-line-muted bg-surface-base text-ink-caption",
+                      ].join(" ")}
+                    >
+                      {month}월
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {(() => {
@@ -324,7 +365,7 @@ export function ScheduleStep({
               return (
                 <div className="rounded-xl border border-line-soft bg-surface-base p-3">
                   <p className="text-xs font-bold text-ink-heading">
-                    {flexibleMonth}월 저렴한 추천
+                    {flexibleYear}년 {flexibleMonth}월 저렴한 추천
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {tip.cheapPlaces.map((place) => (
@@ -354,7 +395,7 @@ export function ScheduleStep({
             <span>
               {dateType === "specific"
                 ? "선택한 기간 기반으로 최적 예산 분배를 진행해요."
-                : formatMonthDealInsight(flexibleMonth)}
+                : `${flexibleYear}년 ${formatMonthDealInsight(flexibleMonth)}`}
             </span>
           </div>
         </div>

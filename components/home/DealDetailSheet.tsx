@@ -62,14 +62,14 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
       <button
         type="button"
         aria-label="닫기"
         className="absolute inset-0 bg-black/45"
         onClick={onClose}
       />
-      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-mobile flex-col overflow-hidden rounded-t-3xl bg-surface-base shadow-soft">
+      <div className="relative z-10 flex max-h-[min(85dvh,680px)] w-full max-w-mobile flex-col overflow-hidden rounded-3xl bg-surface-base shadow-soft">
         <div className="relative h-44 shrink-0">
           <Image
             src={place.imageUrl}
@@ -101,9 +101,7 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
           {loading && (
             <div className="flex flex-col items-center gap-3 py-10">
               <Sparkles className="h-7 w-7 animate-pulse text-brand" />
-              <p className="text-sm font-semibold text-ink-body">
-                AI가 항공·숙소 저가 시세를 정리 중...
-              </p>
+              <WaveLoadingText text="AI가 항공·숙소 저가 시세를 정리 중..." />
             </div>
           )}
 
@@ -177,6 +175,26 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+function WaveLoadingText({ text }: { text: string }) {
+  return (
+    <p
+      className="flex max-w-[280px] flex-wrap justify-center text-sm font-semibold text-ink-body"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      {text.split("").map((char, index) => (
+        <span
+          key={`${char}-${index}`}
+          className="inline-block motion-safe:animate-text-wave"
+          style={{ animationDelay: `${index * 55}ms` }}
+        >
+          {char === " " ? "\u00A0" : char}
+        </span>
+      ))}
+    </p>
   );
 }
 

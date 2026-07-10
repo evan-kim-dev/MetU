@@ -10,7 +10,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "BudgetTrip AI",
+  title: "Met U AI",
   description: "예산 기반 AI 여행 플래너",
 };
 
@@ -30,8 +30,8 @@ export default function RootLayout({
     <html lang="ko" className={jakarta.variable} suppressHydrationWarning>
       <body>
         {/* 데스크톱에서도 모바일 캔버스를 중앙 정렬하기 위한 바깥 래퍼 */}
-        <div className="flex min-h-dvh justify-center bg-[#E9EDF7]">
-          <div className="relative flex min-h-dvh w-full max-w-mobile flex-col overflow-x-hidden bg-surface-base shadow-soft">
+        <div className="flex min-h-dvh justify-center bg-canvas">
+          <div className="relative flex h-dvh w-full max-w-mobile flex-col overflow-hidden bg-surface-base shadow-soft">
             <AppProviders>{children}</AppProviders>
           </div>
         </div>

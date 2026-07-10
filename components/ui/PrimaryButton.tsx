@@ -12,9 +12,9 @@ interface PrimaryButtonProps
 
 const VARIANT_STYLES: Record<Variant, string> = {
   primary:
-    "bg-brand text-surface-white shadow-soft hover:brightness-105 active:brightness-95",
+    "ai-gradient-bg text-surface-white shadow-glow hover:brightness-105 active:brightness-95",
   secondary:
-    "bg-surface-soft text-brand-strong border border-line-soft hover:bg-surface-soft/70 active:brightness-95",
+    "bg-surface-white/90 text-brand-strong border border-line-soft backdrop-blur-sm hover:bg-surface-soft active:brightness-95",
 };
 
 const VARIANT_DISABLED_STYLES: Record<Variant, string> = {

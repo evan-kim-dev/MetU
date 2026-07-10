@@ -15,7 +15,7 @@ interface MobileShellProps {
 }
 
 /** 하단 네비 높이(72px) + 여유 공간 */
-const BOTTOM_NAV_PADDING = "pb-[calc(5.5rem+env(safe-area-inset-bottom))]";
+const BOTTOM_NAV_PADDING = "pb-[calc(4.5rem+env(safe-area-inset-bottom))]";
 
 /**
  * 화면 공통 셸.
@@ -32,7 +32,7 @@ export function MobileShell({
   showBottomNav = true,
 }: MobileShellProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {showAppBar && (
         <TopAppBar
           title={title}
@@ -44,9 +44,9 @@ export function MobileShell({
       )}
 
       <main
-        className={`flex min-h-0 flex-1 flex-col ${
+        className={`relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain ${
           showBottomNav ? BOTTOM_NAV_PADDING : ""
-        }`}
+        } ${showBottomNav ? "ai-page-ambient" : ""}`}
       >
         {children}
       </main>

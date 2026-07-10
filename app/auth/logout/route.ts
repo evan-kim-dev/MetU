@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { GUEST_COOKIE } from "@/lib/auth/guest-session";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 
 function purgeSupabaseCookies(request: NextRequest, response: NextResponse) {
@@ -34,6 +35,7 @@ async function signOutResponse(
   }
 
   purgeSupabaseCookies(request, response);
+  response.cookies.set(GUEST_COOKIE, "", { maxAge: 0, path: "/" });
   return response;
 }
 

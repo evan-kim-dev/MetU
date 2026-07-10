@@ -1,18 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { MetULogo } from "@/components/ui/MetULogo";
+
+const TAGLINES = [
+  "AI가 예산에 맞춘 여행 일정을 쉽고 빠르게 추천해 드려요.",
+  "동행 모집부터 체크리스트까지 한번에 준비해요.",
+  "지금 떠날 여행을 바로 계획해 보세요.",
+] as const;
+
+const FEATURES = ["예산 맞춤", "AI 일정", "동행·게시판"] as const;
 
 export function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loginWithKakao, loginAsGuest } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(
-    searchParams.get("error")
-  );
+  const [error, setError] = useState<string | null>(searchParams.get("error"));
+  const [taglineIndex, setTaglineIndex] = useState(0);
+  const [taglineVisible, setTaglineVisible] = useState(true);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setTaglineVisible(false);
+      window.setTimeout(() => {
+        setTaglineIndex((prev) => (prev + 1) % TAGLINES.length);
+        setTaglineVisible(true);
+      }, 220);
+    }, 3600);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   const handleKakaoLogin = async () => {
     if (isLoading) return;
@@ -24,46 +45,67 @@ export function LoginContent() {
       setError(message);
       setIsLoading(false);
     }
-    // 성공 시 카카오/Supabase로 리다이렉트됨
   };
 
   const handleGuest = () => {
     loginAsGuest();
-    router.replace("/");
+    const next = searchParams.get("next");
+    router.replace(next?.startsWith("/") ? next : "/");
   };
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-surface-base">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(37,99,235,0.18), transparent), linear-gradient(180deg, #F8F9FF 0%, #E9EDF7 100%)",
-        }}
-        aria-hidden
-      />
+    <div className="relative flex h-dvh min-h-dvh flex-col overflow-hidden bg-surface-base">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, #F8F9FF 0%, #E9EDF7 55%, #E3E8F5 100%)",
+          }}
+        />
+        <div className="absolute -left-16 top-8 h-56 w-56 animate-glow-pulse rounded-full bg-brand/20 blur-3xl" />
+        <div className="absolute -right-10 top-28 h-44 w-44 animate-float-soft rounded-full bg-[#60A5FA]/25 blur-3xl [animation-delay:1.2s]" />
+        <div className="absolute bottom-40 left-1/2 h-36 w-72 -translate-x-1/2 animate-glow-pulse rounded-full bg-brand/10 blur-3xl [animation-delay:0.6s]" />
+      </div>
 
-      <div className="relative z-10 flex flex-1 flex-col px-6 pb-10 pt-16">
-        <div className="flex flex-1 flex-col justify-center gap-10">
-          <header className="flex flex-col items-center gap-4 text-center">
-            <p className="text-[28px] font-extrabold tracking-tight text-brand">
-              BudgetTrip <span className="text-ink-heading">AI</span>
-            </p>
-            <div className="flex flex-col gap-2">
-              <h1 className="text-[26px] font-bold leading-8 tracking-tight text-ink-heading">
-                예산에 맞춘 여행을
-                <br />
-                쉽고 빠르게
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
+        <div className="flex flex-1 flex-col items-center justify-center -translate-y-8">
+          <header className="flex w-full flex-col items-center gap-6 text-center animate-fade-up">
+            <MetULogo variant="hero" showPlannerBadge />
+
+            <div className="flex min-h-[52px] max-w-[320px] flex-col items-center justify-center gap-3">
+              <h1
+                className={[
+                  "text-[18px] font-bold leading-7 tracking-tight text-ink-heading transition-all duration-300",
+                  taglineVisible
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-1 opacity-0",
+                ].join(" ")}
+              >
+                {TAGLINES[taglineIndex]}
               </h1>
-              <p className="text-sm leading-6 text-ink-body">
-                카카오로 시작하고, AI가 예산·일정을 추천해 드려요.
-              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {FEATURES.map((feature, index) => (
+                  <span
+                    key={feature}
+                    className="ai-glass-chip animate-fade-up"
+                    style={{ animationDelay: `${120 + index * 80}ms` }}
+                  >
+                    {feature}
+                  </span>
+                ))}
+              </div>
             </div>
           </header>
+        </div>
 
+        <div
+          className="flex w-full shrink-0 flex-col gap-4 animate-fade-up"
+          style={{ animationDelay: "180ms" }}
+        >
           <div className="flex flex-col gap-3">
             {error && (
-              <p className="rounded-xl border border-danger-border bg-white px-3 py-2 text-center text-xs font-medium text-danger">
+              <p className="rounded-xl border border-danger-border bg-white/90 px-3 py-2 text-center text-xs font-medium text-danger backdrop-blur-sm animate-fade-up">
                 {error}
               </p>
             )}
@@ -72,8 +114,11 @@ export function LoginContent() {
               type="button"
               onClick={() => void handleKakaoLogin()}
               disabled={isLoading}
-              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#FEE500] text-base font-bold text-[#191919] transition-transform active:scale-[0.99] disabled:opacity-70"
+              className="relative flex h-[52px] w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-[#FEE500] text-base font-bold text-[#191919] shadow-[0_8px_24px_rgba(254,229,0,0.35)] transition-transform active:scale-[0.99] disabled:opacity-80"
             >
+              {isLoading ? (
+                <span className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/35 to-transparent" />
+              ) : null}
               <KakaoIcon />
               {isLoading ? "카카오로 이동 중…" : "카카오 간편로그인"}
             </button>
@@ -81,24 +126,25 @@ export function LoginContent() {
             <button
               type="button"
               onClick={handleGuest}
-              className="h-[52px] w-full rounded-2xl border border-line-soft bg-surface-white text-sm font-semibold text-ink-body transition-colors active:bg-surface-soft"
+              disabled={isLoading}
+              className="h-[52px] w-full rounded-2xl border border-line-soft bg-surface-white/90 text-sm font-semibold text-ink-body backdrop-blur-sm transition-all active:scale-[0.99] active:bg-surface-soft disabled:opacity-60"
             >
               둘러보기
             </button>
           </div>
-        </div>
 
-        <p className="text-center text-[11px] leading-5 text-ink-caption">
-          계속하면{" "}
-          <Link href="/legal/terms" className="underline underline-offset-2">
-            이용약관
-          </Link>
-          과{" "}
-          <Link href="/legal/privacy" className="underline underline-offset-2">
-            개인정보처리방침
-          </Link>
-          에 동의하게 됩니다.
-        </p>
+          <p className="text-center text-[11px] leading-5 text-ink-caption">
+            계속하면{" "}
+            <Link href="/legal/terms" className="underline underline-offset-2">
+              이용약관
+            </Link>
+            과{" "}
+            <Link href="/legal/privacy" className="underline underline-offset-2">
+              개인정보처리방침
+            </Link>
+            에 동의하게 됩니다.
+          </p>
+        </div>
       </div>
     </div>
   );

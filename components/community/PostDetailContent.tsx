@@ -20,16 +20,21 @@ import {
 } from "@/lib/mock/community";
 import { useCommunity } from "@/lib/community/CommunityProvider";
 import { getCommentCount, getLikeCount } from "@/lib/community/counts";
+import { formatPartyBudgetPerPerson } from "@/lib/community/format";
 
 interface PostDetailContentProps {
   postId: string;
+  listHref?: "/opod" | "/board";
 }
 
 function formatDateRange(start: string, end: string): string {
   return `${start.replaceAll("-", ".")} ~ ${end.replaceAll("-", ".")}`;
 }
 
-export function PostDetailContent({ postId }: PostDetailContentProps) {
+export function PostDetailContent({
+  postId,
+  listHref = "/board",
+}: PostDetailContentProps) {
   const router = useRouter();
   const {
     getPost,
@@ -56,13 +61,13 @@ export function PostDetailContent({ postId }: PostDetailContentProps) {
 
   if (!post) {
     return (
-      <MobileShell title="게시글" showBack backHref="/opod">
+      <MobileShell title="게시글" showBack backHref={listHref}>
         <div className="flex flex-col items-center gap-4 px-5 py-20 text-center">
           <p className="text-base font-bold text-ink-heading">
             게시글을 찾을 수 없어요
           </p>
-          <PrimaryButton fullWidth={false} className="px-6" onClick={() => router.push("/opod")}>
-            ㅇ팟으로 돌아가기
+          <PrimaryButton fullWidth={false} className="px-6" onClick={() => router.push(listHref)}>
+            {listHref === "/board" ? "게시판으로 돌아가기" : "멧톡으로 돌아가기"}
           </PrimaryButton>
         </div>
       </MobileShell>
@@ -84,7 +89,7 @@ export function PostDetailContent({ postId }: PostDetailContentProps) {
     const ok = window.confirm("이 게시글을 삭제할까요?");
     if (!ok) return;
     removePost(post.id);
-    router.replace("/opod");
+    router.replace(listHref);
   }
 
   function handleSubmitComment() {
@@ -121,7 +126,7 @@ export function PostDetailContent({ postId }: PostDetailContentProps) {
     <MobileShell
       title="게시글"
       showBack
-      backHref="/opod"
+      backHref={listHref}
       showBottomNav={false}
       rightSlot={
         editable ? (
@@ -164,15 +169,26 @@ export function PostDetailContent({ postId }: PostDetailContentProps) {
           </span>
         </div>
 
+        <div>
+          <span className="text-xs font-semibold text-brand">{post.destination}</span>
+          <h1 className="mt-1 text-2xl font-extrabold leading-snug text-ink-heading">
+            {post.title}
+          </h1>
+        </div>
+
+        <p className="whitespace-pre-wrap text-base leading-relaxed text-ink-body">
+          {post.preview}
+        </p>
+
         {isParty ? (
-          <section className="rounded-xl2 border border-violet-200 bg-violet-50 p-4">
+          <section className="rounded-xl2 border border-brand/20 bg-surface-soft p-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-extrabold text-violet-800">동행 모집 정보</p>
-              <span className="rounded-full bg-violet-600 px-2.5 py-1 text-[11px] font-bold text-white">
+              <p className="text-sm font-extrabold text-brand-strong">동행 모집 정보</p>
+              <span className="rounded-full bg-brand px-2.5 py-1 text-[11px] font-bold text-white">
                 {post.party!.current}/{post.party!.needed}명
               </span>
             </div>
-            <div className="mt-3 grid grid-cols-1 gap-2 text-sm font-semibold text-violet-900">
+            <div className="mt-3 grid grid-cols-1 gap-2 text-sm font-semibold text-ink-heading">
               <p className="inline-flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
                 {formatDateRange(post.party!.startDate, post.party!.endDate)}
@@ -184,27 +200,27 @@ export function PostDetailContent({ postId }: PostDetailContentProps) {
               {post.party!.budgetPerPerson ? (
                 <p className="inline-flex items-center gap-2">
                   <Wallet className="h-4 w-4" />
-                  1인 예산 {post.party!.budgetPerPerson}
+                  1인 예산 {formatPartyBudgetPerPerson(post.party!.budgetPerPerson)}
                 </p>
               ) : null}
             </div>
 
-            <div className="mt-4 border-t border-violet-200 pt-3">
-              <p className="mb-2 text-xs font-bold text-violet-800">참여 멤버</p>
+            <div className="mt-4 border-t border-brand/20 pt-3">
+              <p className="mb-2 text-xs font-bold text-brand-strong">참여 멤버</p>
               <ul className="flex flex-col gap-2">
                 {post.party!.members.map((member) => (
                   <li
                     key={member.id}
                     className="flex items-center gap-2 rounded-lg bg-white/70 px-2.5 py-2"
                   >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 text-sm">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand/10 text-sm">
                       {member.avatar}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-ink-heading">
                         {member.name}
                         {member.isHost ? (
-                          <span className="ml-1.5 text-[10px] font-bold text-violet-600">
+                          <span className="ml-1.5 text-[10px] font-bold text-brand">
                             HOST
                           </span>
                         ) : null}
@@ -217,14 +233,14 @@ export function PostDetailContent({ postId }: PostDetailContentProps) {
 
             <div className="mt-4">
               {isHost ? (
-                <p className="rounded-lg bg-white/80 px-3 py-2.5 text-center text-sm font-semibold text-violet-800">
+                <p className="rounded-lg bg-white/80 px-3 py-2.5 text-center text-sm font-semibold text-brand-strong">
                   내가 모집 중인 동행이에요
                 </p>
               ) : joined ? (
                 <button
                   type="button"
                   onClick={() => leaveParty(post.id)}
-                  className="w-full rounded-lg border border-violet-300 bg-white py-3 text-sm font-bold text-violet-700"
+                  className="w-full rounded-lg border border-line-soft bg-white py-3 text-sm font-bold text-brand-strong"
                 >
                   참여 취소
                 </button>
@@ -234,57 +250,55 @@ export function PostDetailContent({ postId }: PostDetailContentProps) {
                 </p>
               ) : (
                 <PrimaryButton
-                  className="h-11 min-h-[44px] rounded-xl bg-violet-600 text-sm"
+                  className="h-11 min-h-[44px] rounded-xl bg-brand text-sm"
                   onClick={() => joinParty(post.id)}
                 >
                   동행 참여하기 ({slotsLeft}명 남음)
                 </PrimaryButton>
               )}
             </div>
+
+            {isHost || joined ? (
+              <button
+                type="button"
+                onClick={() => router.push(`${listHref}/${post.id}/chat`)}
+                className="mt-2 w-full rounded-lg bg-brand-strong py-3 text-sm font-bold text-white"
+              >
+                오픈채팅방 입장
+              </button>
+            ) : null}
           </section>
         ) : null}
 
-        <div>
-          <span className="text-xs font-semibold text-brand">{post.destination}</span>
-          <h1 className="mt-1 text-2xl font-extrabold leading-snug text-ink-heading">
-            {post.title}
-          </h1>
-        </div>
-
-        <p className="whitespace-pre-wrap text-base leading-relaxed text-ink-body">
-          {post.preview}
-        </p>
-
-        <div className="border-t border-line-soft pt-4">
-          <button
-            type="button"
-            aria-label={liked ? "좋아요 취소" : "좋아요"}
-            aria-pressed={liked}
-            onClick={() => toggleLike(post.id)}
-            className={[
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition-colors",
-              liked
-                ? "bg-rose-50 text-rose-600"
-                : "bg-surface-soft text-ink-caption hover:text-ink-body",
-            ].join(" ")}
-          >
-            <Heart
-              className={[
-                "h-5 w-5 transition-colors",
-                liked ? "fill-rose-500 text-rose-500" : "",
-              ].join(" ")}
-              strokeWidth={2.2}
-            />
-            {likeCount}
-          </button>
-        </div>
-
         <section className="flex flex-col gap-4 border-t border-line-soft pt-5">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="h-4.5 w-4.5 text-ink-body" />
-            <h2 className="text-base font-bold text-ink-heading">
-              댓글 {commentCount}
-            </h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-4.5 w-4.5 text-ink-body" />
+              <h2 className="text-base font-bold text-ink-heading">
+                댓글 {commentCount}
+              </h2>
+            </div>
+            <button
+              type="button"
+              aria-label={liked ? "좋아요 취소" : "좋아요"}
+              aria-pressed={liked}
+              onClick={() => toggleLike(post.id)}
+              className={[
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition-colors",
+                liked
+                  ? "bg-rose-50 text-rose-600"
+                  : "bg-surface-soft text-ink-caption hover:text-ink-body",
+              ].join(" ")}
+            >
+              <Heart
+                className={[
+                  "h-5 w-5 transition-colors",
+                  liked ? "fill-rose-500 text-rose-500" : "",
+                ].join(" ")}
+                strokeWidth={2.2}
+              />
+              {likeCount}
+            </button>
           </div>
 
           {post.commentList.length === 0 ? (

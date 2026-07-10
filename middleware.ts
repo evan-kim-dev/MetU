@@ -1,6 +1,17 @@
 ﻿import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { GUEST_COOKIE, isGuestCookie } from "@/lib/auth/guest-session";
 import { getPublicSupabaseKey } from "@/lib/supabase/env";
+
+const PUBLIC_PATHS = ["/login", "/legal"];
+
+function isPublicPath(pathname: string) {
+  return (
+    PUBLIC_PATHS.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
+    ) || pathname.startsWith("/auth/")
+  );
+}
 
 /**
  * Keep auth cookies fresh on every request.
@@ -9,7 +20,6 @@ import { getPublicSupabaseKey } from "@/lib/supabase/env";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 로그아웃/로그인 화면에서는 남은 쿠키로 세션을 다시 살려내지 않음
   if (pathname === "/login" || pathname === "/auth/logout") {
     return NextResponse.next({
       request: { headers: request.headers },
@@ -20,37 +30,57 @@ export async function middleware(request: NextRequest) {
     request: { headers: request.headers },
   });
 
+  const hasGuestSession = isGuestCookie(request.cookies.get(GUEST_COOKIE)?.value);
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = getPublicSupabaseKey();
-  if (!url || !anonKey) return response;
 
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => {
-          request.cookies.set(name, value);
-        });
-        response = NextResponse.next({
-          request: { headers: request.headers },
-        });
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
+  let hasUser = false;
 
-  // Refresh session if possible, but never block request for long.
-  try {
-    await Promise.race([
-      supabase.auth.getUser(),
-      new Promise((resolve) => setTimeout(resolve, 1500)),
-    ]);
-  } catch {
-    // ignore and continue
+  if (url && anonKey) {
+    const supabase = createServerClient(url, anonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
+          response = NextResponse.next({
+            request: { headers: request.headers },
+          });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    });
+
+    try {
+      const result = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+      ]);
+      hasUser = Boolean(
+        result && "data" in result && result.data.user
+      );
+    } catch {
+      // ignore and continue
+    }
+  }
+
+  if (!isPublicPath(pathname) && !hasUser && !hasGuestSession) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    if (pathname !== "/") {
+      loginUrl.searchParams.set("next", pathname);
+    }
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (pathname === "/login" && (hasUser || hasGuestSession)) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return response;

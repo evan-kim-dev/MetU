@@ -1,12 +1,20 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+let adminClient: SupabaseClient | null = null;
+
 /**
- * Admin / service-role client intentionally lives on FastAPI only.
- * Importing this from Next client or server code throws at module load.
- *
- * Use: backend/app/db/supabase.py
+ * Server-only Supabase client (service role).
+ * Use in Route Handlers / server actions — never import from client components.
  */
-export function getAdminSupabase(): never {
-  throw new Error(
-    "[supabase] Admin/service_role client is not available in Next.js. " +
-      "Call FastAPI (BACKEND_URL) for privileged operations."
-  );
+export function getServiceSupabase(): SupabaseClient | null {
+  if (adminClient) return adminClient;
+
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+
+  adminClient = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return adminClient;
 }

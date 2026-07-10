@@ -67,10 +67,10 @@ export function RecommendResult({ plan }: RecommendResultProps) {
   const router = useRouter();
   const { addTrip } = useTrips();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trip = planToTrip(plan);
-    addTrip(trip);
-    router.push(`/trips/${trip.id}`);
+    const saved = await addTrip(trip);
+    router.push(`/trips/${saved.id}`);
   };
 
   return (

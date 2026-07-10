@@ -6,6 +6,8 @@
     "dev": "next dev",
     "dev:clean": "node scripts/clean-next.cjs && next dev",
     "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --port 8000",
+    "db:push": "node scripts/apply-supabase-migrations.mjs",
+    "db:verify": "node scripts/verify-supabase.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -23,6 +25,7 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "autoprefixer": "^10.4.20",
+    "pg": "^8.22.0",
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3"

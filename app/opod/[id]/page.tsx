@@ -3,11 +3,11 @@
 import { use } from "react";
 import { PostDetailContent } from "@/components/community/PostDetailContent";
 
-interface PostDetailPageProps {
+interface OpodPostDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function PostDetailPage({ params }: PostDetailPageProps) {
+export default function OpodPostDetailPage({ params }: OpodPostDetailPageProps) {
   const { id } = use(params);
-  return <PostDetailContent postId={id} />;
+  return <PostDetailContent postId={id} listHref="/opod" />;
 }

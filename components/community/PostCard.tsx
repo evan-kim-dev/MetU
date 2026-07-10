@@ -6,9 +6,11 @@ import {
   type CommunityPost,
 } from "@/lib/mock/community";
 import { getCommentCount, getLikeCount } from "@/lib/community/counts";
+import { formatPartyBudgetPerPerson } from "@/lib/community/format";
 
 interface PostCardProps {
   post: CommunityPost;
+  basePath?: "/opod" | "/board";
 }
 
 function formatDateRange(start: string, end: string): string {
@@ -17,17 +19,17 @@ function formatDateRange(start: string, end: string): string {
   return `${startLabel} ~ ${endLabel}`;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, basePath = "/board" }: PostCardProps) {
   const isParty = post.category === "party" && post.party;
   const likeCount = getLikeCount(post);
   const commentCount = getCommentCount(post);
 
   return (
     <Link
-      href={`/opod/${post.id}`}
+      href={`${basePath}/${post.id}`}
       className={[
         "flex flex-col gap-3 rounded-xl2 border bg-surface-white p-4 shadow-soft transition-transform active:scale-[0.99]",
-        isParty ? "border-violet-200" : "border-line-soft",
+        isParty ? "border-brand/20" : "border-line-soft",
       ].join(" ")}
     >
       <div className="flex items-center justify-between gap-2">
@@ -48,9 +50,9 @@ export function PostCard({ post }: PostCardProps) {
       </div>
 
       {isParty ? (
-        <div className="rounded-lg border border-violet-100 bg-violet-50/70 px-3 py-2.5">
+        <div className="rounded-lg border border-brand/15 bg-surface-soft px-3 py-2.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-bold text-violet-700">
+            <p className="text-xs font-bold text-brand-strong">
               {post.party!.current}/{post.party!.needed}명 모집중
             </p>
             <span
@@ -58,13 +60,13 @@ export function PostCard({ post }: PostCardProps) {
                 "rounded-full px-2 py-0.5 text-[10px] font-bold text-white",
                 post.party!.current >= post.party!.needed
                   ? "bg-ink-caption"
-                  : "bg-violet-600",
+                  : "bg-brand",
               ].join(" ")}
             >
               {post.party!.current >= post.party!.needed ? "FULL" : "OPEN"}
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold text-violet-800">
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold text-ink-body">
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="h-3.5 w-3.5" />
               {formatDateRange(post.party!.startDate, post.party!.endDate)}
@@ -72,7 +74,7 @@ export function PostCard({ post }: PostCardProps) {
             {post.party!.budgetPerPerson ? (
               <span className="inline-flex items-center gap-1">
                 <Wallet className="h-3.5 w-3.5" />
-                1인 {post.party!.budgetPerPerson}
+                1인 {formatPartyBudgetPerPerson(post.party!.budgetPerPerson)}
               </span>
             ) : null}
             <span className="inline-flex items-center gap-1">

@@ -11,7 +11,7 @@ import { PartyStep } from "@/components/onboarding/PartyStep";
 import { ScheduleStep } from "@/components/onboarding/ScheduleStep";
 import { StyleStep } from "@/components/onboarding/StyleStep";
 import { AIThinkingOverlay } from "@/components/onboarding/AIThinkingOverlay";
-import { INITIAL_FORM, type TravelStyle } from "@/components/onboarding/types";
+import { INITIAL_FORM, isFlexibleScheduleValid, type TravelStyle } from "@/components/onboarding/types";
 
 const TOTAL_STEPS = 4;
 const THINKING_MIN_MS = 2200;
@@ -49,7 +49,7 @@ export default function OnboardingPage() {
         if (form.dateType === "specific") {
           return form.startDate.length > 0 && form.endDate.length > 0;
         }
-        return form.flexibleMonth >= 1 && form.flexibleMonth <= 12;
+        return isFlexibleScheduleValid(form.flexibleMonth, form.flexibleYear);
       case 4:
         return form.styles.length > 0;
       default:
@@ -93,7 +93,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       {showThinking && (
         <AIThinkingOverlay
           destination={form.destination.split(/[,，]/)[0]?.trim()}
@@ -132,6 +132,7 @@ export default function OnboardingPage() {
             dateType={form.dateType}
             startDate={form.startDate}
             endDate={form.endDate}
+            flexibleYear={form.flexibleYear}
             flexibleMonth={form.flexibleMonth}
             onOriginChange={(origin) => setForm((p) => ({ ...p, origin }))}
             onDestinationChange={(destination) =>
@@ -153,6 +154,19 @@ export default function OnboardingPage() {
               }))
             }
             onEndDateChange={(endDate) => setForm((p) => ({ ...p, endDate }))}
+            onFlexibleYearChange={(flexibleYear) =>
+              setForm((p) => {
+                const now = new Date();
+                let flexibleMonth = p.flexibleMonth;
+                if (
+                  flexibleYear === now.getFullYear() &&
+                  flexibleMonth < now.getMonth() + 1
+                ) {
+                  flexibleMonth = now.getMonth() + 1;
+                }
+                return { ...p, flexibleYear, flexibleMonth };
+              })
+            }
             onFlexibleMonthChange={(flexibleMonth) =>
               setForm((p) => ({ ...p, flexibleMonth }))
             }
@@ -175,6 +189,6 @@ export default function OnboardingPage() {
               : "다음"}
         </PrimaryButton>
       </footer>
-    </>
+    </div>
   );
 }

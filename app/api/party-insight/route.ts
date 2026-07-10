@@ -5,6 +5,11 @@ import {
   backendFetch,
 } from "@/lib/backend/client";
 import {
+  buildPartyPrompt,
+  getBudgetSystemPrompt,
+  looksLikeFakeQuote,
+} from "@/lib/ai/prompts/insight-prompts";
+import {
   retrieveBudgetRag,
   violatesBudgetBand,
 } from "@/lib/rag/budgetBands";
@@ -38,39 +43,8 @@ export async function GET(request: Request) {
     });
   }
 
-  const partyLabel =
-    people === 1
-      ? "1인(혼자)"
-      : people === 2
-        ? "2인(커플/친구)"
-        : people === 3
-          ? "3인"
-          : `${people}인(단체/가족)`;
-
-  const prompt = `당신은 "BudgetTrip AI"의 인원 단계 어시스턴트입니다.
-반드시 아래 RAG(예산 구간 지식)만 근거로 추천하세요. RAG에 없는 권역은 절대 추천 금지.
-
-[입력]
-- 총 예산: ${budget.toLocaleString("ko-KR")}원
-- 인원: ${partyLabel}
-- 1인당: 약 ${perPerson.toLocaleString("ko-KR")}원
-- 월: ${month}월
-
-[RAG]
-${rag.contexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
-
-[허용 도시/권역 — 이 안에서만 추천]
-${rag.allowedRegions.join(", ")}
-
-[출력]
-1~2문장, 톤:
-"${people}인이면 1인당 약 ○○원으로 ${rag.band.nights} ~~가 현실적이고, ${month}월에는 (허용 목록 중) ~~를 추천해요."
-
-포함: 인원 팁 한 줄 + 허용 권역 추천.
-금지: 유럽/장거리 등 허용 목록 밖 추천, 항공·숙소 임의 견적 금액, JSON/불릿.`;
-
-  const system =
-    "예산 RAG를 벗어나는 추천은 할루시네이션이다. 1인당 250만원 미만에서 유럽을 말하면 안 된다.";
+  const prompt = buildPartyPrompt(budget, people, month);
+  const system = getBudgetSystemPrompt();
 
   try {
     const res = await backendFetch("/ai/chat", {
@@ -119,11 +93,4 @@ ${rag.allowedRegions.join(", ")}
       rag: rag.contexts,
     });
   }
-}
-
-function looksLikeFakeQuote(text: string): boolean {
-  return (
-    /(항공|숙소|호텔).{0,12}(\d{1,3}(,?\d{3})*|\d+)\s*만/.test(text) ||
-    /항공권과 숙소/.test(text)
-  );
 }

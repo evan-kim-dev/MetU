@@ -15,6 +15,7 @@ import {
   type IcnAirlineProfile,
 } from "@/lib/airlines/icn";
 import { filterValidFlights } from "@/lib/flights/validate";
+import { useWithactChecklist } from "@/lib/checklist/useWithactChecklist";
 
 type FlightItem = {
   id: string;
@@ -89,6 +90,7 @@ export function FlightChecklistContent() {
   const [airlineProfiles, setAirlineProfiles] = useState<
     Record<string, IcnAirlineProfile>
   >({});
+  const { persistItem } = useWithactChecklist();
 
   const validFlights = useMemo(() => filterValidFlights(flights), [flights]);
 
@@ -144,6 +146,14 @@ export function FlightChecklistContent() {
       const carriers = nextFlights.map((flight) => flight.carrier);
       const profiles = await fetchIcnAirlineProfiles(carriers);
       setAirlineProfiles(profiles);
+
+      void persistItem({
+        itemType: "FLIGHT",
+        itemStatus: "SEARCHED",
+        itemName: `${origin} → ${destination}`,
+        itemSummary: `${nextFlights.length}건 조회 · ${departDate} ~ ${returnDate}`,
+        externalProvider: data.source,
+      });
     } catch {
       setFlights([]);
       setError("네트워크 오류가 발생했어요. 잠시 후 다시 시도해주세요.");
@@ -393,6 +403,18 @@ export function FlightChecklistContent() {
                 href={flight.bookingUrl ?? bookingUrl ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  void persistItem({
+                    itemType: "FLIGHT",
+                    itemStatus: "SELECTED",
+                    itemName: displayName,
+                    itemSummary: `${flight.route} · ${flight.price}`,
+                    externalProvider: source,
+                    externalItemId: flight.id,
+                    externalUrl: flight.bookingUrl ?? bookingUrl ?? undefined,
+                    selected: true,
+                  });
+                }}
                 className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-brand/20 bg-brand/5 text-sm font-semibold text-brand"
               >
                 {source === "naver-flights"

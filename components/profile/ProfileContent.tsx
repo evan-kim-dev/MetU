@@ -23,6 +23,7 @@ import {
 } from "@/lib/mock/profile";
 import { LEGAL_LINKS } from "@/lib/legal/documents";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { LoginMethodList } from "@/components/auth/LoginMethodList";
 import { useProfile } from "@/lib/profile/ProfileProvider";
 import {
   isStoredAvatar,
@@ -177,11 +178,10 @@ export function ProfileContent() {
   return (
     <MobileShell>
       <div className="flex flex-col gap-8 px-4 pb-6 pt-6">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-[26px] font-bold leading-8 tracking-tight text-ink-heading">
+        <header>
+          <h1 className="text-[22px] font-bold leading-7 tracking-tight text-ink-heading">
             내 프로필
           </h1>
-          <p className="text-base text-ink-body">여행 설정 및 계정 관리</p>
         </header>
 
         <div className="flex flex-col gap-4">
@@ -283,9 +283,7 @@ export function ProfileContent() {
               )}
 
               {provider === "guest" ? (
-                <p className="mt-4 w-full rounded-lg border border-line-soft bg-surface-soft py-3 text-center text-sm font-semibold text-ink-caption">
-                  게스트로 로그인 중
-                </p>
+                <LoginMethodList collapsible className="mt-4" />
               ) : isEditing ? (
                 <div className="mt-4 grid w-full grid-cols-2 gap-2">
                   <button
@@ -456,13 +454,15 @@ export function ProfileContent() {
             </ul>
           </section>
 
-          <button
-            type="button"
-            onClick={logout}
-            className="w-full rounded-xl2 border border-danger-border py-3.5 text-sm font-semibold tracking-wide text-danger transition-colors active:bg-danger/5"
-          >
-            로그아웃
-          </button>
+          {provider !== "guest" ? (
+            <button
+              type="button"
+              onClick={logout}
+              className="w-full rounded-xl2 border border-danger-border py-3.5 text-sm font-semibold tracking-wide text-danger transition-colors active:bg-danger/5"
+            >
+              로그아웃
+            </button>
+          ) : null}
         </div>
       </div>
     </MobileShell>

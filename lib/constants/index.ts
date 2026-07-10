@@ -7,6 +7,13 @@ export const TABLES = {
   expenses: "expenses",
   profiles: "profiles",
   checklistItems: "checklist_items",
+  communityPosts: "community_posts",
+  postComments: "post_comments",
+  postLikes: "post_likes",
+  partyMembers: "party_members",
+  partyChatMessages: "party_chat_messages",
+  tripPlans: "trip_plans",
+  budgetInsightLogs: "budget_insight_logs",
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
@@ -19,7 +26,9 @@ export const STORAGE_KEYS = {
   tripPlan: "budgettrip-trip-plan",
   auth: "budgettrip-auth",
   communityPosts: "budgettrip-community-posts",
+  partyChatMessages: "budgettrip-party-chat-messages",
   guestAuthorId: "budgettrip-guest-author-id",
+  withactChecklistSession: "budgettrip-withact-checklist-session",
 } as const;
 
 /** App defaults */

@@ -25,7 +25,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (!isReady) return;
 
     if (!isLoggedIn && !isPublicPath(pathname)) {
-      router.replace("/login");
+      const next = pathname === "/" ? "" : `?next=${encodeURIComponent(pathname)}`;
+      router.replace(`/login${next}`);
       return;
     }
 
@@ -36,7 +37,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!isReady) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-surface-base">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-base">
         <div className="h-8 w-8 animate-pulse rounded-full bg-brand/20" />
       </div>
     );
@@ -44,7 +45,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!isLoggedIn && !isPublicPath(pathname)) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-surface-base">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-base">
         <div className="h-8 w-8 animate-pulse rounded-full bg-brand/20" />
       </div>
     );

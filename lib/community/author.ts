@@ -1,4 +1,4 @@
-import type { User } from "@supabase/supabase-js";
+import type { AuthUser } from "@/lib/auth/types";
 import { STORAGE_KEYS } from "@/lib/constants";
 
 export function getOrCreateGuestAuthorId(): string {
@@ -13,7 +13,7 @@ export function getOrCreateGuestAuthorId(): string {
 }
 
 export function resolveAuthorId(
-  user: User | null,
+  user: AuthUser | null,
   provider: "kakao" | "guest" | "supabase" | null
 ): string {
   if (user?.id) return user.id;

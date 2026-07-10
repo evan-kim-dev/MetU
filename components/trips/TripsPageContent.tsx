@@ -48,9 +48,9 @@ export function TripsPageContent() {
   };
 
   return (
-    <MobileShell title="내 여행">
+    <MobileShell>
       <div className="flex flex-col gap-4 px-5 pt-5">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           {editMode ? (
             <div className="flex w-full flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -101,15 +101,20 @@ export function TripsPageContent() {
             </div>
           ) : (
             <>
-              <p className="text-sm text-ink-caption">
-                총 {trips.length}개의 여행 기록이 있어요.
-              </p>
+              <div className="min-w-0">
+                <h1 className="text-[22px] font-bold tracking-tight text-ink-heading">
+                  내 여행
+                </h1>
+                <p className="mt-1 text-sm text-ink-caption">
+                  총 {trips.length}개의 여행 기록이 있어요.
+                </p>
+              </div>
               {isReady && trips.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setEditMode(true)}
                   aria-label="여행 목록 수정"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-ink-heading transition-colors active:bg-surface-soft"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-heading transition-colors active:bg-surface-soft"
                 >
                   <Pencil className="h-4 w-4" strokeWidth={2.2} />
                 </button>
@@ -157,7 +162,7 @@ export function TripsPageContent() {
         )}
 
         {editMode && trips.length > 0 && (
-          <div className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-10 pt-2">
+          <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 pt-2">
             <button
               type="button"
               disabled={selectedIds.length === 0}

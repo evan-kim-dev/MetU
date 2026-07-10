@@ -23,6 +23,7 @@ import {
   isStoredAvatar,
   upsertProfileToSupabase,
 } from "./supabase";
+import type { AuthUser } from "@/lib/auth/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -35,7 +36,7 @@ interface ProfileContextValue {
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
 function getAuthSeed(
-  user: NonNullable<ReturnType<typeof useAuth>["user"]>,
+  user: AuthUser,
   provider: ReturnType<typeof useAuth>["provider"]
 ) {
   const meta = user.user_metadata ?? {};
@@ -92,7 +93,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           setProfile(
             updateProfileData(saved, {
               name: "게스트",
-              email: "게스트로 로그인 중",
+              email: "둘러보기 모드 · 로그인하면 동기화돼요",
               membershipLabel: "게스트",
             })
           );

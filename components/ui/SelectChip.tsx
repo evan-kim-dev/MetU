@@ -20,8 +20,8 @@ export function SelectChip({ label, emoji, selected, onToggle }: SelectChipProps
       className={[
         "flex h-[88px] w-full flex-col items-center justify-center gap-1.5 rounded-2xl border p-4 text-center transition-all active:scale-[0.98]",
         selected
-          ? "border-brand bg-surface-soft text-brand-strong shadow-soft"
-          : "border-line-soft bg-surface-white text-ink-body",
+          ? "border-brand/30 bg-gradient-to-br from-brand/10 to-[#818CF8]/10 text-brand-strong shadow-soft ring-1 ring-brand/15"
+          : "border-line-soft bg-surface-white/90 text-ink-body backdrop-blur-sm",
       ].join(" ")}
     >
       {emoji && <span className="text-2xl leading-none">{emoji}</span>}

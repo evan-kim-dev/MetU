@@ -60,7 +60,7 @@ export const MOCK_DEALS: DealPlace[] = [
     bestMonth: "4~5월",
     highlight: "항공 24만원대 포함",
     imageUrl:
-      "https://images.unsplash.com/photo-1559592413-7cec4b0e8f9f?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
   },
   {
     id: "deal-bangkok",
@@ -112,6 +112,40 @@ export const MOCK_DEALS: DealPlace[] = [
     highlight: "왕복 항공 25만원대",
     imageUrl:
       "https://images.unsplash.com/photo-1598935898639-81586f7d2129?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "deal-fukuoka",
+    name: "후쿠오카",
+    country: "일본",
+    budgetLabel: "90만원대",
+    budgetBand: 900000,
+    fromPrice: 880000,
+    nights: 3,
+    flightFrom: 315000,
+    hotelFrom: 236000,
+    airline: "제주항공 / 진에어",
+    route: "ICN → FUK",
+    bestMonth: "11~12월",
+    highlight: "주말 포함 2박3일 단기 코스 인기",
+    imageUrl:
+      "https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "deal-cebu",
+    name: "세부",
+    country: "필리핀",
+    budgetLabel: "100만원대",
+    budgetBand: 1_000_000,
+    fromPrice: 980000,
+    nights: 4,
+    flightFrom: 355000,
+    hotelFrom: 254000,
+    airline: "세부퍼시픽 / 에어부산",
+    route: "ICN → CEB",
+    bestMonth: "1~3월",
+    highlight: "리조트+호핑 포함해도 100만원 내외",
+    imageUrl:
+      "https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?auto=format&fit=crop&w=800&q=80",
   },
 ];
 

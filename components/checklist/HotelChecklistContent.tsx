@@ -6,6 +6,7 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Counter } from "@/components/ui/Counter";
 import { HOTEL_DESTINATION_SUGGESTIONS } from "@/lib/hotels/destinations";
 import { getDemoHotels } from "@/lib/mock/hotels";
+import { useWithactChecklist } from "@/lib/checklist/useWithactChecklist";
 
 type HotelItem = {
   id: string;
@@ -58,7 +59,6 @@ export function HotelChecklistContent() {
   const [adults, setAdults] = useState(2);
   const [rooms, setRooms] = useState(1);
   const [children, setChildren] = useState(0);
-  const [sortBy, setSortBy] = useState("best");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -67,6 +67,7 @@ export function HotelChecklistContent() {
   const [hotels, setHotels] = useState<HotelItem[]>([]);
   const [isDemo, setIsDemo] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const { persistItem } = useWithactChecklist();
 
   const canSearch = useMemo(() => {
     return destination.trim().length > 0 && checkIn.length > 0 && checkOut.length > 0;
@@ -89,7 +90,6 @@ export function HotelChecklistContent() {
         adults: String(adults),
         rooms: String(rooms),
         children: String(children),
-        sortBy,
       });
       const res = await fetch(`/api/hotels/search?${params.toString()}`, {
         cache: "no-store",
@@ -115,6 +115,14 @@ export function HotelChecklistContent() {
       setSource(data.source);
       setBookingUrl(data.bookingUrl ?? items[0]?.bookingUrl ?? null);
       setWarning(data.warning ?? null);
+
+      void persistItem({
+        itemType: "HOTEL",
+        itemStatus: "SEARCHED",
+        itemName: destination,
+        itemSummary: `${items.length || getDemoHotels(destination).length}건 · ${checkIn} ~ ${checkOut}`,
+        externalProvider: data.source,
+      });
     } catch {
       setHotels([]);
       setIsDemo(false);
@@ -126,26 +134,21 @@ export function HotelChecklistContent() {
 
   return (
     <div className="flex flex-col gap-5 px-5 pb-10 pt-5">
-      <header className="flex flex-col gap-2">
-        <h2 className="text-[22px] font-bold tracking-tight text-ink-heading">
-          숙박 체크리스트
-        </h2>
-        <p className="text-sm leading-6 text-ink-body">
-          Hotelbeds 요금을 우선 조회하고, 키가 없거나 결과가 없으면 Google Hotels로
-          이어서 확인해요.
-        </p>
-      </header>
-
       <section className="rounded-xl2 border border-line-soft bg-surface-white p-4 shadow-soft">
         <div className="grid grid-cols-2 gap-2">
           <label className="col-span-2 flex flex-col gap-1">
             <span className="text-xs font-semibold text-ink-caption">지역</span>
-            <input
+            <select
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              placeholder="예: 도쿄 · 시부야"
               className="h-10 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
-            />
+            >
+              {HOTEL_DESTINATION_SUGGESTIONS.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="col-span-1 flex flex-col gap-1">
             <span className="text-xs font-semibold text-ink-caption">체크인</span>
@@ -170,37 +173,13 @@ export function HotelChecklistContent() {
             <Counter value={adults} onChange={setAdults} min={1} max={9} unit="명" variant="compact" />
           </label>
           <label className="col-span-1 flex flex-col gap-1">
-            <span className="text-xs font-semibold text-ink-caption">객실</span>
-            <Counter value={rooms} onChange={setRooms} min={1} max={4} unit="실" variant="compact" />
-          </label>
-          <label className="col-span-2 flex flex-col gap-1">
             <span className="text-xs font-semibold text-ink-caption">아동</span>
             <Counter value={children} onChange={setChildren} min={0} max={8} unit="명" variant="compact" />
           </label>
           <label className="col-span-2 flex flex-col gap-1">
-            <span className="text-xs font-semibold text-ink-caption">정렬</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="h-10 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
-            >
-              <option value="best">낮은 가격순</option>
-              <option value="price_high">높은 가격순</option>
-            </select>
+            <span className="text-xs font-semibold text-ink-caption">객실</span>
+            <Counter value={rooms} onChange={setRooms} min={1} max={4} unit="실" variant="compact" />
           </label>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {HOTEL_DESTINATION_SUGGESTIONS.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setDestination(item)}
-              className="rounded-full border border-line-soft bg-surface-soft px-2.5 py-1 text-[11px] font-semibold text-ink-body"
-            >
-              {item}
-            </button>
-          ))}
         </div>
 
         <PrimaryButton className="mt-3" disabled={!canSearch} loading={loading} onClick={onSearch}>
@@ -213,23 +192,11 @@ export function HotelChecklistContent() {
           {error}
         </section>
       ) : null}
-      {warning ? (
-        <section className="rounded-xl2 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          {warning}
-        </section>
-      ) : null}
       {source === "hotelbeds" && hotels.length > 0 && !isDemo ? (
         <section className="rounded-xl2 border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           Hotelbeds 실시간 요금으로 조회했어요.
         </section>
       ) : null}
-      {isDemo ? (
-        <section className="rounded-xl2 border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800">
-          실시간 요금이 없어 데모 숙소를 보여드려요. 실제 예약은 Google Hotels에서
-          확인해주세요.
-        </section>
-      ) : null}
-
       <section className="flex flex-col gap-3">
         {!hasSearched && !loading ? (
           <article className="rounded-xl2 border border-dashed border-line-soft bg-surface-white px-4 py-8 text-center">
@@ -274,6 +241,18 @@ export function HotelChecklistContent() {
                 href={hotel.bookingUrl ?? bookingUrl ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  void persistItem({
+                    itemType: "HOTEL",
+                    itemStatus: "SELECTED",
+                    itemName: hotel.name,
+                    itemSummary: `${hotel.area} · ${hotel.price}`,
+                    externalProvider: source,
+                    externalItemId: hotel.id,
+                    externalUrl: hotel.bookingUrl ?? bookingUrl ?? undefined,
+                    selected: true,
+                  });
+                }}
                 className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-brand/20 bg-brand/5 text-sm font-semibold text-brand"
               >
                 Google Hotels에서 보기

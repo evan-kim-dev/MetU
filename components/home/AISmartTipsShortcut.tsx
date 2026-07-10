@@ -24,14 +24,12 @@ const CHECKLIST_ITEMS: {
 
 export function AISmartTipsShortcut() {
   return (
-    <section className="rounded-xl border border-line-soft bg-surface-white p-4 shadow-soft">
-      <div className="mb-4 flex h-7 w-full items-center gap-2">
-        <span className="flex h-[12.56px] w-[16.67px] items-center justify-center text-brand">
-          <CheckSquare className="h-[12.56px] w-[16.67px]" strokeWidth={2.2} />
+    <section className="ai-surface-card p-4">
+      <div className="mb-4 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand/10">
+          <CheckSquare className="h-4 w-4 text-brand" strokeWidth={2.2} />
         </span>
-        <h3 className="text-[20px] font-semibold leading-7 text-ink-heading">
-          체크리스트
-        </h3>
+        <h3 className="text-lg font-extrabold text-ink-heading">체크리스트</h3>
       </div>
 
       <div className="flex items-start justify-between gap-2">
@@ -41,10 +39,10 @@ export function AISmartTipsShortcut() {
             href={`/checklist/${id}`}
             className="flex w-[72px] flex-col items-center gap-2 rounded-xl transition-transform active:scale-95"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand/10">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-brand/10 bg-gradient-to-br from-brand/12 to-[#818CF8]/10">
               <Icon className="h-5 w-5 text-brand" strokeWidth={2.2} />
             </span>
-            <span className="text-sm font-medium tracking-wide text-ink-heading">
+            <span className="text-xs font-semibold tracking-wide text-ink-heading">
               {label}
             </span>
           </Link>

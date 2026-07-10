@@ -1,3 +1,3 @@
-from app.routers import ai, trips
+from app.routers import ai, checklist, flights, hotels
 
-__all__ = ["ai", "trips"]
+__all__ = ["ai", "checklist", "flights", "hotels"]

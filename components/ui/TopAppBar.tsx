@@ -3,8 +3,8 @@
 
 
 import { ChevronLeft } from "lucide-react";
-
 import { useGoBack } from "@/lib/navigation/useGoBack";
+import { MetULogo } from "@/components/ui/MetULogo";
 
 
 
@@ -112,24 +112,18 @@ export function TopAppBar({
 
         {/* 중앙: 타이틀 또는 로고 */}
 
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex min-w-0 flex-1 items-center justify-center px-2">
 
           {title ? (
 
-            <h1 className="truncate text-base font-bold text-ink-heading">
+            <h1 className="w-full truncate text-center text-base font-bold text-ink-heading">
 
               {title}
 
             </h1>
 
           ) : (
-
-            <span className="text-lg font-extrabold tracking-tight text-brand">
-
-              BudgetTrip <span className="text-ink-heading">AI</span>
-
-            </span>
-
+            <MetULogo variant="appbar" />
           )}
 
         </div>

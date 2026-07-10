@@ -28,7 +28,9 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             ref={ref}
             className={[
               "w-full flex-1 bg-transparent py-3.5 text-ink-heading placeholder:text-ink-caption/70 focus:outline-none",
-              emphasized ? "text-3xl font-extrabold tracking-tight" : "text-base",
+              emphasized
+                ? "text-right text-3xl font-extrabold tracking-tight tabular-nums"
+                : "text-base",
               className,
             ].join(" ")}
             {...props}

@@ -7,6 +7,7 @@ import {
 } from "@/lib/checklist/categories";
 import { FlightChecklistContent } from "@/components/checklist/FlightChecklistContent";
 import { HotelChecklistContent } from "@/components/checklist/HotelChecklistContent";
+import { DocsChecklistContent } from "@/components/checklist/DocsChecklistContent";
 
 interface ChecklistCategoryPageProps {
   params: Promise<{ category: string }>;
@@ -51,6 +52,14 @@ export default async function ChecklistCategoryPage({
     return (
       <MobileShell title={item.label} showBack backHref="/" showBottomNav={false}>
         <FlightChecklistContent />
+      </MobileShell>
+    );
+  }
+
+  if (item.id === "docs") {
+    return (
+      <MobileShell title={item.label} showBack backHref="/" showBottomNav={false}>
+        <DocsChecklistContent />
       </MobileShell>
     );
   }

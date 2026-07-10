@@ -2,21 +2,19 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ActiveTripCard } from "@/components/home/ActiveTripCard";
 import { useTrips } from "@/lib/trips/TripProvider";
 
 export function ActiveTripSection() {
-  const router = useRouter();
   const { activeTrips, isReady } = useTrips();
   const primaryTrip = activeTrips[0];
 
   if (!isReady) {
     return (
       <section className="flex flex-col gap-3">
-        <SectionHeader title="진행 중인 여행" actionLabel="전체보기" />
+        <SectionHeader title="계획 중인 여행" />
         <div className="h-52 animate-pulse rounded-xl2 bg-surface-soft" />
       </section>
     );
@@ -25,11 +23,7 @@ export function ActiveTripSection() {
   if (!primaryTrip) {
     return (
       <section className="flex flex-col gap-3">
-        <SectionHeader
-          title="진행 중인 여행"
-          actionLabel="전체보기"
-          onAction={() => router.push("/trips")}
-        />
+        <SectionHeader title="계획 중인 여행" />
         <Link
           href="/onboarding"
           className="relative block h-52 w-full overflow-hidden rounded-xl2 shadow-soft transition-transform active:scale-[0.99]"
@@ -44,8 +38,7 @@ export function ActiveTripSection() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/20" />
 
-          <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-xs font-bold text-surface-white backdrop-blur-md">
-            <Sparkles className="h-3.5 w-3.5" strokeWidth={2.3} />
+          <div className="absolute left-4 top-4 ai-glass-chip !text-ink-heading !bg-surface-white/90">
             다음 여행 준비
           </div>
 
@@ -68,11 +61,7 @@ export function ActiveTripSection() {
 
   return (
     <section className="flex flex-col gap-3">
-      <SectionHeader
-        title="진행 중인 여행"
-        actionLabel="전체보기"
-        onAction={() => router.push("/trips")}
-      />
+      <SectionHeader title="계획 중인 여행" />
       <ActiveTripCard trip={primaryTrip} />
     </section>
   );

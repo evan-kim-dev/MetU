@@ -1,6 +1,12 @@
 import { RecommendResult } from "@/components/recommend/RecommendResult";
 import type { OnboardingForm, TravelStyle } from "@/components/onboarding/types";
+import {
+  isFlexibleScheduleValid,
+  normalizeFlexibleYear,
+} from "@/components/onboarding/types";
 import { generateTripPlan } from "@/lib/ai/generate-plan";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { insertTripPlanToSupabase } from "@/lib/trips/plans-supabase";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
@@ -26,9 +32,10 @@ function parseFormFromCookie(raw: string): OnboardingForm | null {
     if (!form.styles.every((s) => VALID_STYLES.includes(s))) return null;
     if (form.dateType === "specific") {
       if (!form.startDate || !form.endDate) return null;
-    } else if (!(form.flexibleMonth >= 1 && form.flexibleMonth <= 12)) {
+    } else if (!isFlexibleScheduleValid(form.flexibleMonth, form.flexibleYear)) {
       return null;
     }
+    form.flexibleYear = normalizeFlexibleYear(form.flexibleYear);
     return form;
   } catch {
     return null;
@@ -43,6 +50,15 @@ export default async function RecommendPage() {
     redirect("/onboarding");
   }
   const plan = generateTripPlan(form);
+
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    await insertTripPlanToSupabase(supabase, user.id, form, plan);
+  }
 
   return <RecommendResult plan={plan} />;
 }

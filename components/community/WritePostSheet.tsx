@@ -152,7 +152,7 @@ export function WritePostSheet({
                 "shrink-0 rounded-full px-3.5 py-2 text-xs font-bold",
                 category === item
                   ? item === "party"
-                    ? "bg-violet-600 text-white"
+                    ? "ai-gradient-bg text-white"
                     : "bg-brand text-surface-white"
                   : "border border-line-soft bg-surface-white text-ink-caption",
               ].join(" ")}
@@ -163,7 +163,7 @@ export function WritePostSheet({
         </div>
 
         {isParty ? (
-          <div className="mb-4 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 text-xs leading-5 text-violet-800">
+          <div className="mb-4 rounded-xl border border-brand/15 bg-surface-soft px-3 py-2.5 text-xs leading-5 text-brand-strong">
             게임 파티 구하듯, 같이 여행할 일정·인원·예산을 적어 동행을 구해보세요.
           </div>
         ) : null}

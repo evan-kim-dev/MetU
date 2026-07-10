@@ -15,6 +15,7 @@ interface RecommendedGridProps {
  */
 export function RecommendedGrid({ places }: RecommendedGridProps) {
   const [selected, setSelected] = useState<DealPlace | null>(null);
+  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
 
   return (
     <>
@@ -26,13 +27,20 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
             onClick={() => setSelected(place)}
             className="relative aspect-[4/5] overflow-hidden rounded-2xl text-left shadow-soft transition-transform active:scale-[0.98]"
           >
-            <Image
-              src={place.imageUrl}
-              alt={`${place.name} 이미지`}
-              fill
-              sizes="220px"
-              className="object-cover"
-            />
+            <div className="absolute inset-0 bg-gradient-to-br from-brand/70 via-brand-strong/70 to-ink-heading/80" />
+            {!failedImageIds.has(place.id) ? (
+              <Image
+                src={place.imageUrl}
+                alt={`${place.name} 이미지`}
+                fill
+                sizes="220px"
+                className="object-cover"
+                unoptimized
+                onError={() =>
+                  setFailedImageIds((prev) => new Set(prev).add(place.id))
+                }
+              />
+            ) : null}
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
 
             <span className="absolute left-2.5 top-2.5 rounded-full bg-surface-white/85 px-2 py-0.5 text-[11px] font-extrabold text-brand-strong backdrop-blur-md">

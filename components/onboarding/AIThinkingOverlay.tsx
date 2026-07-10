@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { MetULogo } from "@/components/ui/MetULogo";
 
 const MESSAGES = [
   "AI가 예산을 분석하고 있어요…",
@@ -27,12 +27,12 @@ export function AIThinkingOverlay({ destination }: AIThinkingOverlayProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#F8F9FF]/96 backdrop-blur-md">
       <div className="mx-6 flex w-full max-w-sm flex-col items-center gap-5 text-center">
-        <div className="relative flex h-20 w-20 items-center justify-center">
-          <span className="absolute inset-0 animate-ping rounded-full bg-brand/25" />
-          <span className="absolute inset-1 animate-pulse rounded-full bg-brand/15" />
-          <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-brand text-surface-white shadow-soft">
-            <Sparkles className="h-8 w-8 animate-pulse" strokeWidth={2.2} />
-          </span>
+        <div className="relative flex h-24 w-24 items-center justify-center">
+          <span className="absolute inset-0 animate-ping rounded-full bg-brand/20" />
+          <span className="absolute inset-2 animate-pulse rounded-full bg-brand/10" />
+          <div className="relative scale-110">
+            <MetULogo variant="appbar" />
+          </div>
         </div>
 
         <div className="flex flex-col gap-1.5">

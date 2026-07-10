@@ -4,14 +4,14 @@ export type { CommunityPost, PostCategory, WritablePostCategory };
 
 export const CATEGORY_LABELS: Record<PostCategory, string> = {
   all: "전체",
-  party: "동행 모집",
+  party: "동행",
   question: "질문",
   review: "후기",
-  tip: "팁",
+  tip: "꿀팁",
 };
 
 export const CATEGORY_COLORS: Record<WritablePostCategory, string> = {
-  party: "bg-violet-50 text-violet-700",
+  party: "bg-brand/10 text-brand-strong",
   question: "bg-surface-soft text-brand-strong",
   review: "bg-emerald-50 text-success",
   tip: "bg-amber-50 text-amber-700",

@@ -92,10 +92,12 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists "avatars_public_read" on storage.objects;
 create policy "avatars_public_read"
   on storage.objects for select
   using (bucket_id = 'avatars');
 
+drop policy if exists "avatars_insert_own" on storage.objects;
 create policy "avatars_insert_own"
   on storage.objects for insert
   with check (
@@ -103,6 +105,7 @@ create policy "avatars_insert_own"
     and auth.uid()::text = (storage.foldername(name))[1]
   );
 
+drop policy if exists "avatars_update_own" on storage.objects;
 create policy "avatars_update_own"
   on storage.objects for update
   using (
@@ -110,6 +113,7 @@ create policy "avatars_update_own"
     and auth.uid()::text = (storage.foldername(name))[1]
   );
 
+drop policy if exists "avatars_delete_own" on storage.objects;
 create policy "avatars_delete_own"
   on storage.objects for delete
   using (

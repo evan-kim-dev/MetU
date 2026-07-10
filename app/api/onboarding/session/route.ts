@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { OnboardingForm, TravelStyle } from "@/components/onboarding/types";
+import { isFlexibleScheduleValid } from "@/components/onboarding/types";
 
 const VALID_STYLES: TravelStyle[] = [
   "healing",
@@ -21,7 +22,7 @@ function isValidForm(form: OnboardingForm): boolean {
   if (form.dateType === "specific") {
     return Boolean(form.startDate && form.endDate);
   }
-  return form.flexibleMonth >= 1 && form.flexibleMonth <= 12;
+  return isFlexibleScheduleValid(form.flexibleMonth, form.flexibleYear);
 }
 
 export async function POST(request: Request) {

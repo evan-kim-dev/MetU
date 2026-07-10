@@ -27,21 +27,21 @@ export default async function HomePage() {
         </button>
       }
     >
-      <div className="flex flex-col gap-7 px-5 pt-5">
+      <div className="flex flex-col gap-7 px-5 pb-2 pt-5">
         {/* Hero */}
-        <section className="flex flex-col gap-1">
+        <section className="flex flex-col gap-2 animate-fade-up">
           <HomeGreeting />
           <h2 className="text-2xl font-extrabold leading-snug text-ink-heading">
             다음 여행은
             <br />
-            어디로 떠날까요?
+            <span className="ai-gradient-text">어디로 떠날까요?</span>
           </h2>
         </section>
 
         {/* 새 여행 계획 CTA */}
         <Link
           href="/onboarding"
-          className="flex items-center justify-between rounded-xl2 bg-brand px-5 py-4 shadow-soft transition-all active:brightness-95"
+          className="ai-gradient-bg flex items-center justify-between rounded-xl2 px-5 py-4 shadow-glow transition-all active:scale-[0.99]"
         >
           <div className="flex flex-col">
             <span className="text-sm font-bold text-surface-white">
@@ -60,7 +60,7 @@ export default async function HomePage() {
         <Suspense
           fallback={
             <section className="flex flex-col gap-3">
-              <SectionHeader title="진행 중인 여행" actionLabel="전체보기" />
+              <SectionHeader title="계획 중인 여행" actionLabel="전체보기" actionHref="/trips" />
               <div className="h-52 animate-pulse rounded-xl2 bg-surface-soft" />
             </section>
           }
@@ -78,7 +78,7 @@ export default async function HomePage() {
 
         {/* AI 예산별 추천 */}
         <section className="flex flex-col gap-3">
-          <SectionHeader title="AI 예산별 추천 여행지" actionLabel="더보기" />
+          <SectionHeader title="AI 추천 여행지" ai />
           <RecommendedGrid places={recommended} />
         </section>
       </div>

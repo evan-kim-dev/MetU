@@ -16,6 +16,18 @@ import {
   loadCommunityPosts,
   saveCommunityPosts,
 } from "@/lib/community/storage";
+import {
+  deleteCommunityPostFromSupabase,
+  deletePostCommentFromSupabase,
+  fetchCommunityPostsFromSupabase,
+  insertCommunityPostToSupabase,
+  insertPostCommentToSupabase,
+  joinPartyInSupabase,
+  leavePartyInSupabase,
+  togglePostLikeInSupabase,
+  updateCommunityPostInSupabase,
+  updatePostCommentInSupabase,
+} from "@/lib/community/supabase";
 import type {
   CommunityPost,
   CreatePostInput,
@@ -23,10 +35,15 @@ import type {
   UpdatePostInput,
 } from "@/lib/community/types";
 import { syncPostCounts } from "@/lib/community/counts";
+import { STORAGE_KEYS } from "@/lib/constants";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
 
-interface CommunityContextValue {
+interface CommunityStateContextValue {
   posts: CommunityPost[];
   isReady: boolean;
+}
+
+interface CommunityActionContextValue {
   getPost: (id: string) => CommunityPost | undefined;
   addPost: (input: CreatePostInput) => CommunityPost;
   updatePost: (id: string, input: UpdatePostInput) => boolean;
@@ -46,23 +63,93 @@ interface CommunityContextValue {
   isPartyFull: (post: CommunityPost) => boolean;
 }
 
-const CommunityContext = createContext<CommunityContextValue | null>(null);
+export type CommunityContextValue = CommunityStateContextValue &
+  CommunityActionContextValue;
+
+const CommunityStateContext = createContext<CommunityStateContextValue | null>(null);
+const CommunityActionContext = createContext<CommunityActionContextValue | null>(null);
+
+function hasPersistedLocalPosts(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(localStorage.getItem(STORAGE_KEYS.communityPosts));
+}
 
 export function CommunityProvider({ children }: { children: React.ReactNode }) {
-  const { user, provider } = useAuth();
+  const { user, provider, isReady: isAuthReady } = useAuth();
   const { profile } = useProfile();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    setPosts(loadCommunityPosts());
-    setIsReady(true);
-  }, []);
+  const userId = user?.id ?? null;
+  const useDb = Boolean(userId) && provider !== "guest";
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!isAuthReady) return;
+
+    let cancelled = false;
+
+    async function load() {
+      if (!useDb || !userId) {
+        if (!cancelled) {
+          setPosts(loadCommunityPosts());
+          setIsReady(true);
+        }
+        return;
+      }
+
+      const supabase = getBrowserSupabase();
+      if (!supabase) {
+        if (!cancelled) {
+          setPosts(loadCommunityPosts());
+          setIsReady(true);
+        }
+        return;
+      }
+
+      let remote = await fetchCommunityPostsFromSupabase(supabase);
+
+      if (remote.length === 0 && hasPersistedLocalPosts()) {
+        const local = loadCommunityPosts();
+        await Promise.all(
+          local.map((post) =>
+            insertCommunityPostToSupabase(
+            supabase,
+            userId,
+            profile.name,
+            post.avatar,
+            {
+              category: post.category,
+              title: post.title,
+              destination: post.destination,
+              body: post.preview,
+              party: post.party,
+            }
+          )
+          )
+        );
+        remote = await fetchCommunityPostsFromSupabase(supabase);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(STORAGE_KEYS.communityPosts);
+        }
+      }
+
+      if (!cancelled) {
+        setPosts(remote.length > 0 ? remote : loadCommunityPosts());
+        setIsReady(true);
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthReady, useDb, userId]);
+
+  useEffect(() => {
+    if (!isReady || useDb) return;
     saveCommunityPosts(posts.map(syncPostCounts));
-  }, [posts, isReady]);
+  }, [posts, isReady, useDb]);
 
   const authorId = useMemo(
     () => resolveAuthorId(user, provider),
@@ -96,7 +183,7 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
               ? "💡"
               : "✈️";
 
-      const post: CommunityPost = {
+      const optimistic: CommunityPost = {
         id: `post-${crypto.randomUUID()}`,
         category: input.category,
         authorId,
@@ -128,20 +215,49 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
           : undefined,
       };
 
-      setPosts((prev) => [post, ...prev]);
-      return post;
+      setPosts((prev) => [optimistic, ...prev]);
+
+      if (useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void (async () => {
+            const saved = await insertCommunityPostToSupabase(
+              supabase,
+              authorId,
+              profile.name,
+              avatarEmoji,
+              input
+            );
+            if (saved) {
+              setPosts((prev) =>
+                prev.map((post) => (post.id === optimistic.id ? saved : post))
+              );
+            }
+          })();
+        }
+      }
+
+      return optimistic;
     },
-    [authorId, profile.name]
+    [authorId, profile.name, useDb, userId]
   );
 
   const removePost = useCallback(
     (id: string) => {
       const target = posts.find((post) => post.id === id);
       if (!target || target.authorId !== authorId) return false;
+
       setPosts((prev) => prev.filter((post) => post.id !== id));
+
+      if (useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void deleteCommunityPostFromSupabase(supabase, id, authorId);
+        }
+      }
       return true;
     },
-    [authorId, posts]
+    [authorId, posts, useDb, userId]
   );
 
   const updatePost = useCallback(
@@ -188,9 +304,28 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
           });
         })
       );
+
+      if (useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void (async () => {
+            const saved = await updateCommunityPostInSupabase(
+              supabase,
+              id,
+              authorId,
+              input
+            );
+            if (saved) {
+              setPosts((prev) =>
+                prev.map((post) => (post.id === id ? saved : post))
+              );
+            }
+          })();
+        }
+      }
       return true;
     },
-    [authorId, posts, profile.name]
+    [authorId, posts, profile.name, useDb, userId]
   );
 
   const isLiked = useCallback(
@@ -200,11 +335,13 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
 
   const toggleLike = useCallback(
     (postId: string) => {
+      let wasLiked = false;
+
       setPosts((prev) =>
         prev.map((post) => {
           if (post.id !== postId) return post;
-          const liked = post.likedBy.includes(authorId);
-          if (liked) {
+          wasLiked = post.likedBy.includes(authorId);
+          if (wasLiked) {
             return syncPostCounts({
               ...post,
               likedBy: post.likedBy.filter((id) => id !== authorId),
@@ -218,8 +355,15 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
           });
         })
       );
+
+      if (useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void togglePostLikeInSupabase(supabase, postId, authorId, wasLiked);
+        }
+      }
     },
-    [authorId]
+    [authorId, useDb, userId]
   );
 
   const addComment = useCallback(
@@ -228,11 +372,13 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       if (!trimmed) return false;
 
       const now = new Date().toISOString();
+      const optimisticId = `comment-${crypto.randomUUID()}`;
+
       setPosts((prev) =>
         prev.map((post) => {
           if (post.id !== postId) return post;
           const comment = {
-            id: `comment-${crypto.randomUUID()}`,
+            id: optimisticId,
             authorId,
             author: profile.name,
             avatar: "💬",
@@ -240,16 +386,43 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
             createdAt: formatRelativeTime(now),
             createdAtIso: now,
           };
-          const commentList = [...post.commentList, comment];
           return syncPostCounts({
             ...post,
-            commentList,
+            commentList: [...post.commentList, comment],
           });
         })
       );
+
+      if (useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void (async () => {
+            const saved = await insertPostCommentToSupabase(
+              supabase,
+              postId,
+              authorId,
+              profile.name,
+              trimmed
+            );
+            if (saved) {
+              setPosts((prev) =>
+                prev.map((post) => {
+                  if (post.id !== postId) return post;
+                  return syncPostCounts({
+                    ...post,
+                    commentList: post.commentList.map((c) =>
+                      c.id === optimisticId ? saved : c
+                    ),
+                  });
+                })
+              );
+            }
+          })();
+        }
+      }
       return true;
     },
-    [authorId, profile.name]
+    [authorId, profile.name, useDb, userId]
   );
 
   const canManageComment = useCallback(
@@ -282,9 +455,21 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
           });
         })
       );
+
+      if (updated && useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void updatePostCommentInSupabase(
+            supabase,
+            commentId,
+            authorId,
+            trimmed
+          );
+        }
+      }
       return updated;
     },
-    [authorId]
+    [authorId, useDb, userId]
   );
 
   const removeComment = useCallback(
@@ -307,16 +492,21 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
           });
         })
       );
+
+      if (removed && useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void deletePostCommentFromSupabase(supabase, commentId, authorId);
+        }
+      }
       return removed;
     },
-    [authorId]
+    [authorId, useDb, userId]
   );
 
   const isPartyJoined = useCallback(
     (post: CommunityPost) =>
-      Boolean(
-        post.party?.members.some((member) => member.id === authorId)
-      ),
+      Boolean(post.party?.members.some((member) => member.id === authorId)),
     [authorId]
   );
 
@@ -364,9 +554,24 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
           };
         })
       );
+
+      if (joined && useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void (async () => {
+            await joinPartyInSupabase(
+              supabase,
+              postId,
+              authorId,
+              profile.name,
+              "🧑"
+            );
+          })();
+        }
+      }
       return joined;
     },
-    [authorId, profile.name]
+    [authorId, profile.name, useDb, userId]
   );
 
   const leaveParty = useCallback(
@@ -395,15 +600,30 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
           };
         })
       );
+
+      if (left && useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void (async () => {
+            await leavePartyInSupabase(supabase, postId, authorId);
+          })();
+        }
+      }
       return left;
     },
-    [authorId]
+    [authorId, useDb, userId]
   );
 
-  const value = useMemo(
+  const stateValue = useMemo(
     () => ({
       posts,
       isReady,
+    }),
+    [posts, isReady]
+  );
+
+  const actionValue = useMemo(
+    () => ({
       getPost,
       addPost,
       updatePost,
@@ -423,8 +643,6 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       isPartyFull,
     }),
     [
-      posts,
-      isReady,
       getPost,
       addPost,
       updatePost,
@@ -446,14 +664,35 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <CommunityContext.Provider value={value}>{children}</CommunityContext.Provider>
+    <CommunityStateContext.Provider value={stateValue}>
+      <CommunityActionContext.Provider value={actionValue}>
+        {children}
+      </CommunityActionContext.Provider>
+    </CommunityStateContext.Provider>
   );
 }
 
 export function useCommunity() {
-  const context = useContext(CommunityContext);
-  if (!context) {
+  const state = useContext(CommunityStateContext);
+  const actions = useContext(CommunityActionContext);
+  if (!state || !actions) {
     throw new Error("useCommunity must be used within CommunityProvider");
+  }
+  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
+}
+
+export function useCommunityState() {
+  const context = useContext(CommunityStateContext);
+  if (!context) {
+    throw new Error("useCommunityState must be used within CommunityProvider");
+  }
+  return context;
+}
+
+export function useCommunityActions() {
+  const context = useContext(CommunityActionContext);
+  if (!context) {
+    throw new Error("useCommunityActions must be used within CommunityProvider");
   }
   return context;
 }

@@ -1,49 +1,59 @@
 import { NextResponse } from "next/server";
 import { buildLocalBudgetInsight } from "@/lib/ai/budget-insight";
-import {
-  BackendUnavailableError,
-  backendFetch,
-} from "@/lib/backend/client";
+import type { BudgetInsightRecord, BudgetInsightSource } from "@/lib/ai/budget-insight-record";
+import { persistBudgetInsightLog } from "@/lib/ai/persist-budget-insight";
+import { backendFetch } from "@/lib/backend/client";import {
+  buildBudgetPrompt,
+  getBudgetSystemPrompt,
+  looksLikeFakeQuote,
+} from "@/lib/ai/prompts/insight-prompts";
 import {
   retrieveBudgetRag,
   violatesBudgetBand,
 } from "@/lib/rag/budgetBands";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const budget = Number(searchParams.get("budget") ?? "0");
+type BuildResult = {
+  record: BudgetInsightRecord;
+};
 
-  if (!Number.isFinite(budget) || budget < 0) {
-    return NextResponse.json({ error: "invalid-budget" }, { status: 400 });
-  }
+function buildRecord(
+  budget: number,
+  insight: string,
+  source: BudgetInsightSource,
+  localFallback: string,
+  month: number
+): BudgetInsightRecord {
+  const rag = retrieveBudgetRag(budget, month);
+  return {
+    budget,
+    month,
+    insight,
+    source,
+    localFallback,
+    rag: {
+      bandId: rag.band.id,
+      allowedRegions: rag.allowedRegions,
+      contexts: rag.contexts,
+      seasonTip: rag.seasonTip,
+      recommendedNights: rag.band.nights,
+    },
+    createdAt: new Date().toISOString(),
+  };
+}
 
+async function buildBudgetInsight(budget: number): Promise<BuildResult> {
   const fallback = buildLocalBudgetInsight(budget);
   const month = new Date().getMonth() + 1;
   const rag = retrieveBudgetRag(budget, month);
 
   if (budget <= 0) {
-    return NextResponse.json({ insight: fallback, source: "local" });
+    return {
+      record: buildRecord(budget, fallback, "local", fallback, month),
+    };
   }
 
-  const prompt = `당신은 BudgetTrip AI의 총 예산 단계 어시스턴트입니다.
-인원수는 아직 모릅니다. RAG으로 권역만 추천하세요.
-
-총 예산: ${budget.toLocaleString("ko-KR")}원
-(아래 RAG는 "이 돈을 1명이 쓸 때" 기준입니다. 인원이 늘면 1인당 예산이 줄어듭니다.)
-
-[RAG]
-${rag.contexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
-
-[허용 권역]
-${rag.allowedRegions.join(", ")}
-
-톤 1~2문장:
-"총 예산 ○○이면(1인 기준) ~~한 여행이 가능하고, ~~를 추천해요. 인원이 늘면 1인당 예산이 줄어들어요."
-
-금지: 허용 목록 밖(특히 250만 미만에서 유럽), 항공·숙소 임의 견적, JSON.`;
-
-  const system =
-    "예산 RAG 밖 추천은 금지. 1인당/총예산 250만원 미만에서 유럽을 말하면 안 된다.";
+  const prompt = buildBudgetPrompt(budget, month);
+  const system = getBudgetSystemPrompt();
 
   try {
     const res = await backendFetch("/ai/chat", {
@@ -52,7 +62,9 @@ ${rag.allowedRegions.join(", ")}
     });
 
     if (!res.ok) {
-      return NextResponse.json({ insight: fallback, source: "fallback" });
+      return {
+        record: buildRecord(budget, fallback, "fallback", fallback, month),
+      };
     }
 
     const data = (await res.json()) as {
@@ -65,24 +77,36 @@ ${rag.allowedRegions.join(", ")}
       looksLikeFakeQuote(content) ||
       violatesBudgetBand(content, budget)
     ) {
-      return NextResponse.json({ insight: fallback, source: "fallback" });
+      return {
+        record: buildRecord(budget, fallback, "fallback", fallback, month),
+      };
     }
 
-    return NextResponse.json({
-      insight: content,
-      source: data.source === "ai" ? "ai+rag" : "fallback",
-    });
-  } catch (error) {
-    if (error instanceof BackendUnavailableError) {
-      return NextResponse.json({ insight: fallback, source: "fallback" });
-    }
-    return NextResponse.json({ insight: fallback, source: "fallback" });
+    const source: BudgetInsightSource =
+      data.source === "ai" ? "ai+rag" : "fallback";
+    return {
+      record: buildRecord(budget, content, source, fallback, month),
+    };
+  } catch {
+    return {
+      record: buildRecord(budget, fallback, "fallback", fallback, month),
+    };
   }
 }
 
-function looksLikeFakeQuote(text: string): boolean {
-  return (
-    /(항공|숙소|호텔).{0,12}(\d{1,3}(,?\d{3})*|\d+)\s*만/.test(text) ||
-    /항공권과 숙소/.test(text)
-  );
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const budget = Number(searchParams.get("budget") ?? "0");
+
+  if (!Number.isFinite(budget) || budget < 0) {
+    return NextResponse.json({ error: "invalid-budget" }, { status: 400 });
+  }
+
+  const { record } = await buildBudgetInsight(budget);
+
+  void persistBudgetInsightLog(record);
+
+  return NextResponse.json({    insight: record.insight,
+    source: record.source,
+  });
 }

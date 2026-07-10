@@ -1,4 +1,4 @@
-import { retrieveBudgetRag, violatesBudgetBand } from "@/lib/rag/budgetBands";
+import { retrieveBudgetRag } from "@/lib/rag/budgetBands";
 
 export function parseBudgetAmount(value: string): number {
   return Number(value.replace(/[^0-9]/g, "")) || 0;
