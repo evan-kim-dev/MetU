@@ -31,8 +31,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     if (isLoggedIn && pathname === "/login") {
-      window.location.replace("/");
-      return;
+      router.replace("/");
     }
   }, [isReady, isLoggedIn, pathname, router]);
 

@@ -89,21 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        clearGuestSession();
-        setUser(session.user as AuthUser);
-        setIsGuest(false);
-        setIsReady(true);
-        if (
-          typeof window !== "undefined" &&
-          !window.location.pathname.startsWith("/auth/")
-        ) {
-          window.location.reload();
-        }
-        return;
-      }
-
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         clearGuestSession();
         setUser(session.user as AuthUser);
