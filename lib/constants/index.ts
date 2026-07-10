@@ -12,6 +12,7 @@ export const TABLES = {
   postLikes: "post_likes",
   partyMembers: "party_members",
   partyChatMessages: "party_chat_messages",
+  notifications: "notifications",
   tripPlans: "trip_plans",
   budgetInsightLogs: "budget_insight_logs",
 } as const;

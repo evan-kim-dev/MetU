@@ -132,7 +132,7 @@ export function TopAppBar({
 
         {/* 우측: 액션 슬롯 */}
 
-        <div className="flex w-10 items-center justify-end">{rightSlot}</div>
+        <div className="relative z-10 flex w-10 items-center justify-end">{rightSlot}</div>
 
       </div>
 

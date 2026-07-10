@@ -10,7 +10,10 @@ service = InsightService()
 class ChatRequest(BaseModel):
     system: str = Field(..., min_length=1)
     prompt: str = Field(..., min_length=1)
-    mode: str = Field(default="budget", pattern="^(budget|party|deal|weather)$")
+    mode: str = Field(
+        default="budget",
+        pattern="^(budget|party|deal|weather|factbomb|tips|style|schedule|plan|deals|summary)$",
+    )
 
 
 class ChatResponse(BaseModel):
@@ -26,6 +29,20 @@ async def chat(body: ChatRequest) -> ChatResponse:
         content = await service.party_insight(prompt=body.prompt, system=body.system)
     elif body.mode == "weather":
         content = await service.weather_insight(prompt=body.prompt, system=body.system)
+    elif body.mode == "factbomb":
+        content = await service.factbomb_insight(prompt=body.prompt, system=body.system)
+    elif body.mode == "tips":
+        content = await service.tips_insight(prompt=body.prompt, system=body.system)
+    elif body.mode == "style":
+        content = await service.style_insight(prompt=body.prompt, system=body.system)
+    elif body.mode == "schedule":
+        content = await service.schedule_insight(prompt=body.prompt, system=body.system)
+    elif body.mode == "plan":
+        content = await service.plan_itinerary(prompt=body.prompt, system=body.system)
+    elif body.mode == "deals":
+        content = await service.deals_curate(prompt=body.prompt, system=body.system)
+    elif body.mode == "summary":
+        content = await service.summary_insight(prompt=body.prompt, system=body.system)
     else:
         content = await service.budget_insight(
             budget=0, prompt=body.prompt, system=body.system

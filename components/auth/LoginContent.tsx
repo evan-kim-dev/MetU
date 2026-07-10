@@ -56,15 +56,9 @@ export function LoginContent() {
   return (
     <div className="relative flex h-dvh min-h-dvh flex-col overflow-hidden bg-surface-base">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, #F8F9FF 0%, #E9EDF7 55%, #E3E8F5 100%)",
-          }}
-        />
+        <div className="absolute inset-0 bg-gradient-to-b from-surface-base via-canvas to-canvas-deep" />
         <div className="absolute -left-16 top-8 h-56 w-56 animate-glow-pulse rounded-full bg-brand/20 blur-3xl" />
-        <div className="absolute -right-10 top-28 h-44 w-44 animate-float-soft rounded-full bg-[#60A5FA]/25 blur-3xl [animation-delay:1.2s]" />
+        <div className="absolute -right-10 top-28 h-44 w-44 animate-float-soft rounded-full bg-brand-mid/25 blur-3xl [animation-delay:1.2s]" />
         <div className="absolute bottom-40 left-1/2 h-36 w-72 -translate-x-1/2 animate-glow-pulse rounded-full bg-brand/10 blur-3xl [animation-delay:0.6s]" />
       </div>
 

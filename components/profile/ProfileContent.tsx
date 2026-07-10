@@ -59,6 +59,10 @@ export function ProfileContent() {
   const [selectedStyles, setSelectedStyles] = useState<TravelStyle[]>(
     profile.styles
   );
+  const [styleInsight, setStyleInsight] = useState(
+    "관심 스타일을 고르면 맞춤 여행지를 추천해 드려요."
+  );
+  const [styleInsightLoading, setStyleInsightLoading] = useState(false);
   const [currency, setCurrency] = useState<(typeof CURRENCY_OPTIONS)[number]>("KRW");
   const [notifications, setNotifications] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -74,6 +78,51 @@ export function ProfileContent() {
     setDraftBio(profile.bio ?? "");
     setDraftHomeCity(profile.homeCity ?? "");
   }, [profile.bio, profile.homeCity, profile.name, profile.styles]);
+
+  useEffect(() => {
+    const local =
+      selectedStyles.length === 0
+        ? "관심 스타일을 고르면 맞춤 여행지를 추천해 드려요."
+        : "선택하신 스타일을 바탕으로 맞춤 여행지를 추천해 드려요.";
+    setStyleInsight(local);
+
+    if (selectedStyles.length === 0) {
+      setStyleInsightLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setStyleInsightLoading(true);
+
+    const timer = window.setTimeout(() => {
+      fetch("/api/style-insight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ styles: selectedStyles }),
+        signal: controller.signal,
+        cache: "no-store",
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error("style-insight-failed");
+          return (await res.json()) as { insight?: string };
+        })
+        .then((data) => {
+          if (data.insight?.trim()) setStyleInsight(data.insight.trim());
+        })
+        .catch((error) => {
+          if ((error as Error)?.name === "AbortError") return;
+          setStyleInsight(local);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setStyleInsightLoading(false);
+        });
+    }, 350);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [selectedStyles]);
 
   const toggleStyle = (style: TravelStyle) => {
     setSelectedStyles((prev) => {
@@ -351,10 +400,13 @@ export function ProfileContent() {
             </div>
 
             <div className="mt-4 flex items-start gap-2 rounded-full border border-insight-border bg-insight-bg px-3 py-2">
-              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-              <p className="text-sm leading-5 text-brand">
-                선택하신 스타일을 바탕으로 맞춤 여행지를 추천해 드려요.
-              </p>
+              <Sparkles
+                className={[
+                  "mt-0.5 h-4 w-4 shrink-0 text-brand",
+                  styleInsightLoading ? "animate-pulse" : "",
+                ].join(" ")}
+              />
+              <p className="text-sm leading-5 text-brand">{styleInsight}</p>
             </div>
           </section>
 

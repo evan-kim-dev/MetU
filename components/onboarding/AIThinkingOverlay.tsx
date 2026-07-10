@@ -35,52 +35,42 @@ export function AIThinkingOverlay({ destination }: AIThinkingOverlayProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[#F8F9FF]/92 px-6 backdrop-blur-md"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-surface-base/88 px-6 backdrop-blur-sm"
       role="status"
       aria-live="polite"
       aria-busy="true"
     >
-      <div className="ai-surface-card flex w-full max-w-[320px] flex-col items-center gap-5 px-6 py-7 text-center shadow-[0_20px_50px_rgba(37,99,235,0.12)]">
-        <div className="relative flex h-20 w-20 items-center justify-center">
+      <div className="flex w-full max-w-[300px] flex-col items-center gap-6 rounded-[28px] bg-white/90 px-7 py-8 text-center shadow-[0_18px_48px_rgba(37,99,235,0.1)]">
+        <div className="relative flex h-16 w-16 items-center justify-center">
           <span
-            className="absolute -inset-2 rounded-full bg-gradient-to-tr from-brand/20 via-[#818CF8]/15 to-transparent blur-2xl motion-safe:animate-pulse"
+            className="ai-thinking-ring absolute inset-0 rounded-full opacity-90 motion-safe:animate-[spin_2.8s_linear_infinite]"
             aria-hidden
           />
           <span
-            className="absolute inset-0 rounded-full motion-safe:animate-[spin_3s_linear_infinite]"
-            style={{
-              background:
-                "conic-gradient(from 0deg, #2563eb, #818cf8, #60a5fa, #2563eb)",
-            }}
-            aria-hidden
-          />
-          <span
-            className="absolute inset-[3px] flex items-center justify-center rounded-full bg-surface-white shadow-soft"
+            className="absolute inset-[2.5px] flex items-center justify-center rounded-full bg-white"
             aria-hidden
           >
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl ai-gradient-bg shadow-glow">
-              <Sparkles className="h-7 w-7 text-white" strokeWidth={2.2} aria-hidden />
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl ai-gradient-bg">
+              <Sparkles className="h-5 w-5 text-white" strokeWidth={2.2} aria-hidden />
             </span>
           </span>
         </div>
 
-        <div className="flex flex-col items-center gap-2">
-          <span className="ai-chip">AI 여행 플래너</span>
-          <p className="text-lg font-extrabold ai-gradient-text">맞춤 일정 만드는 중</p>
+        <div className="flex flex-col items-center gap-1.5">
+          <p className="text-[11px] font-bold tracking-[0.08em] text-brand">
+            AI 여행 플래너
+          </p>
+          <p className="text-lg font-extrabold tracking-tight text-ink-heading">
+            맞춤 일정 만드는 중
+          </p>
           <p
             className={[
-              "min-h-[44px] max-w-[260px] text-sm leading-relaxed text-ink-caption transition-all duration-300",
+              "mt-1 min-h-[40px] max-w-[240px] text-sm leading-relaxed text-ink-caption transition-all duration-300",
               visible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0",
             ].join(" ")}
           >
             {message}
           </p>
-        </div>
-
-        <div className="w-full">
-          <div className="h-1.5 overflow-hidden rounded-full bg-brand/10">
-            <div className="h-full w-1/3 rounded-full ai-gradient-bg motion-safe:animate-[ai-thinking-slide_1.6s_ease-in-out_infinite]" />
-          </div>
         </div>
       </div>
     </div>

@@ -17,6 +17,8 @@ import {
   saveCommunityPosts,
 } from "@/lib/community/storage";
 import {
+  acceptPartyMemberInSupabase,
+  cancelJoinRequestInSupabase,
   deleteCommunityPostFromSupabase,
   deletePostCommentFromSupabase,
   fetchCommunityPostsFromSupabase,
@@ -24,6 +26,7 @@ import {
   insertPostCommentToSupabase,
   joinPartyInSupabase,
   leavePartyInSupabase,
+  rejectPartyMemberInSupabase,
   togglePostLikeInSupabase,
   updateCommunityPostInSupabase,
   updatePostCommentInSupabase,
@@ -58,7 +61,11 @@ interface CommunityActionContextValue {
   canManageComment: (comment: PostComment) => boolean;
   joinParty: (postId: string) => boolean;
   leaveParty: (postId: string) => boolean;
+  cancelJoinRequest: (postId: string) => boolean;
+  acceptJoin: (postId: string, memberId: string) => boolean;
+  rejectJoin: (postId: string, memberId: string) => boolean;
   isPartyJoined: (post: CommunityPost) => boolean;
+  isPartyPending: (post: CommunityPost) => boolean;
   isPartyHost: (post: CommunityPost) => boolean;
   isPartyFull: (post: CommunityPost) => boolean;
 }
@@ -509,7 +516,19 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
 
   const isPartyJoined = useCallback(
     (post: CommunityPost) =>
-      Boolean(post.party?.members.some((member) => member.id === authorId)),
+      Boolean(
+        post.party?.members.some(
+          (member) =>
+            member.id === authorId &&
+            (member.isHost || member.status === "accepted" || member.status == null)
+        )
+      ),
+    [authorId]
+  );
+
+  const isPartyPending = useCallback(
+    (post: CommunityPost) =>
+      Boolean(post.party?.pendingMembers?.some((member) => member.id === authorId)),
     [authorId]
   );
 
@@ -526,24 +545,122 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
 
   const joinParty = useCallback(
     (postId: string) => {
-      let joined = false;
+      // 승인제는 로그인(Supabase) 경로만 — 게스트는 UI에서 로그인 유도
+      if (!useDb || !userId) return false;
+
+      let requested = false;
       const now = new Date().toISOString();
 
       setPosts((prev) =>
         prev.map((post) => {
           if (post.id !== postId || !post.party) return post;
+          if (post.authorId === authorId) return post;
           if (post.party.members.some((member) => member.id === authorId)) {
+            return post;
+          }
+          if (post.party.pendingMembers?.some((member) => member.id === authorId)) {
             return post;
           }
           if (post.party.current >= post.party.needed) return post;
 
-          joined = true;
-          const members = [
-            ...post.party.members,
+          requested = true;
+          const pendingMembers = [
+            ...(post.party.pendingMembers ?? []),
             {
               id: authorId,
               name: profile.name,
               avatar: "🧑",
+              joinedAtIso: now,
+              status: "pending" as const,
+            },
+          ];
+          return {
+            ...post,
+            party: {
+              ...post.party,
+              pendingMembers,
+            },
+          };
+        })
+      );
+
+      if (requested) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void (async () => {
+            const ok = await joinPartyInSupabase(
+              supabase,
+              postId,
+              authorId,
+              profile.name,
+              "🧑"
+            );
+            if (!ok) {
+              const remote = await fetchCommunityPostsFromSupabase(supabase);
+              setPosts(remote);
+            }
+          })();
+        }
+      }
+      return requested;
+    },
+    [authorId, profile.name, useDb, userId]
+  );
+
+  const cancelJoinRequest = useCallback(
+    (postId: string) => {
+      let cancelled = false;
+
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id !== postId || !post.party) return post;
+          const pending = post.party.pendingMembers ?? [];
+          if (!pending.some((member) => member.id === authorId)) return post;
+
+          cancelled = true;
+          return {
+            ...post,
+            party: {
+              ...post.party,
+              pendingMembers: pending.filter((member) => member.id !== authorId),
+            },
+          };
+        })
+      );
+
+      if (cancelled && useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void cancelJoinRequestInSupabase(supabase, postId, authorId);
+        }
+      }
+      return cancelled;
+    },
+    [authorId, useDb, userId]
+  );
+
+  const acceptJoin = useCallback(
+    (postId: string, memberId: string) => {
+      if (!useDb || !userId) return false;
+      let accepted = false;
+      const now = new Date().toISOString();
+
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id !== postId || !post.party) return post;
+          if (post.authorId !== authorId) return post;
+          if (post.party.current >= post.party.needed) return post;
+
+          const pending = post.party.pendingMembers ?? [];
+          const target = pending.find((m) => m.id === memberId);
+          if (!target) return post;
+
+          accepted = true;
+          const members = [
+            ...post.party.members,
+            {
+              ...target,
+              status: "accepted" as const,
               joinedAtIso: now,
             },
           ];
@@ -553,28 +670,78 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
               ...post.party,
               members,
               current: members.length,
+              pendingMembers: pending.filter((m) => m.id !== memberId),
             },
           };
         })
       );
 
-      if (joined && useDb && userId) {
+      if (accepted) {
         const supabase = getBrowserSupabase();
         if (supabase) {
           void (async () => {
-            await joinPartyInSupabase(
+            const ok = await acceptPartyMemberInSupabase(
               supabase,
               postId,
               authorId,
-              profile.name,
-              "🧑"
+              memberId
             );
+            if (!ok) {
+              const remote = await fetchCommunityPostsFromSupabase(supabase);
+              setPosts(remote);
+            }
           })();
         }
       }
-      return joined;
+      return accepted;
     },
-    [authorId, profile.name, useDb, userId]
+    [authorId, useDb, userId]
+  );
+
+  const rejectJoin = useCallback(
+    (postId: string, memberId: string) => {
+      if (!useDb || !userId) return false;
+      let rejected = false;
+
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id !== postId || !post.party) return post;
+          if (post.authorId !== authorId) return post;
+
+          const pending = post.party.pendingMembers ?? [];
+          if (!pending.some((m) => m.id === memberId)) return post;
+
+          rejected = true;
+          return {
+            ...post,
+            party: {
+              ...post.party,
+              pendingMembers: pending.filter((m) => m.id !== memberId),
+            },
+          };
+        })
+      );
+
+      if (rejected) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void (async () => {
+            const ok = await rejectPartyMemberInSupabase(
+              supabase,
+              postId,
+              authorId,
+              memberId
+            );
+            if (!ok) {
+              const remote = await fetchCommunityPostsFromSupabase(supabase);
+              setPosts(remote);
+            }
+          })();
+        }
+      }
+      return rejected;
+    },
+    [authorId, useDb, userId]
   );
 
   const leaveParty = useCallback(
@@ -641,7 +808,11 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       canManageComment,
       joinParty,
       leaveParty,
+      cancelJoinRequest,
+      acceptJoin,
+      rejectJoin,
       isPartyJoined,
+      isPartyPending,
       isPartyHost,
       isPartyFull,
     }),
@@ -660,7 +831,11 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       canManageComment,
       joinParty,
       leaveParty,
+      cancelJoinRequest,
+      acceptJoin,
+      rejectJoin,
       isPartyJoined,
+      isPartyPending,
       isPartyHost,
       isPartyFull,
     ]

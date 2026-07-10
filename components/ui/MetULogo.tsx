@@ -52,7 +52,7 @@ function LogoMark({ size }: { size: "hero" | "appbar" | "compact" }) {
       <span className={`font-extrabold tracking-tight ${GRADIENT_TEXT}`}>Met U</span>
       <span
         className={[
-          "rounded-md border border-brand/20 bg-gradient-to-r from-brand/12 to-[#818CF8]/12 font-bold tracking-wider text-brand",
+          "rounded-md border border-brand/20 bg-gradient-to-r from-brand/12 to-brand-soft/12 font-bold tracking-wider text-brand",
           aiSize,
         ].join(" ")}
       >

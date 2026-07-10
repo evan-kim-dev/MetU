@@ -24,7 +24,16 @@ export function buildLocalBudgetInsight(budget: number): string {
   const month = new Date().getMonth() + 1;
   const asSolo = retrieveBudgetRag(budget, month);
   const asCouple = retrieveBudgetRag(Math.floor(budget / 2), month);
-  const places = asSolo.allowedRegions.slice(0, 3).join("·");
 
-  return `총 예산 ${formatMan(budget)}이면(1인 기준) ${asSolo.band.nights} ${places} 정도가 현실적이에요. 2인이면 1인당이 줄어 ${asCouple.allowedRegions.slice(0, 2).join("·")} 쪽에 더 가까워져요.`;
+  if (asSolo.allowedRegions.length === 0) {
+    return `총 예산 ${formatMan(budget)}이면(1인 기준) 숙박 여행이 어려워요. 최소 15만원대 이상부터 국내 근교를 볼 수 있어요.`;
+  }
+
+  const places = asSolo.allowedRegions.slice(0, 3).join("·");
+  const coupleNote =
+    asCouple.allowedRegions.length === 0
+      ? "2인이면 1인당이 더 줄어 숙박 여행이 빠듯해져요."
+      : `2인이면 1인당이 줄어 ${asCouple.allowedRegions.slice(0, 2).join("·")} 쪽에 더 가까워져요.`;
+
+  return `총 예산 ${formatMan(budget)}이면(1인 기준) ${asSolo.band.nights} ${places} 정도가 현실적이에요. ${coupleNote}`;
 }

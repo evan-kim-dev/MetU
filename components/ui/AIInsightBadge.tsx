@@ -18,7 +18,7 @@ export function AIInsightBadge({
         "flex items-start gap-2.5 rounded-xl2 px-4 py-3 backdrop-blur-sm",
         isFactBomb
           ? "border border-amber-300/80 bg-gradient-to-br from-amber-50 via-surface-white to-orange-50"
-          : "border border-brand/15 bg-gradient-to-br from-brand/6 via-surface-soft to-[#818CF8]/8",
+          : "border border-brand/15 bg-gradient-to-br from-brand/6 via-surface-soft to-brand-soft/8",
       ].join(" ")}
     >
       <span

@@ -149,10 +149,6 @@ export const MOCK_DEALS: DealPlace[] = [
   },
 ];
 
-/** @deprecated RecommendedPlace 호환용 별칭 */
-export type RecommendedPlace = DealPlace;
-export const MOCK_RECOMMENDED = MOCK_DEALS;
-
 export function getDealById(id: string): DealPlace | undefined {
   return MOCK_DEALS.find((deal) => deal.id === id);
 }

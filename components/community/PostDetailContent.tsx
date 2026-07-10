@@ -19,6 +19,8 @@ import {
   CATEGORY_COLORS,
   CATEGORY_LABELS,
 } from "@/lib/mock/community";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { requiresCommunityLogin } from "@/lib/auth/community-access";
 import { useCommunity } from "@/lib/community/CommunityProvider";
 import { getCommentCount, getLikeCount } from "@/lib/community/counts";
 import { formatPartyBudgetPerPerson } from "@/lib/community/format";
@@ -37,6 +39,7 @@ export function PostDetailContent({
   listHref = "/board",
 }: PostDetailContentProps) {
   const router = useRouter();
+  const { user, provider } = useAuth();
   const {
     getPost,
     updatePost,
@@ -50,7 +53,11 @@ export function PostDetailContent({
     canManageComment,
     joinParty,
     leaveParty,
+    cancelJoinRequest,
+    acceptJoin,
+    rejectJoin,
     isPartyJoined,
+    isPartyPending,
     isPartyHost,
     isPartyFull,
   } = useCommunity();
@@ -79,11 +86,23 @@ export function PostDetailContent({
   const isParty = post.category === "party" && post.party;
   const liked = isLiked(post);
   const joined = isParty ? isPartyJoined(post) : false;
+  const pending = isParty ? isPartyPending(post) : false;
   const isHost = isParty ? isPartyHost(post) : false;
   const isFull = isParty ? isPartyFull(post) : false;
   const slotsLeft = isParty ? post.party!.needed - post.party!.current : 0;
   const likeCount = getLikeCount(post);
   const commentCount = getCommentCount(post);
+  const pendingMembers = post.party?.pendingMembers ?? [];
+  const needsLogin = requiresCommunityLogin(user, provider);
+
+  function handleJoinRequest() {
+    if (!post) return;
+    if (needsLogin) {
+      router.push(`/login?next=${encodeURIComponent(`${listHref}/${post.id}`)}`);
+      return;
+    }
+    joinParty(post.id);
+  }
 
   function handleDelete() {
     if (!editable || !post) return;
@@ -236,6 +255,48 @@ export function PostDetailContent({
               </ul>
             </div>
 
+            {isHost && pendingMembers.length > 0 ? (
+              <div className="mt-4 border-t border-brand/20 pt-3">
+                <p className="mb-2 text-xs font-bold text-brand-strong">
+                  참여 요청 ({pendingMembers.length})
+                </p>
+                <ul className="flex flex-col gap-2">
+                  {pendingMembers.map((member) => (
+                    <li
+                      key={member.id}
+                      className="flex items-center gap-2 rounded-lg bg-white/70 px-2.5 py-2"
+                    >
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand/10 text-sm">
+                        {member.avatar}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-ink-heading">
+                          {member.name}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => acceptJoin(post.id, member.id)}
+                          disabled={isFull}
+                          className="rounded-md bg-brand px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                        >
+                          수락
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => rejectJoin(post.id, member.id)}
+                          className="rounded-md border border-line-soft bg-white px-2.5 py-1.5 text-[11px] font-bold text-ink-body"
+                        >
+                          거절
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
             <div className="mt-4">
               {isHost ? (
                 <p className="rounded-lg bg-white/80 px-3 py-2.5 text-center text-sm font-semibold text-brand-strong">
@@ -249,6 +310,19 @@ export function PostDetailContent({
                 >
                   참여 취소
                 </button>
+              ) : pending ? (
+                <div className="flex flex-col gap-2">
+                  <p className="rounded-lg bg-white/80 px-3 py-2.5 text-center text-sm font-semibold text-brand-strong">
+                    요청 대기 중 · 호스트 승인을 기다려 주세요
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => cancelJoinRequest(post.id)}
+                    className="w-full rounded-lg border border-line-soft bg-white py-3 text-sm font-bold text-ink-body"
+                  >
+                    요청 취소
+                  </button>
+                </div>
               ) : isFull ? (
                 <p className="rounded-lg bg-ink-caption/10 px-3 py-2.5 text-center text-sm font-semibold text-ink-caption">
                   모집이 마감됐어요
@@ -256,9 +330,11 @@ export function PostDetailContent({
               ) : (
                 <PrimaryButton
                   className="h-11 min-h-[44px] rounded-xl bg-brand text-sm"
-                  onClick={() => joinParty(post.id)}
+                  onClick={handleJoinRequest}
                 >
-                  동행 참여하기 ({slotsLeft}명 남음)
+                  {needsLogin
+                    ? "로그인 후 참여 요청"
+                    : `참여 요청하기 (${slotsLeft}명 남음)`}
                 </PrimaryButton>
               )}
             </div>

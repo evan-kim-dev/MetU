@@ -27,8 +27,3 @@ export async function createServerSupabase() {
     },
   });
 }
-
-/** @deprecated Prefer createServerSupabase() */
-export async function getServerSupabase() {
-  return createServerSupabase();
-}

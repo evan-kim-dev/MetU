@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { DealDetailSheet } from "@/components/home/DealDetailSheet";
 import type { DealPlace } from "@/lib/deals/data";
@@ -11,16 +11,54 @@ interface RecommendedGridProps {
 
 /**
  * AI 예산별 추천 여행지 그리드.
- * 항공·숙소 저가 시세 기반. 배너 클릭 시 상세 시트를 연다.
+ * 시즌 RAG + LLM으로 정렬·하이라이트를 갱신한다.
  */
 export function RecommendedGrid({ places }: RecommendedGridProps) {
+  const [items, setItems] = useState(places);
   const [selected, setSelected] = useState<DealPlace | null>(null);
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setItems(places);
+  }, [places]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+
+    fetch("/api/recommended-deals", {
+      signal: controller.signal,
+      cache: "no-store",
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("recommended-deals-failed");
+        return (await res.json()) as { places?: DealPlace[] };
+      })
+      .then((data) => {
+        if (Array.isArray(data.places) && data.places.length > 0) {
+          setItems(data.places);
+        }
+      })
+      .catch((error) => {
+        if ((error as Error)?.name === "AbortError") return;
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, []);
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
-        {places.map((place) => (
+      <div
+        className={[
+          "grid grid-cols-2 gap-3 transition-opacity",
+          loading ? "opacity-90" : "opacity-100",
+        ].join(" ")}
+      >
+        {items.map((place) => (
           <button
             key={place.id}
             type="button"

@@ -288,7 +288,7 @@ export function WeatherChecklistContent() {
         </p>
       ) : forecast ? (
         <>
-          <section className="rounded-xl2 border border-brand/15 bg-gradient-to-br from-brand/8 to-[#818CF8]/10 p-5 shadow-soft">
+          <section className="rounded-xl2 border border-brand/15 bg-gradient-to-br from-brand/8 to-brand-soft/10 p-5 shadow-soft">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="mb-1 flex items-center gap-1 text-xs font-semibold text-ink-caption">

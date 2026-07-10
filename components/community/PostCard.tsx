@@ -12,6 +12,8 @@ import { formatPartyBudgetPerPerson } from "@/lib/community/format";
 interface PostCardProps {
   post: CommunityPost;
   basePath?: "/opod" | "/board";
+  /** false면 링크/카드 테두리 없이 내용만 렌더 (선택 모드용) */
+  interactive?: boolean;
 }
 
 function formatDateRange(start: string, end: string): string {
@@ -20,19 +22,17 @@ function formatDateRange(start: string, end: string): string {
   return `${startLabel} ~ ${endLabel}`;
 }
 
-export function PostCard({ post, basePath = "/board" }: PostCardProps) {
+export function PostCard({
+  post,
+  basePath = "/board",
+  interactive = true,
+}: PostCardProps) {
   const isParty = post.category === "party" && post.party;
   const likeCount = getLikeCount(post);
   const commentCount = getCommentCount(post);
 
-  return (
-    <Link
-      href={`${basePath}/${post.id}`}
-      className={[
-        "flex flex-col gap-3 rounded-xl2 border bg-surface-white p-4 shadow-soft transition-transform active:scale-[0.99]",
-        isParty ? "border-brand/20" : "border-line-soft",
-      ].join(" ")}
-    >
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-soft text-base">
@@ -110,6 +110,22 @@ export function PostCard({ post, basePath = "/board" }: PostCardProps) {
           {commentCount}
         </span>
       </div>
+    </>
+  );
+
+  if (!interactive) {
+    return <div className="flex flex-col gap-3 py-1">{content}</div>;
+  }
+
+  return (
+    <Link
+      href={`${basePath}/${post.id}`}
+      className={[
+        "flex flex-col gap-3 rounded-xl2 border bg-surface-white p-4 shadow-soft transition-transform active:scale-[0.99]",
+        isParty ? "border-brand/20" : "border-line-soft",
+      ].join(" ")}
+    >
+      {content}
     </Link>
   );
 }

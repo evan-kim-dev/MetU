@@ -39,7 +39,7 @@ export function AISmartTipsShortcut() {
             href={`/checklist/${id}`}
             className="flex w-[72px] flex-col items-center gap-2 rounded-xl transition-transform active:scale-95"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-brand/10 bg-gradient-to-br from-brand/12 to-[#818CF8]/10">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-brand/10 bg-gradient-to-br from-brand/12 to-brand-soft/10">
               <Icon className="h-5 w-5 text-brand" strokeWidth={2.2} />
             </span>
             <span className="text-xs font-semibold tracking-wide text-ink-heading">

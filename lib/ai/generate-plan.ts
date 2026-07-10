@@ -5,10 +5,17 @@ import { STYLE_LABELS } from "@/lib/trips/data";
 import { retrieveBudgetRag } from "@/lib/rag/budgetBands";
 import { getMonthDealTip } from "@/lib/rag/monthDeals";
 import { retrieveTravelSources } from "@/lib/rag/travelKnowledge";
-import { resolvePlanSummary } from "@/lib/ai/budget-reality-check";
+import { resolvePlanSummaryWithRag } from "@/lib/ai/budget-reality-check";
+import {
+  buildPlanItineraryPrompt,
+  getPlanSystemPrompt,
+} from "@/lib/ai/prompts/insight-prompts";
+import { backendFetch } from "@/lib/backend/client";
 import type {
   BudgetAllocation,
   DaySchedule,
+  FlightPlan,
+  HotelPlan,
   RagSource,
   TripRecommendation,
 } from "./types";
@@ -197,7 +204,196 @@ function buildDailySchedule(
   });
 }
 
-export function generateTripPlan(form: OnboardingForm): TripRecommendation {
+function estimateItemCost(
+  title: string,
+  budgets: { food: number; activity: number; transport: number }
+): number {
+  const t = title.toLowerCase();
+  if (/공항|이동|교통|체크인|체크아웃|출발|도착/.test(t)) {
+    return /체크인|체크아웃|출발/.test(t) ? 0 : budgets.transport;
+  }
+  if (/식사|맛집|레스토랑|카페|브런치|야시장|먹/.test(t)) {
+    return budgets.food;
+  }
+  if (/쇼핑|기념품/.test(t)) {
+    return Math.round(budgets.activity * 0.4);
+  }
+  return budgets.activity;
+}
+
+function mergeAiSchedule(
+  aiDays: Array<{
+    day?: number;
+    label?: string;
+    items?: Array<{ time?: string; title?: string }>;
+  }>,
+  fallback: DaySchedule[],
+  allocation: BudgetAllocation[],
+  nights: number
+): DaySchedule[] {
+  if (!Array.isArray(aiDays) || aiDays.length === 0) return fallback;
+
+  const foodPerDay = Math.round(
+    (allocation.find((a) => a.id === "food")?.amount ?? 0) / Math.max(1, nights)
+  );
+  const activityPerDay = Math.round(
+    (allocation.find((a) => a.id === "activity")?.amount ?? 0) /
+      Math.max(1, nights)
+  );
+  const transportPerDay = Math.round(
+    (allocation.find((a) => a.id === "transport")?.amount ?? 0) /
+      Math.max(1, nights)
+  );
+  const budgets = {
+    food: foodPerDay,
+    activity: activityPerDay,
+    transport: transportPerDay,
+  };
+
+  const expectedDays = nights + 1;
+  const sliced = aiDays.slice(0, expectedDays);
+
+  return sliced.map((day, index) => {
+    const fallbackDay = fallback[index] ?? fallback[fallback.length - 1];
+    const rawItems = Array.isArray(day.items) ? day.items : [];
+    const items =
+      rawItems.length > 0
+        ? rawItems
+            .map((item) => {
+              const title = item.title?.trim() || "자유 시간";
+              return {
+                time: item.time?.trim() || "10:00",
+                title,
+                cost: estimateItemCost(title, budgets),
+              };
+            })
+            .slice(0, 5)
+        : fallbackDay.items;
+
+    return {
+      day: index + 1,
+      label: day.label?.trim() || fallbackDay.label,
+      items,
+      dayTotal: items.reduce((sum, item) => sum + item.cost, 0),
+    };
+  });
+}
+
+type AiPlanPayload = {
+  summary?: string;
+  flight?: { airline?: string; schedule?: string; note?: string };
+  hotel?: { name?: string; area?: string; note?: string };
+  dailySchedule?: Array<{
+    day?: number;
+    label?: string;
+    items?: Array<{ time?: string; title?: string }>;
+  }>;
+  tips?: string[];
+};
+
+async function enrichPlanWithAi(params: {
+  origin: string;
+  destination: string;
+  country: string;
+  nights: number;
+  people: number;
+  totalBudget: number;
+  perPerson: number;
+  dateRange: string;
+  styleLabels: string[];
+  flightBudget: number;
+  hotelBudget: number;
+  ragContexts: string[];
+  fallbackSchedule: DaySchedule[];
+  fallbackFlight: FlightPlan;
+  fallbackHotel: HotelPlan;
+  fallbackTips: string[];
+  allocation: BudgetAllocation[];
+}): Promise<{
+  summary?: string;
+  flight: FlightPlan;
+  hotel: HotelPlan;
+  dailySchedule: DaySchedule[];
+  tips: string[];
+  source: "ai" | "fallback";
+}> {
+  try {
+    const res = await backendFetch("/ai/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        system: getPlanSystemPrompt(),
+        prompt: buildPlanItineraryPrompt(params),
+        mode: "plan",
+      }),
+    });
+    if (!res.ok) {
+      return {
+        flight: params.fallbackFlight,
+        hotel: params.fallbackHotel,
+        dailySchedule: params.fallbackSchedule,
+        tips: params.fallbackTips,
+        source: "fallback",
+      };
+    }
+
+    const data = (await res.json()) as {
+      content?: string | null;
+      source?: string;
+    };
+    if (!data.content || data.source !== "ai") {
+      return {
+        flight: params.fallbackFlight,
+        hotel: params.fallbackHotel,
+        dailySchedule: params.fallbackSchedule,
+        tips: params.fallbackTips,
+        source: "fallback",
+      };
+    }
+
+    const parsed = JSON.parse(data.content) as AiPlanPayload;
+    const tips =
+      Array.isArray(parsed.tips) && parsed.tips.length > 0
+        ? parsed.tips.map((t) => t.trim()).filter(Boolean).slice(0, 4)
+        : params.fallbackTips;
+
+    return {
+      summary: parsed.summary?.trim() || undefined,
+      flight: {
+        ...params.fallbackFlight,
+        airline: parsed.flight?.airline?.trim() || params.fallbackFlight.airline,
+        schedule:
+          parsed.flight?.schedule?.trim() || params.fallbackFlight.schedule,
+        note: parsed.flight?.note?.trim() || params.fallbackFlight.note,
+      },
+      hotel: {
+        ...params.fallbackHotel,
+        name: parsed.hotel?.name?.trim() || params.fallbackHotel.name,
+        area: parsed.hotel?.area?.trim() || params.fallbackHotel.area,
+        note: parsed.hotel?.note?.trim() || params.fallbackHotel.note,
+      },
+      dailySchedule: mergeAiSchedule(
+        parsed.dailySchedule ?? [],
+        params.fallbackSchedule,
+        params.allocation,
+        params.nights
+      ),
+      tips,
+      source: "ai",
+    };
+  } catch {
+    return {
+      flight: params.fallbackFlight,
+      hotel: params.fallbackHotel,
+      dailySchedule: params.fallbackSchedule,
+      tips: params.fallbackTips,
+      source: "fallback",
+    };
+  }
+}
+
+export async function generateTripPlan(
+  form: OnboardingForm
+): Promise<TripRecommendation> {
   const totalBudget = parseBudget(form.budget);
   const people = Math.max(1, form.people);
   const perPerson = Math.floor(totalBudget / people);
@@ -221,13 +417,15 @@ export function generateTripPlan(form: OnboardingForm): TripRecommendation {
     form.flexibleMonth >= 1 &&
     form.flexibleMonth <= 12
       ? form.flexibleMonth
-      : month + 1;
+      : form.startDate
+        ? Number(form.startDate.slice(5, 7)) || month
+        : month;
   const specificDateRange =
     form.startDate && form.endDate
       ? `${formatIsoDateToKorean(form.startDate)} - ${formatIsoDateToKorean(
           form.endDate
         )}`
-      : `${month + 1}월 12일 - ${month + 1}월 ${12 + nights - 1}일`;
+      : `${selectedMonth}월 12일 - ${selectedMonth}월 ${12 + nights - 1}일`;
   const dateRange =
     form.dateType === "flexible"
       ? `${selectedYear}년 ${selectedMonth}월 중순 · ${nights}박 ${nights + 1}일 (유연 일정)`
@@ -237,16 +435,92 @@ export function generateTripPlan(form: OnboardingForm): TripRecommendation {
 
   const budgetRag = retrieveBudgetRag(perPerson, selectedMonth);
   const monthTip = getMonthDealTip(selectedMonth);
-  const { summary, tone: summaryTone } = resolvePlanSummary({
-    formOrigin: form.origin,
-    destination: city,
-    country: country || "해외",
+
+  const ragContexts = [
+    ...budgetRag.contexts,
+    ...travelSources.map((source) => source.content),
+    budgetRag.seasonTip,
+    monthTip.dealReason,
+    monthTip.caution,
+  ];
+
+  const fallbackSchedule = buildDailySchedule(form, budgetAllocation, nights);
+  const fallbackFlight: FlightPlan = {
+    airline: totalBudget > 3000000 ? "대한항공" : "저비용 항공 추천",
+    route: `${form.origin} → ${city}`,
+    schedule: `가는 편 09:40 · 오는 편 18:20`,
+    price: flightAmount,
+    note:
+      form.dateType === "flexible"
+        ? "유연 일정이므로 요일에 따라 8~15% 절약 가능해요."
+        : "성수기 전 주중 항공권 기준 예상가예요.",
+  };
+  const fallbackHotel: HotelPlan = {
+    name: styleLabels.includes("힐링")
+      ? `${city} 리조트 & 스파`
+      : `${city} 시내 호텔`,
+    area: "도심/관광지 인접",
     nights,
-    totalBudget,
-    people,
-    perPerson,
-    allowedRegions: budgetRag.allowedRegions,
-  });
+    pricePerNight,
+    total: hotelAmount,
+    note: `${people}인 기준 · 조식 포함 옵션`,
+  };
+
+  const baseFallbackTips = [
+    `${styleLabels.join(", ") || "자유"} 스타일에 맞춰 동선을 최적화했어요.`,
+    ...travelSources.slice(0, 2).map((s) => s.content),
+    budgetRag.seasonTip,
+  ];
+
+  const [summaryResult, enriched] = await Promise.all([
+    resolvePlanSummaryWithRag({
+      formOrigin: form.origin,
+      destination: city,
+      country: country || "해외",
+      nights,
+      totalBudget,
+      people,
+      perPerson,
+      allowedRegions: budgetRag.allowedRegions,
+      month: selectedMonth,
+      styleLabels,
+    }),
+    enrichPlanWithAi({
+      origin: form.origin,
+      destination: city,
+      country: country || "해외",
+      nights,
+      people,
+      totalBudget,
+      perPerson,
+      dateRange,
+      styleLabels,
+      flightBudget: flightAmount,
+      hotelBudget: hotelAmount,
+      ragContexts,
+      fallbackSchedule,
+      fallbackFlight,
+      fallbackHotel,
+      fallbackTips: baseFallbackTips,
+      allocation: budgetAllocation,
+    }),
+  ]);
+
+  const {
+    summary: baseSummary,
+    tone: summaryTone,
+    source: summarySource,
+  } = summaryResult;
+
+  const tips =
+    summaryTone === "factbomb"
+      ? [
+          `현실적인 대안: ${budgetRag.allowedRegions.slice(0, 3).join(" · ")}`,
+          "예산을 올리거나 목적지를 바꾸면 훨씬 그럴듯한 일정이 나와요.",
+          ...enriched.tips,
+        ].slice(0, 4)
+      : enriched.tips;
+
   const ragSources: RagSource[] = [
     {
       id: `budget-${budgetRag.band.id}`,
@@ -263,6 +537,32 @@ export function generateTripPlan(form: OnboardingForm): TripRecommendation {
     ...travelSources.slice(0, 3),
   ];
 
+  if (summaryTone === "factbomb") {
+    ragSources.unshift({
+      id: `factbomb-${summarySource}`,
+      category: "예산",
+      title:
+        summarySource === "ai+rag"
+          ? "AI 팩트폭격 (RAG+LLM)"
+          : "AI 팩트폭격 (템플릿 폴백)",
+      content: budgetRag.contexts.join(" "),
+    });
+  }
+
+  const summary =
+    summaryTone === "factbomb"
+      ? baseSummary
+      : enriched.summary || baseSummary;
+
+  if (enriched.source === "ai") {
+    ragSources.push({
+      id: "plan-ai",
+      category: "일정",
+      title: "AI 일정·항공·숙소 생성",
+      content: "OpenRouter LLM이 RAG를 근거로 일정·항공·숙소 안내를 생성했어요.",
+    });
+  }
+
   return {
     id: `plan-${Date.now()}`,
     form,
@@ -278,38 +578,10 @@ export function generateTripPlan(form: OnboardingForm): TripRecommendation {
     imageUrl: getImageUrl(city),
     styleLabels,
     budgetAllocation,
-    flight: {
-      airline: totalBudget > 3000000 ? "대한항공" : "저비용 항공 추천",
-      route: `${form.origin} → ${city}`,
-      schedule: `가는 편 09:40 · 오는 편 18:20`,
-      price: flightAmount,
-      note:
-        form.dateType === "flexible"
-          ? "유연 일정이므로 요일에 따라 8~15% 절약 가능해요."
-          : "성수기 전 주중 항공권 기준 예상가예요.",
-    },
-    hotel: {
-      name: styleLabels.includes("힐링")
-        ? `${city} 리조트 & 스파`
-        : `${city} 시내 호텔`,
-      area: "도심/관광지 인접",
-      nights,
-      pricePerNight,
-      total: hotelAmount,
-      note: `${people}인 기준 · 조식 포함 옵션`,
-    },
-    dailySchedule: buildDailySchedule(form, budgetAllocation, nights),
-    tips: [
-      ...(summaryTone === "factbomb"
-        ? [
-            `현실적인 대안: ${budgetRag.allowedRegions.slice(0, 3).join(" · ")}`,
-            "예산을 올리거나 목적지를 바꾸면 훨씬 그럴듯한 일정이 나와요.",
-          ]
-        : []),
-      `${styleLabels.join(", ")} 스타일에 맞춰 동선을 최적화했어요.`,
-      ...travelSources.slice(0, 2).map((s) => s.content),
-      budgetRag.seasonTip,
-    ],
+    flight: enriched.flight,
+    hotel: enriched.hotel,
+    dailySchedule: enriched.dailySchedule,
+    tips,
     ragSources,
   };
 }

@@ -1,5 +1,9 @@
 # Render Blueprint — FastAPI backend
 # https://render.com/docs/blueprint-spec
+#
+# After deploy, set CORS_ORIGINS in the Render dashboard to:
+#   https://met-u.vercel.app,http://localhost:3000
+# Add Vercel preview origins explicitly if the browser calls Render directly.
 services:
   - type: web
     name: budgettrip-api
@@ -17,6 +21,14 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-4o-mini
+      - key: OPENROUTER_HTTP_REFERER
+        value: https://met-u.vercel.app
+      - key: OPENROUTER_APP_TITLE
+        value: MetU
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL

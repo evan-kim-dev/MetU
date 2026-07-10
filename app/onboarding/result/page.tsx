@@ -49,15 +49,25 @@ export default async function RecommendPage() {
   if (!form) {
     redirect("/onboarding");
   }
-  const plan = generateTripPlan(form);
 
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let plan;
+  try {
+    plan = await generateTripPlan(form);
+  } catch {
+    redirect("/onboarding?error=plan");
+  }
 
-  if (user) {
-    await insertTripPlanToSupabase(supabase, user.id, form, plan);
+  try {
+    const supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      await insertTripPlanToSupabase(supabase, user.id, form, plan);
+    }
+  } catch {
+    // Auth/DB 실패해도 추천 결과는 보여준다.
   }
 
   return <RecommendResult plan={plan} />;

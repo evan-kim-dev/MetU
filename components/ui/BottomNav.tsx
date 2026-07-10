@@ -53,7 +53,7 @@ function NavIcon({
         "relative flex items-center justify-center transition-all duration-200",
         size === "md" ? "h-7 w-7 rounded-lg" : "h-10 w-10 rounded-full",
         active
-          ? "bg-gradient-to-br from-brand/18 via-[#3B82F6]/14 to-[#818CF8]/18 ring-1 ring-brand/25 shadow-[0_4px_14px_rgba(37,99,235,0.18)]"
+          ? "bg-gradient-to-br from-brand/18 via-brand-mid/14 to-brand-soft/18 ring-1 ring-brand/25 shadow-glow"
           : "bg-transparent",
       ].join(" ")}
     >
@@ -81,7 +81,7 @@ function SideNavItem({
   return (
     <Link
       href={href}
-      className="relative flex w-full flex-col items-center justify-center gap-px px-1.5 transition-colors"
+      className="relative flex w-full flex-col items-center justify-center gap-px px-1.5 transition-colors active:scale-[0.97] hover:opacity-90"
       aria-current={active ? "page" : undefined}
     >
       <NavIcon icon={icon} active={active} />
@@ -153,10 +153,8 @@ export function BottomNav() {
                 ].join(" ")}
               >
                 <HomeIcon
-                  className="h-6 w-6 text-surface-white"
-                  strokeWidth={2.5}
-                  fill="currentColor"
-                  fillOpacity={0.35}
+                  className="h-6 w-6 fill-surface-white text-surface-white"
+                  strokeWidth={2.2}
                 />
               </Link>
             </span>

@@ -67,7 +67,7 @@ const TipCard = memo(function TipCard({ tip }: { tip: SmartTip }) {
         aria-hidden
       />
       <div className="relative flex items-center gap-2.5">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand/12 to-[#818CF8]/12 text-lg">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand/12 to-brand-soft/12 text-lg">
           {tip.emoji}
         </span>
         <span className="text-sm font-extrabold leading-snug text-ink-heading">

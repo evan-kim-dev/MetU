@@ -108,7 +108,7 @@ export function PartyChatPageContent({
   const router = useRouter();
   const { user, provider } = useAuth();
   const { profile } = useProfile();
-  const { getPost, isPartyHost, isPartyJoined } = useCommunity();
+  const { getPost, isPartyHost, isPartyJoined, isPartyPending } = useCommunity();
   const post = getPost(postId);
   const [messages, setMessages] = useState<PartyChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -123,6 +123,7 @@ export function PartyChatPageContent({
     if (!post || !isPartyPost) return false;
     return isPartyHost(post) || isPartyJoined(post);
   }, [isPartyHost, isPartyJoined, isPartyPost, post]);
+  const isPending = Boolean(post && isPartyPost && isPartyPending(post));
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -292,7 +293,9 @@ export function PartyChatPageContent({
       <MobileShell title="동행 채팅" showBack backHref={listHref}>
         <div className="flex flex-col items-center gap-4 px-5 py-20 text-center">
           <p className="text-base font-bold text-ink-heading">
-            동행 참여 후 채팅방에 입장할 수 있어요.
+            {isPending
+              ? "호스트 승인 후 채팅방에 입장할 수 있어요."
+              : "동행 참여가 수락된 뒤에 채팅방에 입장할 수 있어요."}
           </p>
           <PrimaryButton fullWidth={false} className="px-6" onClick={() => router.push(`${listHref}/${post.id}`)}>
             동행 글로 이동

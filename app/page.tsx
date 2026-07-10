@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Bell, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ActiveTripSection } from "@/components/home/ActiveTripSection";
 import { AISmartTipsShortcut } from "@/components/home/AISmartTipsShortcut";
 import { HomeGreeting } from "@/components/home/HomeGreeting";
+import { HomeNotificationBell } from "@/components/home/HomeNotificationBell";
 import { ActiveTripSmartTips } from "@/components/home/ActiveTripSmartTips";
 import { RecommendedGrid } from "@/components/home/RecommendedGrid";
 import { loadHomeData } from "@/lib/mock/loaders";
@@ -17,18 +18,7 @@ export default async function HomePage() {
   const { recommended } = await loadHomeData();
 
   return (
-    <MobileShell
-      rightSlot={
-        <button
-          type="button"
-          aria-label="알림"
-          className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-heading transition-colors active:bg-surface-soft"
-        >
-          <Bell className="h-5 w-5" strokeWidth={2.2} />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand" />
-        </button>
-      }
-    >
+    <MobileShell rightSlot={<HomeNotificationBell />}>
       <div className="flex flex-col gap-7 px-5 pb-2 pt-5">
         {/* Hero */}
         <section className="flex flex-col gap-2 animate-fade-up">
@@ -53,8 +43,8 @@ export default async function HomePage() {
               예산만 알려주면 AI가 코스를 짜드려요
             </span>
           </div>
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-white/20">
-            <Plus className="h-5 w-5 text-surface-white" strokeWidth={2.6} />
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-white/90">
+            <Plus className="h-5 w-5 text-brand" strokeWidth={2.6} />
           </span>
         </Link>
 

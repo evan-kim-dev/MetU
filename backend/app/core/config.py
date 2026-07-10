@@ -12,13 +12,15 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     log_level: str = "info"
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = (
+        "http://localhost:3000,https://met-u.vercel.app"
+    )
 
     supabase_url: str = ""
     supabase_service_role_key: str = ""
 
     db_host: str = ""
-    db_port: int = 5432
+    db_port: int = 6543
     db_name: str = "postgres"
     db_user: str = ""
     db_password: str = ""

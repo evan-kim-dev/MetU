@@ -16,6 +16,8 @@ const config: Config = {
         brand: {
           DEFAULT: "#2563EB", // Primary
           strong: "#004AC6", // Primary text
+          mid: "#3B82F6", // Gradient mid
+          soft: "#818CF8", // Accent / soft indigo
         },
         surface: {
           base: "#F8F9FF",
@@ -45,7 +47,10 @@ const config: Config = {
           border: "#DBEAFE",
         },
         membership: "#E5EEFF",
-        canvas: "#E9EDF7",
+        canvas: {
+          DEFAULT: "#E9EDF7",
+          deep: "#E3E8F5",
+        },
       },
       fontFamily: {
         sans: [

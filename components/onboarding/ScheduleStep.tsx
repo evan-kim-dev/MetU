@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftRight,
   CalendarDays,
@@ -14,10 +14,7 @@ import {
   formatDestinationForPlan,
   formatPlaceLabel,
 } from "@/lib/airports/data";
-import {
-  formatMonthDealInsight,
-  getMonthDealTip,
-} from "@/lib/rag/monthDeals";
+import { formatMonthDealInsight } from "@/lib/rag/monthDeals";
 import { getFlexibleYearOptions } from "./types";
 import type { DateType } from "./types";
 
@@ -64,6 +61,27 @@ function formatMonthLabel(date: Date): string {
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
 }
 
+function localScheduleInsight(params: {
+  origin: string;
+  destination: string;
+  dateType: DateType;
+  startDate: string;
+  endDate: string;
+  flexibleYear: number;
+  flexibleMonth: number;
+}): string {
+  if (params.dateType === "specific") {
+    if (params.startDate && params.endDate) {
+      const from = params.origin || "출발지";
+      const to = params.destination || "목적지";
+      return `${from} → ${to}, ${params.startDate}~${params.endDate} 기준으로 항공·숙소 예산을 맞춰 드릴게요.`;
+    }
+    return "선택한 기간 기반으로 최적 예산 분배를 진행해요.";
+  }
+
+  return `${params.flexibleYear}년 ${formatMonthDealInsight(params.flexibleMonth)}`;
+}
+
 export function ScheduleStep({
   origin,
   destination,
@@ -87,6 +105,18 @@ export function ScheduleStep({
     const target = parseIsoDate(startDate);
     return target ?? new Date();
   });
+  const [insight, setInsight] = useState(() =>
+    localScheduleInsight({
+      origin,
+      destination,
+      dateType,
+      startDate,
+      endDate,
+      flexibleYear,
+      flexibleMonth,
+    })
+  );
+  const [loading, setLoading] = useState(false);
 
   const start = parseIsoDate(startDate);
   const end = parseIsoDate(endDate);
@@ -111,6 +141,67 @@ export function ScheduleStep({
     }
     return cells;
   }, [viewDate]);
+
+  useEffect(() => {
+    const local = localScheduleInsight({
+      origin,
+      destination,
+      dateType,
+      startDate,
+      endDate,
+      flexibleYear,
+      flexibleMonth,
+    });
+    setInsight(local);
+
+    const controller = new AbortController();
+    setLoading(true);
+
+    const timer = window.setTimeout(() => {
+      fetch("/api/schedule-insight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origin,
+          destination,
+          dateType,
+          startDate,
+          endDate,
+          flexibleYear,
+          flexibleMonth,
+        }),
+        signal: controller.signal,
+        cache: "no-store",
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error("schedule-insight-failed");
+          return (await res.json()) as { insight?: string };
+        })
+        .then((data) => {
+          if (data.insight?.trim()) setInsight(data.insight.trim());
+        })
+        .catch((error) => {
+          if ((error as Error)?.name === "AbortError") return;
+          setInsight(local);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
+    }, 400);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [
+    origin,
+    destination,
+    dateType,
+    startDate,
+    endDate,
+    flexibleYear,
+    flexibleMonth,
+  ]);
 
   const handlePickDate = (date: Date) => {
     const iso = toIsoDate(date);
@@ -223,7 +314,8 @@ export function ScheduleStep({
                   className="rounded-md p-1 text-ink-body active:bg-surface-soft"
                   onClick={() =>
                     setViewDate(
-                      (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+                      (prev) =>
+                        new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
                     )
                   }
                 >
@@ -238,7 +330,8 @@ export function ScheduleStep({
                   className="rounded-md p-1 text-ink-body active:bg-surface-soft"
                   onClick={() =>
                     setViewDate(
-                      (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
+                      (prev) =>
+                        new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
                     )
                   }
                 >
@@ -246,48 +339,48 @@ export function ScheduleStep({
                 </button>
               </div>
 
-            <div className="mb-2 grid grid-cols-7 gap-1">
-              {WEEK_DAYS.map((day, idx) => (
-                <span
-                  key={day}
-                  className={`text-center text-xs ${
-                    idx === 0
-                      ? "text-[#BA1A1A]"
-                      : idx === 6
-                      ? "text-brand"
-                      : "text-ink-caption"
-                  }`}
-                >
-                  {day}
-                </span>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7 gap-1">
-              {monthCells.map(({ date, inMonth }) => {
-                const selected = isStartOrEnd(date);
-                const ranged = isInRange(date);
-                return (
-                  <button
-                    key={toIsoDate(date)}
-                    type="button"
-                    disabled={!inMonth}
-                    onClick={() => handlePickDate(date)}
-                    className={[
-                      "h-9 rounded-full text-sm font-medium transition-colors",
-                      !inMonth ? "text-line-muted" : "text-ink-heading",
-                      selected
-                        ? "bg-brand text-surface-white"
-                        : ranged
-                        ? "bg-brand/20 text-ink-heading"
-                        : "hover:bg-surface-soft",
-                    ].join(" ")}
+              <div className="mb-2 grid grid-cols-7 gap-1">
+                {WEEK_DAYS.map((day, idx) => (
+                  <span
+                    key={day}
+                    className={`text-center text-xs ${
+                      idx === 0
+                        ? "text-danger"
+                        : idx === 6
+                          ? "text-brand"
+                          : "text-ink-caption"
+                    }`}
                   >
-                    {date.getDate()}
-                  </button>
-                );
-              })}
-            </div>
+                    {day}
+                  </span>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {monthCells.map(({ date, inMonth }) => {
+                  const selected = isStartOrEnd(date);
+                  const ranged = isInRange(date);
+                  return (
+                    <button
+                      key={toIsoDate(date)}
+                      type="button"
+                      disabled={!inMonth}
+                      onClick={() => handlePickDate(date)}
+                      className={[
+                        "h-9 rounded-full text-sm font-medium transition-colors",
+                        !inMonth ? "text-line-muted" : "text-ink-heading",
+                        selected
+                          ? "bg-brand text-surface-white"
+                          : ranged
+                            ? "bg-brand/20 text-ink-heading"
+                            : "hover:bg-surface-soft",
+                      ].join(" ")}
+                    >
+                      {date.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="w-full grid grid-cols-2 gap-2">
               <input
@@ -349,8 +442,8 @@ export function ScheduleStep({
                         isPast
                           ? "cursor-not-allowed border border-line-soft bg-surface-soft text-line-muted"
                           : active
-                          ? "bg-brand text-surface-white"
-                          : "border border-line-muted bg-surface-base text-ink-caption",
+                            ? "bg-brand text-surface-white"
+                            : "border border-line-muted bg-surface-base text-ink-caption",
                       ].join(" ")}
                     >
                       {month}월
@@ -359,44 +452,19 @@ export function ScheduleStep({
                 })}
               </div>
             </div>
-
-            {(() => {
-              const tip = getMonthDealTip(flexibleMonth);
-              return (
-                <div className="rounded-xl border border-line-soft bg-surface-base p-3">
-                  <p className="text-xs font-bold text-ink-heading">
-                    {flexibleYear}년 {flexibleMonth}월 저렴한 추천
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {tip.cheapPlaces.map((place) => (
-                      <span
-                        key={place}
-                        className="rounded-full bg-surface-white px-2.5 py-1 text-[11px] font-semibold text-brand-strong shadow-sm"
-                      >
-                        {place}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-xs leading-relaxed text-ink-body">
-                    {tip.dealReason}
-                  </p>
-                  <p className="mt-1.5 text-xs leading-relaxed text-ink-caption">
-                    주의 · {tip.caution}
-                  </p>
-                </div>
-              );
-            })()}
           </div>
         )}
 
         <div className="w-full">
           <div className="inline-flex max-w-full items-start gap-1.5 rounded-2xl bg-brand/10 px-3 py-2 text-xs leading-relaxed text-brand">
-            <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2.3} />
-            <span>
-              {dateType === "specific"
-                ? "선택한 기간 기반으로 최적 예산 분배를 진행해요."
-                : `${flexibleYear}년 ${formatMonthDealInsight(flexibleMonth)}`}
-            </span>
+            <Sparkles
+              className={[
+                "mt-0.5 h-3.5 w-3.5 shrink-0",
+                loading ? "animate-pulse" : "",
+              ].join(" ")}
+              strokeWidth={2.3}
+            />
+            <span>{insight}</span>
           </div>
         </div>
       </section>

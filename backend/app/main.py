@@ -28,23 +28,15 @@ app.include_router(hotels.router)
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    """서비스 상태 및 주요 API 키 설정 여부."""
+    """Liveness + whether critical integrations are configured (no secret values)."""
+    openrouter_ready = bool(settings.openrouter_api_key or settings.openai_api_key)
     return {
         "status": "ok",
         "env": settings.app_env,
-        "openai": "configured" if settings.openai_api_key else "missing",
+        "openrouter": "configured" if openrouter_ready else "missing",
         "supabase": (
             "configured"
             if settings.supabase_url and settings.supabase_service_role_key
-            else "missing"
-        ),
-        "google_flights": "fast-flights",
-        "icn_airlines_api": (
-            "configured" if settings.data_go_kr_service_key else "missing"
-        ),
-        "hotelbeds": (
-            "configured"
-            if settings.hotelbeds_api_key and settings.hotelbeds_api_secret
             else "missing"
         ),
     }

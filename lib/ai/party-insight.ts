@@ -35,6 +35,11 @@ export function buildLocalPartyInsight(
     perPerson,
     month
   );
+
+  if (allowedRegions.length === 0) {
+    return `${safePeople}인이면 1인당 약 ${formatMan(perPerson)}이에요. 이 예산으로는 숙박 여행이 어려워요. 총 예산을 올리거나 인원을 줄여보세요.`;
+  }
+
   const places = allowedRegions.slice(0, 3).join("·");
 
   return `${safePeople}인이면 1인당 약 ${formatMan(perPerson)}이에요. ${band.nights} ${places} 정도가 현실적이에요. ${partyTip(safePeople)}. ${month}월에는 ${seasonTip}.`;

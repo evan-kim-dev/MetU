@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useGoBack } from "@/lib/navigation/useGoBack";
 import { TopAppBar } from "@/components/ui/TopAppBar";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -11,18 +11,32 @@ import { PartyStep } from "@/components/onboarding/PartyStep";
 import { ScheduleStep } from "@/components/onboarding/ScheduleStep";
 import { StyleStep } from "@/components/onboarding/StyleStep";
 import { AIThinkingOverlay } from "@/components/onboarding/AIThinkingOverlay";
-import { INITIAL_FORM, isFlexibleScheduleValid, type TravelStyle } from "@/components/onboarding/types";
+import {
+  INITIAL_FORM,
+  isFlexibleScheduleValid,
+  type TravelStyle,
+} from "@/components/onboarding/types";
 
 const TOTAL_STEPS = 4;
 const THINKING_MIN_MS = 2200;
 
-export default function OnboardingPage() {
+function OnboardingPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const goBack = useGoBack("/");
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showThinking, setShowThinking] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error === "plan") {
+      setSubmitError("일정 생성에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      router.replace("/onboarding", { scroll: false });
+    }
+  }, [router, searchParams]);
 
   const toggleStyle = (style: TravelStyle) => {
     setForm((prev) => ({
@@ -64,10 +78,14 @@ export default function OnboardingPage() {
   };
 
   const handleNext = async () => {
-    if (step < TOTAL_STEPS) return setStep((s) => s + 1);
+    if (step < TOTAL_STEPS) {
+      setSubmitError(null);
+      return setStep((s) => s + 1);
+    }
     if (isSubmitting) return;
 
     try {
+      setSubmitError(null);
       setIsSubmitting(true);
       setShowThinking(true);
       const startedAt = Date.now();
@@ -89,6 +107,9 @@ export default function OnboardingPage() {
     } catch {
       setShowThinking(false);
       setIsSubmitting(false);
+      setSubmitError(
+        "저장에 실패했어요. 네트워크 상태를 확인하고 다시 시도해 주세요."
+      );
     }
   };
 
@@ -178,6 +199,14 @@ export default function OnboardingPage() {
       </main>
 
       <footer className="sticky bottom-0 z-30 border-t border-line-soft/60 bg-surface-white/90 px-5 py-4 backdrop-blur-md">
+        {submitError ? (
+          <p
+            role="alert"
+            className="mb-3 rounded-xl border border-danger/20 bg-danger/5 px-3 py-2 text-center text-xs font-semibold leading-relaxed text-danger"
+          >
+            {submitError}
+          </p>
+        ) : null}
         <PrimaryButton
           onClick={handleNext}
           disabled={!canProceed || isSubmitting}
@@ -190,5 +219,19 @@ export default function OnboardingPage() {
         </PrimaryButton>
       </footer>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-0 flex-1 items-center justify-center">
+          <div className="h-10 w-10 animate-pulse rounded-2xl bg-brand/15" />
+        </div>
+      }
+    >
+      <OnboardingPageContent />
+    </Suspense>
   );
 }

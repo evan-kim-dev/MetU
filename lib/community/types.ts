@@ -2,12 +2,15 @@ export type PostCategory = "all" | "party" | "question" | "review" | "tip";
 
 export type WritablePostCategory = Exclude<PostCategory, "all">;
 
+export type PartyMemberStatus = "pending" | "accepted" | "rejected";
+
 export interface PartyMember {
   id: string;
   name: string;
   avatar: string;
   joinedAtIso: string;
   isHost?: boolean;
+  status?: PartyMemberStatus;
 }
 
 export interface PartyInfo {
@@ -17,6 +20,8 @@ export interface PartyInfo {
   current: number;
   budgetPerPerson?: string;
   members: PartyMember[];
+  /** 호스트 승인 대기 중인 신청자 */
+  pendingMembers?: PartyMember[];
 }
 
 export interface PostComment {

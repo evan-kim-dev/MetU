@@ -22,12 +22,12 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
         {label && (
           <span className="text-sm font-semibold text-ink-body">{label}</span>
         )}
-        <div className="group flex items-center gap-2 rounded-2xl border border-line-muted bg-surface-white px-4 transition-all focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
+        <div className="group flex items-center gap-2 rounded-2xl border border-line-muted bg-surface-white px-4 transition-all focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10 has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-surface-soft has-[:disabled]:opacity-60">
           {leading && <span className="text-ink-caption">{leading}</span>}
           <input
             ref={ref}
             className={[
-              "w-full flex-1 bg-transparent py-3.5 text-ink-heading placeholder:text-ink-caption/70 focus:outline-none",
+              "w-full flex-1 bg-transparent py-3.5 text-ink-heading placeholder:text-ink-caption/70 focus:outline-none disabled:cursor-not-allowed",
               emphasized
                 ? "text-right text-3xl font-extrabold tracking-tight tabular-nums"
                 : "text-base",

@@ -7,6 +7,7 @@ import type {
   CreatePostInput,
   PartyInfo,
   PartyMember,
+  PartyMemberStatus,
   PostComment,
   UpdatePostInput,
   WritablePostCategory,
@@ -48,7 +49,13 @@ interface PartyMemberRow {
   avatar: string;
   joined_at: string;
   is_host: boolean;
+  status: PartyMemberStatus;
 }
+
+type NotificationType =
+  | "party_join_request"
+  | "party_join_accepted"
+  | "party_join_rejected";
 
 const POST_COLUMNS = [
   "id",
@@ -81,7 +88,12 @@ const PARTY_MEMBER_COLUMNS = [
   "avatar",
   "joined_at",
   "is_host",
+  "status",
 ].join(", ");
+
+function isAcceptedMember(row: PartyMemberRow): boolean {
+  return row.is_host || row.status === "accepted";
+}
 
 function memberRowToMember(row: PartyMemberRow): PartyMember {
   return {
@@ -90,7 +102,27 @@ function memberRowToMember(row: PartyMemberRow): PartyMember {
     avatar: row.avatar,
     joinedAtIso: row.joined_at,
     isHost: row.is_host,
+    status: row.status,
   };
+}
+
+async function insertNotification(
+  supabase: SupabaseClient,
+  input: {
+    userId: string;
+    type: NotificationType;
+    postId: string;
+    actorId: string;
+    payload?: Record<string, unknown>;
+  }
+): Promise<void> {
+  await supabase.from(TABLES.notifications).insert({
+    user_id: input.userId,
+    type: input.type,
+    post_id: input.postId,
+    actor_id: input.actorId,
+    payload: input.payload ?? {},
+  });
 }
 
 function assemblePost(
@@ -114,8 +146,10 @@ function assemblePost(
     );
 
   const likedBy = likes.filter((l) => l.post_id === row.id).map((l) => l.user_id);
-  const partyMembers = members
-    .filter((m) => m.post_id === row.id)
+  const postMembers = members.filter((m) => m.post_id === row.id);
+  const acceptedMembers = postMembers.filter(isAcceptedMember).map(memberRowToMember);
+  const pendingMembers = postMembers
+    .filter((m) => !m.is_host && m.status === "pending")
     .map(memberRowToMember);
 
   const party: PartyInfo | undefined = row.party_data
@@ -124,8 +158,9 @@ function assemblePost(
         endDate: row.party_data.endDate,
         needed: row.party_data.needed,
         budgetPerPerson: row.party_data.budgetPerPerson,
-        members: partyMembers,
-        current: partyMembers.length,
+        members: acceptedMembers,
+        pendingMembers,
+        current: acceptedMembers.length,
       }
     : undefined;
 
@@ -221,6 +256,7 @@ export async function insertCommunityPostToSupabase(
       name: authorName,
       avatar: authorAvatar,
       is_host: true,
+      status: "accepted",
     });
   }
 
@@ -233,6 +269,7 @@ export async function insertCommunityPostToSupabase(
           avatar: authorAvatar,
           joined_at: row.created_at,
           is_host: true,
+          status: "accepted" as const,
         },
       ]
     : [];
@@ -383,14 +420,151 @@ export async function joinPartyInSupabase(
   name: string,
   avatar: string
 ): Promise<boolean> {
+  const { data: post, error: postError } = await supabase
+    .from(TABLES.communityPosts)
+    .select("author_id, title, party_data")
+    .eq("id", postId)
+    .single();
+
+  if (postError || !post) return false;
+  if (post.author_id === userId) return false;
+
+  const partyData = post.party_data as { needed?: number } | null;
+  const needed = partyData?.needed ?? 0;
+
+  const { data: existingMembers } = await supabase
+    .from(TABLES.partyMembers)
+    .select(PARTY_MEMBER_COLUMNS)
+    .eq("post_id", postId);
+
+  const rows = (existingMembers ?? []) as unknown as PartyMemberRow[];
+  const acceptedCount = rows.filter(isAcceptedMember).length;
+  if (needed > 0 && acceptedCount >= needed) return false;
+
+  const mine = rows.find((m) => m.user_id === userId);
+  if (mine) {
+    if (mine.is_host || mine.status === "accepted" || mine.status === "pending") {
+      return false;
+    }
+    // rejected → delete then re-request
+    const { error: delError } = await supabase
+      .from(TABLES.partyMembers)
+      .delete()
+      .eq("post_id", postId)
+      .eq("user_id", userId)
+      .eq("is_host", false);
+    if (delError) return false;
+  }
+
   const { error } = await supabase.from(TABLES.partyMembers).insert({
     post_id: postId,
     user_id: userId,
     name,
     avatar,
     is_host: false,
+    status: "pending",
   });
-  return !error;
+  if (error) return false;
+
+  await insertNotification(supabase, {
+    userId: post.author_id,
+    type: "party_join_request",
+    postId,
+    actorId: userId,
+    payload: {
+      actorName: name,
+      postTitle: post.title,
+    },
+  });
+
+  return true;
+}
+
+export async function acceptPartyMemberInSupabase(
+  supabase: SupabaseClient,
+  postId: string,
+  hostId: string,
+  memberId: string
+): Promise<boolean> {
+  const { data: post, error: postError } = await supabase
+    .from(TABLES.communityPosts)
+    .select("author_id, title, party_data")
+    .eq("id", postId)
+    .single();
+
+  if (postError || !post || post.author_id !== hostId) return false;
+
+  const partyData = post.party_data as { needed?: number } | null;
+  const needed = partyData?.needed ?? 0;
+
+  const { data: existingMembers } = await supabase
+    .from(TABLES.partyMembers)
+    .select(PARTY_MEMBER_COLUMNS)
+    .eq("post_id", postId);
+
+  const rows = (existingMembers ?? []) as unknown as PartyMemberRow[];
+  const acceptedCount = rows.filter(isAcceptedMember).length;
+  if (needed > 0 && acceptedCount >= needed) return false;
+
+  const target = rows.find(
+    (m) => m.user_id === memberId && !m.is_host && m.status === "pending"
+  );
+  if (!target) return false;
+
+  const { error } = await supabase
+    .from(TABLES.partyMembers)
+    .update({ status: "accepted" })
+    .eq("post_id", postId)
+    .eq("user_id", memberId)
+    .eq("is_host", false)
+    .eq("status", "pending");
+
+  if (error) return false;
+
+  await insertNotification(supabase, {
+    userId: memberId,
+    type: "party_join_accepted",
+    postId,
+    actorId: hostId,
+    payload: { postTitle: post.title },
+  });
+
+  return true;
+}
+
+export async function rejectPartyMemberInSupabase(
+  supabase: SupabaseClient,
+  postId: string,
+  hostId: string,
+  memberId: string
+): Promise<boolean> {
+  const { data: post, error: postError } = await supabase
+    .from(TABLES.communityPosts)
+    .select("author_id, title")
+    .eq("id", postId)
+    .single();
+
+  if (postError || !post || post.author_id !== hostId) return false;
+
+  const { error } = await supabase
+    .from(TABLES.partyMembers)
+    .update({ status: "rejected" })
+    .eq("post_id", postId)
+    .eq("user_id", memberId)
+    .eq("is_host", false)
+    .eq("status", "pending");
+
+  if (error) return false;
+
+  await insertNotification(supabase, {
+    userId: memberId,
+    type: "party_join_rejected",
+    postId,
+    actorId: hostId,
+    payload: { postTitle: post.title },
+  });
+
+  return true;
 }
 
 export async function leavePartyInSupabase(
@@ -404,6 +578,22 @@ export async function leavePartyInSupabase(
     .eq("post_id", postId)
     .eq("user_id", userId)
     .eq("is_host", false);
+
+  return !error;
+}
+
+export async function cancelJoinRequestInSupabase(
+  supabase: SupabaseClient,
+  postId: string,
+  userId: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from(TABLES.partyMembers)
+    .delete()
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .eq("is_host", false)
+    .eq("status", "pending");
 
   return !error;
 }

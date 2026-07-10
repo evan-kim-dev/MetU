@@ -133,8 +133,3 @@ export function retrieveTravelSources(
     content: doc.content,
   }));
 }
-
-/** @deprecated use retrieveTravelSources */
-export function retrieveTravelContext(form: OnboardingForm, topK = 4): string[] {
-  return retrieveTravelSources(form, topK).map((s) => s.content);
-}

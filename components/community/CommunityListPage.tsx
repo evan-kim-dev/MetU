@@ -7,6 +7,7 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { CommunityGatedLayout } from "@/components/auth/AuthGateOverlay";
 import { PostCard } from "@/components/community/PostCard";
 import { WritePostSheet } from "@/components/community/WritePostSheet";
+import { HorizontalScroller } from "@/components/ui/HorizontalScroller";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { requiresCommunityLogin } from "@/lib/auth/community-access";
 import { markChatSeen } from "@/lib/community/chat-notice";
@@ -75,8 +76,16 @@ export function CommunityListPage({
   const { user, provider, isReady: isAuthReady } = useAuth();
   const gated =
     isAuthReady && requiresCommunityLogin(user, provider);
-  const { posts, isReady, addPost, isPartyHost, isPartyJoined, leaveParty, removePost } =
-    useCommunity();
+  const {
+    posts,
+    isReady,
+    addPost,
+    isPartyHost,
+    isPartyJoined,
+    leaveParty,
+    removePost,
+    canEdit,
+  } = useCommunity();
   const [activeCategory, setActiveCategory] = useState<PostCategory>(defaultCategory);
   const [sortBy, setSortBy] = useState<PostSort>("latest");
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
@@ -89,6 +98,8 @@ export function CommunityListPage({
   const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const [chatManageMode, setChatManageMode] = useState(false);
   const [selectedChatIds, setSelectedChatIds] = useState<string[]>([]);
+  const [postManageMode, setPostManageMode] = useState(false);
+  const [selectedPostIds, setSelectedPostIds] = useState<string[]>([]);
 
   const filteredPosts = useMemo(() => {
     const filtered =
@@ -199,12 +210,75 @@ export function CommunityListPage({
     exitChatManage();
   }
 
+  function openPostManage() {
+    setPostManageMode(true);
+    setSelectedPostIds([]);
+    setSearchOpen(false);
+    setSortMenuOpen(false);
+  }
+
+  function exitPostManage() {
+    setPostManageMode(false);
+    setSelectedPostIds([]);
+  }
+
+  function togglePostSelection(post: CommunityPost) {
+    if (!canEdit(post)) return;
+    setSelectedPostIds((prev) =>
+      prev.includes(post.id) ? prev.filter((id) => id !== post.id) : [...prev, post.id]
+    );
+  }
+
+  function handleDeleteSelectedPosts() {
+    if (selectedPostIds.length === 0) return;
+
+    const selectedPosts = filteredPosts.filter(
+      (post) => selectedPostIds.includes(post.id) && canEdit(post)
+    );
+    if (selectedPosts.length === 0) return;
+
+    if (
+      !window.confirm(
+        `선택한 게시글 ${selectedPosts.length}개를 삭제할까요? 삭제 후 되돌릴 수 없어요.`
+      )
+    ) {
+      return;
+    }
+
+    selectedPosts.forEach((post) => {
+      removePost(post.id);
+    });
+    exitPostManage();
+  }
+
   const listBody = (
     <div className="flex flex-col gap-5 px-5 pb-20 pt-5">
         {heading ? (
-          <h1 className="text-[22px] font-bold tracking-tight text-ink-heading">
-            {heading}
-          </h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-[22px] font-bold tracking-tight text-ink-heading">
+              {postManageMode ? "게시글 관리" : heading}
+            </h1>
+            {showPostList && !gated ? (
+              postManageMode ? (
+                <button
+                  type="button"
+                  onClick={exitPostManage}
+                  className="rounded-full px-2 py-1 text-xs font-semibold text-ink-caption transition-colors hover:bg-surface-soft"
+                >
+                  취소
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  aria-label="게시글 관리"
+                  onClick={openPostManage}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-line-soft bg-surface-white text-ink-caption transition-colors hover:bg-surface-soft hover:text-ink-heading"
+                >
+                  <PenLine className="h-4 w-4" strokeWidth={2.2} />
+                </button>
+              )
+            ) : null}
+          </div>
         ) : description.trim() ? (
           <p className="text-sm leading-relaxed text-ink-caption">{description}</p>
         ) : null}
@@ -346,7 +420,7 @@ export function CommunityListPage({
           <>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto no-scrollbar">
+                <HorizontalScroller aria-label="게시판 카테고리">
                   {categories.length > 1
                     ? categories.map((category) => {
                         const active = activeCategory === category;
@@ -369,7 +443,7 @@ export function CommunityListPage({
                         );
                       })
                     : null}
-                </div>
+                </HorizontalScroller>
 
                 <button
                   type="button"
@@ -485,10 +559,65 @@ export function CommunityListPage({
                   </button>
                 </div>
               ) : (
-                filteredPosts.map((post) => (
-                  <PostCard key={post.id} post={post} basePath={basePath} />
-                ))
+                filteredPosts.map((post) => {
+                  const editable = canEdit(post);
+                  const selected = selectedPostIds.includes(post.id);
+
+                  if (!postManageMode) {
+                    return (
+                      <PostCard key={post.id} post={post} basePath={basePath} />
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={post.id}
+                      type="button"
+                      disabled={!editable}
+                      onClick={() => togglePostSelection(post)}
+                      className={[
+                        "flex w-full items-start gap-3 rounded-xl2 border bg-surface-white p-3 text-left shadow-soft transition-colors",
+                        selected
+                          ? "border-brand/40 bg-brand/[0.03]"
+                          : "border-line-soft",
+                        editable
+                          ? "active:bg-surface-soft"
+                          : "cursor-not-allowed opacity-45",
+                      ].join(" ")}
+                    >
+                      <span
+                        aria-hidden
+                        className={[
+                          "mt-3 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                          selected
+                            ? "border-brand bg-brand"
+                            : "border-line-soft bg-surface-white",
+                        ].join(" ")}
+                      >
+                        {selected ? (
+                          <Check className="h-3 w-3 stroke-[3] text-surface-white" />
+                        ) : null}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <PostCard post={post} basePath={basePath} interactive={false} />
+                      </div>
+                    </button>
+                  );
+                })
               )}
+
+              {postManageMode ? (
+                <button
+                  type="button"
+                  disabled={selectedPostIds.length === 0}
+                  onClick={handleDeleteSelectedPosts}
+                  className="mt-1 w-full rounded-xl border border-danger/20 bg-danger/5 py-3 text-sm font-bold text-danger disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {selectedPostIds.length > 0
+                    ? `선택한 ${selectedPostIds.length}개 게시글 삭제`
+                    : "삭제할 내 글을 선택해 주세요"}
+                </button>
+              ) : null}
             </div>
           </>
         ) : null}
@@ -505,7 +634,7 @@ export function CommunityListPage({
         listBody
       )}
 
-      {showPostList && !gated ? (
+      {showPostList && !gated && !postManageMode ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-30 flex justify-center">
           <div className="pointer-events-none w-full max-w-mobile px-5">
             <div className="pointer-events-none flex justify-end">

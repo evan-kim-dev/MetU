@@ -11,7 +11,7 @@ export function AILoadingPanel({
 }: AILoadingPanelProps) {
   return (
     <div
-      className="flex flex-col gap-3 rounded-xl border border-brand/10 bg-gradient-to-br from-brand/5 via-surface-soft to-[#818CF8]/8 px-4 py-5"
+      className="flex flex-col gap-3 rounded-xl border border-brand/10 bg-gradient-to-br from-brand/5 via-surface-soft to-brand-soft/8 px-4 py-5"
       role="status"
       aria-live="polite"
       aria-busy="true"
