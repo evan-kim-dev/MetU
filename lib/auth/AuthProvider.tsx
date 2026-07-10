@@ -113,7 +113,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return "Supabase 환경변수가 없습니다. .env.local 을 확인해 주세요.";
     }
 
-    const redirectTo = `${window.location.origin}/auth/callback`;
+    const siteOrigin = (
+      process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
+    ).replace(/\/$/, "");
+    const redirectTo = `${siteOrigin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "kakao",
       options: {

@@ -31,7 +31,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     if (isLoggedIn && pathname === "/login") {
-      router.replace("/");
+      // Soft nav can keep a stale client bundle after OAuth; force a full load.
+      window.location.replace("/");
     }
   }, [isReady, isLoggedIn, pathname, router]);
 
