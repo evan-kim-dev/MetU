@@ -10,7 +10,7 @@ service = InsightService()
 class ChatRequest(BaseModel):
     system: str = Field(..., min_length=1)
     prompt: str = Field(..., min_length=1)
-    mode: str = Field(default="budget", pattern="^(budget|party|deal)$")
+    mode: str = Field(default="budget", pattern="^(budget|party|deal|weather)$")
 
 
 class ChatResponse(BaseModel):
@@ -24,6 +24,8 @@ async def chat(body: ChatRequest) -> ChatResponse:
         content = await service.deal_enrich(prompt=body.prompt, system=body.system)
     elif body.mode == "party":
         content = await service.party_insight(prompt=body.prompt, system=body.system)
+    elif body.mode == "weather":
+        content = await service.weather_insight(prompt=body.prompt, system=body.system)
     else:
         content = await service.budget_insight(
             budget=0, prompt=body.prompt, system=body.system

@@ -7,6 +7,7 @@ interface SectionHeaderProps {
   actionHref?: string;
   /** AI 섹션 강조 (그라데이션 액센트) */
   ai?: boolean;
+  rightSlot?: React.ReactNode;
 }
 
 /** 섹션 제목 + (선택) 우측 액션 텍스트 버튼. */
@@ -16,6 +17,7 @@ export function SectionHeader({
   onAction,
   actionHref,
   ai = false,
+  rightSlot,
 }: SectionHeaderProps) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -32,22 +34,23 @@ export function SectionHeader({
           {title}
         </h3>
       </div>
-      {actionLabel && actionHref ? (
-        <Link
-          href={actionHref}
-          className="shrink-0 text-sm font-semibold text-brand transition-opacity hover:opacity-80"
-        >
-          {actionLabel}
-        </Link>
-      ) : actionLabel ? (
-        <button
-          type="button"
-          onClick={onAction}
-          className="shrink-0 text-sm font-semibold text-brand transition-opacity hover:opacity-80"
-        >
-          {actionLabel}
-        </button>
-      ) : null}
+      {rightSlot ??
+        (actionLabel && actionHref ? (
+          <Link
+            href={actionHref}
+            className="shrink-0 text-sm font-semibold text-brand transition-opacity hover:opacity-80"
+          >
+            {actionLabel}
+          </Link>
+        ) : actionLabel ? (
+          <button
+            type="button"
+            onClick={onAction}
+            className="shrink-0 text-sm font-semibold text-brand transition-opacity hover:opacity-80"
+          >
+            {actionLabel}
+          </button>
+        ) : null)}
     </div>
   );
 }

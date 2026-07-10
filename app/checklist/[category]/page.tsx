@@ -8,6 +8,7 @@ import {
 import { FlightChecklistContent } from "@/components/checklist/FlightChecklistContent";
 import { HotelChecklistContent } from "@/components/checklist/HotelChecklistContent";
 import { DocsChecklistContent } from "@/components/checklist/DocsChecklistContent";
+import { WeatherChecklistContent } from "@/components/checklist/WeatherChecklistContent";
 
 interface ChecklistCategoryPageProps {
   params: Promise<{ category: string }>;
@@ -60,6 +61,14 @@ export default async function ChecklistCategoryPage({
     return (
       <MobileShell title={item.label} showBack backHref="/" showBottomNav={false}>
         <DocsChecklistContent />
+      </MobileShell>
+    );
+  }
+
+  if (item.id === "weather") {
+    return (
+      <MobileShell title={item.label} showBack backHref="/" showBottomNav={false}>
+        <WeatherChecklistContent />
       </MobileShell>
     );
   }

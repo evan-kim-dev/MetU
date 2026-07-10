@@ -5,6 +5,7 @@ import {
   CATEGORY_LABELS,
   type CommunityPost,
 } from "@/lib/mock/community";
+import { PostImageGallery } from "@/components/community/PostImageGallery";
 import { getCommentCount, getLikeCount } from "@/lib/community/counts";
 import { formatPartyBudgetPerPerson } from "@/lib/community/format";
 
@@ -94,6 +95,10 @@ export function PostCard({ post, basePath = "/board" }: PostCardProps) {
           {post.preview}
         </p>
       </div>
+
+      {post.images && post.images.length > 0 ? (
+        <PostImageGallery images={post.images} variant="card" />
+      ) : null}
 
       <div className="flex items-center gap-4 text-xs font-semibold text-ink-caption">
         <span className="flex items-center gap-1">

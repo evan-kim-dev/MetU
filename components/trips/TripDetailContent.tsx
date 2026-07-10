@@ -9,6 +9,7 @@ import {
   MapPin,
   Pencil,
   Plus,
+  Share2,
   Trash2,
   Users,
   Wallet,
@@ -17,16 +18,22 @@ import {
 import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatKRW } from "@/lib/mock/home";
 import { STYLE_LABELS } from "@/lib/trips/data";
+import {
+  buildSharedTripUrl,
+  ensureTripShareToken,
+} from "@/lib/trips/share";
 import { useTrips } from "@/lib/trips/TripProvider";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
 import type { TripDaySchedule, TripExpense } from "@/lib/trips/types";
 
 interface TripDetailContentProps {
   tripId: string;
 }
 
-type EditSection = "budget" | "expense" | "memo" | "schedule" | null;
+type EditSection = "budget" | "expense" | "memo" | null;
 
 function parseAmount(raw: string): number {
   return Number(raw.replace(/[^0-9]/g, "")) || 0;
@@ -41,11 +48,14 @@ function recalcDayTotal(day: TripDaySchedule): TripDaySchedule {
 
 export function TripDetailContent({ tripId }: TripDetailContentProps) {
   const router = useRouter();
+  const { user, provider } = useAuth();
   const { getTrip, updateTrip, removeTrip, isReady } = useTrips();
   const trip = getTrip(tripId);
 
   const [editSection, setEditSection] = useState<EditSection>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [shareError, setShareError] = useState("");
 
   // budget
   const [draftBudget, setDraftBudget] = useState("");
@@ -60,7 +70,8 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
   // memo
   const [draftMemo, setDraftMemo] = useState("");
   // schedule
-  const [draftSchedule, setDraftSchedule] = useState<TripDaySchedule[]>([]);
+  const [editingDayIndex, setEditingDayIndex] = useState<number | null>(null);
+  const [draftDay, setDraftDay] = useState<TripDaySchedule | null>(null);
 
   const remaining = trip ? trip.budget - trip.spent : 0;
   const usedPercent = trip
@@ -77,6 +88,8 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
     setDraftBudget(String(trip.budget));
     setEditSection("budget");
     setEditingExpenseId(null);
+    setEditingDayIndex(null);
+    setDraftDay(null);
   };
 
   const saveBudget = () => {
@@ -96,6 +109,8 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
       date: expense.date,
     });
     setEditSection("expense");
+    setEditingDayIndex(null);
+    setDraftDay(null);
   };
 
   const openExpenseAdd = () => {
@@ -107,6 +122,8 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
       date: "직접 입력",
     });
     setEditSection("expense");
+    setEditingDayIndex(null);
+    setDraftDay(null);
   };
 
   const saveExpense = () => {
@@ -163,6 +180,8 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
     setDraftMemo(trip.memo ?? "");
     setEditSection("memo");
     setEditingExpenseId(null);
+    setEditingDayIndex(null);
+    setDraftDay(null);
   };
 
   const saveMemo = () => {
@@ -171,89 +190,81 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
     setEditSection(null);
   };
 
-  const openScheduleEdit = () => {
-    if (!trip) return;
-    setDraftSchedule(
-      (trip.dailySchedule ?? []).map((day) => ({
-        ...day,
-        items: day.items.map((item) => ({ ...item })),
-      }))
-    );
-    setEditSection("schedule");
+  const openDayEdit = (dayIndex: number) => {
+    if (!trip?.dailySchedule?.[dayIndex]) return;
+    const day = trip.dailySchedule[dayIndex];
+    setDraftDay({
+      ...day,
+      items: day.items.map((item) => ({ ...item })),
+    });
+    setEditingDayIndex(dayIndex);
+    setEditSection(null);
     setEditingExpenseId(null);
   };
 
-  const updateDraftDayLabel = (dayIndex: number, label: string) => {
-    setDraftSchedule((prev) =>
-      prev.map((day, idx) => (idx === dayIndex ? { ...day, label } : day))
-    );
+  const cancelDayEdit = () => {
+    setEditingDayIndex(null);
+    setDraftDay(null);
   };
 
   const updateDraftItem = (
-    dayIndex: number,
     itemIndex: number,
     patch: Partial<{ time: string; title: string; cost: string }>
   ) => {
-    setDraftSchedule((prev) =>
-      prev.map((day, dIdx) => {
-        if (dIdx !== dayIndex) return day;
-        const items = day.items.map((item, iIdx) => {
-          if (iIdx !== itemIndex) return item;
-          return {
-            ...item,
-            time: patch.time ?? item.time,
-            title: patch.title ?? item.title,
-            cost:
-              patch.cost !== undefined ? parseAmount(patch.cost) : item.cost,
-          };
-        });
-        return recalcDayTotal({ ...day, items });
-      })
-    );
+    setDraftDay((prev) => {
+      if (!prev) return prev;
+      const items = prev.items.map((item, iIdx) => {
+        if (iIdx !== itemIndex) return item;
+        return {
+          ...item,
+          time: patch.time ?? item.time,
+          title: patch.title ?? item.title,
+          cost: patch.cost !== undefined ? parseAmount(patch.cost) : item.cost,
+        };
+      });
+      return recalcDayTotal({ ...prev, items });
+    });
   };
 
-  const addDraftItem = (dayIndex: number) => {
-    setDraftSchedule((prev) =>
-      prev.map((day, idx) => {
-        if (idx !== dayIndex) return day;
-        return recalcDayTotal({
-          ...day,
-          items: [...day.items, { time: "12:00", title: "", cost: 0 }],
-        });
-      })
-    );
+  const addDraftItem = () => {
+    setDraftDay((prev) => {
+      if (!prev) return prev;
+      return recalcDayTotal({
+        ...prev,
+        items: [...prev.items, { time: "12:00", title: "", cost: 0 }],
+      });
+    });
   };
 
-  const removeDraftItem = (dayIndex: number, itemIndex: number) => {
-    setDraftSchedule((prev) =>
-      prev.map((day, idx) => {
-        if (idx !== dayIndex) return day;
-        return recalcDayTotal({
-          ...day,
-          items: day.items.filter((_, i) => i !== itemIndex),
-        });
-      })
-    );
+  const removeDraftItem = (itemIndex: number) => {
+    setDraftDay((prev) => {
+      if (!prev) return prev;
+      return recalcDayTotal({
+        ...prev,
+        items: prev.items.filter((_, i) => i !== itemIndex),
+      });
+    });
   };
 
-  const saveSchedule = () => {
-    if (!trip) return;
-    const cleaned = draftSchedule.map((day) =>
-      recalcDayTotal({
-        ...day,
-        label: day.label.trim() || `Day ${day.day}`,
-        items: day.items
-          .map((item) => ({
-            ...item,
-            time: item.time.trim() || "00:00",
-            title: item.title.trim(),
-            cost: item.cost || 0,
-          }))
-          .filter((item) => item.title.length > 0),
-      })
+  const saveDayEdit = (dayIndex: number) => {
+    if (!trip || !draftDay) return;
+    const cleaned = recalcDayTotal({
+      ...draftDay,
+      label: `Day ${draftDay.day}`,
+      items: draftDay.items
+        .map((item) => ({
+          ...item,
+          time: item.time.trim() || "00:00",
+          title: item.title.trim(),
+          cost: item.cost || 0,
+        }))
+        .filter((item) => item.title.length > 0),
+    });
+    const nextSchedule = (trip.dailySchedule ?? []).map((day, idx) =>
+      idx === dayIndex ? cleaned : day
     );
-    updateTrip(trip.id, { dailySchedule: cleaned });
-    setEditSection(null);
+    updateTrip(trip.id, { dailySchedule: nextSchedule });
+    cancelDayEdit();
   };
 
   const handleDelete = () => {
@@ -266,6 +277,62 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
     removeTrip(trip.id);
     router.replace("/");
   };
+
+  async function handleShareTrip() {
+    if (!trip) return;
+
+    setShareError("");
+
+    const supabase = getBrowserSupabase();
+    if (!supabase || !user?.id || provider === "guest") {
+      setShareError("공유하려면 로그인한 뒤 Supabase에 저장된 여행이어야 해요.");
+      return;
+    }
+
+    const token = await ensureTripShareToken(supabase, user.id, trip.id);
+    if (!token) {
+      setShareError("공유 링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+
+    const url = buildSharedTripUrl(token);
+    const title = `${trip.destination} 여행`;
+    const text = `${trip.destination} 여행 일정을 함께 봐요.`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url });
+        return;
+      }
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      window.prompt("아래 링크를 복사하세요", url);
+    }
+  }
+
+  const shareButton = (
+    <button
+      type="button"
+      aria-label={shareCopied ? "링크 복사됨" : "여행 공유"}
+      onClick={() => {
+        void handleShareTrip();
+      }}
+      className="flex h-9 w-9 items-center justify-center rounded-full text-ink-heading transition-colors active:bg-surface-soft"
+    >
+      {shareCopied ? (
+        <Check className="h-5 w-5 text-brand" strokeWidth={2.2} />
+      ) : (
+        <Share2 className="h-5 w-5" strokeWidth={2} />
+      )}
+    </button>
+  );
 
   if (!isReady) {
     return (
@@ -293,7 +360,15 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
   }
 
   return (
-    <MobileShell title="여행 상세" showBack backHref="/trips">
+    <MobileShell
+      title="여행 상세"
+      showBack
+      backHref="/trips"
+      rightSlot={shareButton}
+    >
+      {shareError ? (
+        <p className="px-5 pt-3 text-xs text-red-500">{shareError}</p>
+      ) : null}
       <div className="flex flex-col gap-6 px-5 pb-8 pt-5">
         {/* 히어로 */}
         <div className="relative h-56 overflow-hidden rounded-xl2 shadow-soft">
@@ -428,176 +503,158 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
         </section>
 
         {/* AI 일정표 */}
-        {((trip.dailySchedule && trip.dailySchedule.length > 0) ||
-          editSection === "schedule") && (
+        {trip.dailySchedule && trip.dailySchedule.length > 0 ? (
           <section className="rounded-xl2 border border-line-soft bg-surface-white p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-brand" />
-                <h3 className="text-lg font-extrabold text-ink-heading">
-                  일정표
-                </h3>
-              </div>
-              {editSection !== "schedule" && (
-                <IconButton label="일정표 수정" onClick={openScheduleEdit}>
-                  <Pencil className="h-4 w-4" strokeWidth={2.2} />
-                </IconButton>
-              )}
+            <div className="mb-4 flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-brand" />
+              <h3 className="text-lg font-extrabold text-ink-heading">일정표</h3>
             </div>
 
-            {editSection === "schedule" ? (
-              <div className="flex flex-col gap-4">
-                {draftSchedule.map((day, dayIndex) => (
-                  <div
-                    key={`edit-day-${day.day}`}
-                    className="rounded-xl border border-line-soft bg-surface-base p-4"
-                  >
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="shrink-0 text-sm font-extrabold text-brand">
-                        Day {day.day}
-                      </span>
-                      <input
-                        value={day.label}
-                        onChange={(e) =>
-                          updateDraftDayLabel(dayIndex, e.target.value)
-                        }
-                        placeholder="하루 테마"
-                        className="h-9 min-w-0 flex-1 rounded-lg border border-line-muted bg-surface-white px-2.5 text-xs font-semibold text-ink-heading focus:border-brand focus:outline-none"
-                      />
-                    </div>
+            <div className="flex flex-col gap-4">
+              {(trip.dailySchedule ?? []).map((day, dayIndex) => {
+                const isEditing = editingDayIndex === dayIndex && draftDay;
 
-                    <div className="flex flex-col gap-3">
-                      {day.items.map((item, itemIndex) => (
-                        <div
-                          key={`edit-${day.day}-${itemIndex}`}
-                          className="rounded-lg border border-line-soft bg-surface-white p-3"
-                        >
-                          <div className="mb-2 flex items-center gap-2">
-                            <input
-                              value={item.time}
-                              onChange={(e) =>
-                                updateDraftItem(dayIndex, itemIndex, {
-                                  time: e.target.value,
-                                })
-                              }
-                              placeholder="14:00"
-                              className="h-9 w-20 rounded-lg border border-line-muted px-2 text-xs font-semibold text-ink-caption focus:border-brand focus:outline-none"
-                            />
-                            <input
-                              inputMode="numeric"
-                              value={item.cost > 0 ? String(item.cost) : ""}
-                              onChange={(e) =>
-                                updateDraftItem(dayIndex, itemIndex, {
-                                  cost: e.target.value.replace(/[^0-9]/g, ""),
-                                })
-                              }
-                              placeholder="금액"
-                              className="h-9 min-w-0 flex-1 rounded-lg border border-line-muted px-2 text-xs font-bold text-ink-heading focus:border-brand focus:outline-none"
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeDraftItem(dayIndex, itemIndex)
-                              }
-                              aria-label="일정 항목 삭제"
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-danger active:bg-danger/10"
-                            >
-                              <Trash2 className="h-4 w-4" strokeWidth={2.2} />
-                            </button>
-                          </div>
-                          <input
-                            value={item.title}
-                            onChange={(e) =>
-                              updateDraftItem(dayIndex, itemIndex, {
-                                title: e.target.value,
-                              })
-                            }
-                            placeholder="일정 내용"
-                            className="h-9 w-full rounded-lg border border-line-muted px-2.5 text-sm text-ink-body focus:border-brand focus:outline-none"
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => addDraftItem(dayIndex)}
-                      className="mt-3 inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-bold text-brand"
-                    >
-                      <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
-                      일정 추가
-                    </button>
-
-                    <p className="mt-3 border-t border-line-soft pt-2 text-right text-xs font-bold text-brand">
-                      일일 예상 {formatKRW(day.dayTotal)}
-                    </p>
-                  </div>
-                ))}
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditSection(null)}
-                    className="flex-1 rounded-xl border border-line-muted py-2.5 text-sm font-bold text-ink-body"
-                  >
-                    취소
-                  </button>
-                  <button
-                    type="button"
-                    onClick={saveSchedule}
-                    className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-brand py-2.5 text-sm font-bold text-surface-white"
-                  >
-                    <Check className="h-4 w-4" />
-                    저장
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4">
-                {(trip.dailySchedule ?? []).map((day) => (
+                return (
                   <div
                     key={day.day}
                     className="rounded-xl border border-line-soft bg-surface-base p-4"
                   >
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="text-sm font-extrabold text-brand">
-                        Day {day.day}
-                      </span>
-                      <span className="text-xs font-semibold text-ink-caption">
-                        {day.label}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {day.items.map((item) => (
-                        <div
-                          key={`${day.day}-${item.time}-${item.title}`}
-                          className="flex items-start justify-between gap-3"
-                        >
-                          <div>
-                            <p className="text-xs font-semibold text-ink-caption">
-                              {item.time}
-                            </p>
-                            <p className="text-sm font-medium text-ink-body">
-                              {item.title}
-                            </p>
-                          </div>
-                          {item.cost > 0 && (
-                            <span className="shrink-0 text-xs font-bold text-ink-heading">
-                              {formatKRW(item.cost)}
-                            </span>
-                          )}
+                    {isEditing ? (
+                      <>
+                        <div className="mb-3">
+                          <span className="text-sm font-extrabold text-brand">
+                            Day {draftDay.day}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                    <p className="mt-3 border-t border-line-soft pt-2 text-right text-xs font-bold text-brand">
-                      일일 예상 {formatKRW(day.dayTotal)}
-                    </p>
+
+                        <div className="flex flex-col gap-3">
+                          {draftDay.items.map((item, itemIndex) => (
+                            <div
+                              key={`edit-${draftDay.day}-${itemIndex}`}
+                              className="rounded-lg border border-line-soft bg-surface-white p-3"
+                            >
+                              <div className="mb-2 flex items-center gap-2">
+                                <input
+                                  value={item.time}
+                                  onChange={(e) =>
+                                    updateDraftItem(itemIndex, {
+                                      time: e.target.value,
+                                    })
+                                  }
+                                  placeholder="14:00"
+                                  className="h-9 w-20 rounded-lg border border-line-muted px-2 text-xs font-semibold text-ink-caption focus:border-brand focus:outline-none"
+                                />
+                                <input
+                                  inputMode="numeric"
+                                  value={item.cost > 0 ? String(item.cost) : ""}
+                                  onChange={(e) =>
+                                    updateDraftItem(itemIndex, {
+                                      cost: e.target.value.replace(/[^0-9]/g, ""),
+                                    })
+                                  }
+                                  placeholder="금액"
+                                  className="h-9 min-w-0 flex-1 rounded-lg border border-line-muted px-2 text-xs font-bold text-ink-heading focus:border-brand focus:outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeDraftItem(itemIndex)}
+                                  aria-label="일정 항목 삭제"
+                                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-danger active:bg-danger/10"
+                                >
+                                  <Trash2 className="h-4 w-4" strokeWidth={2.2} />
+                                </button>
+                              </div>
+                              <input
+                                value={item.title}
+                                onChange={(e) =>
+                                  updateDraftItem(itemIndex, {
+                                    title: e.target.value,
+                                  })
+                                }
+                                placeholder="일정 내용"
+                                className="h-9 w-full rounded-lg border border-line-muted px-2.5 text-sm text-ink-body focus:border-brand focus:outline-none"
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={addDraftItem}
+                          className="mt-3 inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-bold text-brand"
+                        >
+                          <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
+                          일정 추가
+                        </button>
+
+                        <p className="mt-3 border-t border-line-soft pt-2 text-right text-xs font-bold text-brand">
+                          일일 예상 {formatKRW(draftDay.dayTotal)}
+                        </p>
+
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={cancelDayEdit}
+                            className="flex-1 rounded-xl border border-line-muted py-2.5 text-sm font-bold text-ink-body"
+                          >
+                            취소
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => saveDayEdit(dayIndex)}
+                            className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-brand py-2.5 text-sm font-bold text-surface-white"
+                          >
+                            <Check className="h-4 w-4" />
+                            저장
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <span className="text-sm font-extrabold text-brand">
+                            Day {day.day}
+                          </span>
+                          <IconButton
+                            label={`Day ${day.day} 일정 수정`}
+                            onClick={() => openDayEdit(dayIndex)}
+                          >
+                            <Pencil className="h-4 w-4" strokeWidth={2.2} />
+                          </IconButton>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {day.items.map((item) => (
+                            <div
+                              key={`${day.day}-${item.time}-${item.title}`}
+                              className="flex items-start justify-between gap-3"
+                            >
+                              <div>
+                                <p className="text-xs font-semibold text-ink-caption">
+                                  {item.time}
+                                </p>
+                                <p className="text-sm font-medium text-ink-body">
+                                  {item.title}
+                                </p>
+                              </div>
+                              {item.cost > 0 ? (
+                                <span className="shrink-0 text-xs font-bold text-ink-heading">
+                                  {formatKRW(item.cost)}
+                                </span>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                        <p className="mt-3 border-t border-line-soft pt-2 text-right text-xs font-bold text-brand">
+                          일일 예상 {formatKRW(day.dayTotal)}
+                        </p>
+                      </>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </section>
-        )}
+        ) : null}
 
         {/* 여행 스타일 */}
         {styleLabels.length > 0 && (

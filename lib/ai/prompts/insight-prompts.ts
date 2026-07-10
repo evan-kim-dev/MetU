@@ -72,3 +72,67 @@ ${rag.allowedRegions.join(", ")}
 포함: 인원 팁 한 줄 + 허용 권역 추천.
 금지: 유럽/장거리 등 허용 목록 밖 추천, 항공·숙소 임의 견적 금액, JSON/불릿.`;
 }
+
+const WEATHER_SYSTEM_PROMPT =
+  "여행 월 평균 기후와 제공된 데이터만 근거로 대비 안내를 작성한다. 단기 예보가 아닌 경우 해당 월의 전형적 기후를 설명한다. JSON만 출력.";
+
+export function getWeatherSystemPrompt(): string {
+  return WEATHER_SYSTEM_PROMPT;
+}
+
+export function buildWeatherPrompt(params: {
+  destination: string;
+  country: string;
+  dateLabel: string;
+  startDate: string;
+  endDate: string;
+  month: number;
+  days: Array<{
+    label: string;
+    description: string;
+    minC: number;
+    maxC: number;
+    source: string;
+  }>;
+  monthCaution: string;
+}): string {
+  const dayLines = params.days
+    .map(
+      (day) =>
+        `- ${day.label}: ${day.description}, ${day.minC}°~${day.maxC}° (${day.source === "forecast" ? "단기 예보" : `${params.month}월 평균 기후`})`
+    )
+    .join("\n");
+
+  const usesClimate = params.days.some((day) => day.source !== "forecast");
+
+  return `당신은 Met U의 여행 날씨 어시스턴트입니다.
+아래 데이터를 근거로 여행 기간 날씨 대비 안내를 작성하세요.
+
+[여행]
+- 목적지: ${params.destination}${params.country ? `, ${params.country}` : ""}
+- 기간: ${params.startDate} ~ ${params.endDate} (${params.dateLabel})
+- 여행 월: ${params.month}월
+
+[예측 방식]
+${
+  usesClimate
+    ? `- 단기 예보 범위(16일) 밖 여행이므로 **${params.month}월 평균 기후(최근 5년)** 로 예측했어요.
+- 일별 수치는 해당 월·일자의 역사 평균 기온·강수 패턴이에요.
+- ${params.month}월에 흔한 날씨(장마·혹서·건기 등)를 중심으로 추론하세요.`
+    : "- 단기 예보 데이터를 사용했어요."
+}
+
+[일별 날씨]
+${dayLines}
+
+[${params.month}월 여행 주의]
+${params.monthCaution}
+
+출력(JSON만):
+{"summary":"2~3문장 종합 예측·대비 요약","preparation":["대비 팁1","대비 팁2","대비 팁3"]}
+
+규칙:
+- summary: ${params.month}월 기후 특성 + 기온·강수 중심, 친근한 한국어
+- preparation: 해당 월에 맞는 실행 가능한 준비물·옷차림 3~4개
+- 데이터에 없는 날씨는 추측하지 말 것`;
+}

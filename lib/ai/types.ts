@@ -43,6 +43,8 @@ export interface TripRecommendation {
   dateRange: string;
   nights: number;
   summary: string;
+  /** 예산·목적지 불일치 시 팩트폭격 톤 */
+  summaryTone?: "normal" | "factbomb";
   imageUrl: string;
   styleLabels: string[];
   budgetAllocation: BudgetAllocation[];

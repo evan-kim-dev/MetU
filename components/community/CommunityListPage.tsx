@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, PenLine, Settings } from "lucide-react";
+import { Check, ArrowUpDown, PenLine, Search, Settings, X } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { CommunityGatedLayout } from "@/components/auth/AuthGateOverlay";
 import { PostCard } from "@/components/community/PostCard";
@@ -17,6 +17,34 @@ import {
   type PostCategory,
   type WritablePostCategory,
 } from "@/lib/mock/community";
+import type { CommunityPost } from "@/lib/community/types";
+
+function postMatchesSearch(post: CommunityPost, query: string): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return true;
+
+  const haystack = [
+    post.title,
+    post.preview,
+    post.destination,
+    post.author,
+    CATEGORY_LABELS[post.category],
+    post.party?.budgetPerPerson ?? "",
+    ...post.commentList.map((comment) => comment.content),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(normalized);
+}
+
+type PostSort = "latest" | "likes" | "comments";
+
+const SORT_LABELS: Record<PostSort, string> = {
+  latest: "최신순",
+  likes: "좋아요순",
+  comments: "댓글순",
+};
 
 interface CommunityListPageProps {
   title?: string;
@@ -50,6 +78,10 @@ export function CommunityListPage({
   const { posts, isReady, addPost, isPartyHost, isPartyJoined, leaveParty, removePost } =
     useCommunity();
   const [activeCategory, setActiveCategory] = useState<PostCategory>(defaultCategory);
+  const [sortBy, setSortBy] = useState<PostSort>("latest");
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [writeOpen, setWriteOpen] = useState(false);
   const [writeCategory, setWriteCategory] = useState<WritablePostCategory>(
     defaultWriteCategory
@@ -59,9 +91,34 @@ export function CommunityListPage({
   const [selectedChatIds, setSelectedChatIds] = useState<string[]>([]);
 
   const filteredPosts = useMemo(() => {
-    if (activeCategory === "all") return posts;
-    return posts.filter((post) => post.category === activeCategory);
-  }, [activeCategory, posts]);
+    const filtered =
+      activeCategory === "all"
+        ? posts
+        : posts.filter((post) => post.category === activeCategory);
+
+    const searched = searchQuery.trim()
+      ? filtered.filter((post) => postMatchesSearch(post, searchQuery))
+      : filtered;
+
+    const sorted = [...searched];
+    sorted.sort((a, b) => {
+      if (sortBy === "likes") {
+        return (
+          b.likes - a.likes ||
+          new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime()
+        );
+      }
+      if (sortBy === "comments") {
+        return (
+          b.comments - a.comments ||
+          new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime()
+        );
+      }
+      return new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime();
+    });
+
+    return sorted;
+  }, [activeCategory, posts, searchQuery, sortBy]);
 
   const chatRoomPosts = useMemo(
     () =>
@@ -287,34 +344,133 @@ export function CommunityListPage({
 
         {showPostList ? (
           <>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar">
-              {categories.length > 1
-                ? categories.map((category) => {
-                    const active = activeCategory === category;
-                    return (
-                      <button
-                        key={category}
-                        type="button"
-                        onClick={() => setActiveCategory(category)}
-                        className={[
-                          "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors",
-                          active
-                            ? category === "party"
-                              ? "ai-gradient-bg text-surface-white shadow-glow"
-                              : "bg-brand text-surface-white shadow-soft"
-                            : "border border-line-soft bg-surface-white text-ink-caption",
-                        ].join(" ")}
-                      >
-                        {CATEGORY_LABELS[category]}
-                      </button>
-                    );
-                  })
-                : null}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto no-scrollbar">
+                  {categories.length > 1
+                    ? categories.map((category) => {
+                        const active = activeCategory === category;
+                        return (
+                          <button
+                            key={category}
+                            type="button"
+                            onClick={() => setActiveCategory(category)}
+                            className={[
+                              "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors",
+                              active
+                                ? category === "party"
+                                  ? "ai-gradient-bg text-surface-white shadow-glow"
+                                  : "bg-brand text-surface-white shadow-soft"
+                                : "border border-line-soft bg-surface-white text-ink-caption",
+                            ].join(" ")}
+                          >
+                            {CATEGORY_LABELS[category]}
+                          </button>
+                        );
+                      })
+                    : null}
+                </div>
+
+                <button
+                  type="button"
+                  aria-label="게시글 검색"
+                  aria-pressed={searchOpen}
+                  onClick={() => {
+                    setSearchOpen((prev) => {
+                      if (prev) setSearchQuery("");
+                      return !prev;
+                    });
+                    setSortMenuOpen(false);
+                  }}
+                  className={[
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors",
+                    searchOpen || searchQuery.trim()
+                      ? "border-brand/30 bg-brand/10 text-brand"
+                      : "border-line-soft bg-surface-white text-ink-caption hover:bg-surface-soft",
+                  ].join(" ")}
+                >
+                  <Search className="h-4 w-4" strokeWidth={2.2} />
+                </button>
+
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    aria-label={`정렬: ${SORT_LABELS[sortBy]}`}
+                    onClick={() => {
+                      setSortMenuOpen((prev) => !prev);
+                      setSearchOpen(false);
+                    }}
+                    className={[
+                      "flex h-9 w-9 items-center justify-center rounded-full border transition-colors",
+                      sortBy === "latest"
+                        ? "border-line-soft bg-surface-white text-ink-caption hover:bg-surface-soft"
+                        : "border-brand/30 bg-brand/10 text-brand",
+                    ].join(" ")}
+                  >
+                    <ArrowUpDown className="h-4 w-4" strokeWidth={2.2} />
+                  </button>
+                  {sortMenuOpen ? (
+                    <div className="absolute right-0 top-10 z-10 min-w-[132px] rounded-lg border border-line-soft bg-surface-white p-1 shadow-soft">
+                      {(Object.keys(SORT_LABELS) as PostSort[]).map((option) => {
+                        const selected = sortBy === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => {
+                              setSortBy(option);
+                              setSortMenuOpen(false);
+                            }}
+                            className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-ink-heading hover:bg-surface-soft"
+                          >
+                            <span>{SORT_LABELS[option]}</span>
+                            {selected ? (
+                              <Check className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {searchOpen ? (
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-caption" />
+                  <input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="제목, 내용, 여행지, 작성자 검색"
+                    className="h-11 w-full rounded-xl border border-line-soft bg-surface-white pl-10 pr-10 text-sm text-ink-heading outline-none transition-colors placeholder:text-ink-caption focus:border-brand"
+                    autoFocus
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      aria-label="검색어 지우기"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-3">
               {!isReady ? (
                 <p className="py-10 text-center text-sm text-ink-caption">불러오는 중...</p>
+              ) : filteredPosts.length === 0 && searchQuery.trim() ? (
+                <div className="rounded-xl2 border border-dashed border-line-soft px-4 py-10 text-center">
+                  <p className="text-sm font-semibold text-ink-heading">
+                    &apos;{searchQuery.trim()}&apos; 검색 결과가 없어요
+                  </p>
+                  <p className="mt-1 text-xs text-ink-caption">
+                    다른 키워드로 다시 검색해 보세요.
+                  </p>
+                </div>
               ) : filteredPosts.length === 0 ? (
                 <div className="rounded-xl2 border border-dashed border-line-soft px-4 py-10 text-center">
                   <p className="text-sm font-semibold text-ink-heading">

@@ -42,6 +42,15 @@
     }
   }
 
+  @keyframes ai-thinking-slide {
+    0% {
+      transform: translateX(-120%);
+    }
+    100% {
+      transform: translateX(360%);
+    }
+  }
+
   .ai-gradient-text {
     background-image: linear-gradient(to right, #2563eb, #3b82f6, #818cf8);
     background-size: 200% auto;

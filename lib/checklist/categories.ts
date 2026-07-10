@@ -15,9 +15,9 @@ export const CHECKLIST_CATEGORIES = [
     description: "여권·비자·보험 등 필수 서류 체크",
   },
   {
-    id: "event",
-    label: "행사",
-    description: "현지 행사·티켓·일정 관련 준비 항목",
+    id: "weather",
+    label: "날씨",
+    description: "여행지 현재 날씨와 주간 예보 확인",
   },
 ] as const;
 

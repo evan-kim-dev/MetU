@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Users, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarDays, ImagePlus, Users, X } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import {
   CATEGORY_LABELS,
   type CommunityPost,
   type WritablePostCategory,
 } from "@/lib/mock/community";
+import {
+  MAX_POST_IMAGES,
+  uploadCommunityPostImage,
+} from "@/lib/community/post-images";
 import type { CreatePostInput } from "@/lib/community/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 const WRITE_CATEGORIES: WritablePostCategory[] = [
   "party",
@@ -16,6 +22,13 @@ const WRITE_CATEGORIES: WritablePostCategory[] = [
   "review",
   "tip",
 ];
+
+interface DraftImage {
+  id: string;
+  previewUrl: string;
+  uploadedUrl?: string;
+  file?: File;
+}
 
 interface WritePostSheetProps {
   open: boolean;
@@ -38,6 +51,8 @@ export function WritePostSheet({
   initialCategory = "party",
   editingPost = null,
 }: WritePostSheetProps) {
+  const { user, provider } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isEditing = Boolean(editingPost);
   const [category, setCategory] = useState<WritablePostCategory>(initialCategory);
   const [title, setTitle] = useState("");
@@ -47,6 +62,8 @@ export function WritePostSheet({
   const [endDate, setEndDate] = useState(defaultDate(17));
   const [needed, setNeeded] = useState(4);
   const [budgetPerPerson, setBudgetPerPerson] = useState("");
+  const [images, setImages] = useState<DraftImage[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,6 +78,13 @@ export function WritePostSheet({
       setEndDate(editingPost.party?.endDate ?? defaultDate(17));
       setNeeded(editingPost.party?.needed ?? 4);
       setBudgetPerPerson(editingPost.party?.budgetPerPerson ?? "");
+      setImages(
+        (editingPost.images ?? []).map((url) => ({
+          id: url,
+          previewUrl: url,
+          uploadedUrl: url,
+        }))
+      );
       setError(null);
       return;
     }
@@ -73,6 +97,7 @@ export function WritePostSheet({
     setEndDate(defaultDate(17));
     setNeeded(4);
     setBudgetPerPerson("");
+    setImages([]);
     setError(null);
   }, [editingPost, initialCategory, open]);
 
@@ -86,10 +111,83 @@ export function WritePostSheet({
 
   if (!open) return null;
 
-  function handleSubmit() {
-    if (!canSubmit) {
+  function handlePickImages(files: FileList | null) {
+    if (!files?.length) return;
+
+    const remaining = MAX_POST_IMAGES - images.length;
+    if (remaining <= 0) {
+      setError(`사진은 최대 ${MAX_POST_IMAGES}장까지 올릴 수 있어요.`);
+      return;
+    }
+
+    const nextFiles = Array.from(files).slice(0, remaining);
+    const nextImages = nextFiles.map((file) => ({
+      id: crypto.randomUUID(),
+      previewUrl: URL.createObjectURL(file),
+      file,
+    }));
+
+    setImages((prev) => [...prev, ...nextImages]);
+    setError(null);
+  }
+
+  function removeImage(id: string) {
+    setImages((prev) => {
+      const target = prev.find((image) => image.id === id);
+      if (target?.file) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((image) => image.id !== id);
+    });
+  }
+
+  async function handleSubmit() {
+    if (!canSubmit || uploading) {
       setError("필수 항목을 입력해주세요.");
       return;
+    }
+
+    const pendingUploads = images.filter((image) => image.file);
+    if (pendingUploads.length > 0) {
+      if (!user?.id || provider === "guest") {
+        setError("사진 업로드는 로그인 후 이용할 수 있어요.");
+        return;
+      }
+
+      const supabase = getBrowserSupabase();
+      if (!supabase) {
+        setError("사진 업로드를 위해 Supabase 연결이 필요해요.");
+        return;
+      }
+    }
+
+    setUploading(true);
+    setError(null);
+
+    const imageUrls: string[] = [];
+    const supabase = getBrowserSupabase();
+
+    for (const image of images) {
+      if (image.uploadedUrl) {
+        imageUrls.push(image.uploadedUrl);
+        continue;
+      }
+
+      if (!image.file || !supabase || !user?.id) continue;
+
+      const uploaded = await uploadCommunityPostImage(
+        supabase,
+        user.id,
+        image.file
+      );
+
+      if ("error" in uploaded) {
+        setError(uploaded.error);
+        setUploading(false);
+        return;
+      }
+
+      imageUrls.push(uploaded.url);
     }
 
     onSubmit({
@@ -97,6 +195,7 @@ export function WritePostSheet({
       title: title.trim(),
       destination: destination.trim(),
       body: body.trim(),
+      imageUrls,
       party: isParty
         ? {
             startDate,
@@ -110,11 +209,18 @@ export function WritePostSheet({
     });
 
     if (!isEditing) {
+      images.forEach((image) => {
+        if (image.file) {
+          URL.revokeObjectURL(image.previewUrl);
+        }
+      });
       setTitle("");
       setDestination("");
       setBody("");
       setBudgetPerPerson("");
+      setImages([]);
     }
+    setUploading(false);
     setError(null);
     onClose();
   }
@@ -252,20 +358,87 @@ export function WritePostSheet({
               className="resize-none rounded-lg border border-line-soft px-3 py-2.5 text-sm outline-none focus:border-brand"
             />
           </label>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-ink-caption">사진</span>
+              <span className="text-[11px] text-ink-caption">
+                {images.length}/{MAX_POST_IMAGES}
+              </span>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              className="hidden"
+              disabled={uploading || images.length >= MAX_POST_IMAGES}
+              onChange={(e) => {
+                handlePickImages(e.target.files);
+                e.target.value = "";
+              }}
+            />
+
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              {images.length < MAX_POST_IMAGES ? (
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line-muted bg-surface-soft text-ink-caption transition-colors hover:border-brand/40 hover:text-brand disabled:opacity-50"
+                >
+                  <ImagePlus className="h-5 w-5" />
+                  <span className="text-[10px] font-semibold">추가</span>
+                </button>
+              ) : null}
+
+              {images.map((image) => (
+                <div
+                  key={image.id}
+                  className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-line-soft"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={image.previewUrl}
+                    alt="첨부 사진 미리보기"
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    aria-label="사진 삭제"
+                    disabled={uploading}
+                    onClick={() => removeImage(image.id)}
+                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/55 text-surface-white"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {error ? (
           <p className="mt-3 text-xs text-danger">{error}</p>
         ) : null}
 
-        <PrimaryButton className="mt-4" disabled={!canSubmit} onClick={handleSubmit}>
-          {isEditing
-            ? isParty
-              ? "동행 모집글 수정"
-              : "게시글 수정"
-            : isParty
-              ? "동행 모집글 등록"
-              : "게시글 등록"}
+        <PrimaryButton
+          className="mt-4"
+          disabled={!canSubmit || uploading}
+          onClick={() => {
+            void handleSubmit();
+          }}
+        >
+          {uploading
+            ? "업로드 중..."
+            : isEditing
+              ? isParty
+                ? "동행 모집글 수정"
+                : "게시글 수정"
+              : isParty
+                ? "동행 모집글 등록"
+                : "게시글 등록"}
         </PrimaryButton>
 
         {isParty ? (

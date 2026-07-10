@@ -25,6 +25,15 @@ class InsightService:
             max_tokens=140,
         )
 
+    async def weather_insight(self, *, prompt: str, system: str) -> str | None:
+        return await self.openai.chat(
+            system=system,
+            user=prompt,
+            temperature=0.35,
+            max_tokens=320,
+            json_mode=True,
+        )
+
     async def deal_enrich(self, *, prompt: str, system: str) -> str | None:
         return await self.openai.chat(
             system=system,

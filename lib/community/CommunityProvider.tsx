@@ -122,6 +122,7 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
               title: post.title,
               destination: post.destination,
               body: post.preview,
+              imageUrls: post.images,
               party: post.party,
             }
           )
@@ -192,6 +193,7 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
         destination: input.destination.trim(),
         title: input.title.trim(),
         preview: input.body.trim(),
+        images: input.imageUrls ?? [],
         likes: 0,
         comments: 0,
         likedBy: [],
@@ -300,6 +302,7 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
             destination: input.destination.trim(),
             title: input.title.trim(),
             preview: input.body.trim(),
+            images: input.imageUrls ?? post.images ?? [],
             party: nextParty,
           });
         })

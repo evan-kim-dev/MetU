@@ -29,6 +29,7 @@ export const STORAGE_KEYS = {
   partyChatMessages: "budgettrip-party-chat-messages",
   guestAuthorId: "budgettrip-guest-author-id",
   withactChecklistSession: "budgettrip-withact-checklist-session",
+  docsChecklist: "budgettrip-docs-checklist",
 } as const;
 
 /** App defaults */

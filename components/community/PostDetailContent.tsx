@@ -14,6 +14,7 @@ import {
 import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { WritePostSheet } from "@/components/community/WritePostSheet";
+import { PostImageGallery } from "@/components/community/PostImageGallery";
 import {
   CATEGORY_COLORS,
   CATEGORY_LABELS,
@@ -179,6 +180,10 @@ export function PostDetailContent({
         <p className="whitespace-pre-wrap text-base leading-relaxed text-ink-body">
           {post.preview}
         </p>
+
+        {post.images && post.images.length > 0 ? (
+          <PostImageGallery images={post.images} variant="detail" />
+        ) : null}
 
         {isParty ? (
           <section className="rounded-xl2 border border-brand/20 bg-surface-soft p-4">

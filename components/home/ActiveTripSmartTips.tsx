@@ -1,6 +1,7 @@
 "use client";
 
 import { SmartTips } from "@/components/home/SmartTips";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useTrips } from "@/lib/trips/TripProvider";
 import { buildTipsForTrip } from "@/lib/tips/buildTipsForTrip";
 
@@ -12,10 +13,10 @@ export function ActiveTripSmartTips() {
   if (!isReady) {
     return (
       <div className="flex flex-col gap-3">
-        <div className="h-7 w-20 animate-pulse rounded bg-surface-soft" />
+        <SectionHeader title="AI Tip" ai />
         <div className="flex gap-3 overflow-hidden">
-          <div className="h-28 w-56 shrink-0 animate-pulse rounded-2xl bg-surface-soft" />
-          <div className="h-28 w-56 shrink-0 animate-pulse rounded-2xl bg-surface-soft" />
+          <div className="h-28 w-60 shrink-0 animate-pulse rounded-2xl bg-surface-soft" />
+          <div className="h-28 w-60 shrink-0 animate-pulse rounded-2xl bg-surface-soft" />
         </div>
       </div>
     );

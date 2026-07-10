@@ -6,13 +6,14 @@ import type { Trip } from "@/lib/trips/types";
 
 interface ActiveTripCardProps {
   trip: Trip;
+  priority?: boolean;
 }
 
 /**
  * 진행 중인 여행 카드.
  * 배경 이미지 위에 Glassmorphism(반투명 + blur) 정보 패널을 올린다.
  */
-export function ActiveTripCard({ trip }: ActiveTripCardProps) {
+export function ActiveTripCard({ trip, priority = false }: ActiveTripCardProps) {
   const remaining = trip.budget - trip.spent;
   const usedPercent = Math.round((trip.spent / trip.budget) * 100);
 
@@ -27,7 +28,7 @@ export function ActiveTripCard({ trip }: ActiveTripCardProps) {
         fill
         sizes="440px"
         className="object-cover"
-        priority
+        priority={priority}
       />
       {/* 가독성용 어둠 오버레이 */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/20" />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Plus } from "lucide-react";
@@ -9,7 +10,24 @@ import { useTrips } from "@/lib/trips/TripProvider";
 
 export function ActiveTripSection() {
   const { activeTrips, isReady } = useTrips();
-  const primaryTrip = activeTrips[0];
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || activeTrips.length <= 1) {
+      setActiveIndex(0);
+      return;
+    }
+
+    const onScroll = () => {
+      const nextIndex = Math.round(container.scrollLeft / container.clientWidth);
+      setActiveIndex(nextIndex);
+    };
+
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => container.removeEventListener("scroll", onScroll);
+  }, [activeTrips.length]);
 
   if (!isReady) {
     return (
@@ -20,7 +38,7 @@ export function ActiveTripSection() {
     );
   }
 
-  if (!primaryTrip) {
+  if (activeTrips.length === 0) {
     return (
       <section className="flex flex-col gap-3">
         <SectionHeader title="계획 중인 여행" />
@@ -61,8 +79,52 @@ export function ActiveTripSection() {
 
   return (
     <section className="flex flex-col gap-3">
-      <SectionHeader title="계획 중인 여행" />
-      <ActiveTripCard trip={primaryTrip} />
+      <SectionHeader
+        title="계획 중인 여행"
+        actionLabel={activeTrips.length > 1 ? "전체보기" : undefined}
+        actionHref="/trips"
+      />
+
+      <div
+        ref={scrollRef}
+        className="flex snap-x snap-mandatory overflow-x-auto no-scrollbar"
+      >
+        {activeTrips.map((trip, index) => (
+          <div
+            key={trip.id}
+            className="w-full shrink-0 snap-center snap-always"
+          >
+            <ActiveTripCard trip={trip} priority={index === 0} />
+          </div>
+        ))}
+      </div>
+
+      {activeTrips.length > 1 ? (
+        <div className="flex items-center justify-center gap-1.5">
+          {activeTrips.map((trip, index) => (
+            <button
+              key={trip.id}
+              type="button"
+              aria-label={`${trip.destination} 여행 보기`}
+              onClick={() => {
+                const container = scrollRef.current;
+                if (!container) return;
+                container.scrollTo({
+                  left: container.clientWidth * index,
+                  behavior: "smooth",
+                });
+                setActiveIndex(index);
+              }}
+              className={[
+                "h-1.5 rounded-full transition-all",
+                index === activeIndex
+                  ? "w-4 bg-brand"
+                  : "w-1.5 bg-line-muted",
+              ].join(" ")}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

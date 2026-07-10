@@ -21,6 +21,7 @@ interface PostRow {
   destination: string;
   title: string;
   body: string;
+  image_urls: string[];
   party_data: Omit<PartyInfo, "members" | "current"> | null;
   created_at: string;
 }
@@ -58,6 +59,7 @@ const POST_COLUMNS = [
   "destination",
   "title",
   "body",
+  "image_urls",
   "party_data",
   "created_at",
 ].join(", ");
@@ -136,6 +138,7 @@ function assemblePost(
     destination: row.destination,
     title: row.title,
     preview: row.body,
+    images: row.image_urls ?? [],
     likes: likedBy.length,
     comments: postComments.length,
     likedBy,
@@ -201,6 +204,7 @@ export async function insertCommunityPostToSupabase(
       destination: input.destination.trim(),
       title: input.title.trim(),
       body: input.body.trim(),
+      image_urls: input.imageUrls ?? [],
       party_data: partyInputToData(input.party),
     })
     .select(POST_COLUMNS)
@@ -249,6 +253,7 @@ export async function updateCommunityPostInSupabase(
       destination: input.destination.trim(),
       title: input.title.trim(),
       body: input.body.trim(),
+      image_urls: input.imageUrls ?? [],
       party_data: partyInputToData(input.party),
     })
     .eq("id", postId)

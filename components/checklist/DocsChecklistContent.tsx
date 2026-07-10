@@ -2,6 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, ImagePlus, ShieldCheck, Trash2 } from "lucide-react";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import {
+  fileToDataUrl,
+  uploadChecklistDocFile,
+} from "@/lib/checklist/docs-upload";
+import {
+  getDocsChecklistScopeKey,
+  loadDocsChecklistState,
+  saveDocsChecklistState,
+  type StoredDocUpload,
+} from "@/lib/checklist/docs-storage";
 import { useTrips } from "@/lib/trips/TripProvider";
 import {
   getPrimaryActiveTrip,
@@ -9,6 +20,7 @@ import {
   type DocsCountryId,
 } from "@/lib/checklist/resolve-docs-country";
 import { useWithactChecklist } from "@/lib/checklist/useWithactChecklist";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 type CountryId = DocsCountryId;
 
@@ -19,11 +31,7 @@ type DocItem = {
   tip?: string;
 };
 
-type UploadFile = {
-  id: string;
-  name: string;
-  previewUrl: string;
-};
+type UploadFile = StoredDocUpload;
 
 const COUNTRY_DOCS: Record<CountryId, { label: string; docs: DocItem[] }> = {
   japan: {
@@ -162,6 +170,7 @@ const COUNTRY_DOCS: Record<CountryId, { label: string; docs: DocItem[] }> = {
 };
 
 export function DocsChecklistContent() {
+  const { user, provider } = useAuth();
   const { activeTrips, isReady: isTripReady } = useTrips();
   const primaryTrip = useMemo(() => getPrimaryActiveTrip(activeTrips), [activeTrips]);
   const autoCountry = useMemo(
@@ -171,8 +180,16 @@ export function DocsChecklistContent() {
   const [country, setCountry] = useState<CountryId>("japan");
   const [checkedMap, setCheckedMap] = useState<Record<string, boolean>>({});
   const [uploads, setUploads] = useState<Record<string, UploadFile[]>>({});
+  const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  const [isHydrated, setIsHydrated] = useState(false);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const { persistItem } = useWithactChecklist(primaryTrip?.budget ?? 0);
+
+  const scopeKey = useMemo(
+    () => getDocsChecklistScopeKey(country, primaryTrip?.id),
+    [country, primaryTrip?.id]
+  );
 
   const countryInfo = COUNTRY_DOCS[country];
   const docs = countryInfo.docs;
@@ -187,6 +204,23 @@ export function DocsChecklistContent() {
     if (!isTripReady || !autoCountry) return;
     setCountry(autoCountry);
   }, [isTripReady, autoCountry]);
+
+  useEffect(() => {
+    setIsHydrated(false);
+    const saved = loadDocsChecklistState(scopeKey);
+    setCheckedMap(saved?.checkedMap ?? {});
+    setUploads(saved?.uploads ?? {});
+    setUploadError("");
+    setIsHydrated(true);
+  }, [scopeKey]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    saveDocsChecklistState(scopeKey, {
+      checkedMap,
+      uploads,
+    });
+  }, [checkedMap, uploads, isHydrated, scopeKey]);
 
   function toggleCheck(docId: string) {
     setCheckedMap((prev) => {
@@ -206,24 +240,73 @@ export function DocsChecklistContent() {
     fileInputRefs.current[docId]?.click();
   }
 
-  function onFilesSelected(docId: string, fileList: FileList | null) {
-    if (!fileList?.length) return;
-    const nextFiles: UploadFile[] = Array.from(fileList).map((file) => ({
-      id: `${docId}-${crypto.randomUUID()}`,
-      name: file.name,
-      previewUrl: URL.createObjectURL(file),
-    }));
-    setUploads((prev) => ({
-      ...prev,
-      [docId]: [...(prev[docId] ?? []), ...nextFiles],
-    }));
+  async function onFilesSelected(docId: string, fileList: FileList | null) {
+    if (!fileList?.length || uploadingDocId) return;
+
+    setUploadError("");
+    setUploadingDocId(docId);
+
+    const supabase = getBrowserSupabase();
+    const canUseRemoteStorage = Boolean(
+      supabase && user?.id && provider !== "guest"
+    );
+
+    const nextFiles: UploadFile[] = [];
+
+    for (const file of Array.from(fileList)) {
+      const id = `${docId}-${crypto.randomUUID()}`;
+      let url: string | null = null;
+
+      if (canUseRemoteStorage && supabase && user?.id) {
+        const uploaded = await uploadChecklistDocFile(supabase, {
+          userId: user.id,
+          countryId: country,
+          docId,
+          file,
+        });
+
+        if ("url" in uploaded) {
+          url = uploaded.url;
+        } else {
+          const fallback = await fileToDataUrl(file);
+          if (typeof fallback === "string") {
+            url = fallback;
+          } else {
+            setUploadError(uploaded.error || fallback.error);
+            break;
+          }
+        }
+      } else {
+        const fallback = await fileToDataUrl(file);
+        if (typeof fallback === "string") {
+          url = fallback;
+        } else {
+          setUploadError(fallback.error);
+          break;
+        }
+      }
+
+      if (!url) continue;
+      nextFiles.push({ id, name: file.name, url });
+    }
+
+    if (nextFiles.length > 0) {
+      setUploads((prev) => ({
+        ...prev,
+        [docId]: [...(prev[docId] ?? []), ...nextFiles],
+      }));
+    }
+
+    setUploadingDocId(null);
   }
 
   function removeUpload(docId: string, uploadId: string) {
     setUploads((prev) => {
       const target = prev[docId] ?? [];
       const removed = target.find((item) => item.id === uploadId);
-      if (removed) URL.revokeObjectURL(removed.previewUrl);
+      if (removed?.url.startsWith("blob:")) {
+        URL.revokeObjectURL(removed.url);
+      }
       return {
         ...prev,
         [docId]: target.filter((item) => item.id !== uploadId),
@@ -300,6 +383,9 @@ export function DocsChecklistContent() {
             {countryInfo.label} 서류 목록
           </h3>
         </div>
+        {uploadError ? (
+          <p className="mb-3 text-xs text-red-500">{uploadError}</p>
+        ) : null}
         <ul className="flex flex-col gap-3">
           {docs.map((doc) => {
             const checked = Boolean(checkedMap[doc.id]);
@@ -348,15 +434,19 @@ export function DocsChecklistContent() {
                       accept="image/*"
                       multiple
                       className="hidden"
-                      onChange={(e) => onFilesSelected(doc.id, e.target.files)}
+                      onChange={(e) => {
+                        void onFilesSelected(doc.id, e.target.files);
+                        e.target.value = "";
+                      }}
                     />
                     <button
                       type="button"
+                      disabled={uploadingDocId === doc.id}
                       onClick={() => openFilePicker(doc.id)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/5 px-2.5 text-xs font-semibold text-brand"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/5 px-2.5 text-xs font-semibold text-brand disabled:opacity-50"
                     >
                       <ImagePlus className="h-3.5 w-3.5" />
-                      사진 업로드
+                      {uploadingDocId === doc.id ? "업로드 중..." : "사진 업로드"}
                     </button>
                   </div>
                 </div>
@@ -369,7 +459,7 @@ export function DocsChecklistContent() {
                         className="relative overflow-hidden rounded-lg border border-line-soft bg-surface-white"
                       >
                         <img
-                          src={file.previewUrl}
+                          src={file.url}
                           alt={file.name}
                           className="h-20 w-full object-cover"
                         />

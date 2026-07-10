@@ -3,8 +3,8 @@
 import Link from "next/link";
 import {
   BedDouble,
-  CalendarDays,
   CheckSquare,
+  CloudSun,
   FileText,
   Plane,
   type LucideIcon,
@@ -19,7 +19,7 @@ const CHECKLIST_ITEMS: {
   { id: "flight", label: "항공", icon: Plane },
   { id: "hotel", label: "숙박", icon: BedDouble },
   { id: "docs", label: "서류", icon: FileText },
-  { id: "event", label: "행사", icon: CalendarDays },
+  { id: "weather", label: "날씨", icon: CloudSun },
 ];
 
 export function AISmartTipsShortcut() {

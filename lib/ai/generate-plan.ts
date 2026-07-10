@@ -5,6 +5,7 @@ import { STYLE_LABELS } from "@/lib/trips/data";
 import { retrieveBudgetRag } from "@/lib/rag/budgetBands";
 import { getMonthDealTip } from "@/lib/rag/monthDeals";
 import { retrieveTravelSources } from "@/lib/rag/travelKnowledge";
+import { resolvePlanSummary } from "@/lib/ai/budget-reality-check";
 import type {
   BudgetAllocation,
   DaySchedule,
@@ -236,6 +237,16 @@ export function generateTripPlan(form: OnboardingForm): TripRecommendation {
 
   const budgetRag = retrieveBudgetRag(perPerson, selectedMonth);
   const monthTip = getMonthDealTip(selectedMonth);
+  const { summary, tone: summaryTone } = resolvePlanSummary({
+    formOrigin: form.origin,
+    destination: city,
+    country: country || "해외",
+    nights,
+    totalBudget,
+    people,
+    perPerson,
+    allowedRegions: budgetRag.allowedRegions,
+  });
   const ragSources: RagSource[] = [
     {
       id: `budget-${budgetRag.band.id}`,
@@ -262,11 +273,8 @@ export function generateTripPlan(form: OnboardingForm): TripRecommendation {
     totalBudget,
     dateRange,
     nights,
-    summary: `${form.origin}에서 ${city}로 떠나는 ${nights + 1}일 일정이에요. 총예산 ${totalBudget.toLocaleString(
-      "ko-KR"
-    )}원을 ${people}명으로 나눠 1인당 약 ${perPerson.toLocaleString(
-      "ko-KR"
-    )}원 기준으로 항공·숙소·일정을 맞춰 드렸어요.`,
+    summary,
+    summaryTone,
     imageUrl: getImageUrl(city),
     styleLabels,
     budgetAllocation,
@@ -292,6 +300,12 @@ export function generateTripPlan(form: OnboardingForm): TripRecommendation {
     },
     dailySchedule: buildDailySchedule(form, budgetAllocation, nights),
     tips: [
+      ...(summaryTone === "factbomb"
+        ? [
+            `현실적인 대안: ${budgetRag.allowedRegions.slice(0, 3).join(" · ")}`,
+            "예산을 올리거나 목적지를 바꾸면 훨씬 그럴듯한 일정이 나와요.",
+          ]
+        : []),
       `${styleLabels.join(", ")} 스타일에 맞춰 동선을 최적화했어요.`,
       ...travelSources.slice(0, 2).map((s) => s.content),
       budgetRag.seasonTip,

@@ -38,6 +38,7 @@ export interface CommunityPost {
   destination: string;
   title: string;
   preview: string;
+  images?: string[];
   likes: number;
   comments: number;
   likedBy: string[];
@@ -52,6 +53,7 @@ export type CreatePostInput = {
   title: string;
   destination: string;
   body: string;
+  imageUrls?: string[];
   party?: PartyInfo;
 };
 
