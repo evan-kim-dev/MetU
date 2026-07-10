@@ -17,7 +17,9 @@ function removeDir(dir) {
 
 try {
   removeDir(target);
-  console.log("Removed .next cache");
+  const webpackCache = path.join(process.cwd(), "node_modules", ".cache");
+  removeDir(webpackCache);
+  console.log("Removed .next and webpack cache");
 } catch (error) {
   console.error("Failed to remove .next:", error.message);
   process.exit(1);

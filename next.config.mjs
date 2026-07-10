@@ -55,7 +55,10 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config, { dev }) => {
+  webpack: (config, { dev, isServer }) => {
+    if (!dev) {
+      config.cache = false;
+    }
     if (dev) {
       config.watchOptions = {
         poll: 1000,

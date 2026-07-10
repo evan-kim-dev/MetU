@@ -9,6 +9,9 @@ const jakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "Met U AI",
   description: "예산 기반 AI 여행 플래너",
