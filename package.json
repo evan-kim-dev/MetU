@@ -8,7 +8,7 @@
     "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --port 8000",
     "db:push": "node scripts/apply-supabase-migrations.mjs",
     "db:verify": "node scripts/verify-supabase.mjs",
-    "build": "next build",
+    "build": "node scripts/clean-next.cjs && next build",
     "start": "next start",
     "lint": "next lint"
   },
