@@ -12,6 +12,8 @@ import {
   violatesBudgetBand,
 } from "@/lib/rag/budgetBands";
 
+export const maxDuration = 90;
+
 type BuildResult = {
   record: BudgetInsightRecord;
 };

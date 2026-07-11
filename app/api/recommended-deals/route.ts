@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { curateRecommendedDeals } from "@/lib/deals/recommend-deals";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /**
  * 홈 AI 추천 여행지.

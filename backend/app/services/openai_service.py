@@ -39,9 +39,10 @@ class OpenAIService:
         *,
         system: str,
         user: str,
-        temperature: float = 0.3,
-        max_tokens: int = 200,
+        temperature: float = 0.4,
+        max_tokens: int = 8000,
         json_mode: bool = False,
+        timeout: float | None = None,
     ) -> str | None:
         if not self.enabled:
             logger.warning("OpenRouter disabled: missing OPENROUTER_API_KEY")
@@ -68,8 +69,10 @@ class OpenAIService:
         if self.settings.openrouter_app_title:
             headers["X-OpenRouter-Title"] = self.settings.openrouter_app_title
 
+        request_timeout = timeout if timeout is not None else self.timeout_seconds
+
         try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+            async with httpx.AsyncClient(timeout=request_timeout) as client:
                 res = await client.post(
                     OPENROUTER_CHAT_URL,
                     headers=headers,

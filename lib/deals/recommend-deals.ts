@@ -58,7 +58,7 @@ function applyAiOrder(
       ...deal,
       highlight:
         typeof row.highlight === "string" && row.highlight.trim()
-          ? row.highlight.trim().slice(0, 40)
+          ? row.highlight.trim().slice(0, 120)
           : deal.highlight,
     });
   }
@@ -111,7 +111,7 @@ export async function curateRecommendedDeals(): Promise<{
       body: JSON.stringify({
         system: getDealsSystemPrompt(),
         prompt,
-        mode: "deal",
+        mode: "deals",
       }),
     });
 

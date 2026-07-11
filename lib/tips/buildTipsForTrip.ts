@@ -348,7 +348,7 @@ export function buildTipsForTrip(trip: Trip | null | undefined): SmartTip[] {
     });
   }
 
-  return base.slice(0, 6).map((tip, i) => ({
+  return base.slice(0, 10).map((tip, i) => ({
     ...tip,
     id: `tip-${trip.id}-${i}`,
   }));

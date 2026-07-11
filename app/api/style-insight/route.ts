@@ -8,6 +8,8 @@ import { retrieveTravelSources } from "@/lib/rag/travelKnowledge";
 import { STYLE_LABELS } from "@/lib/trips/data";
 import type { OnboardingForm, TravelStyle } from "@/components/onboarding/types";
 
+export const maxDuration = 90;
+
 function buildLocalStyleInsight(styles: TravelStyle[]): string {
   const labels = styles.map((s) => STYLE_LABELS[s] ?? s);
   if (labels.length === 0) {
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
       flexibleYear: new Date().getFullYear(),
     };
 
-    const rag = retrieveTravelSources(form, 4);
+    const rag = retrieveTravelSources(form, 8);
     const prompt = buildStyleInsightPrompt({
       styles,
       styleLabels: styles.map((s) => STYLE_LABELS[s] ?? s),

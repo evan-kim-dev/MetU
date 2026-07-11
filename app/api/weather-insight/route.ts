@@ -14,6 +14,7 @@ import {
 import { getMonthDealTip } from "@/lib/rag/monthDeals";
 import type { TripWeatherDay } from "@/lib/weather/open-meteo";
 
+export const maxDuration = 120;
 interface WeatherInsightRequest {
   destination?: string;
   country?: string;

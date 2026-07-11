@@ -14,6 +14,8 @@ import {
   violatesBudgetBand,
 } from "@/lib/rag/budgetBands";
 
+export const maxDuration = 90;
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const budget = Number(searchParams.get("budget") ?? "0");

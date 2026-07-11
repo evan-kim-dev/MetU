@@ -8,9 +8,14 @@ import {
   getDealById,
   type DealDetail,
 } from "@/lib/deals/data";
+import { AI_QUALITY_FIRST, AI_VOICE } from "@/lib/ai/prompts/shared";
+
+export const maxDuration = 120;
 
 async function enrichViaBackend(detail: DealDetail): Promise<DealDetail> {
-  const prompt = `너는 한국어 예산 여행 큐레이터야. 저가 항공·숙소 시세를 바탕으로 아래 여행지를 설명해. JSON만 반환해.
+  const prompt = `너는 한국어 예산 여행 큐레이터야. 저가 항공·숙소 시세를 바탕으로 아래 여행지를 풍부하게 설명해. JSON만 반환해.
+${AI_QUALITY_FIRST}
+
 도시: ${detail.name}
 국가: ${detail.country}
 예산구간: ${detail.budgetLabel}
@@ -23,15 +28,14 @@ async function enrichViaBackend(detail: DealDetail): Promise<DealDetail> {
 
 JSON 스키마:
 {
-  "summary": "예산구간과 항공·숙소 저가 근거를 포함한 2문장 요약",
-  "whyCheap": ["항공 저가 근거","숙소 시세 근거","시기/요일 근거"],
-  "budgetTips": ["팁1","팁2","팁3"],
-  "mustTry": ["할거리1","할거리2","할거리3"],
-  "caution": "실제 예약가 변동 주의 한 문장"
+  "summary": "예산구간과 항공·숙소 저가 근거를 포함한 4~6문장 요약 (해요체)",
+  "whyCheap": ["항공 저가 근거(1~2문장)","숙소 시세 근거(1~2문장)","시기/요일 근거(1~2문장)","추가 가성비 포인트"],
+  "budgetTips": ["팁1(구체적 실행)","팁2","팁3","팁4","팁5","팁6"],
+  "mustTry": ["할거리1(장소·이유)","할거리2","할거리3","할거리4","할거리5"],
+  "caution": "실제 예약가 변동·시즌 주의 2~3문장"
 }`;
 
-  const system =
-    "항공·숙소 저가 데이터를 근거로 예산별 추천을 짧고 실용적으로 설명해. JSON만 출력.";
+  const system = `${AI_VOICE} ${AI_QUALITY_FIRST} 항공·숙소 저가 데이터를 근거로 예산별 추천을 풍부하고 실용적으로 설명해. JSON만 출력.`;
 
   try {
     const res = await backendFetch("/ai/chat", {

@@ -10,7 +10,7 @@ import {
 } from "@/lib/ai/generate-plan";
 import type { TripRecommendation } from "@/lib/ai/types";
 
-export const maxDuration = 90;
+export const maxDuration = 300;
 
 const VALID_STYLES: TravelStyle[] = [
   "healing",

@@ -12,6 +12,8 @@ import {
 import { retrieveTravelSources } from "@/lib/rag/travelKnowledge";
 import type { OnboardingForm } from "@/components/onboarding/types";
 
+export const maxDuration = 90;
+
 export async function POST(request: Request) {
   let fallback =
     "시즌 가성비 권역을 불러오는 중이에요. 잠시만 기다려 주세요.";
@@ -81,7 +83,7 @@ export async function POST(request: Request) {
       flexibleYear: params.flexibleYear,
       styles: [],
     };
-    const travelRag = retrieveTravelSources(form, 3).map((item) => item.content);
+    const travelRag = retrieveTravelSources(form, 6).map((item) => item.content);
 
     const ragContexts = [
       ...buildScheduleRagContexts(params),

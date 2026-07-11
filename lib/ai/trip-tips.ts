@@ -45,7 +45,7 @@ function parseAiTips(
     };
     if (!Array.isArray(parsed.tips) || parsed.tips.length === 0) return null;
 
-    return parsed.tips.slice(0, 6).map((tip, index) => ({
+    return parsed.tips.slice(0, 10).map((tip, index) => ({
       id: `tip-ai-${tripId}-${index}`,
       emoji: tip.emoji?.trim() || "💡",
       title: tip.title?.trim() || `팁 ${index + 1}`,

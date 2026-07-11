@@ -271,7 +271,7 @@ function mergeAiSchedule(
                 cost: estimateItemCost(title, budgets),
               };
             })
-            .slice(0, 8)
+            .slice(0, 12)
         : fallbackDay.items;
 
     return {
@@ -357,7 +357,7 @@ async function enrichPlanWithAi(params: {
     const parsed = JSON.parse(data.content) as AiPlanPayload;
     const tips =
       Array.isArray(parsed.tips) && parsed.tips.length > 0
-        ? parsed.tips.map((t) => t.trim()).filter(Boolean).slice(0, 6)
+        ? parsed.tips.map((t) => t.trim()).filter(Boolean).slice(0, 10)
         : params.fallbackTips;
 
     return {
@@ -448,7 +448,7 @@ function buildBaseRagSources(params: {
       title: `${params.monthTip.month}월 저가·주의`,
       content: `${params.monthTip.cheapPlaces.join("·")} 쪽이 비교적 저렴해요. ${params.monthTip.dealReason}. 다만 ${params.monthTip.caution}`,
     },
-    ...params.travelSources.slice(0, 3),
+    ...params.travelSources.slice(0, 6),
   ];
 
   if (params.summaryTone === "factbomb") {
@@ -510,7 +510,7 @@ export function buildFallbackTripPlan(
         ].filter(Boolean)
       : [
           `${styleLabels.join(", ") || "자유"} 스타일에 맞춰 동선을 최적화했어요.`,
-          ...travelSources.slice(0, 2).map((s) => s.content),
+          ...travelSources.slice(0, 4).map((s) => s.content),
           budgetRag.seasonTip,
         ].filter(Boolean);
 
@@ -592,7 +592,7 @@ export async function enrichTripPlanWithAi(
 
   const baseFallbackTips = [
     `${styleLabels.join(", ") || "자유"} 스타일에 맞춰 동선을 최적화했어요.`,
-    ...travelSources.slice(0, 2).map((s) => s.content),
+    ...travelSources.slice(0, 4).map((s) => s.content),
     budgetRag.seasonTip,
   ];
 
@@ -642,9 +642,9 @@ export async function enrichTripPlanWithAi(
           budgetRag.allowedRegions.length > 0
             ? `지금 예산엔 ${budgetRag.allowedRegions.slice(0, 3).join("·")} 쪽이 현실적이에요. 예산을 올리거나 목적지를 바꾸면 더 맞는 일정이 나와요.`
             : "예산을 올리거나 목적지를 바꾸면 훨씬 그럴듯한 일정이 나와요.",
-          ...enriched.tips.slice(0, 3),
+          ...enriched.tips.slice(0, 6),
         ]
-      : enriched.tips.slice(0, 4);
+      : enriched.tips.slice(0, 8);
 
   const ragSources = buildBaseRagSources({
     budgetRag,
@@ -694,7 +694,7 @@ export async function enrichTripPlanWithAi(
       tipsOut = [
         `유전 알고리즘으로 하루 동선을 재배치해 ${savedLabel}를 줄였어요.`,
         ...tipsOut,
-      ].slice(0, 5);
+      ].slice(0, 10);
       ragSources.push({
         id: "route-ga",
         category: "동선",

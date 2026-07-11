@@ -1,4 +1,5 @@
-/** Shared AI prompt constraints — keep short to save tokens */
+/** Shared AI prompt constraints */
+
 export const AI_NO_FAKE_QUOTES =
   "항공·숙소 임의 견적 금액 금지. RAG 밖 사실 단정 금지.";
 
@@ -9,3 +10,9 @@ export const AI_NO_FAKE_QUOTES =
  */
 export const AI_VOICE =
   "어투는 친근한 해요체만. ~해요/~이에요/~예요/~세요/~드릴게요/~했어요. ~다/~한다/~입니다 금지.";
+
+/**
+ * 품질 최우선 — 토큰·비용을 아끼지 말고 구체·풍부하게 작성.
+ */
+export const AI_QUALITY_FIRST =
+  "품질 최우선: 토큰·비용을 아끼지 마세요. 짧고 빈약한 답은 금지입니다. 구체적 장소명·이유·실행 순서·시즌 주의·대안까지 최대한 풍부하고 디테일하게 작성하세요.";

@@ -102,7 +102,7 @@ function formKeywords(form: OnboardingForm): string[] {
 
 export function retrieveTravelSources(
   form: OnboardingForm,
-  topK = 4
+  topK = 8
 ): RagSource[] {
   const keywords = formKeywords(form);
 

@@ -19,11 +19,11 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
 
     openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"
-    openai_timeout_seconds: float = 90.0
+    openai_model: str = "gpt-4o"
+    openai_timeout_seconds: float = 180.0
     openrouter_api_key: str = ""
-    openrouter_model: str = "~openai/gpt-latest"
-    openrouter_timeout_seconds: float = 90.0
+    openrouter_model: str = "openai/gpt-4o"
+    openrouter_timeout_seconds: float = 180.0
     openrouter_http_referer: str = ""
     openrouter_app_title: str = ""
 

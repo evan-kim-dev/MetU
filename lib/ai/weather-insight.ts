@@ -19,7 +19,7 @@ export function parseWeatherInsightJson(text: string): WeatherInsightResult | nu
       .filter((item): item is string => typeof item === "string")
       .map((item) => item.trim())
       .filter(Boolean)
-      .slice(0, 5);
+      .slice(0, 8);
     const summary = parsed.summary.trim();
     if (!summary || preparation.length === 0) return null;
     return { summary, preparation };
@@ -73,6 +73,6 @@ export function buildLocalWeatherInsight(params: {
 
   return {
     summary,
-    preparation: preparation.slice(0, 4),
+    preparation: preparation.slice(0, 6),
   };
 }

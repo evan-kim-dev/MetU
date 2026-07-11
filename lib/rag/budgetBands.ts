@@ -150,7 +150,7 @@ export function retrieveBudgetRag(
     (b) =>
       Math.abs(b.minPerPerson - band.minPerPerson) <= 1_600_000 ||
       b.id === band.id
-  ).slice(0, 3);
+  ).slice(0, 5);
 
   const contexts = [
     band.content,
