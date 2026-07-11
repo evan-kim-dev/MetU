@@ -13,8 +13,6 @@ export const TABLES = {
   partyChatMessages: "party_chat_messages",
   notifications: "notifications",
   friendships: "friendships",
-  tripPlans: "trip_plans",
-  budgetInsightLogs: "budget_insight_logs",
 } as const;
 
 /** localStorage keys (MVP until Auth+DB 연동) */

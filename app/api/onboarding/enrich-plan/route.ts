@@ -9,8 +9,6 @@ import {
   enrichTripPlanWithAi,
 } from "@/lib/ai/generate-plan";
 import type { TripRecommendation } from "@/lib/ai/types";
-import { createServerSupabase } from "@/lib/supabase/server";
-import { insertTripPlanToSupabase } from "@/lib/trips/plans-supabase";
 
 export const maxDuration = 90;
 
@@ -64,18 +62,6 @@ export async function POST(request: Request) {
         : buildFallbackTripPlan(form);
 
     const plan = await enrichTripPlanWithAi(fallback);
-
-    try {
-      const supabase = await createServerSupabase();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await insertTripPlanToSupabase(supabase, user.id, form, plan);
-      }
-    } catch {
-      // Auth/DB 실패해도 보강 결과는 반환
-    }
 
     return NextResponse.json({ plan });
   } catch {

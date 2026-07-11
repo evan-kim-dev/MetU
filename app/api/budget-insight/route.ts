@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildLocalBudgetInsight } from "@/lib/ai/budget-insight";
 import type { BudgetInsightRecord, BudgetInsightSource } from "@/lib/ai/budget-insight-record";
-import { persistBudgetInsightLog } from "@/lib/ai/persist-budget-insight";
 import { backendFetch } from "@/lib/backend/client";
 import {
   buildBudgetPrompt,
@@ -105,9 +104,8 @@ export async function GET(request: Request) {
 
   const { record } = await buildBudgetInsight(budget);
 
-  void persistBudgetInsightLog(record);
-
-  return NextResponse.json({    insight: record.insight,
+  return NextResponse.json({
+    insight: record.insight,
     source: record.source,
   });
 }
