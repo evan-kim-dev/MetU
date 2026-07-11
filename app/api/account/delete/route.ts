@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { TABLES } from "@/lib/constants";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getServiceSupabase } from "@/lib/supabase/admin";
 
@@ -19,7 +18,7 @@ async function removeAvatarFolder(
 
 /**
  * 회원 탈퇴: 세션 사용자 확인 후 service role로 Auth 유저 삭제.
- * profiles/trips 등은 FK cascade, 커뮤니티 text 키 데이터는 수동 정리.
+ * profiles FK cascade가 커뮤니티/친구/알림 데이터를 함께 정리함.
  */
 export async function POST() {
   const supabase = await createServerSupabase();
@@ -54,19 +53,8 @@ export async function POST() {
   try {
     await removeAvatarFolder(admin, userId);
 
-    await Promise.all([
-      admin.from(TABLES.communityPosts).delete().eq("author_id", userId),
-      admin.from(TABLES.postComments).delete().eq("author_id", userId),
-      admin.from(TABLES.postLikes).delete().eq("user_id", userId),
-      admin.from(TABLES.commentLikes).delete().eq("user_id", userId),
-      admin.from(TABLES.partyMembers).delete().eq("user_id", userId),
-      admin.from(TABLES.notifications).delete().eq("user_id", userId),
-      admin.from(TABLES.notifications).delete().eq("actor_id", userId),
-      admin.from(TABLES.partyChatMessages).delete().eq("sender_id", userId),
-      admin.from(TABLES.friendships).delete().eq("user_id", userId),
-      admin.from(TABLES.friendships).delete().eq("friend_id", userId),
-    ]);
-
+    // profiles FK cascade가 community/friends/notifications를 정리함.
+    // 아바타 스토리지만 선행 정리 후 Auth 유저 삭제.
     const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
     if (deleteError) {
       console.error("[account/delete]", deleteError.message);

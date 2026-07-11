@@ -4,9 +4,7 @@
  */
 export const TABLES = {
   trips: "trips",
-  expenses: "expenses",
   profiles: "profiles",
-  checklistItems: "checklist_items",
   communityPosts: "community_posts",
   postComments: "post_comments",
   postLikes: "post_likes",

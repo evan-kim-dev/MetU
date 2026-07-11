@@ -13,11 +13,14 @@ import type {
   WritablePostCategory,
 } from "@/lib/community/types";
 
+interface ProfileEmbed {
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 interface PostRow {
   id: string;
   author_id: string;
-  author_name: string;
-  author_avatar: string;
   category: WritablePostCategory;
   destination: string;
   title: string;
@@ -25,16 +28,16 @@ interface PostRow {
   image_urls: string[];
   party_data: Omit<PartyInfo, "members" | "current"> | null;
   created_at: string;
+  profiles?: ProfileEmbed | ProfileEmbed[] | null;
 }
 
 interface CommentRow {
   id: string;
   post_id: string;
   author_id: string;
-  author_name: string;
-  author_avatar: string;
   content: string;
   created_at: string;
+  profiles?: ProfileEmbed | ProfileEmbed[] | null;
 }
 
 interface LikeRow {
@@ -50,11 +53,10 @@ interface CommentLikeRow {
 interface PartyMemberRow {
   post_id: string;
   user_id: string;
-  name: string;
-  avatar: string;
   joined_at: string;
   is_host: boolean;
   status: PartyMemberStatus;
+  profiles?: ProfileEmbed | ProfileEmbed[] | null;
 }
 
 type NotificationType =
@@ -65,8 +67,6 @@ type NotificationType =
 const POST_COLUMNS = [
   "id",
   "author_id",
-  "author_name",
-  "author_avatar",
   "category",
   "destination",
   "title",
@@ -74,37 +74,55 @@ const POST_COLUMNS = [
   "image_urls",
   "party_data",
   "created_at",
+  "profiles!community_posts_author_id_fkey(display_name, avatar_url)",
 ].join(", ");
 
 const COMMENT_COLUMNS = [
   "id",
   "post_id",
   "author_id",
-  "author_name",
-  "author_avatar",
   "content",
   "created_at",
+  "profiles!post_comments_author_id_fkey(display_name, avatar_url)",
 ].join(", ");
 
 const PARTY_MEMBER_COLUMNS = [
   "post_id",
   "user_id",
-  "name",
-  "avatar",
   "joined_at",
   "is_host",
   "status",
+  "profiles!party_members_user_id_fkey(display_name, avatar_url)",
 ].join(", ");
+
+function oneProfile(
+  value: ProfileEmbed | ProfileEmbed[] | null | undefined
+): ProfileEmbed | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function displayFromProfile(
+  value: ProfileEmbed | ProfileEmbed[] | null | undefined,
+  fallbackName = "여행자",
+  fallbackAvatar = "👤"
+): { name: string; avatar: string } {
+  const profile = oneProfile(value);
+  const name = profile?.display_name?.trim() || fallbackName;
+  const avatar = profile?.avatar_url?.trim() || fallbackAvatar;
+  return { name, avatar };
+}
 
 function isAcceptedMember(row: PartyMemberRow): boolean {
   return row.is_host || row.status === "accepted";
 }
 
 function memberRowToMember(row: PartyMemberRow): PartyMember {
+  const display = displayFromProfile(row.profiles);
   return {
     id: row.user_id,
-    name: row.name,
-    avatar: row.avatar,
+    name: display.name,
+    avatar: display.avatar,
     joinedAtIso: row.joined_at,
     isHost: row.is_host,
     status: row.status,
@@ -137,17 +155,19 @@ function assemblePost(
   members: PartyMemberRow[],
   commentLikes: CommentLikeRow[] = []
 ): CommunityPost {
+  const author = displayFromProfile(row.profiles);
   const postComments = comments
     .filter((c) => c.post_id === row.id)
     .map((c): PostComment => {
       const likedBy = commentLikes
         .filter((l) => l.comment_id === c.id)
         .map((l) => l.user_id);
+      const commentAuthor = displayFromProfile(c.profiles, "여행자", "💬");
       return {
         id: c.id,
         authorId: c.author_id,
-        author: c.author_name,
-        avatar: c.author_avatar,
+        author: commentAuthor.name,
+        avatar: commentAuthor.avatar,
         content: c.content,
         createdAt: formatRelativeTime(c.created_at),
         createdAtIso: c.created_at,
@@ -179,8 +199,8 @@ function assemblePost(
     id: row.id,
     category: row.category,
     authorId: row.author_id,
-    author: row.author_name,
-    avatar: row.author_avatar,
+    author: author.name,
+    avatar: author.avatar,
     destination: row.destination,
     title: row.title,
     preview: row.body,
@@ -258,8 +278,6 @@ export async function insertCommunityPostToSupabase(
     .from(TABLES.communityPosts)
     .insert({
       author_id: authorId,
-      author_name: authorName,
-      author_avatar: authorAvatar,
       category: input.category,
       destination: input.destination.trim(),
       title: input.title.trim(),
@@ -270,16 +288,24 @@ export async function insertCommunityPostToSupabase(
     .select(POST_COLUMNS)
     .single();
 
-  if (error || !data) return null;
+  if (error || !data) {
+    if (error) console.error("[community] insert post failed:", error.message);
+    return null;
+  }
 
   const row = data as unknown as PostRow;
+  // insert 직후 join이 비면 호출자 스냅샷으로 보강
+  if (!oneProfile(row.profiles)) {
+    row.profiles = {
+      display_name: authorName,
+      avatar_url: authorAvatar.startsWith("http") ? authorAvatar : null,
+    };
+  }
 
   if (input.party) {
     await supabase.from(TABLES.partyMembers).insert({
       post_id: row.id,
       user_id: authorId,
-      name: authorName,
-      avatar: authorAvatar,
       is_host: true,
       status: "accepted",
     });
@@ -290,11 +316,13 @@ export async function insertCommunityPostToSupabase(
         {
           post_id: row.id,
           user_id: authorId,
-          name: authorName,
-          avatar: authorAvatar,
           joined_at: row.created_at,
           is_host: true,
           status: "accepted" as const,
+          profiles: {
+            display_name: authorName,
+            avatar_url: authorAvatar.startsWith("http") ? authorAvatar : null,
+          },
         },
       ]
     : [];
@@ -425,8 +453,6 @@ export async function insertPostCommentToSupabase(
     .insert({
       post_id: postId,
       author_id: authorId,
-      author_name: authorName,
-      author_avatar: authorAvatar,
       content: content.trim(),
     })
     .select(COMMENT_COLUMNS)
@@ -435,11 +461,19 @@ export async function insertPostCommentToSupabase(
   if (error || !data) return null;
 
   const row = data as unknown as CommentRow;
+  const display = displayFromProfile(
+    row.profiles ?? {
+      display_name: authorName,
+      avatar_url: authorAvatar.startsWith("http") ? authorAvatar : null,
+    },
+    authorName,
+    authorAvatar
+  );
   return {
     id: row.id,
     authorId: row.author_id,
-    author: row.author_name,
-    avatar: row.author_avatar,
+    author: display.name,
+    avatar: display.avatar,
     content: row.content,
     createdAt: formatRelativeTime(row.created_at),
     createdAtIso: row.created_at,
@@ -482,7 +516,7 @@ export async function joinPartyInSupabase(
   postId: string,
   userId: string,
   name: string,
-  avatar: string
+  _avatar: string
 ): Promise<boolean> {
   const { data: post, error: postError } = await supabase
     .from(TABLES.communityPosts)
@@ -523,8 +557,6 @@ export async function joinPartyInSupabase(
   const { error } = await supabase.from(TABLES.partyMembers).insert({
     post_id: postId,
     user_id: userId,
-    name,
-    avatar,
     is_host: false,
     status: "pending",
   });
