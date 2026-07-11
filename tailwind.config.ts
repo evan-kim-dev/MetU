@@ -158,8 +158,14 @@ const config: Config = {
           "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
         },
         "typing-dot": {
-          "0%, 60%, 100%": { transform: "translateY(0)", opacity: "0.35" },
-          "30%": { transform: "translateY(-5px)", opacity: "1" },
+          "0%, 80%, 100%": {
+            transform: "translateY(0) scale(0.85)",
+            opacity: "0.35",
+          },
+          "40%": {
+            transform: "translateY(-7px) scale(1.15)",
+            opacity: "1",
+          },
         },
         "buddy-think": {
           "0%, 100%": { opacity: "0.55" },
@@ -205,7 +211,7 @@ const config: Config = {
         "text-wave": "text-wave 1.1s ease-in-out infinite",
         "fade-up": "fade-up 0.65s ease-out both",
         "buddy-pop": "buddy-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "typing-dot": "typing-dot 1.05s ease-in-out infinite",
+        "typing-dot": "typing-dot 0.9s ease-in-out infinite",
         "buddy-think": "buddy-think 1.6s ease-in-out infinite",
         "float-soft": "float-soft 5s ease-in-out infinite",
         "glow-pulse": "glow-pulse 4s ease-in-out infinite",

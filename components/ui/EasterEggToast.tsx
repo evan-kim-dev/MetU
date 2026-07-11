@@ -52,8 +52,9 @@ const BUDDY_REPLIES: Record<string, string[]> = {
 };
 
 const QUICK_CHIPS = [
+  { id: "chat", label: "뭐 도와줄 수 있어?" },
   { id: "budget", label: "예산 조언" },
-  { id: "secret", label: "숨은 팁" },
+  { id: "idea", label: "아이디어 좀" },
   { id: "metu", label: "Met U?" },
 ] as const;
 
@@ -76,26 +77,30 @@ function BuddyTypingBubble() {
       role="status"
       aria-live="polite"
       aria-label="버디가 답변 생성 중"
-      className="relative self-start max-w-[85%] overflow-hidden rounded-2xl rounded-bl-md border border-brand/15 bg-gradient-to-br from-brand/8 via-surface-soft to-brand-soft/20 px-3.5 py-3 shadow-sm animate-fade-up"
+      className="self-start animate-fade-up"
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-brand/10 to-transparent motion-safe:animate-shimmer"
-      />
-      <div className="relative flex items-center gap-2.5">
-        <span className="relative flex h-2 w-2 shrink-0">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-brand/40 motion-safe:animate-ping" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
-        </span>
-        <span className="flex items-center gap-1" aria-hidden>
-          <span className="h-1.5 w-1.5 rounded-full bg-brand motion-safe:animate-typing-dot" />
-          <span className="h-1.5 w-1.5 rounded-full bg-brand/75 motion-safe:animate-typing-dot [animation-delay:0.15s]" />
-          <span className="h-1.5 w-1.5 rounded-full bg-brand/45 motion-safe:animate-typing-dot [animation-delay:0.3s]" />
-        </span>
-        <span className="text-sm font-medium text-ink-caption motion-safe:animate-buddy-think">
-          팩트 조준 중
-          <span className="inline-block w-4 text-left">…</span>
-        </span>
+      <div className="flex items-end gap-2">
+        <div className="mb-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-brand/20 bg-surface-white shadow-sm">
+          <BuddyAvatar className="h-5 w-5" />
+        </div>
+        <div className="relative min-w-[7.5rem] rounded-2xl rounded-bl-md bg-surface-soft px-3.5 py-2.5">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl rounded-bl-md"
+          >
+            <span className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-brand/12 to-transparent motion-safe:animate-shimmer" />
+          </span>
+          <div className="relative flex flex-col gap-1.5">
+            <div className="flex h-6 items-end gap-1.5 pb-0.5" aria-hidden>
+              <i className="buddy-typing-dot" />
+              <i className="buddy-typing-dot" />
+              <i className="buddy-typing-dot" />
+            </div>
+            <span className="text-[11px] font-semibold tracking-wide text-ink-caption animate-buddy-think">
+              생각 중…
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -171,9 +176,9 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
     const line =
       greeting ??
       pickReply([
-        "손가락 근력이 여행 예산보다 낫네요. 반갑습니다, Met U.",
-        "짠. 숨은 버디 출동. 칭찬은 없고 팩트만 있어요.",
-        "예산 양심 담당이에요. 마음 약한 사람 말고 지갑 약한 사람 담당.",
+        "어 나야. MetU 버디. 뭐든지 말해봐.",
+        "숨은 메뉴 찾았네. 심심하면 말 걸든가.",
+        "왔어? 태도 따라 나도 바뀜. 알아서 해.",
       ]);
     setBuddyVisible(true);
     setBubble(line);
@@ -194,7 +199,7 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
             {
               id: "hello",
               role: "buddy",
-              text: "안녕하세요. MetU 버디예요. 달콤한 위로 원하면 다른 앱 가세요. 여기는 야유와 예산 팩트만 팔아요.",
+              text: "나 MetU 버디. 착하면 착하게, 싸가지 없으면 똑같이 간다. 뭐든 물어봐.",
             },
           ]
     );
@@ -315,7 +320,7 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
               className="absolute inset-0 bg-ink-heading/35 backdrop-blur-[2px]"
               onClick={() => setChatOpen(false)}
             />
-            <div className="relative z-10 flex h-[min(70dvh,520px)] w-full max-w-mobile flex-col rounded-t-[28px] border border-line-soft bg-surface-white shadow-lg animate-fade-up">
+            <div className="relative z-10 flex h-[min(78dvh,640px)] w-full max-w-mobile flex-col rounded-t-[28px] border border-line-soft bg-surface-white shadow-lg animate-fade-up">
               <div className="flex items-center gap-3 border-b border-line-soft px-4 py-3">
                 <BuddyAvatar className="h-10 w-10 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -323,7 +328,7 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
                     MetU 버디
                   </p>
                   <p className="text-2xs font-medium text-ink-caption">
-                    숨은 여행 상담 · 이스터 에그
+                    태도 미러링 · 자유 분방 AI
                   </p>
                 </div>
                 <button
@@ -341,7 +346,7 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
                   <div
                     key={msg.id}
                     className={[
-                      "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+                      "max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
                       msg.role === "buddy"
                         ? "self-start rounded-bl-md bg-surface-soft text-ink-body"
                         : "self-end rounded-br-md bg-brand text-surface-white",
@@ -381,7 +386,7 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   disabled={sending}
-                  placeholder="버디에게 한마디…"
+                  placeholder="무엇이든 물어보세요…"
                   className="min-w-0 flex-1 rounded-xl2 border border-line-soft bg-surface-base px-3.5 py-2.5 text-sm text-ink-heading outline-none placeholder:text-ink-caption focus:border-brand/40 disabled:opacity-60"
                 />
                 <button

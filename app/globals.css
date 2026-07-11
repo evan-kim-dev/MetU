@@ -129,4 +129,45 @@
         theme("colors.surface.base") 100%
       );
   }
+
+  @keyframes buddy-dot-bounce {
+    0%,
+    80%,
+    100% {
+      transform: translateY(0) scale(0.9);
+      opacity: 0.4;
+    }
+    40% {
+      transform: translateY(-8px) scale(1.2);
+      opacity: 1;
+    }
+  }
+
+  .buddy-typing-dot {
+    display: block;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 9999px;
+    background: theme("colors.brand.DEFAULT");
+    animation: buddy-dot-bounce 0.85s ease-in-out infinite;
+    will-change: transform, opacity;
+  }
+
+  .buddy-typing-dot:nth-child(2) {
+    animation-delay: 0.15s;
+    opacity: 0.75;
+  }
+
+  .buddy-typing-dot:nth-child(3) {
+    animation-delay: 0.3s;
+    opacity: 0.5;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .buddy-typing-dot {
+      animation: none;
+      opacity: 0.7;
+      transform: none;
+    }
+  }
 }

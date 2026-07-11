@@ -36,7 +36,7 @@ export function HomeGreeting() {
     windowMs: 3000,
     onceKey: "metu-egg-greeting",
     onTrigger: () => {
-      summonBuddy("손가락 근력이 여행 예산보다 낫네요. 반갑습니다, Met U.");
+      summonBuddy("손가락으로 일곱 번? 뭐야 너. 나 MetU 버디야.");
     },
   });
 

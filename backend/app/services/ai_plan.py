@@ -120,7 +120,7 @@ class InsightService:
         return await self.openai.chat(
             system=system,
             user=prompt,
-            temperature=0.9,
-            max_tokens=1200,
-            timeout=60.0,
+            temperature=1.0,
+            max_tokens=4000,
+            timeout=90.0,
         )
