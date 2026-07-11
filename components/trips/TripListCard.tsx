@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { memo } from "react";
 import { CalendarDays, Check, ChevronRight, MapPin } from "lucide-react";
 import { formatKRW } from "@/lib/mock/home";
 import type { Trip } from "@/lib/trips/types";
@@ -19,7 +20,7 @@ const STATUS_LABEL: Record<Trip["status"], string> = {
   completed: "완료",
 };
 
-export function TripListCard({
+export const TripListCard = memo(function TripListCard({
   trip,
   editMode = false,
   selected = false,
@@ -119,4 +120,4 @@ export function TripListCard({
       {content}
     </Link>
   );
-}
+});

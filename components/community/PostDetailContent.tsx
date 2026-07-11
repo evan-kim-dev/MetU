@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   Heart,
@@ -15,14 +13,15 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { WritePostSheet } from "@/components/community/WritePostSheet";
 import { PostImageGallery } from "@/components/community/PostImageGallery";
+import { AuthorAvatarLink } from "@/components/community/AuthorAvatarLink";
+import {
+  formatPartyDateRange,
+  usePostDetailActions,
+} from "@/components/community/usePostDetailActions";
 import {
   CATEGORY_COLORS,
   CATEGORY_LABELS,
 } from "@/lib/mock/community";
-import { useAuth } from "@/lib/auth/AuthProvider";
-import { requiresCommunityLogin } from "@/lib/auth/community-access";
-import { useCommunity } from "@/lib/community/CommunityProvider";
-import { getCommentCount, getLikeCount } from "@/lib/community/counts";
 import { formatPartyBudgetPerPerson } from "@/lib/community/format";
 
 interface PostDetailContentProps {
@@ -30,42 +29,60 @@ interface PostDetailContentProps {
   listHref?: "/opod" | "/board";
 }
 
-function formatDateRange(start: string, end: string): string {
-  return `${start.replaceAll("-", ".")} ~ ${end.replaceAll("-", ".")}`;
-}
-
 export function PostDetailContent({
   postId,
   listHref = "/board",
 }: PostDetailContentProps) {
-  const router = useRouter();
-  const { user, provider } = useAuth();
   const {
-    getPost,
+    router,
+    post,
+    isReady,
+    commentDraft,
+    setCommentDraft,
+    editOpen,
+    setEditOpen,
+    editingCommentId,
+    setEditingCommentId,
+    commentEditDraft,
+    setCommentEditDraft,
     updatePost,
-    removePost,
-    canEdit,
     toggleLike,
-    isLiked,
-    addComment,
-    updateComment,
-    removeComment,
-    canManageComment,
-    joinParty,
+    toggleCommentLike,
+    isCommentLiked,
     leaveParty,
     cancelJoinRequest,
     acceptJoin,
     rejectJoin,
-    isPartyJoined,
-    isPartyPending,
-    isPartyHost,
-    isPartyFull,
-  } = useCommunity();
-  const post = getPost(postId);
-  const [commentDraft, setCommentDraft] = useState("");
-  const [editOpen, setEditOpen] = useState(false);
-  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
-  const [commentEditDraft, setCommentEditDraft] = useState("");
+    canManageComment,
+    editable,
+    isParty,
+    liked,
+    joined,
+    pending,
+    isHost,
+    isFull,
+    slotsLeft,
+    likeCount,
+    commentCount,
+    pendingMembers = [],
+    needsLogin = false,
+    handleJoinRequest,
+    handleDelete,
+    handleSubmitComment,
+    handleDeleteComment,
+    handleStartEditComment,
+    handleSaveComment,
+  } = usePostDetailActions(postId, listHref);
+
+  if (!post && !isReady) {
+    return (
+      <MobileShell title="게시글" showBack backHref={listHref}>
+        <div className="flex flex-col items-center gap-4 px-5 py-20 text-center">
+          <p className="text-sm text-ink-caption">게시글을 불러오는 중이에요…</p>
+        </div>
+      </MobileShell>
+    );
+  }
 
   if (!post) {
     return (
@@ -80,66 +97,6 @@ export function PostDetailContent({
         </div>
       </MobileShell>
     );
-  }
-
-  const editable = canEdit(post);
-  const isParty = post.category === "party" && post.party;
-  const liked = isLiked(post);
-  const joined = isParty ? isPartyJoined(post) : false;
-  const pending = isParty ? isPartyPending(post) : false;
-  const isHost = isParty ? isPartyHost(post) : false;
-  const isFull = isParty ? isPartyFull(post) : false;
-  const slotsLeft = isParty ? post.party!.needed - post.party!.current : 0;
-  const likeCount = getLikeCount(post);
-  const commentCount = getCommentCount(post);
-  const pendingMembers = post.party?.pendingMembers ?? [];
-  const needsLogin = requiresCommunityLogin(user, provider);
-
-  function handleJoinRequest() {
-    if (!post) return;
-    if (needsLogin) {
-      router.push(`/login?next=${encodeURIComponent(`${listHref}/${post.id}`)}`);
-      return;
-    }
-    joinParty(post.id);
-  }
-
-  function handleDelete() {
-    if (!editable || !post) return;
-    const ok = window.confirm("이 게시글을 삭제할까요?");
-    if (!ok) return;
-    removePost(post.id);
-    router.replace(listHref);
-  }
-
-  function handleSubmitComment() {
-    if (!commentDraft.trim() || !post) return;
-    addComment(post.id, commentDraft);
-    setCommentDraft("");
-  }
-
-  function handleDeleteComment(commentId: string) {
-    if (!post) return;
-    const ok = window.confirm("이 댓글을 삭제할까요?");
-    if (!ok) return;
-    removeComment(post.id, commentId);
-    if (editingCommentId === commentId) {
-      setEditingCommentId(null);
-      setCommentEditDraft("");
-    }
-  }
-
-  function handleStartEditComment(commentId: string, content: string) {
-    setEditingCommentId(commentId);
-    setCommentEditDraft(content);
-  }
-
-  function handleSaveComment(commentId: string) {
-    if (!commentEditDraft.trim() || !post) return;
-    const ok = updateComment(post.id, commentId, commentEditDraft);
-    if (!ok) return;
-    setEditingCommentId(null);
-    setCommentEditDraft("");
   }
 
   return (
@@ -173,17 +130,18 @@ export function PostDetailContent({
     >
       <article className="flex flex-col gap-5 px-5 pb-10 pt-5">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-soft text-lg">
-              {post.avatar}
-            </span>
-            <div>
-              <p className="text-sm font-bold text-ink-heading">{post.author}</p>
-              <p className="text-xs text-ink-caption">{post.createdAt}</p>
-            </div>
+          <div className="flex min-w-0 items-center gap-3">
+            <AuthorAvatarLink
+              userId={post.authorId}
+              name={post.author}
+              avatar={post.avatar}
+              size="md"
+              showName
+              meta={post.createdAt}
+            />
           </div>
           <span
-            className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${CATEGORY_COLORS[post.category]}`}
+            className={`rounded-full px-2.5 py-1 text-xs font-bold ${CATEGORY_COLORS[post.category]}`}
           >
             {CATEGORY_LABELS[post.category]}
           </span>
@@ -205,17 +163,17 @@ export function PostDetailContent({
         ) : null}
 
         {isParty ? (
-          <section className="rounded-xl2 border border-brand/20 bg-surface-soft p-4">
+          <section className="rounded-2xl border border-brand/20 bg-surface-soft p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-extrabold text-brand-strong">동행 모집 정보</p>
-              <span className="rounded-full bg-brand px-2.5 py-1 text-[11px] font-bold text-white">
+              <span className="rounded-full bg-brand px-2.5 py-1 text-xs font-bold text-white">
                 {post.party!.current}/{post.party!.needed}명
               </span>
             </div>
             <div className="mt-3 grid grid-cols-1 gap-2 text-sm font-semibold text-ink-heading">
               <p className="inline-flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
-                {formatDateRange(post.party!.startDate, post.party!.endDate)}
+                {formatPartyDateRange(post.party!.startDate, post.party!.endDate)}
               </p>
               <p className="inline-flex items-center gap-2">
                 <Users className="h-4 w-4" />
@@ -244,7 +202,7 @@ export function PostDetailContent({
                       <p className="text-sm font-semibold text-ink-heading">
                         {member.name}
                         {member.isHost ? (
-                          <span className="ml-1.5 text-[10px] font-bold text-brand">
+                          <span className="ml-1.5 text-2xs font-bold text-brand">
                             HOST
                           </span>
                         ) : null}
@@ -279,14 +237,14 @@ export function PostDetailContent({
                           type="button"
                           onClick={() => acceptJoin(post.id, member.id)}
                           disabled={isFull}
-                          className="rounded-md bg-brand px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                          className="rounded-md bg-brand px-2.5 py-1.5 text-xs font-bold text-white disabled:opacity-40"
                         >
                           수락
                         </button>
                         <button
                           type="button"
                           onClick={() => rejectJoin(post.id, member.id)}
-                          className="rounded-md border border-line-soft bg-white px-2.5 py-1.5 text-[11px] font-bold text-ink-body"
+                          className="rounded-md border border-line-soft bg-white px-2.5 py-1.5 text-xs font-bold text-ink-body"
                         >
                           거절
                         </button>
@@ -329,7 +287,7 @@ export function PostDetailContent({
                 </p>
               ) : (
                 <PrimaryButton
-                  className="h-11 min-h-[44px] rounded-xl bg-brand text-sm"
+                  className="h-11 min-h-tap rounded-xl bg-brand text-sm"
                   onClick={handleJoinRequest}
                 >
                   {needsLogin
@@ -351,35 +309,36 @@ export function PostDetailContent({
           </section>
         ) : null}
 
-        <section className="flex flex-col gap-4 border-t border-line-soft pt-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="h-4.5 w-4.5 text-ink-body" />
-              <h2 className="text-base font-bold text-ink-heading">
-                댓글 {commentCount}
-              </h2>
-            </div>
-            <button
-              type="button"
-              aria-label={liked ? "좋아요 취소" : "좋아요"}
-              aria-pressed={liked}
-              onClick={() => toggleLike(post.id)}
+        <div className="flex justify-end py-1">
+          <button
+            type="button"
+            aria-label={liked ? "좋아요 취소" : "좋아요"}
+            aria-pressed={liked}
+            onClick={() => toggleLike(post.id)}
+            className={[
+              "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors",
+              liked
+                ? "bg-rose-50 text-rose-600"
+                : "bg-surface-soft text-ink-caption hover:text-ink-body",
+            ].join(" ")}
+          >
+            <Heart
               className={[
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition-colors",
-                liked
-                  ? "bg-rose-50 text-rose-600"
-                  : "bg-surface-soft text-ink-caption hover:text-ink-body",
+                "h-5 w-5 transition-colors",
+                liked ? "fill-rose-500 text-rose-500" : "",
               ].join(" ")}
-            >
-              <Heart
-                className={[
-                  "h-5 w-5 transition-colors",
-                  liked ? "fill-rose-500 text-rose-500" : "",
-                ].join(" ")}
-                strokeWidth={2.2}
-              />
-              {likeCount}
-            </button>
+              strokeWidth={2.2}
+            />
+            {likeCount}
+          </button>
+        </div>
+
+        <section className="flex flex-col gap-4 border-t border-line-soft pt-5">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="h-4.5 w-4.5 text-ink-body" />
+            <h2 className="text-base font-bold text-ink-heading">
+              댓글 {commentCount}
+            </h2>
           </div>
 
           {post.commentList.length === 0 ? (
@@ -391,6 +350,11 @@ export function PostDetailContent({
               {post.commentList.map((comment) => {
                 const manageable = canManageComment(comment);
                 const isEditing = editingCommentId === comment.id;
+                const commentLiked = isCommentLiked?.(comment) ?? false;
+                const commentLikeCount = Math.max(
+                  comment.likes ?? 0,
+                  (comment.likedBy ?? []).length
+                );
 
                 return (
                   <li
@@ -398,18 +362,16 @@ export function PostDetailContent({
                     className="rounded-xl2 border border-line-soft bg-surface-white px-3.5 py-3"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-soft text-sm">
-                          {comment.avatar}
-                        </span>
-                        <div>
-                          <p className="text-sm font-bold text-ink-heading">
-                            {comment.author}
-                          </p>
-                          <p className="text-[11px] text-ink-caption">
-                            {comment.createdAt}
-                          </p>
-                        </div>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <AuthorAvatarLink
+                          userId={comment.authorId}
+                          name={comment.author}
+                          avatar={comment.avatar}
+                          size="sm"
+                          showName
+                          meta={comment.createdAt}
+                          className="gap-2"
+                        />
                       </div>
                       {manageable && !isEditing ? (
                         <div className="flex shrink-0 items-center gap-1">
@@ -463,9 +425,46 @@ export function PostDetailContent({
                         </div>
                       </div>
                     ) : (
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink-body">
-                        {comment.content}
-                      </p>
+                      <>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink-body">
+                          {comment.content}
+                        </p>
+                        <div className="mt-2.5 flex items-center">
+                          <button
+                            type="button"
+                            aria-label={
+                              commentLiked ? "댓글 좋아요 취소" : "댓글 좋아요"
+                            }
+                            aria-pressed={commentLiked}
+                            onClick={() => {
+                              if (needsLogin) {
+                                router.push(
+                                  `/login?next=${encodeURIComponent(`${listHref}/${post.id}`)}`
+                                );
+                                return;
+                              }
+                              toggleCommentLike(post.id, comment.id);
+                            }}
+                            className={[
+                              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors active:scale-95",
+                              commentLiked
+                                ? "bg-rose-50 text-rose-600"
+                                : "bg-surface-soft text-ink-caption",
+                            ].join(" ")}
+                          >
+                            <Heart
+                              className={[
+                                "h-3.5 w-3.5",
+                                commentLiked
+                                  ? "fill-rose-500 text-rose-500"
+                                  : "",
+                              ].join(" ")}
+                              strokeWidth={2.2}
+                            />
+                            {commentLikeCount > 0 ? commentLikeCount : "좋아요"}
+                          </button>
+                        </div>
+                      </>
                     )}
                   </li>
                 );
@@ -488,7 +487,7 @@ export function PostDetailContent({
               }}
             />
             <PrimaryButton
-              className="mt-2 h-11 min-h-[44px] rounded-xl text-sm"
+              className="mt-2 h-11 min-h-tap rounded-xl text-sm"
               disabled={!commentDraft.trim()}
               onClick={handleSubmitComment}
             >

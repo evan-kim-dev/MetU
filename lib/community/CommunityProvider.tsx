@@ -6,28 +6,19 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useRef,
 } from "react";
-import { useAuth } from "@/lib/auth/AuthProvider";
-import { useProfile } from "@/lib/profile/ProfileProvider";
-import { resolveAuthorId } from "@/lib/community/author";
 import {
   formatRelativeTime,
-  loadCommunityPosts,
-  saveCommunityPosts,
 } from "@/lib/community/storage";
 import {
-  acceptPartyMemberInSupabase,
-  cancelJoinRequestInSupabase,
   deleteCommunityPostFromSupabase,
   deletePostCommentFromSupabase,
   fetchCommunityPostsFromSupabase,
   insertCommunityPostToSupabase,
   insertPostCommentToSupabase,
-  joinPartyInSupabase,
-  leavePartyInSupabase,
-  rejectPartyMemberInSupabase,
   togglePostLikeInSupabase,
+  toggleCommentLikeInSupabase,
   updateCommunityPostInSupabase,
   updatePostCommentInSupabase,
 } from "@/lib/community/supabase";
@@ -38,7 +29,13 @@ import type {
   UpdatePostInput,
 } from "@/lib/community/types";
 import { syncPostCounts } from "@/lib/community/counts";
-import { STORAGE_KEYS } from "@/lib/constants";
+import { useCommunityFeed } from "@/lib/community/useCommunityFeed";
+import { useCommunityPartyActions } from "@/lib/community/useCommunityPartyActions";
+import {
+  collectAuthorIdsFromPosts,
+  enrichPostsWithAuthorProfiles,
+  fetchAuthorProfilesByIds,
+} from "@/lib/profile/enrich-author-avatars";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 interface CommunityStateContextValue {
@@ -48,13 +45,15 @@ interface CommunityStateContextValue {
 
 interface CommunityActionContextValue {
   getPost: (id: string) => CommunityPost | undefined;
-  addPost: (input: CreatePostInput) => CommunityPost;
+  addPost: (input: CreatePostInput) => Promise<CommunityPost>;
   updatePost: (id: string, input: UpdatePostInput) => boolean;
   removePost: (id: string) => boolean;
   canEdit: (post: CommunityPost) => boolean;
   canDelete: (post: CommunityPost) => boolean;
   toggleLike: (postId: string) => void;
   isLiked: (post: CommunityPost) => boolean;
+  toggleCommentLike: (postId: string, commentId: string) => void;
+  isCommentLiked: (comment: PostComment) => boolean;
   addComment: (postId: string, content: string) => boolean;
   updateComment: (postId: string, commentId: string, content: string) => boolean;
   removeComment: (postId: string, commentId: string) => boolean;
@@ -76,97 +75,44 @@ export type CommunityContextValue = CommunityStateContextValue &
 const CommunityStateContext = createContext<CommunityStateContextValue | null>(null);
 const CommunityActionContext = createContext<CommunityActionContextValue | null>(null);
 
-function hasPersistedLocalPosts(): boolean {
-  if (typeof window === "undefined") return false;
-  return Boolean(localStorage.getItem(STORAGE_KEYS.communityPosts));
-}
-
 export function CommunityProvider({ children }: { children: React.ReactNode }) {
-  const { user, provider, isReady: isAuthReady } = useAuth();
-  const { profile } = useProfile();
-  const [posts, setPosts] = useState<CommunityPost[]>([]);
-  const [isReady, setIsReady] = useState(false);
+  const {
+    posts,
+    setPosts,
+    isReady,
+    useDb,
+    userId,
+    authorId,
+    profile,
+  } = useCommunityFeed();
 
-  const userId = user?.id ?? null;
-  const useDb = Boolean(userId) && provider !== "guest";
+  const postsRef = useRef(posts);
+  postsRef.current = posts;
+
+  const authorIdsKey = useMemo(
+    () => collectAuthorIdsFromPosts(posts).sort().join(","),
+    [posts]
+  );
 
   useEffect(() => {
-    if (!isAuthReady) return;
+    if (!isReady || !authorIdsKey) return;
 
     let cancelled = false;
+    const ids = authorIdsKey.split(",").filter(Boolean);
 
-    async function load() {
-      if (!useDb || !userId) {
-        if (!cancelled) {
-          setPosts(loadCommunityPosts());
-          setIsReady(true);
-        }
-        return;
-      }
-
-      const supabase = getBrowserSupabase();
-      if (!supabase) {
-        if (!cancelled) {
-          setPosts(loadCommunityPosts());
-          setIsReady(true);
-        }
-        return;
-      }
-
-      let remote = await fetchCommunityPostsFromSupabase(supabase);
-
-      if (remote.length === 0 && hasPersistedLocalPosts()) {
-        const local = loadCommunityPosts();
-        await Promise.all(
-          local.map((post) =>
-            insertCommunityPostToSupabase(
-            supabase,
-            userId,
-            profile.name,
-            post.avatar,
-            {
-              category: post.category,
-              title: post.title,
-              destination: post.destination,
-              body: post.preview,
-              imageUrls: post.images,
-              party: post.party,
-            }
-          )
-          )
-        );
-        remote = await fetchCommunityPostsFromSupabase(supabase);
-        if (typeof window !== "undefined") {
-          localStorage.removeItem(STORAGE_KEYS.communityPosts);
-        }
-      }
-
-      if (!cancelled) {
-        setPosts(remote.length > 0 ? remote : loadCommunityPosts());
-        setIsReady(true);
-      }
-    }
-
-    void load();
+    void fetchAuthorProfilesByIds(ids).then((profiles) => {
+      if (cancelled || Object.keys(profiles).length === 0) return;
+      setPosts((prev) => enrichPostsWithAuthorProfiles(prev, profiles));
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [isAuthReady, useDb, userId]);
-
-  useEffect(() => {
-    if (!isReady || useDb) return;
-    saveCommunityPosts(posts.map(syncPostCounts));
-  }, [posts, isReady, useDb]);
-
-  const authorId = useMemo(
-    () => resolveAuthorId(user, provider),
-    [provider, user]
-  );
+  }, [authorIdsKey, isReady, setPosts]);
 
   const getPost = useCallback(
-    (id: string) => posts.find((post) => post.id === id),
-    [posts]
+    (id: string) => postsRef.current.find((post) => post.id === id),
+    []
   );
 
   const canEdit = useCallback(
@@ -180,23 +126,27 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addPost = useCallback(
-    (input: CreatePostInput): CommunityPost => {
+    async (input: CreatePostInput): Promise<CommunityPost> => {
       const now = new Date().toISOString();
-      const avatarEmoji =
-        input.category === "party"
+      const authorAvatar =
+        profile.customAvatarUrl ||
+        profile.avatarUrl ||
+        (input.category === "party"
           ? "🎮"
           : input.category === "review"
             ? "🌏"
             : input.category === "tip"
               ? "💡"
-              : "✈️";
+              : input.category === "chat"
+                ? "💬"
+                : "✈️");
 
       const optimistic: CommunityPost = {
         id: `post-${crypto.randomUUID()}`,
         category: input.category,
         authorId,
         author: profile.name,
-        avatar: avatarEmoji,
+        avatar: authorAvatar,
         destination: input.destination.trim(),
         title: input.title.trim(),
         preview: input.body.trim(),
@@ -214,7 +164,7 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
                 {
                   id: authorId,
                   name: profile.name,
-                  avatar: avatarEmoji,
+                  avatar: authorAvatar,
                   joinedAtIso: now,
                   isHost: true,
                 },
@@ -229,31 +179,30 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       if (useDb && userId) {
         const supabase = getBrowserSupabase();
         if (supabase) {
-          void (async () => {
-            const saved = await insertCommunityPostToSupabase(
-              supabase,
-              authorId,
-              profile.name,
-              avatarEmoji,
-              input
+          const saved = await insertCommunityPostToSupabase(
+            supabase,
+            authorId,
+            profile.name,
+            authorAvatar,
+            input
+          );
+          if (saved) {
+            setPosts((prev) =>
+              prev.map((post) => (post.id === optimistic.id ? saved : post))
             );
-            if (saved) {
-              setPosts((prev) =>
-                prev.map((post) => (post.id === optimistic.id ? saved : post))
-              );
-            }
-          })();
+            return saved;
+          }
         }
       }
 
       return optimistic;
     },
-    [authorId, profile.name, useDb, userId]
+    [authorId, profile.avatarUrl, profile.customAvatarUrl, profile.name, setPosts, useDb, userId]
   );
 
   const removePost = useCallback(
     (id: string) => {
-      const target = posts.find((post) => post.id === id);
+      const target = postsRef.current.find((post) => post.id === id);
       if (!target || target.authorId !== authorId) return false;
 
       setPosts((prev) => prev.filter((post) => post.id !== id));
@@ -266,12 +215,12 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       }
       return true;
     },
-    [authorId, posts, useDb, userId]
+    [authorId, setPosts, useDb, userId]
   );
 
   const updatePost = useCallback(
     (id: string, input: UpdatePostInput) => {
-      const target = posts.find((post) => post.id === id);
+      const target = postsRef.current.find((post) => post.id === id);
       if (!target || target.authorId !== authorId) return false;
 
       setPosts((prev) =>
@@ -335,7 +284,7 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       }
       return true;
     },
-    [authorId, posts, profile.name, useDb, userId]
+    [authorId, profile.name, setPosts, useDb, userId]
   );
 
   const isLiked = useCallback(
@@ -373,7 +322,58 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    [authorId, useDb, userId]
+    [authorId, setPosts, useDb, userId]
+  );
+
+  const isCommentLiked = useCallback(
+    (comment: PostComment) => (comment.likedBy ?? []).includes(authorId),
+    [authorId]
+  );
+
+  const toggleCommentLike = useCallback(
+    (postId: string, commentId: string) => {
+      let wasLiked = false;
+
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id !== postId) return post;
+          return {
+            ...post,
+            commentList: post.commentList.map((comment) => {
+              if (comment.id !== commentId) return comment;
+              const likedBy = comment.likedBy ?? [];
+              wasLiked = likedBy.includes(authorId);
+              if (wasLiked) {
+                const nextLikedBy = likedBy.filter((id) => id !== authorId);
+                return {
+                  ...comment,
+                  likedBy: nextLikedBy,
+                  likes: Math.max(0, (comment.likes ?? likedBy.length) - 1),
+                };
+              }
+              return {
+                ...comment,
+                likedBy: [...likedBy, authorId],
+                likes: (comment.likes ?? likedBy.length) + 1,
+              };
+            }),
+          };
+        })
+      );
+
+      if (useDb && userId) {
+        const supabase = getBrowserSupabase();
+        if (supabase) {
+          void toggleCommentLikeInSupabase(
+            supabase,
+            commentId,
+            authorId,
+            wasLiked
+          );
+        }
+      }
+    },
+    [authorId, setPosts, useDb, userId]
   );
 
   const addComment = useCallback(
@@ -391,10 +391,12 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
             id: optimisticId,
             authorId,
             author: profile.name,
-            avatar: "💬",
+            avatar: profile.customAvatarUrl || profile.avatarUrl || "💬",
             content: trimmed,
             createdAt: formatRelativeTime(now),
             createdAtIso: now,
+            likes: 0,
+            likedBy: [],
           };
           return syncPostCounts({
             ...post,
@@ -407,12 +409,15 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
         const supabase = getBrowserSupabase();
         if (supabase) {
           void (async () => {
+            const commentAvatar =
+              profile.customAvatarUrl || profile.avatarUrl || "💬";
             const saved = await insertPostCommentToSupabase(
               supabase,
               postId,
               authorId,
               profile.name,
-              trimmed
+              trimmed,
+              commentAvatar
             );
             if (saved) {
               setPosts((prev) =>
@@ -432,7 +437,7 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       }
       return true;
     },
-    [authorId, profile.name, useDb, userId]
+    [authorId, profile.name, setPosts, useDb, userId]
   );
 
   const canManageComment = useCallback(
@@ -479,7 +484,7 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       }
       return updated;
     },
-    [authorId, useDb, userId]
+    [authorId, setPosts, useDb, userId]
   );
 
   const removeComment = useCallback(
@@ -511,278 +516,26 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       }
       return removed;
     },
-    [authorId, useDb, userId]
+    [authorId, setPosts, useDb, userId]
   );
 
-  const isPartyJoined = useCallback(
-    (post: CommunityPost) =>
-      Boolean(
-        post.party?.members.some(
-          (member) =>
-            member.id === authorId &&
-            (member.isHost || member.status === "accepted" || member.status == null)
-        )
-      ),
-    [authorId]
-  );
-
-  const isPartyPending = useCallback(
-    (post: CommunityPost) =>
-      Boolean(post.party?.pendingMembers?.some((member) => member.id === authorId)),
-    [authorId]
-  );
-
-  const isPartyHost = useCallback(
-    (post: CommunityPost) => post.authorId === authorId,
-    [authorId]
-  );
-
-  const isPartyFull = useCallback(
-    (post: CommunityPost) =>
-      Boolean(post.party && post.party.current >= post.party.needed),
-    []
-  );
-
-  const joinParty = useCallback(
-    (postId: string) => {
-      // 승인제는 로그인(Supabase) 경로만 — 게스트는 UI에서 로그인 유도
-      if (!useDb || !userId) return false;
-
-      let requested = false;
-      const now = new Date().toISOString();
-
-      setPosts((prev) =>
-        prev.map((post) => {
-          if (post.id !== postId || !post.party) return post;
-          if (post.authorId === authorId) return post;
-          if (post.party.members.some((member) => member.id === authorId)) {
-            return post;
-          }
-          if (post.party.pendingMembers?.some((member) => member.id === authorId)) {
-            return post;
-          }
-          if (post.party.current >= post.party.needed) return post;
-
-          requested = true;
-          const pendingMembers = [
-            ...(post.party.pendingMembers ?? []),
-            {
-              id: authorId,
-              name: profile.name,
-              avatar: "🧑",
-              joinedAtIso: now,
-              status: "pending" as const,
-            },
-          ];
-          return {
-            ...post,
-            party: {
-              ...post.party,
-              pendingMembers,
-            },
-          };
-        })
-      );
-
-      if (requested) {
-        const supabase = getBrowserSupabase();
-        if (supabase) {
-          void (async () => {
-            const ok = await joinPartyInSupabase(
-              supabase,
-              postId,
-              authorId,
-              profile.name,
-              "🧑"
-            );
-            if (!ok) {
-              const remote = await fetchCommunityPostsFromSupabase(supabase);
-              setPosts(remote);
-            }
-          })();
-        }
-      }
-      return requested;
-    },
-    [authorId, profile.name, useDb, userId]
-  );
-
-  const cancelJoinRequest = useCallback(
-    (postId: string) => {
-      let cancelled = false;
-
-      setPosts((prev) =>
-        prev.map((post) => {
-          if (post.id !== postId || !post.party) return post;
-          const pending = post.party.pendingMembers ?? [];
-          if (!pending.some((member) => member.id === authorId)) return post;
-
-          cancelled = true;
-          return {
-            ...post,
-            party: {
-              ...post.party,
-              pendingMembers: pending.filter((member) => member.id !== authorId),
-            },
-          };
-        })
-      );
-
-      if (cancelled && useDb && userId) {
-        const supabase = getBrowserSupabase();
-        if (supabase) {
-          void cancelJoinRequestInSupabase(supabase, postId, authorId);
-        }
-      }
-      return cancelled;
-    },
-    [authorId, useDb, userId]
-  );
-
-  const acceptJoin = useCallback(
-    (postId: string, memberId: string) => {
-      if (!useDb || !userId) return false;
-      let accepted = false;
-      const now = new Date().toISOString();
-
-      setPosts((prev) =>
-        prev.map((post) => {
-          if (post.id !== postId || !post.party) return post;
-          if (post.authorId !== authorId) return post;
-          if (post.party.current >= post.party.needed) return post;
-
-          const pending = post.party.pendingMembers ?? [];
-          const target = pending.find((m) => m.id === memberId);
-          if (!target) return post;
-
-          accepted = true;
-          const members = [
-            ...post.party.members,
-            {
-              ...target,
-              status: "accepted" as const,
-              joinedAtIso: now,
-            },
-          ];
-          return {
-            ...post,
-            party: {
-              ...post.party,
-              members,
-              current: members.length,
-              pendingMembers: pending.filter((m) => m.id !== memberId),
-            },
-          };
-        })
-      );
-
-      if (accepted) {
-        const supabase = getBrowserSupabase();
-        if (supabase) {
-          void (async () => {
-            const ok = await acceptPartyMemberInSupabase(
-              supabase,
-              postId,
-              authorId,
-              memberId
-            );
-            if (!ok) {
-              const remote = await fetchCommunityPostsFromSupabase(supabase);
-              setPosts(remote);
-            }
-          })();
-        }
-      }
-      return accepted;
-    },
-    [authorId, useDb, userId]
-  );
-
-  const rejectJoin = useCallback(
-    (postId: string, memberId: string) => {
-      if (!useDb || !userId) return false;
-      let rejected = false;
-
-      setPosts((prev) =>
-        prev.map((post) => {
-          if (post.id !== postId || !post.party) return post;
-          if (post.authorId !== authorId) return post;
-
-          const pending = post.party.pendingMembers ?? [];
-          if (!pending.some((m) => m.id === memberId)) return post;
-
-          rejected = true;
-          return {
-            ...post,
-            party: {
-              ...post.party,
-              pendingMembers: pending.filter((m) => m.id !== memberId),
-            },
-          };
-        })
-      );
-
-      if (rejected) {
-        const supabase = getBrowserSupabase();
-        if (supabase) {
-          void (async () => {
-            const ok = await rejectPartyMemberInSupabase(
-              supabase,
-              postId,
-              authorId,
-              memberId
-            );
-            if (!ok) {
-              const remote = await fetchCommunityPostsFromSupabase(supabase);
-              setPosts(remote);
-            }
-          })();
-        }
-      }
-      return rejected;
-    },
-    [authorId, useDb, userId]
-  );
-
-  const leaveParty = useCallback(
-    (postId: string) => {
-      let left = false;
-
-      setPosts((prev) =>
-        prev.map((post) => {
-          if (post.id !== postId || !post.party) return post;
-          if (post.authorId === authorId) return post;
-          if (!post.party.members.some((member) => member.id === authorId)) {
-            return post;
-          }
-
-          left = true;
-          const members = post.party.members.filter(
-            (member) => member.id !== authorId
-          );
-          return {
-            ...post,
-            party: {
-              ...post.party,
-              members,
-              current: members.length,
-            },
-          };
-        })
-      );
-
-      if (left && useDb && userId) {
-        const supabase = getBrowserSupabase();
-        if (supabase) {
-          void (async () => {
-            await leavePartyInSupabase(supabase, postId, authorId);
-          })();
-        }
-      }
-      return left;
-    },
-    [authorId, useDb, userId]
-  );
+  const {
+    joinParty,
+    leaveParty,
+    cancelJoinRequest,
+    acceptJoin,
+    rejectJoin,
+    isPartyJoined,
+    isPartyPending,
+    isPartyHost,
+    isPartyFull,
+  } = useCommunityPartyActions({
+    setPosts,
+    useDb,
+    userId,
+    authorId,
+    profileName: profile.name,
+  });
 
   const stateValue = useMemo(
     () => ({
@@ -802,6 +555,8 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       canDelete,
       toggleLike,
       isLiked,
+      toggleCommentLike,
+      isCommentLiked,
       addComment,
       updateComment,
       removeComment,
@@ -825,6 +580,8 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       canDelete,
       toggleLike,
       isLiked,
+      toggleCommentLike,
+      isCommentLiked,
       addComment,
       updateComment,
       removeComment,
@@ -850,27 +607,24 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useCommunity() {
-  const state = useContext(CommunityStateContext);
-  const actions = useContext(CommunityActionContext);
-  if (!state || !actions) {
-    throw new Error("useCommunity must be used within CommunityProvider");
-  }
-  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
-}
-
 export function useCommunityState() {
-  const context = useContext(CommunityStateContext);
-  if (!context) {
+  const state = useContext(CommunityStateContext);
+  if (!state) {
     throw new Error("useCommunityState must be used within CommunityProvider");
   }
-  return context;
+  return state;
 }
 
 export function useCommunityActions() {
-  const context = useContext(CommunityActionContext);
-  if (!context) {
+  const actions = useContext(CommunityActionContext);
+  if (!actions) {
     throw new Error("useCommunityActions must be used within CommunityProvider");
   }
-  return context;
+  return actions;
+}
+
+export function useCommunity() {
+  const state = useCommunityState();
+  const actions = useCommunityActions();
+  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
 }

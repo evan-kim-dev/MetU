@@ -1,9 +1,10 @@
 import { cache } from "react";
-import { MOCK_DEALS } from "@/lib/deals/data";
+import type { DealPlace } from "@/lib/deals/data";
 
-const loadRecommended = cache(async () => MOCK_DEALS);
+/** Early-access: 홈 추천은 데모 없이 빈 목록으로 시작 */
+const loadRecommended = cache(async (): Promise<DealPlace[]> => []);
 
-export const loadHomeData = cache(async () => {
+export async function loadHomeData() {
   const recommended = await loadRecommended();
   return { recommended };
-});
+}

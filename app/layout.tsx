@@ -12,6 +12,12 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "MetU",
   description: "예산 기반 AI 여행 플래너",
+  applicationName: "MetU",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MetU",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -28,7 +34,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#F8F9FF", // surface.base
+  viewportFit: "cover",
+  themeColor: "#F8F9FF",
 };
 
 export const dynamic = "force-dynamic";
@@ -42,7 +49,6 @@ export default function RootLayout({
   return (
     <html lang="ko" className={jakarta.variable} suppressHydrationWarning>
       <body>
-        {/* 데스크톱에서도 모바일 캔버스를 중앙 정렬하기 위한 바깥 래퍼 */}
         <div className="flex min-h-dvh justify-center bg-canvas">
           <div className="relative flex h-dvh w-full max-w-mobile flex-col overflow-hidden bg-surface-base shadow-soft">
             <AppProviders>{children}</AppProviders>

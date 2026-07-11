@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { memo } from "react";
 import { CalendarDays, Heart, MessageCircle, Users, Wallet } from "lucide-react";
 import {
   CATEGORY_COLORS,
   CATEGORY_LABELS,
   type CommunityPost,
 } from "@/lib/mock/community";
+import { AuthorAvatarLink } from "@/components/community/AuthorAvatarLink";
+import { FriendAddButton } from "@/components/community/FriendAddButton";
 import { PostImageGallery } from "@/components/community/PostImageGallery";
 import { getCommentCount, getLikeCount } from "@/lib/community/counts";
 import { formatPartyBudgetPerPerson } from "@/lib/community/format";
@@ -22,7 +25,7 @@ function formatDateRange(start: string, end: string): string {
   return `${startLabel} ~ ${endLabel}`;
 }
 
-export function PostCard({
+export const PostCard = memo(function PostCard({
   post,
   basePath = "/board",
   interactive = true,
@@ -34,15 +37,22 @@ export function PostCard({
   const content = (
     <>
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-soft text-base">
-            {post.avatar}
-          </span>
-          <div>
-            <p className="text-sm font-bold text-ink-heading">{post.author}</p>
-            <p className="text-xs text-ink-caption">{post.createdAt}</p>
-          </div>
-        </div>
+        <AuthorAvatarLink
+          userId={post.authorId}
+          name={post.author}
+          avatar={post.avatar}
+          size="sm"
+          showName
+          meta={post.createdAt}
+          className="min-w-0 flex-1"
+          nameTrailing={
+            <FriendAddButton
+              friendId={post.authorId}
+              friendName={post.author}
+              variant="card"
+            />
+          }
+        />
         <span
           className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${CATEGORY_COLORS[post.category]}`}
         >
@@ -128,4 +138,4 @@ export function PostCard({
       {content}
     </Link>
   );
-}
+});

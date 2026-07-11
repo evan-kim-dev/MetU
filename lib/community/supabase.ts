@@ -42,6 +42,11 @@ interface LikeRow {
   user_id: string;
 }
 
+interface CommentLikeRow {
+  comment_id: string;
+  user_id: string;
+}
+
 interface PartyMemberRow {
   post_id: string;
   user_id: string;
@@ -129,12 +134,16 @@ function assemblePost(
   row: PostRow,
   comments: CommentRow[],
   likes: LikeRow[],
-  members: PartyMemberRow[]
+  members: PartyMemberRow[],
+  commentLikes: CommentLikeRow[] = []
 ): CommunityPost {
   const postComments = comments
     .filter((c) => c.post_id === row.id)
-    .map(
-      (c): PostComment => ({
+    .map((c): PostComment => {
+      const likedBy = commentLikes
+        .filter((l) => l.comment_id === c.id)
+        .map((l) => l.user_id);
+      return {
         id: c.id,
         authorId: c.author_id,
         author: c.author_name,
@@ -142,8 +151,10 @@ function assemblePost(
         content: c.content,
         createdAt: formatRelativeTime(c.created_at),
         createdAtIso: c.created_at,
-      })
-    );
+        likes: likedBy.length,
+        likedBy,
+      };
+    });
 
   const likedBy = likes.filter((l) => l.post_id === row.id).map((l) => l.user_id);
   const postMembers = members.filter((m) => m.post_id === row.id);
@@ -206,8 +217,22 @@ export async function fetchCommunityPostsFromSupabase(
   const comments = (commentsRes.data ?? []) as unknown as CommentRow[];
   const likes = (likesRes.data ?? []) as unknown as LikeRow[];
   const members = (membersRes.data ?? []) as unknown as PartyMemberRow[];
+  const commentIds = comments.map((c) => c.id);
 
-  return postRows.map((row) => assemblePost(row, comments, likes, members));
+  let commentLikes: CommentLikeRow[] = [];
+  if (commentIds.length > 0) {
+    const { data, error: commentLikesError } = await supabase
+      .from(TABLES.commentLikes)
+      .select("comment_id, user_id")
+      .in("comment_id", commentIds);
+    if (!commentLikesError) {
+      commentLikes = (data ?? []) as unknown as CommentLikeRow[];
+    }
+  }
+
+  return postRows.map((row) =>
+    assemblePost(row, comments, likes, members, commentLikes)
+  );
 }
 
 function partyInputToData(
@@ -307,11 +332,25 @@ export async function updateCommunityPostInSupabase(
     supabase.from(TABLES.partyMembers).select(PARTY_MEMBER_COLUMNS).eq("post_id", postId),
   ]);
 
+  const comments = (commentsRes.data ?? []) as unknown as CommentRow[];
+  const commentIds = comments.map((c) => c.id);
+  let commentLikes: CommentLikeRow[] = [];
+  if (commentIds.length > 0) {
+    const { data, error: commentLikesError } = await supabase
+      .from(TABLES.commentLikes)
+      .select("comment_id, user_id")
+      .in("comment_id", commentIds);
+    if (!commentLikesError) {
+      commentLikes = (data ?? []) as unknown as CommentLikeRow[];
+    }
+  }
+
   return assemblePost(
     row,
-    (commentsRes.data ?? []) as unknown as CommentRow[],
+    comments,
     (likesRes.data ?? []) as unknown as LikeRow[],
-    (membersRes.data ?? []) as unknown as PartyMemberRow[]
+    (membersRes.data ?? []) as unknown as PartyMemberRow[],
+    commentLikes
   );
 }
 
@@ -351,12 +390,35 @@ export async function togglePostLikeInSupabase(
   return !error;
 }
 
+export async function toggleCommentLikeInSupabase(
+  supabase: SupabaseClient,
+  commentId: string,
+  userId: string,
+  liked: boolean
+): Promise<boolean> {
+  if (liked) {
+    const { error } = await supabase
+      .from(TABLES.commentLikes)
+      .delete()
+      .eq("comment_id", commentId)
+      .eq("user_id", userId);
+    return !error;
+  }
+
+  const { error } = await supabase.from(TABLES.commentLikes).insert({
+    comment_id: commentId,
+    user_id: userId,
+  });
+  return !error;
+}
+
 export async function insertPostCommentToSupabase(
   supabase: SupabaseClient,
   postId: string,
   authorId: string,
   authorName: string,
-  content: string
+  content: string,
+  authorAvatar = "💬"
 ): Promise<PostComment | null> {
   const { data, error } = await supabase
     .from(TABLES.postComments)
@@ -364,7 +426,7 @@ export async function insertPostCommentToSupabase(
       post_id: postId,
       author_id: authorId,
       author_name: authorName,
-      author_avatar: "💬",
+      author_avatar: authorAvatar,
       content: content.trim(),
     })
     .select(COMMENT_COLUMNS)
@@ -381,6 +443,8 @@ export async function insertPostCommentToSupabase(
     content: row.content,
     createdAt: formatRelativeTime(row.created_at),
     createdAtIso: row.created_at,
+    likes: 0,
+    likedBy: [],
   };
 }
 

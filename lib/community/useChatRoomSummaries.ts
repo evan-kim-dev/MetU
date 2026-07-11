@@ -42,12 +42,13 @@ export function useChatRoomSummaries(
     let cancelled = false;
 
     async function loadSummaries() {
+      const limit = Math.min(120, Math.max(20, postIds.length * 4));
       const { data, error } = await sb
         .from(TABLES.partyChatMessages)
         .select("post_id, message, created_at")
         .in("post_id", postIds)
         .order("created_at", { ascending: false })
-        .limit(300);
+        .limit(limit);
 
       if (cancelled || error || !data) return;
 

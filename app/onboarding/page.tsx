@@ -18,7 +18,6 @@ import {
 } from "@/components/onboarding/types";
 
 const TOTAL_STEPS = 4;
-const THINKING_MIN_MS = 2200;
 
 function OnboardingPageContent() {
   const router = useRouter();
@@ -88,7 +87,6 @@ function OnboardingPageContent() {
       setSubmitError(null);
       setIsSubmitting(true);
       setShowThinking(true);
-      const startedAt = Date.now();
 
       const res = await fetch("/api/onboarding/session", {
         method: "POST",
@@ -96,12 +94,6 @@ function OnboardingPageContent() {
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error("onboarding-session-save-failed");
-
-      const elapsed = Date.now() - startedAt;
-      const wait = Math.max(0, THINKING_MIN_MS - elapsed);
-      if (wait > 0) {
-        await new Promise((resolve) => window.setTimeout(resolve, wait));
-      }
 
       router.push("/onboarding/result");
     } catch {
@@ -155,6 +147,8 @@ function OnboardingPageContent() {
             endDate={form.endDate}
             flexibleYear={form.flexibleYear}
             flexibleMonth={form.flexibleMonth}
+            budget={form.budget}
+            people={form.people}
             onOriginChange={(origin) => setForm((p) => ({ ...p, origin }))}
             onDestinationChange={(destination) =>
               setForm((p) => ({ ...p, destination }))
@@ -210,9 +204,10 @@ function OnboardingPageContent() {
         <PrimaryButton
           onClick={handleNext}
           disabled={!canProceed || isSubmitting}
+          loading={isSubmitting}
         >
           {isSubmitting
-            ? "AI가 생각 중..."
+            ? "AI가 생각 중…"
             : step === TOTAL_STEPS
               ? "완료하고 추천 받기"
               : "다음"}

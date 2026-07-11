@@ -1,17 +1,12 @@
-import type { OnboardingForm } from "@/components/onboarding/types";
+import type { OnboardingForm } from "@/lib/onboarding/types";
 import type { TripRecommendation } from "@/lib/ai/types";
 import { resolveTripFlightDates } from "@/lib/flights/agoda-url";
 import { resolveAgodaCityId } from "@/lib/hotels/agoda-cities";
+import { addDays } from "@/lib/shared/dates";
 
 const AGODA_HOTEL_BASE = "https://www.agoda.com/ko-kr/search";
 const AGODA_CID = "1922887";
 const AGODA_TAG = "f7739694-dbb7-41bd-aa27-be7c942ce354";
-
-function addDays(isoDate: string, days: number): string {
-  const date = new Date(`${isoDate}T12:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
-}
 
 export function resolveHotelStayDates(
   form: OnboardingForm,

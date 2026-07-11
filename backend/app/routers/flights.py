@@ -3,9 +3,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.config import get_settings
-from app.services.airport_codes import resolve_iata, suggest_nearby_airports
+from app.services.airport_codes import suggest_nearby_airports
 from app.services.fast_flights_service import FastFlightsError, search_google_flights
-from app.services.naver_flights_service import NaverFlightsError, search_naver_flights
 from app.services.icn_airlines_service import (
     IcnAirlinesError,
     fetch_icn_airline_info,
@@ -31,52 +30,6 @@ async def get_nearby_airports(
     lng: float = Query(..., ge=-180, le=180),
 ) -> dict[str, list[str]]:
     return {"airports": suggest_nearby_airports(lat=lat, lng=lng)}
-
-
-@router.get("/airports")
-async def search_airports(
-    query: str = Query(..., min_length=1, description="도시명 또는 IATA 코드"),
-) -> dict[str, Any]:
-    code = resolve_iata(query)
-    if not code:
-        raise HTTPException(status_code=404, detail="airport-not-found")
-    return {"code": code, "query": query.strip()}
-
-
-def _handle_naver_error(exc: NaverFlightsError) -> HTTPException:
-    return HTTPException(status_code=400, detail=exc.detail)
-
-
-@router.get("/naver-search")
-async def search_naver_flights_route(
-    origin: str = Query(..., min_length=1, description="도시명 또는 IATA 코드"),
-    destination: str = Query(..., min_length=1, description="도시명 또는 IATA 코드"),
-    depart_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
-    return_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
-    adults: int = Query(default=1, ge=1, le=9),
-    cabin_class: str = Query(
-        default="economy",
-        pattern="^(economy|premium_economy|business|first)$",
-    ),
-    sort_by: str = Query(
-        default="best",
-        pattern="^(best|price_high|fastest)$",
-    ),
-    limit: int = Query(default=8, ge=1, le=20),
-) -> Any:
-    try:
-        return await search_naver_flights(
-            origin=origin,
-            destination=destination,
-            depart_date=depart_date,
-            return_date=return_date,
-            adults=adults,
-            seat=cabin_class,
-            sort_by=sort_by,
-            limit=limit,
-        )
-    except NaverFlightsError as exc:
-        raise _handle_naver_error(exc) from exc
 
 
 @router.get("/google-search")

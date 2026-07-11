@@ -1,4 +1,4 @@
-export type PostCategory = "all" | "party" | "question" | "review" | "tip";
+export type PostCategory = "all" | "party" | "question" | "review" | "tip" | "chat";
 
 export type WritablePostCategory = Exclude<PostCategory, "all">;
 
@@ -32,6 +32,8 @@ export interface PostComment {
   content: string;
   createdAt: string;
   createdAtIso: string;
+  likes: number;
+  likedBy: string[];
 }
 
 export interface CommunityPost {

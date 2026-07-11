@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Met U AI Design System
+ * Met U AI Design System (restored from cd5c457)
  * 색상/타이포/이펙트 토큰을 중앙화하여 매직 넘버 사용을 최소화한다.
  */
 const config: Config = {
@@ -14,10 +14,11 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#2563EB", // Primary
-          strong: "#004AC6", // Primary text
-          mid: "#3B82F6", // Gradient mid
-          soft: "#818CF8", // Accent / soft indigo
+          DEFAULT: "#2563EB",
+          strong: "#004AC6",
+          mid: "#3B82F6",
+          soft: "#818CF8",
+          indigo: "#6366F1",
         },
         surface: {
           base: "#F8F9FF",
@@ -51,6 +52,22 @@ const config: Config = {
           DEFAULT: "#E9EDF7",
           deep: "#E3E8F5",
         },
+        kakao: {
+          DEFAULT: "#FEE500",
+          strong: "#FAE100",
+          soft: "#FDE047",
+          ink: "#191919",
+        },
+        star: "#FFB800",
+        sky: {
+          soft: "#70B3FF",
+        },
+        toggle: {
+          off: "#D1D5DB",
+        },
+        chart: {
+          track: "#E5E7EB",
+        },
       },
       fontFamily: {
         sans: [
@@ -62,16 +79,62 @@ const config: Config = {
           "sans-serif",
         ],
       },
+      fontSize: {
+        "3xs": ["0.5625rem", { lineHeight: "0.75rem", letterSpacing: "0.01em" }],
+        "2xs": ["0.625rem", { lineHeight: "0.875rem", letterSpacing: "0.01em" }],
+      },
       maxWidth: {
         mobile: "440px",
+        copy: "280px",
+        dialog: "300px",
+        prose: "320px",
+      },
+      height: {
+        13: "52px",
+        touch: "52px",
+        nav: "56px",
+        select: "88px",
+      },
+      minHeight: {
+        touch: "52px",
+        tap: "44px",
+        control: "40px",
+      },
+      width: {
+        chip: "72px",
+      },
+      minWidth: {
+        menu: "132px",
+        fab: "48px",
+      },
+      spacing: {
+        nav: "56px",
+        touch: "52px",
+        "nav-offset": "4.75rem",
+        "safe-b": "env(safe-area-inset-bottom)",
       },
       boxShadow: {
         soft: "0px 4px 20px rgba(0,0,0,0.05)",
         nav: "0px -4px 20px rgba(0,0,0,0.04)",
         glow: "0 12px 28px rgba(37, 99, 235, 0.22)",
+        kakao: "0 8px 24px rgba(254, 229, 0, 0.35)",
+        "kakao-sm": "0 4px 16px rgba(254, 229, 0, 0.3)",
+        overlay: "0 16px 48px rgba(0, 0, 0, 0.12)",
+        "home-fab": "0 10px 24px rgba(37, 99, 235, 0.5)",
+      },
+      borderWidth: {
+        3: "3px",
+      },
+      scale: {
+        97: "0.97",
+        98: "0.98",
+        99: "0.99",
       },
       borderRadius: {
         xl2: "20px",
+      },
+      letterSpacing: {
+        label: "0.08em",
       },
       keyframes: {
         "progress-fill": {
@@ -101,6 +164,28 @@ const config: Config = {
           "0%, 100%": { backgroundPosition: "0% 50%" },
           "50%": { backgroundPosition: "100% 50%" },
         },
+        "route-draw": {
+          "0%": { strokeDashoffset: "240" },
+          "45%": { strokeDashoffset: "0" },
+          "100%": { strokeDashoffset: "0" },
+        },
+        "globe-spin": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        "globe-spin-x": {
+          "0%": { transform: "translateX(-84px)" },
+          "100%": { transform: "translateX(0px)" },
+        },
+        "globe-route": {
+          "0%": { strokeDashoffset: "120" },
+          "40%": { strokeDashoffset: "0" },
+          "100%": { strokeDashoffset: "0" },
+        },
+        "globe-dash": {
+          "0%": { strokeDashoffset: "0" },
+          "100%": { strokeDashoffset: "-32" },
+        },
       },
       animation: {
         shimmer: "shimmer 1.4s ease-in-out infinite",
@@ -109,6 +194,11 @@ const config: Config = {
         "float-soft": "float-soft 5s ease-in-out infinite",
         "glow-pulse": "glow-pulse 4s ease-in-out infinite",
         "logo-gradient": "gradient-shift 5s ease-in-out infinite",
+        "route-draw": "route-draw 4.2s ease-in-out infinite",
+        "globe-spin": "globe-spin 18s linear infinite",
+        "globe-spin-x": "globe-spin-x 16s linear infinite",
+        "globe-route": "globe-route 4.8s ease-in-out infinite",
+        "globe-dash": "globe-dash 1.6s linear infinite",
       },
     },
   },

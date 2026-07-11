@@ -5,46 +5,36 @@ import {
   getScheduleSystemPrompt,
 } from "@/lib/ai/prompts/insight-prompts";
 import {
-  formatMonthDealInsight,
-  getMonthDealTip,
-} from "@/lib/rag/monthDeals";
+  buildLocalScheduleInsight,
+  buildScheduleRagContexts,
+  type ScheduleDateType,
+} from "@/lib/ai/schedule-insight";
 import { retrieveTravelSources } from "@/lib/rag/travelKnowledge";
 import type { OnboardingForm } from "@/components/onboarding/types";
 
-type DateType = "specific" | "flexible";
-
-function buildLocalScheduleInsight(params: {
-  origin: string;
-  destination: string;
-  dateType: DateType;
-  startDate: string;
-  endDate: string;
-  flexibleYear: number;
-  flexibleMonth: number;
-}): string {
-  if (params.dateType === "specific") {
-    if (params.startDate && params.endDate) {
-      const from = params.origin || "출발지";
-      const to = params.destination || "목적지";
-      return `${from} → ${to}, ${params.startDate}~${params.endDate} 기준으로 항공·숙소 예산을 맞춰 드릴게요.`;
-    }
-    return "선택한 기간 기반으로 최적 예산 분배를 진행해요.";
-  }
-
-  return `${params.flexibleYear}년 ${formatMonthDealInsight(params.flexibleMonth)}`;
-}
-
 export async function POST(request: Request) {
+  let fallback =
+    "시즌 가성비 권역을 불러오는 중이에요. 잠시만 기다려 주세요.";
+
   try {
     const body = (await request.json()) as {
       origin?: string;
       destination?: string;
-      dateType?: DateType;
+      dateType?: ScheduleDateType;
       startDate?: string;
       endDate?: string;
       flexibleYear?: number;
       flexibleMonth?: number;
+      budget?: number | string;
+      people?: number;
     };
+
+    const budgetRaw =
+      typeof body.budget === "string"
+        ? Number(body.budget.replace(/[^0-9]/g, "")) || 0
+        : typeof body.budget === "number"
+          ? body.budget
+          : 0;
 
     const params = {
       origin: body.origin?.trim() ?? "",
@@ -65,20 +55,25 @@ export async function POST(request: Request) {
         body.flexibleMonth <= 12
           ? body.flexibleMonth
           : new Date().getMonth() + 1,
+      budget: budgetRaw,
+      people:
+        typeof body.people === "number" && body.people >= 1
+          ? body.people
+          : 1,
     };
 
-    const fallback = buildLocalScheduleInsight(params);
+    fallback = buildLocalScheduleInsight(params);
+
     const seasonMonth =
       params.dateType === "specific" && params.startDate
         ? Number(params.startDate.slice(5, 7)) || params.flexibleMonth
         : params.flexibleMonth;
-    const tip = getMonthDealTip(seasonMonth);
 
     const form: OnboardingForm = {
       origin: params.origin || "서울",
       destination: params.destination || "어디든지",
-      budget: "1000000",
-      people: 1,
+      budget: String(params.budget || 1_000_000),
+      people: params.people,
       dateType: params.dateType,
       startDate: params.startDate,
       endDate: params.endDate,
@@ -89,13 +84,7 @@ export async function POST(request: Request) {
     const travelRag = retrieveTravelSources(form, 3).map((item) => item.content);
 
     const ragContexts = [
-      `${seasonMonth}월 가성비 권역: ${tip.cheapPlaces.join(", ")}`,
-      tip.dealReason,
-      tip.caution,
-      params.origin ? `출발지 ${params.origin} 기준` : "출발지 미입력",
-      params.destination
-        ? `목적지 ${params.destination} 선택됨`
-        : "목적지 미입력(어디든지)",
+      ...buildScheduleRagContexts(params),
       ...travelRag,
     ];
 
@@ -130,7 +119,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json(
       {
-        insight: "선택한 일정 기준으로 항공·숙소 예산을 맞춰 드릴게요.",
+        insight: fallback,
         source: "fallback",
       },
       { status: 200 }

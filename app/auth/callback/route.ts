@@ -21,7 +21,7 @@ function completeLoginResponse(targetUrl: string) {
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <title>로그인 완료</title>
 </head>
-<body style="font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#F8F9FF;color:#111">
+<body style="font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#F9FAFB;color:#111827">
   <p>로그인 완료. 최신 화면으로 이동 중…</p>
   <script>
     (async function () {

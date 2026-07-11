@@ -9,7 +9,7 @@ interface CommunityLoginGateProps {
 
 export function CommunityLoginGate({ featureName }: CommunityLoginGateProps) {
   return (
-    <div className="w-full rounded-xl2 border border-line-soft bg-surface-white p-5 shadow-soft">
+    <div className="w-full rounded-2xl border-0 bg-surface-white p-6 shadow-sm">
       <p className="text-center text-base font-bold text-ink-heading">
         로그인 후 이용해 주세요
       </p>

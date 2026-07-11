@@ -54,19 +54,3 @@ export async function insertTripPlanToSupabase(
 
   return rowToTripPlan(data as unknown as TripPlanRow);
 }
-
-export async function fetchTripPlansFromSupabase(
-  supabase: SupabaseClient,
-  userId: string,
-  limit = 20
-): Promise<TripPlanRecord[]> {
-  const { data, error } = await supabase
-    .from(TABLES.tripPlans)
-    .select(TRIP_PLAN_COLUMNS)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error || !data) return [];
-  return (data as unknown as TripPlanRow[]).map(rowToTripPlan);
-}

@@ -32,9 +32,8 @@ type FlightItem = {
 type SearchResponse = {
   flights: FlightItem[];
   warning?: string;
-  source?: "fallback" | "google-flights" | "naver-flights";
+  source?: "fallback" | "google-flights";
   bookingUrl?: string;
-  naverBookingUrl?: string;
   error?: string;
   info?: "no-valid-flights";
 };
@@ -84,7 +83,6 @@ export function FlightChecklistContent() {
   const [warning, setWarning] = useState<string | null>(null);
   const [source, setSource] = useState<SearchResponse["source"]>();
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
-  const [naverBookingUrl, setNaverBookingUrl] = useState<string | null>(null);
   const [flights, setFlights] = useState<FlightItem[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [airlineProfiles, setAirlineProfiles] = useState<
@@ -110,7 +108,6 @@ export function FlightChecklistContent() {
     setWarning(null);
     setSource(undefined);
     setBookingUrl(null);
-    setNaverBookingUrl(null);
     setAirlineProfiles({});
     try {
       const params = new URLSearchParams({
@@ -141,7 +138,6 @@ export function FlightChecklistContent() {
       );
       setSource(data.source);
       setBookingUrl(data.bookingUrl ?? nextFlights[0]?.bookingUrl ?? null);
-      setNaverBookingUrl(data.naverBookingUrl ?? null);
 
       const carriers = nextFlights.map((flight) => flight.carrier);
       const profiles = await fetchIcnAirlineProfiles(carriers);
@@ -203,15 +199,15 @@ export function FlightChecklistContent() {
   return (
     <div className="flex flex-col gap-5 px-5 pb-10 pt-5">
       <header className="flex flex-col gap-2">
-        <h2 className="text-[22px] font-bold tracking-tight text-ink-heading">
+        <h2 className="text-heading font-bold tracking-tight text-ink-heading">
           항공 체크리스트
         </h2>
         <p className="text-sm leading-6 text-ink-body">
-          출발지/도착지와 날짜를 입력하면 네이버 항공권 기준으로 조회하고, 결과가 없으면 Google Flights로 이어서 찾아요.
+          출발지/도착지와 날짜를 입력하면 Google Flights 기준으로 항공권을 찾아요.
         </p>
       </header>
 
-      <section className="rounded-xl2 border border-line-soft bg-surface-white p-4 shadow-soft">
+      <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
         <div className="grid grid-cols-2 gap-2">
           <div className="col-span-1">
             <AirportSearchField
@@ -311,29 +307,24 @@ export function FlightChecklistContent() {
       </section>
 
       {error ? (
-        <section className="rounded-xl2 border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <section className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
         </section>
       ) : null}
       {warning ? (
-        <section className="rounded-xl2 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
           {warning}
         </section>
       ) : null}
-      {source === "naver-flights" && validFlights.length > 0 ? (
-        <section className="rounded-xl2 border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          네이버 항공권 최저가(직항·왕복) 기준으로 조회했어요. 예약은 네이버 항공에서 진행해주세요.
-        </section>
-      ) : null}
       {source === "google-flights" && validFlights.length > 0 ? (
-        <section className="rounded-xl2 border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+        <section className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
           Google Flights 공개 데이터로 조회했어요. 예약은 Google Flights에서 직접 진행해주세요.
         </section>
       ) : null}
 
       <section className="flex flex-col gap-3">
         {!hasSearched && !loading ? (
-          <article className="rounded-xl2 border border-dashed border-line-soft bg-surface-white px-4 py-8 text-center">
+          <article className="rounded-2xl border-0 bg-surface-soft shadow-sm bg-surface-white px-4 py-8 text-center">
             <p className="text-sm font-semibold text-ink-heading">
               항공권을 조회하면 추천 결과가 여기에 보여요.
             </p>
@@ -341,7 +332,7 @@ export function FlightChecklistContent() {
         ) : null}
 
         {hasSearched && !loading && validFlights.length === 0 ? (
-          <article className="rounded-xl2 border border-dashed border-line-soft bg-surface-white px-4 py-8 text-center">
+          <article className="rounded-2xl border-0 bg-surface-soft shadow-sm bg-surface-white px-4 py-8 text-center">
             <p className="text-sm font-semibold text-ink-heading">
               직항/경유 항공편이 없어요!
             </p>
@@ -357,7 +348,7 @@ export function FlightChecklistContent() {
           return (
           <article
             key={flight.id}
-            className="rounded-xl2 border border-line-soft bg-surface-white p-4 shadow-soft"
+            className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-2.5">
@@ -417,19 +408,7 @@ export function FlightChecklistContent() {
                 }}
                 className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-brand/20 bg-brand/5 text-sm font-semibold text-brand"
               >
-                {source === "naver-flights"
-                  ? "네이버 항공에서 보기"
-                  : "Google Flights에서 보기"}
-              </a>
-            ) : null}
-            {source === "google-flights" && naverBookingUrl ? (
-              <a
-                href={naverBookingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg border border-line-soft bg-surface-soft text-sm font-semibold text-ink-body"
-              >
-                네이버 항공에서 직접 보기
+                Google Flights에서 보기
               </a>
             ) : null}
           </article>
@@ -437,7 +416,7 @@ export function FlightChecklistContent() {
         })}
       </section>
 
-      <section className="rounded-xl2 border border-line-soft bg-surface-white p-4">
+      <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <ShieldCheck className="h-4.5 w-4.5 text-brand" />
           <h3 className="text-sm font-bold text-ink-heading">예약 전 체크리스트</h3>

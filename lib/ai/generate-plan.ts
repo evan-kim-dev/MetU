@@ -5,7 +5,10 @@ import { STYLE_LABELS } from "@/lib/trips/data";
 import { retrieveBudgetRag } from "@/lib/rag/budgetBands";
 import { getMonthDealTip } from "@/lib/rag/monthDeals";
 import { retrieveTravelSources } from "@/lib/rag/travelKnowledge";
-import { resolvePlanSummaryWithRag } from "@/lib/ai/budget-reality-check";
+import {
+  resolvePlanSummaryLocal,
+  resolvePlanSummaryWithRag,
+} from "@/lib/ai/budget-reality-check";
 import {
   buildPlanItineraryPrompt,
   getPlanSystemPrompt,
@@ -267,7 +270,7 @@ function mergeAiSchedule(
                 cost: estimateItemCost(title, budgets),
               };
             })
-            .slice(0, 5)
+            .slice(0, 8)
         : fallbackDay.items;
 
     return {
@@ -353,7 +356,7 @@ async function enrichPlanWithAi(params: {
     const parsed = JSON.parse(data.content) as AiPlanPayload;
     const tips =
       Array.isArray(parsed.tips) && parsed.tips.length > 0
-        ? parsed.tips.map((t) => t.trim()).filter(Boolean).slice(0, 4)
+        ? parsed.tips.map((t) => t.trim()).filter(Boolean).slice(0, 6)
         : params.fallbackTips;
 
     return {
@@ -391,9 +394,81 @@ async function enrichPlanWithAi(params: {
   }
 }
 
-export async function generateTripPlan(
+function getSelectedMonth(form: OnboardingForm): number {
+  const month = new Date().getMonth() + 1;
+  if (
+    form.dateType === "flexible" &&
+    form.flexibleMonth >= 1 &&
+    form.flexibleMonth <= 12
+  ) {
+    return form.flexibleMonth;
+  }
+  if (form.startDate) {
+    return Number(form.startDate.slice(5, 7)) || month;
+  }
+  return month;
+}
+
+function getDateRange(form: OnboardingForm, nights: number): string {
+  const selectedYear =
+    form.dateType === "flexible"
+      ? normalizeFlexibleYear(form.flexibleYear)
+      : new Date().getFullYear();
+  const selectedMonth = getSelectedMonth(form);
+  const specificDateRange =
+    form.startDate && form.endDate
+      ? `${formatIsoDateToKorean(form.startDate)} - ${formatIsoDateToKorean(
+          form.endDate
+        )}`
+      : `${selectedMonth}월 12일 - ${selectedMonth}월 ${12 + nights - 1}일`;
+
+  return form.dateType === "flexible"
+    ? `${selectedYear}년 ${selectedMonth}월 중순 · ${nights}박 ${nights + 1}일 (유연 일정)`
+    : specificDateRange;
+}
+
+function buildBaseRagSources(params: {
+  budgetRag: ReturnType<typeof retrieveBudgetRag>;
+  monthTip: ReturnType<typeof getMonthDealTip>;
+  travelSources: RagSource[];
+  summaryTone: "normal" | "factbomb";
+  summarySource: string;
+}): RagSource[] {
+  const ragSources: RagSource[] = [
+    {
+      id: `budget-${params.budgetRag.band.id}`,
+      category: "예산",
+      title: `1인당 예산 구간 · ${params.budgetRag.band.nights}`,
+      content: `${params.budgetRag.band.content} 허용 권역: ${params.budgetRag.allowedRegions.join(", ")}.`,
+    },
+    {
+      id: `season-${params.monthTip.month}`,
+      category: "시즌",
+      title: `${params.monthTip.month}월 저가·주의`,
+      content: `${params.monthTip.cheapPlaces.join("·")} 쪽이 비교적 저렴해요. ${params.monthTip.dealReason}. 다만 ${params.monthTip.caution}`,
+    },
+    ...params.travelSources.slice(0, 3),
+  ];
+
+  if (params.summaryTone === "factbomb") {
+    ragSources.unshift({
+      id: `factbomb-${params.summarySource}`,
+      category: "예산",
+      title:
+        params.summarySource === "ai+rag"
+          ? "AI 팩트폭격 (RAG+LLM)"
+          : "AI 팩트폭격 (템플릿 폴백)",
+      content: params.budgetRag.contexts.join(" "),
+    });
+  }
+
+  return ragSources;
+}
+
+/** AI 없이 즉시 보여줄 폴백 일정 */
+export function buildFallbackTripPlan(
   form: OnboardingForm
-): Promise<TripRecommendation> {
+): TripRecommendation {
   const totalBudget = parseBudget(form.budget);
   const people = Math.max(1, form.people);
   const perPerson = Math.floor(totalBudget / people);
@@ -402,39 +477,109 @@ export async function generateTripPlan(
   const nights = getNights(form.dateType);
   const weights = getBudgetWeights(form.styles);
   const budgetAllocation = buildAllocation(totalBudget, weights);
-
   const flightAmount = budgetAllocation.find((a) => a.id === "flight")!.amount;
   const hotelAmount = budgetAllocation.find((a) => a.id === "hotel")!.amount;
   const pricePerNight = Math.round(hotelAmount / nights);
-
-  const month = new Date().getMonth() + 1;
-  const selectedYear =
-    form.dateType === "flexible"
-      ? normalizeFlexibleYear(form.flexibleYear)
-      : new Date().getFullYear();
-  const selectedMonth =
-    form.dateType === "flexible" &&
-    form.flexibleMonth >= 1 &&
-    form.flexibleMonth <= 12
-      ? form.flexibleMonth
-      : form.startDate
-        ? Number(form.startDate.slice(5, 7)) || month
-        : month;
-  const specificDateRange =
-    form.startDate && form.endDate
-      ? `${formatIsoDateToKorean(form.startDate)} - ${formatIsoDateToKorean(
-          form.endDate
-        )}`
-      : `${selectedMonth}월 12일 - ${selectedMonth}월 ${12 + nights - 1}일`;
-  const dateRange =
-    form.dateType === "flexible"
-      ? `${selectedYear}년 ${selectedMonth}월 중순 · ${nights}박 ${nights + 1}일 (유연 일정)`
-      : specificDateRange;
-
+  const selectedMonth = getSelectedMonth(form);
+  const dateRange = getDateRange(form, nights);
   const styleLabels = form.styles.map((s) => STYLE_LABELS[s] ?? s);
-
   const budgetRag = retrieveBudgetRag(perPerson, selectedMonth);
   const monthTip = getMonthDealTip(selectedMonth);
+
+  const summaryResult = resolvePlanSummaryLocal({
+    formOrigin: form.origin,
+    destination: city,
+    country: country || "해외",
+    nights,
+    totalBudget,
+    people,
+    perPerson,
+    allowedRegions: budgetRag.allowedRegions,
+    month: selectedMonth,
+    styleLabels,
+  });
+
+  const tips =
+    summaryResult.tone === "factbomb"
+      ? [
+          budgetRag.allowedRegions.length > 0
+            ? `지금 예산엔 ${budgetRag.allowedRegions.slice(0, 3).join("·")} 쪽이 현실적이에요. 예산을 올리거나 목적지를 바꾸면 더 맞는 일정이 나와요.`
+            : "예산을 올리거나 목적지를 바꾸면 훨씬 그럴듯한 일정이 나와요.",
+          `${styleLabels.join(", ") || "자유"} 스타일 기준으로 동선을 잡아 두었어요. ${budgetRag.seasonTip}`,
+        ].filter(Boolean)
+      : [
+          `${styleLabels.join(", ") || "자유"} 스타일에 맞춰 동선을 최적화했어요.`,
+          ...travelSources.slice(0, 2).map((s) => s.content),
+          budgetRag.seasonTip,
+        ].filter(Boolean);
+
+  return {
+    id: `plan-${Date.now()}`,
+    form,
+    destination: city,
+    country: country || "해외",
+    origin: form.origin,
+    people,
+    totalBudget,
+    dateRange,
+    nights,
+    summary: summaryResult.summary,
+    summaryTone: summaryResult.tone,
+    imageUrl: getImageUrl(city),
+    styleLabels,
+    budgetAllocation,
+    flight: {
+      airline: totalBudget > 3000000 ? "대한항공" : "저비용 항공 추천",
+      route: `${form.origin} → ${city}`,
+      schedule: `가는 편 09:40 · 오는 편 18:20`,
+      price: flightAmount,
+      note:
+        form.dateType === "flexible"
+          ? "유연 일정이므로 요일에 따라 8~15% 절약 가능해요."
+          : "성수기 전 주중 항공권 기준 예상가예요.",
+    },
+    hotel: {
+      name: styleLabels.includes("힐링")
+        ? `${city} 리조트 & 스파`
+        : `${city} 시내 호텔`,
+      area: "도심/관광지 인접",
+      nights,
+      pricePerNight,
+      total: hotelAmount,
+      note: `${people}인 기준 · 조식 포함 옵션`,
+    },
+    dailySchedule: buildDailySchedule(form, budgetAllocation, nights),
+    tips,
+    ragSources: buildBaseRagSources({
+      budgetRag,
+      monthTip,
+      travelSources,
+      summaryTone: summaryResult.tone,
+      summarySource: summaryResult.source,
+    }),
+  };
+}
+
+/** 폴백 일정을 AI로 보강 (요약·일정·항공·숙소) */
+export async function enrichTripPlanWithAi(
+  fallback: TripRecommendation
+): Promise<TripRecommendation> {
+  const form = fallback.form;
+  const totalBudget = fallback.totalBudget;
+  const people = fallback.people;
+  const perPerson = Math.floor(totalBudget / people);
+  const city = fallback.destination;
+  const country = fallback.country;
+  const nights = fallback.nights;
+  const dateRange = fallback.dateRange;
+  const styleLabels = fallback.styleLabels;
+  const budgetAllocation = fallback.budgetAllocation;
+  const selectedMonth = getSelectedMonth(form);
+  const travelSources = retrieveTravelSources(form);
+  const budgetRag = retrieveBudgetRag(perPerson, selectedMonth);
+  const monthTip = getMonthDealTip(selectedMonth);
+  const flightAmount = budgetAllocation.find((a) => a.id === "flight")!.amount;
+  const hotelAmount = budgetAllocation.find((a) => a.id === "hotel")!.amount;
 
   const ragContexts = [
     ...budgetRag.contexts,
@@ -443,28 +588,6 @@ export async function generateTripPlan(
     monthTip.dealReason,
     monthTip.caution,
   ];
-
-  const fallbackSchedule = buildDailySchedule(form, budgetAllocation, nights);
-  const fallbackFlight: FlightPlan = {
-    airline: totalBudget > 3000000 ? "대한항공" : "저비용 항공 추천",
-    route: `${form.origin} → ${city}`,
-    schedule: `가는 편 09:40 · 오는 편 18:20`,
-    price: flightAmount,
-    note:
-      form.dateType === "flexible"
-        ? "유연 일정이므로 요일에 따라 8~15% 절약 가능해요."
-        : "성수기 전 주중 항공권 기준 예상가예요.",
-  };
-  const fallbackHotel: HotelPlan = {
-    name: styleLabels.includes("힐링")
-      ? `${city} 리조트 & 스파`
-      : `${city} 시내 호텔`,
-    area: "도심/관광지 인접",
-    nights,
-    pricePerNight,
-    total: hotelAmount,
-    note: `${people}인 기준 · 조식 포함 옵션`,
-  };
 
   const baseFallbackTips = [
     `${styleLabels.join(", ") || "자유"} 스타일에 맞춰 동선을 최적화했어요.`,
@@ -498,9 +621,9 @@ export async function generateTripPlan(
       flightBudget: flightAmount,
       hotelBudget: hotelAmount,
       ragContexts,
-      fallbackSchedule,
-      fallbackFlight,
-      fallbackHotel,
+      fallbackSchedule: fallback.dailySchedule,
+      fallbackFlight: fallback.flight,
+      fallbackHotel: fallback.hotel,
       fallbackTips: baseFallbackTips,
       allocation: budgetAllocation,
     }),
@@ -515,44 +638,20 @@ export async function generateTripPlan(
   const tips =
     summaryTone === "factbomb"
       ? [
-          `현실적인 대안: ${budgetRag.allowedRegions.slice(0, 3).join(" · ")}`,
-          "예산을 올리거나 목적지를 바꾸면 훨씬 그럴듯한 일정이 나와요.",
-          ...enriched.tips,
-        ].slice(0, 4)
-      : enriched.tips;
+          budgetRag.allowedRegions.length > 0
+            ? `지금 예산엔 ${budgetRag.allowedRegions.slice(0, 3).join("·")} 쪽이 현실적이에요. 예산을 올리거나 목적지를 바꾸면 더 맞는 일정이 나와요.`
+            : "예산을 올리거나 목적지를 바꾸면 훨씬 그럴듯한 일정이 나와요.",
+          ...enriched.tips.slice(0, 3),
+        ]
+      : enriched.tips.slice(0, 4);
 
-  const ragSources: RagSource[] = [
-    {
-      id: `budget-${budgetRag.band.id}`,
-      category: "예산",
-      title: `1인당 예산 구간 · ${budgetRag.band.nights}`,
-      content: `${budgetRag.band.content} 허용 권역: ${budgetRag.allowedRegions.join(", ")}.`,
-    },
-    {
-      id: `season-${monthTip.month}`,
-      category: "시즌",
-      title: `${monthTip.month}월 저가·주의`,
-      content: `${monthTip.cheapPlaces.join("·")} 쪽이 비교적 저렴해요. ${monthTip.dealReason}. 다만 ${monthTip.caution}`,
-    },
-    ...travelSources.slice(0, 3),
-  ];
-
-  if (summaryTone === "factbomb") {
-    ragSources.unshift({
-      id: `factbomb-${summarySource}`,
-      category: "예산",
-      title:
-        summarySource === "ai+rag"
-          ? "AI 팩트폭격 (RAG+LLM)"
-          : "AI 팩트폭격 (템플릿 폴백)",
-      content: budgetRag.contexts.join(" "),
-    });
-  }
-
-  const summary =
-    summaryTone === "factbomb"
-      ? baseSummary
-      : enriched.summary || baseSummary;
+  const ragSources = buildBaseRagSources({
+    budgetRag,
+    monthTip,
+    travelSources,
+    summaryTone,
+    summarySource,
+  });
 
   if (enriched.source === "ai") {
     ragSources.push({
@@ -563,25 +662,25 @@ export async function generateTripPlan(
     });
   }
 
+  const summary =
+    summaryTone === "factbomb"
+      ? baseSummary
+      : enriched.summary || baseSummary;
+
   return {
-    id: `plan-${Date.now()}`,
-    form,
-    destination: city,
-    country: country || "해외",
-    origin: form.origin,
-    people,
-    totalBudget,
-    dateRange,
-    nights,
+    ...fallback,
     summary,
     summaryTone,
-    imageUrl: getImageUrl(city),
-    styleLabels,
-    budgetAllocation,
     flight: enriched.flight,
     hotel: enriched.hotel,
     dailySchedule: enriched.dailySchedule,
     tips,
     ragSources,
   };
+}
+
+export async function generateTripPlan(
+  form: OnboardingForm
+): Promise<TripRecommendation> {
+  return enrichTripPlanWithAi(buildFallbackTripPlan(form));
 }

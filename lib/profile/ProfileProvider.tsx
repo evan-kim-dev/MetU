@@ -95,6 +95,11 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
               name: "게스트",
               email: "둘러보기 모드 · 로그인하면 동기화돼요",
               membershipLabel: "게스트",
+              bio: "",
+              homeCity: "",
+              styles: [],
+              avatarUrl: "",
+              customAvatarUrl: null,
             })
           );
           lastLoadedKey.current = storageKey;

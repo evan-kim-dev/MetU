@@ -153,7 +153,7 @@ export function WeatherChecklistContent() {
   return (
     <div className="flex flex-col gap-5 px-5 pb-10 pt-5">
       <header className="flex flex-col gap-2">
-        <h2 className="text-[22px] font-bold tracking-tight text-ink-heading">
+        <h2 className="text-heading font-bold tracking-tight text-ink-heading">
           여행지 날씨
         </h2>
         <p className="text-sm leading-6 text-ink-body">
@@ -161,7 +161,7 @@ export function WeatherChecklistContent() {
         </p>
       </header>
 
-      <section className="rounded-xl2 border border-line-soft bg-surface-white p-4 shadow-soft">
+      <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-ink-caption">도시</span>
           <input
@@ -179,9 +179,9 @@ export function WeatherChecklistContent() {
       </section>
 
       {primaryTrip && parsedTripDates ? (
-        <section className="rounded-xl2 border border-brand/15 bg-surface-white p-4 shadow-soft">
+        <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
           <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg ai-gradient-bg">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand">
               <Sparkles className="h-4 w-4 text-white" />
             </span>
             <div>
@@ -218,7 +218,7 @@ export function WeatherChecklistContent() {
               ) : tripInsight ? (
                 <>
                   <AIInsightBadge>{tripInsight.summary}</AIInsightBadge>
-                  <div className="rounded-xl border border-line-soft bg-surface-base p-3">
+                  <div className="rounded-2xl border-0 bg-surface-soft shadow-sm p-3">
                     <p className="mb-2 text-xs font-semibold text-ink-caption">
                       날씨 대비 체크
                     </p>
@@ -258,7 +258,7 @@ export function WeatherChecklistContent() {
                       <p className="text-sm font-bold text-ink-heading">
                         {day.minC}° / {day.maxC}°
                       </p>
-                      <p className="text-[10px] font-medium text-brand">
+                      <p className="text-2xs font-medium text-brand">
                         {day.source === "forecast" ? "예보" : "월별 기후"}
                       </p>
                     </div>
@@ -273,7 +273,7 @@ export function WeatherChecklistContent() {
           )}
         </section>
       ) : (
-        <section className="rounded-xl2 border border-dashed border-line-soft bg-surface-white px-4 py-5 text-center">
+        <section className="rounded-2xl border-0 bg-surface-soft shadow-sm bg-surface-white px-4 py-5 text-center">
           <p className="text-sm text-ink-caption">
             여행을 등록하면 AI가 여행 날짜 기준 날씨 대비 팁을 알려드려요.
           </p>
@@ -281,14 +281,14 @@ export function WeatherChecklistContent() {
       )}
 
       {loading ? (
-        <div className="h-40 animate-pulse rounded-xl2 bg-surface-soft" />
+        <div className="h-40 animate-pulse rounded-2xl bg-surface-soft" />
       ) : error ? (
-        <p className="rounded-xl2 border border-line-soft bg-surface-white px-4 py-6 text-center text-sm text-ink-caption">
+        <p className="rounded-2xl border-0 bg-surface-white shadow-sm px-4 py-6 text-center text-sm text-ink-caption">
           {error}
         </p>
       ) : forecast ? (
         <>
-          <section className="rounded-xl2 border border-brand/15 bg-gradient-to-br from-brand/8 to-brand-soft/10 p-5 shadow-soft">
+          <section className="rounded-2xl border-0 bg-brand/5 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="mb-1 flex items-center gap-1 text-xs font-semibold text-ink-caption">
@@ -308,7 +308,7 @@ export function WeatherChecklistContent() {
             </div>
           </section>
 
-          <section className="rounded-xl2 border border-line-soft bg-surface-white p-4 shadow-soft">
+          <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-bold text-ink-heading">5일 예보</h3>
             <div className="flex flex-col gap-2">
               {forecast.days.map((day) => (
@@ -329,7 +329,7 @@ export function WeatherChecklistContent() {
           </section>
         </>
       ) : (
-        <p className="rounded-xl2 border border-dashed border-line-soft bg-surface-white px-4 py-10 text-center text-sm text-ink-caption">
+        <p className="rounded-2xl border-0 bg-surface-soft shadow-sm bg-surface-white px-4 py-10 text-center text-sm text-ink-caption">
           도시를 입력하면 날씨가 표시돼요.
         </p>
       )}

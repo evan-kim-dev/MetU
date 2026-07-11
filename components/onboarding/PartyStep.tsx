@@ -78,7 +78,7 @@ export function PartyStep({ value, budget, onChange }: PartyStepProps) {
 
       {totalBudget > 0 && (
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl border border-line-soft bg-surface-white px-3 py-3">
+          <div className="rounded-2xl border-0 bg-surface-white shadow-sm px-3 py-3">
             <p className="text-xs font-semibold text-ink-caption">총 예산</p>
             <p className="mt-1 text-sm font-extrabold text-ink-heading">
               ₩{totalBudget.toLocaleString("ko-KR")}
@@ -93,16 +93,7 @@ export function PartyStep({ value, budget, onChange }: PartyStepProps) {
         </div>
       )}
 
-      <AIInsightBadge>
-        {loading ? (
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
-            {insight}
-          </span>
-        ) : (
-          insight
-        )}
-      </AIInsightBadge>
+      <AIInsightBadge loading={loading}>{insight}</AIInsightBadge>
     </StepCard>
   );
 }

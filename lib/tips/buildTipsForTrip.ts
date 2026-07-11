@@ -208,7 +208,7 @@ const COUNTRY_TIPS: Record<string, TipTemplate[]> = {
       emoji: "🧳",
       title: "짐 배송",
       description:
-        "공항↔호텔 짐 배송(다쿠빈)을 쓰면 환승·이동이 훨씬 가볍습니다.",
+        "공항↔호텔 짐 배송(다쿠빈)을 쓰면 환승·이동이 훨씬 가벼워요.",
     },
   ],
   영국: DESTINATION_TIPS.런던,

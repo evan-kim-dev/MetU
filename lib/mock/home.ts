@@ -5,7 +5,5 @@ export interface SmartTip {
   description: string;
 }
 
-/** 통화 포맷 헬퍼 */
-export function formatKRW(value: number): string {
-  return `₩${value.toLocaleString("ko-KR")}`;
-}
+/** @deprecated Prefer `@/lib/shared/format` */
+export { formatKRW } from "@/lib/shared/format";

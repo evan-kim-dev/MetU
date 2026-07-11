@@ -45,7 +45,7 @@ async def chat(body: ChatRequest) -> ChatResponse:
         content = await service.summary_insight(prompt=body.prompt, system=body.system)
     else:
         content = await service.budget_insight(
-            budget=0, prompt=body.prompt, system=body.system
+            prompt=body.prompt, system=body.system
         )
 
     if not content:

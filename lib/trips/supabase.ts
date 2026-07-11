@@ -17,13 +17,14 @@ interface TripRow {
   image_url: string;
   memo: string | null;
   status: Trip["status"];
-  budget_allocation: Trip["budgetAllocation"];
-  daily_schedule: Trip["dailySchedule"];
-  tips: string[];
-  expenses: Trip["expenses"];
+  budget_allocation?: Trip["budgetAllocation"] | null;
+  daily_schedule?: Trip["dailySchedule"] | null;
+  tips?: string[] | null;
+  expenses?: Trip["expenses"] | null;
 }
 
-const TRIP_COLUMNS = [
+/** List/home cards — skip heavy JSON payloads */
+const TRIP_LIST_COLUMNS = [
   "id",
   "user_id",
   "destination",
@@ -38,6 +39,11 @@ const TRIP_COLUMNS = [
   "image_url",
   "memo",
   "status",
+].join(", ");
+
+/** Detail / mutate responses — full trip document */
+const TRIP_DETAIL_COLUMNS = [
+  TRIP_LIST_COLUMNS,
   "budget_allocation",
   "daily_schedule",
   "tips",
@@ -112,18 +118,46 @@ function updateToRow(update: TripUpdate): Partial<TripRow> {
   return row;
 }
 
+/**
+ * List rows omit heavy JSON. Treat as hydrated once detail fields exist
+ * (including empty arrays after a full fetch).
+ */
+export function isTripDetailHydrated(trip: Trip): boolean {
+  return (
+    Array.isArray(trip.dailySchedule) ||
+    Array.isArray(trip.budgetAllocation) ||
+    Array.isArray(trip.tips)
+  );
+}
+
 export async function fetchTripsFromSupabase(
   supabase: SupabaseClient,
   userId: string
 ): Promise<Trip[]> {
   const { data, error } = await supabase
     .from(TABLES.trips)
-    .select(TRIP_COLUMNS)
+    .select(TRIP_LIST_COLUMNS)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];
   return (data as unknown as TripRow[]).map(rowToTrip);
+}
+
+export async function fetchTripByIdFromSupabase(
+  supabase: SupabaseClient,
+  userId: string,
+  tripId: string
+): Promise<Trip | null> {
+  const { data, error } = await supabase
+    .from(TABLES.trips)
+    .select(TRIP_DETAIL_COLUMNS)
+    .eq("user_id", userId)
+    .eq("id", tripId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return rowToTrip(data as unknown as TripRow);
 }
 
 function isValidUuid(id: string): boolean {
@@ -144,7 +178,7 @@ export async function insertTripToSupabase(
   const { data, error } = await supabase
     .from(TABLES.trips)
     .insert(row)
-    .select(TRIP_COLUMNS)
+    .select(TRIP_DETAIL_COLUMNS)
     .single();
 
   if (error || !data) return null;
@@ -163,7 +197,7 @@ export async function updateTripInSupabase(
     .update(row)
     .eq("id", id)
     .eq("user_id", userId)
-    .select(TRIP_COLUMNS)
+    .select(TRIP_DETAIL_COLUMNS)
     .single();
 
   if (error || !data) return null;
@@ -196,7 +230,7 @@ export async function upsertTripsToSupabase(
   const { data, error } = await supabase
     .from(TABLES.trips)
     .upsert(rows, { onConflict: "id" })
-    .select(TRIP_COLUMNS);
+    .select(TRIP_DETAIL_COLUMNS);
   if (error || !data) return [];
   return (data as unknown as TripRow[]).map(rowToTrip);
 }

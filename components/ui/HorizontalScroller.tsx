@@ -65,6 +65,13 @@ export function HorizontalScroller({
 
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType === "touch") return;
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest("button, a, input, textarea, select, [role='button']")
+      ) {
+        return;
+      }
       dragRef.current = {
         active: true,
         moved: false,

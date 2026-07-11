@@ -5,7 +5,6 @@ import { BedDouble, MapPin, ShieldCheck, SlidersHorizontal, Star } from "lucide-
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Counter } from "@/components/ui/Counter";
 import { HOTEL_DESTINATION_SUGGESTIONS } from "@/lib/hotels/destinations";
-import { getDemoHotels } from "@/lib/mock/hotels";
 import { useWithactChecklist } from "@/lib/checklist/useWithactChecklist";
 
 type HotelItem = {
@@ -65,7 +64,6 @@ export function HotelChecklistContent() {
   const [source, setSource] = useState<SearchResponse["source"]>();
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [hotels, setHotels] = useState<HotelItem[]>([]);
-  const [isDemo, setIsDemo] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const { persistItem } = useWithactChecklist();
 
@@ -80,7 +78,6 @@ export function HotelChecklistContent() {
     setWarning(null);
     setSource(undefined);
     setBookingUrl(null);
-    setIsDemo(false);
 
     try {
       const params = new URLSearchParams({
@@ -99,33 +96,32 @@ export function HotelChecklistContent() {
 
       if (!res.ok) {
         setHotels([]);
-        setIsDemo(false);
         setError(data.error ?? "숙소 조회에 실패했어요.");
         return;
       }
 
       const items = data.hotels ?? [];
       if (items.length === 0) {
-        setHotels(getDemoHotels(destination));
-        setIsDemo(true);
+        setHotels([]);
+        setWarning("조건에 맞는 숙소를 찾지 못했어요. 날짜나 지역을 바꿔 보세요.");
       } else {
         setHotels(items);
-        setIsDemo(false);
       }
       setSource(data.source);
       setBookingUrl(data.bookingUrl ?? items[0]?.bookingUrl ?? null);
-      setWarning(data.warning ?? null);
+      if (items.length > 0) {
+        setWarning(data.warning ?? null);
+      }
 
       void persistItem({
         itemType: "HOTEL",
         itemStatus: "SEARCHED",
         itemName: destination,
-        itemSummary: `${items.length || getDemoHotels(destination).length}건 · ${checkIn} ~ ${checkOut}`,
+        itemSummary: `${items.length}건 · ${checkIn} ~ ${checkOut}`,
         externalProvider: data.source,
       });
     } catch {
       setHotels([]);
-      setIsDemo(false);
       setError("네트워크 오류가 발생했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setLoading(false);
@@ -134,7 +130,7 @@ export function HotelChecklistContent() {
 
   return (
     <div className="flex flex-col gap-5 px-5 pb-10 pt-5">
-      <section className="rounded-xl2 border border-line-soft bg-surface-white p-4 shadow-soft">
+      <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
         <div className="grid grid-cols-2 gap-2">
           <label className="col-span-2 flex flex-col gap-1">
             <span className="text-xs font-semibold text-ink-caption">지역</span>
@@ -188,18 +184,18 @@ export function HotelChecklistContent() {
       </section>
 
       {error ? (
-        <section className="rounded-xl2 border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <section className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
         </section>
       ) : null}
-      {source === "hotelbeds" && hotels.length > 0 && !isDemo ? (
-        <section className="rounded-xl2 border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+      {source === "hotelbeds" && hotels.length > 0 ? (
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           Hotelbeds 실시간 요금으로 조회했어요.
         </section>
       ) : null}
       <section className="flex flex-col gap-3">
         {!hasSearched && !loading ? (
-          <article className="rounded-xl2 border border-dashed border-line-soft bg-surface-white px-4 py-8 text-center">
+          <article className="rounded-2xl border-0 bg-surface-soft shadow-sm bg-surface-white px-4 py-8 text-center">
             <p className="text-sm font-semibold text-ink-heading">
               숙소를 조회하면 추천 결과가 여기에 보여요.
             </p>
@@ -209,7 +205,7 @@ export function HotelChecklistContent() {
         {hotels.map((hotel) => (
           <article
             key={hotel.id}
-            className="rounded-xl2 border border-line-soft bg-surface-white p-4 shadow-soft"
+            className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm"
           >
             <div className="mb-2 flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -218,14 +214,14 @@ export function HotelChecklistContent() {
                 </h3>
                 <p className="mt-1 text-xs text-ink-caption">{hotel.area}</p>
               </div>
-              <span className="shrink-0 rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-bold text-brand">
+              <span className="shrink-0 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-bold text-brand">
                 {hotel.badge}
               </span>
             </div>
             <div className="flex items-center justify-between gap-2">
               {hotel.rating ? (
                 <div className="inline-flex items-center gap-1 text-sm font-semibold text-ink-body">
-                  <Star className="h-4 w-4 fill-[#FFB800] text-[#FFB800]" />
+                  <Star className="h-4 w-4 fill-star text-star" />
                   {hotel.rating.toFixed(1)}
                 </div>
               ) : (
@@ -233,7 +229,7 @@ export function HotelChecklistContent() {
               )}
               <p className="text-sm font-extrabold text-ink-heading">
                 {hotel.price}
-                <span className="ml-1 text-[11px] font-medium text-ink-caption">/박</span>
+                <span className="ml-1 text-xs font-medium text-ink-caption">/박</span>
               </p>
             </div>
             {(hotel.bookingUrl || bookingUrl) && (
@@ -262,7 +258,7 @@ export function HotelChecklistContent() {
         ))}
       </section>
 
-      <section className="rounded-xl2 border border-line-soft bg-surface-white p-4">
+      <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <SlidersHorizontal className="h-4.5 w-4.5 text-brand" />
           <h3 className="text-sm font-bold text-ink-heading">예약 전 체크리스트</h3>

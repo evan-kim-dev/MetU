@@ -1,3 +1,5 @@
+import { addDays } from "@/lib/shared/dates";
+
 export interface ParsedTripDates {
   startDate: string;
   endDate: string;
@@ -10,12 +12,6 @@ function pad(value: number): string {
 
 function toIsoDate(year: number, month: number, day: number): string {
   return `${year}-${pad(month)}-${pad(day)}`;
-}
-
-function addDays(isoDate: string, days: number): string {
-  const date = new Date(`${isoDate}T12:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
 }
 
 function startFromDDay(dDay: number): string {

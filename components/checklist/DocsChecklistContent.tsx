@@ -317,7 +317,7 @@ export function DocsChecklistContent() {
   return (
     <div className="flex flex-col gap-5 px-5 pb-10 pt-5">
       <header className="flex flex-col gap-2">
-        <h2 className="text-[22px] font-bold tracking-tight text-ink-heading">
+        <h2 className="text-heading font-bold tracking-tight text-ink-heading">
           입국/필수 서류 체크리스트
         </h2>
         <p className="text-sm leading-6 text-ink-body">
@@ -326,7 +326,7 @@ export function DocsChecklistContent() {
         </p>
       </header>
 
-      <section className="rounded-xl2 border border-line-soft bg-surface-white p-4 shadow-soft">
+      <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-sm font-bold text-ink-heading">여행 국가</p>
           <span className="text-xs font-semibold text-brand">
@@ -343,7 +343,7 @@ export function DocsChecklistContent() {
                 {primaryTrip.destination} · {primaryTrip.country}
               </p>
             </div>
-            <span className="shrink-0 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
+            <span className="shrink-0 rounded-full bg-brand/10 px-2 py-0.5 text-2xs font-bold text-brand">
               자동 매칭
             </span>
           </div>
@@ -376,7 +376,7 @@ export function DocsChecklistContent() {
         )}
       </section>
 
-      <section className="rounded-xl2 border border-line-soft bg-surface-white p-4 shadow-soft">
+      <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <ShieldCheck className="h-4.5 w-4.5 text-brand" />
           <h3 className="text-sm font-bold text-ink-heading">
@@ -414,7 +414,7 @@ export function DocsChecklistContent() {
                       >
                         {doc.label}
                         {doc.required ? (
-                          <span className="ml-1 text-[10px] font-bold text-rose-500">
+                          <span className="ml-1 text-2xs font-bold text-rose-500">
                             필수
                           </span>
                         ) : null}

@@ -50,6 +50,32 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
     return () => controller.abort();
   }, []);
 
+  if (items.length === 0) {
+    if (loading) {
+      return (
+        <div className="grid grid-cols-2 gap-3">
+          {[0, 1].map((i) => (
+            <div
+              key={i}
+              className="aspect-[4/5] animate-pulse rounded-2xl bg-surface-soft"
+            />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-2xl border border-dashed border-line-soft bg-surface-soft/50 px-4 py-8 text-center">
+        <p className="text-sm font-semibold text-ink-heading">
+          얼리 액세스 준비 중이에요
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-ink-caption">
+          추천 여행지는 곧 열려요. 지금은 직접 여행을 계획해 보세요.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       <div

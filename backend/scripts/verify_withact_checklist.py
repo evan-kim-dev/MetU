@@ -56,7 +56,7 @@ def main() -> None:
                 "itemStatus": "SEARCHED",
                 "itemName": "인천 → 나리타",
                 "itemSummary": "E2E 테스트 조회",
-                "externalProvider": "naver-flights",
+                "externalProvider": "google-flights",
             },
         )
         check("save checklist item", item_res.status_code == 200, item_res.text[:200])

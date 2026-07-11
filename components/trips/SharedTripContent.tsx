@@ -87,7 +87,7 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
     return (
       <MobileShell title="공유 여행" showBack backHref="/">
         <div className="px-5 pt-5">
-          <div className="h-56 animate-pulse rounded-xl2 bg-surface-soft" />
+          <div className="h-56 animate-pulse rounded-2xl bg-surface-soft" />
         </div>
       </MobileShell>
     );
@@ -110,12 +110,12 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
   return (
     <MobileShell title="공유 여행" showBack backHref="/" showBottomNav={false}>
       <div className="flex flex-col gap-6 px-5 pb-28 pt-5">
-        <div className="rounded-xl2 border border-brand/20 bg-brand/5 px-4 py-3 text-sm text-ink-body">
+        <div className="rounded-2xl border-0 bg-brand/5 shadow-sm px-4 py-3 text-sm text-ink-body">
           친구가 공유한 여행이에요. 내 계정에 추가하면 예산·일정을 그대로
           가져와 수정할 수 있어요.
         </div>
 
-        <div className="relative h-56 overflow-hidden rounded-xl2 shadow-soft">
+        <div className="relative h-56 overflow-hidden rounded-2xl shadow-md">
           <Image
             src={trip.imageUrl}
             alt={`${trip.destination} 여행`}
@@ -143,7 +143,7 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
           <InfoCard icon={<MapPin className="h-4 w-4" />} label="출발지" value={trip.origin} />
         </section>
 
-        <section className="rounded-xl2 border border-line-soft bg-surface-white p-4">
+        <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
           <div className="mb-3 flex items-center gap-2">
             <Wallet className="h-5 w-5 text-brand" />
             <h3 className="text-lg font-extrabold text-ink-heading">예산</h3>
@@ -174,7 +174,7 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
             {trip.dailySchedule.map((day) => (
               <div
                 key={day.day}
-                className="rounded-xl border border-line-soft bg-surface-base p-4"
+                className="rounded-2xl border-0 bg-surface-soft shadow-sm p-4"
               >
                 <div className="mb-3">
                   <span className="text-sm font-extrabold text-brand">
@@ -225,7 +225,7 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
         ) : null}
 
         {trip.memo ? (
-          <section className="rounded-xl2 border border-line-soft bg-surface-white p-4">
+          <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
             <h3 className="mb-2 text-lg font-extrabold text-ink-heading">메모</h3>
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-body">
               {trip.memo}
@@ -234,18 +234,13 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
         ) : null}
 
         {trip.tips && trip.tips.length > 0 ? (
-          <section className="flex flex-col gap-2">
-            <h3 className="text-lg font-extrabold text-ink-heading">여행 팁</h3>
-            <ul className="flex flex-col gap-2">
-              {trip.tips.map((tip) => (
-                <li
-                  key={tip}
-                  className="rounded-xl border border-line-soft bg-surface-white px-3 py-2 text-sm text-ink-body"
-                >
-                  {tip}
-                </li>
+          <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
+            <h3 className="mb-3 text-lg font-extrabold text-ink-heading">여행 팁</h3>
+            <div className="space-y-2.5 text-sm leading-relaxed text-ink-body">
+              {trip.tips.map((tip, index) => (
+                <p key={`${index}-${tip.slice(0, 24)}`}>{tip}</p>
               ))}
-            </ul>
+            </div>
           </section>
         ) : null}
       </div>
@@ -254,7 +249,7 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
         <PrimaryButton fullWidth disabled={adding} onClick={() => void handleAddToMyTrips()}>
           {adding ? "추가 중..." : "내 여행에 추가"}
         </PrimaryButton>
-        <p className="mt-2 text-center text-[11px] text-ink-caption">
+        <p className="mt-2 text-center text-xs text-ink-caption">
           {buildSharedTripUrl(token).replace(/^https?:\/\//, "")}
         </p>
       </div>
@@ -272,7 +267,7 @@ function InfoCard({
   value: string;
 }) {
   return (
-    <div className="rounded-xl2 border border-line-soft bg-surface-white p-4">
+    <div className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
       <div className="mb-1 flex items-center gap-1.5 text-ink-caption">
         {icon}
         <span className="text-xs font-semibold">{label}</span>

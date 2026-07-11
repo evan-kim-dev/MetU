@@ -99,12 +99,3 @@ export function formatFxRate(target: FxTarget, krwPerUnit: number): string {
   const rounded = Math.round(amount).toLocaleString("ko-KR");
   return `${foreign} = ₩${rounded}`;
 }
-
-export function formatFxUpdatedAt(isoOrDate: string | Date): string {
-  const date = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
-  if (Number.isNaN(date.getTime())) return "";
-
-  const hh = `${date.getHours()}`.padStart(2, "0");
-  const mm = `${date.getMinutes()}`.padStart(2, "0");
-  return `${hh}:${mm} 갱신`;
-}

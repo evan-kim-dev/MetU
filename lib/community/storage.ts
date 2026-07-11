@@ -1,7 +1,8 @@
 import { STORAGE_KEYS } from "@/lib/constants";
-import { MOCK_COMMUNITY_POSTS } from "@/lib/mock/community";
+import { isSeedCommunityPost } from "@/lib/mock/community";
 import { syncPostCounts } from "./counts";
 import type { CommunityPost } from "./types";
+
 const STORAGE_KEY = STORAGE_KEYS.communityPosts;
 
 function normalizeParty(post: CommunityPost): CommunityPost {
@@ -16,14 +17,6 @@ function normalizeParty(post: CommunityPost): CommunityPost {
       joinedAtIso: post.createdAtIso,
       isHost: true,
     });
-    for (let i = 1; i < post.party.current; i += 1) {
-      members.push({
-        id: `seed-member-${post.id}-${i}`,
-        name: `동행${i}`,
-        avatar: "🧑",
-        joinedAtIso: post.createdAtIso,
-      });
-    }
   }
 
   return {
@@ -37,7 +30,14 @@ function normalizeParty(post: CommunityPost): CommunityPost {
 }
 
 function normalizePost(post: CommunityPost): CommunityPost {
-  const commentList = post.commentList ?? [];
+  const commentList = (post.commentList ?? []).map((comment) => {
+    const likedBy = comment.likedBy ?? [];
+    return {
+      ...comment,
+      likedBy,
+      likes: Math.max(comment.likes ?? 0, likedBy.length),
+    };
+  });
   const likedBy = post.likedBy ?? [];
   const base = syncPostCounts({
     ...post,
@@ -46,25 +46,37 @@ function normalizePost(post: CommunityPost): CommunityPost {
   });
   return normalizeParty(base);
 }
+
 export function loadCommunityPosts(): CommunityPost[] {
-  if (typeof window === "undefined") return MOCK_COMMUNITY_POSTS.map(normalizePost);
+  if (typeof window === "undefined") return [];
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return MOCK_COMMUNITY_POSTS.map(normalizePost);
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as CommunityPost[];
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return MOCK_COMMUNITY_POSTS.map(normalizePost);
+    if (!Array.isArray(parsed)) return [];
+
+    const cleaned = parsed
+      .filter((post) => !isSeedCommunityPost(post))
+      .map(normalizePost);
+
+    // 예전 데모 글이 남아 있으면 저장본도 정리
+    if (cleaned.length !== parsed.length) {
+      saveCommunityPosts(cleaned);
     }
-    return parsed.map(normalizePost);
+
+    return cleaned;
   } catch {
-    return MOCK_COMMUNITY_POSTS.map(normalizePost);
+    return [];
   }
 }
 
 export function saveCommunityPosts(posts: CommunityPost[]): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(posts.filter((post) => !isSeedCommunityPost(post)))
+  );
 }
 
 export function formatRelativeTime(iso: string): string {

@@ -6,6 +6,7 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { requiresCommunityLogin } from "@/lib/auth/community-access";
+import { useFriends } from "@/lib/friends/FriendsProvider";
 import type { AppNotification } from "@/lib/community/notifications-supabase";
 import {
   fetchNotificationsFromSupabase,
@@ -35,6 +36,21 @@ function notificationCopy(n: AppNotification): { title: string; body: string } {
         title: "참여 거절",
         body: `「${postTitle}」 참여 요청이 거절됐어요.`,
       };
+    case "friend_request":
+      return {
+        title: "친구 요청",
+        body: `${actorName}님이 친구를 요청했어요.`,
+      };
+    case "friend_accepted":
+      return {
+        title: "친구 수락",
+        body: `${actorName}님이 친구 요청을 수락했어요.`,
+      };
+    case "friend_rejected":
+      return {
+        title: "친구 거절",
+        body: `${actorName}님이 친구 요청을 거절했어요.`,
+      };
     default:
       return { title: "알림", body: postTitle };
   }
@@ -43,8 +59,10 @@ function notificationCopy(n: AppNotification): { title: string; body: string } {
 export function NotificationsPageContent() {
   const router = useRouter();
   const { user, provider, isReady } = useAuth();
+  const { acceptFriend, rejectFriend, refreshFriends } = useFriends();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
   const needsLogin = requiresCommunityLogin(user, provider);
 
   const load = useCallback(async () => {
@@ -84,19 +102,46 @@ export function NotificationsPageContent() {
     };
   }, [isReady, load, needsLogin, user?.id]);
 
-  async function handleOpen(n: AppNotification) {
-    if (!user?.id) return;
+  async function markRead(n: AppNotification) {
+    if (!user?.id || n.readAt) return;
     const supabase = getBrowserSupabase();
-    if (supabase && !n.readAt) {
-      await markNotificationReadInSupabase(supabase, n.id, user.id);
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === n.id ? { ...item, readAt: new Date().toISOString() } : item
-        )
-      );
+    if (!supabase) return;
+    await markNotificationReadInSupabase(supabase, n.id, user.id);
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === n.id ? { ...item, readAt: new Date().toISOString() } : item
+      )
+    );
+  }
+
+  async function handleOpen(n: AppNotification) {
+    await markRead(n);
+    if (n.type.startsWith("friend_")) {
+      router.push("/opod");
+      return;
     }
     if (n.postId) {
       router.push(`/board/${n.postId}`);
+    }
+  }
+
+  async function handleFriendAction(
+    n: AppNotification,
+    action: "accept" | "reject"
+  ) {
+    if (!n.actorId || actionId) return;
+    setActionId(n.id);
+    try {
+      const ok =
+        action === "accept"
+          ? await acceptFriend(n.actorId)
+          : await rejectFriend(n.actorId);
+      if (!ok) return;
+      await markRead(n);
+      await refreshFriends();
+      setItems((prev) => prev.filter((item) => item.id !== n.id));
+    } finally {
+      setActionId(null);
     }
   }
 
@@ -113,8 +158,8 @@ export function NotificationsPageContent() {
     return (
       <MobileShell title="알림" showBack backHref="/">
         <div className="flex flex-col gap-3 px-5 py-6">
-          <div className="h-16 animate-pulse rounded-xl2 bg-surface-soft" />
-          <div className="h-16 animate-pulse rounded-xl2 bg-surface-soft" />
+          <div className="h-16 animate-pulse rounded-2xl bg-surface-soft" />
+          <div className="h-16 animate-pulse rounded-2xl bg-surface-soft" />
         </div>
       </MobileShell>
     );
@@ -167,25 +212,56 @@ export function NotificationsPageContent() {
           items.map((n) => {
             const copy = notificationCopy(n);
             const unread = !n.readAt;
+            const isFriendRequest = n.type === "friend_request";
+
             return (
-              <button
+              <div
                 key={n.id}
-                type="button"
-                onClick={() => void handleOpen(n)}
-                className={`flex w-full flex-col gap-1 rounded-xl2 border px-4 py-3.5 text-left transition-colors active:bg-surface-soft ${
+                className={`flex w-full flex-col gap-2 rounded-2xl border px-4 py-3.5 text-left ${
                   unread
                     ? "border-brand/25 bg-brand/5"
                     : "border-line-soft bg-white"
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-brand">{copy.title}</span>
-                  <span className="text-[11px] text-ink-caption">{n.createdAtLabel}</span>
-                </div>
-                <p className="text-sm font-semibold leading-snug text-ink-heading">
-                  {copy.body}
-                </p>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => void handleOpen(n)}
+                  className="flex w-full flex-col gap-1 text-left"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-brand">
+                      {copy.title}
+                    </span>
+                    <span className="text-xs text-ink-caption">
+                      {n.createdAtLabel}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold leading-snug text-ink-heading">
+                    {copy.body}
+                  </p>
+                </button>
+
+                {isFriendRequest && n.actorId ? (
+                  <div className="mt-1 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={actionId === n.id}
+                      onClick={() => void handleFriendAction(n, "reject")}
+                      className="h-9 flex-1 rounded-full border border-line-soft bg-surface-white text-xs font-bold text-ink-body disabled:opacity-50"
+                    >
+                      거절
+                    </button>
+                    <button
+                      type="button"
+                      disabled={actionId === n.id}
+                      onClick={() => void handleFriendAction(n, "accept")}
+                      className="h-9 flex-1 rounded-full bg-brand text-xs font-bold text-surface-white disabled:opacity-50"
+                    >
+                      수락
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             );
           })
         )}

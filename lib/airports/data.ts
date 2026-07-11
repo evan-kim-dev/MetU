@@ -1,5 +1,14 @@
 export type PlaceKind = "city" | "airport";
 
+export type ContinentId =
+  | "east-asia"
+  | "southeast-asia"
+  | "europe"
+  | "americas"
+  | "oceania"
+  | "middle-east"
+  | "other";
+
 export interface AirportPlace {
   id: string;
   kind: PlaceKind;
@@ -15,6 +24,73 @@ export interface AirportPlace {
   cityId?: string;
   /** 검색용 키워드 */
   keywords: string[];
+}
+
+export const CONTINENT_LABELS: Record<ContinentId, string> = {
+  "east-asia": "동아시아",
+  "southeast-asia": "동남아시아",
+  europe: "유럽",
+  americas: "미주",
+  oceania: "오세아니아",
+  "middle-east": "중동",
+  other: "기타",
+};
+
+const CONTINENT_ORDER: ContinentId[] = [
+  "east-asia",
+  "southeast-asia",
+  "europe",
+  "americas",
+  "oceania",
+  "middle-east",
+  "other",
+];
+
+const COUNTRY_TO_CONTINENT: Record<string, ContinentId> = {
+  대한민국: "east-asia",
+  일본: "east-asia",
+  중국: "east-asia",
+  홍콩: "east-asia",
+  대만: "east-asia",
+  태국: "southeast-asia",
+  베트남: "southeast-asia",
+  싱가포르: "southeast-asia",
+  인도네시아: "southeast-asia",
+  필리핀: "southeast-asia",
+  프랑스: "europe",
+  영국: "europe",
+  이탈리아: "europe",
+  스페인: "europe",
+  독일: "europe",
+  미국: "americas",
+  캐나다: "americas",
+  호주: "oceania",
+  아랍에미리트: "middle-east",
+};
+
+export function getContinentId(place: AirportPlace): ContinentId {
+  return COUNTRY_TO_CONTINENT[place.country] ?? "other";
+}
+
+export function groupPlacesByContinent(
+  places: AirportPlace[]
+): Array<{ id: ContinentId; label: string; places: AirportPlace[] }> {
+  const buckets = new Map<ContinentId, AirportPlace[]>();
+
+  for (const place of places) {
+    const id = getContinentId(place);
+    const list = buckets.get(id);
+    if (list) list.push(place);
+    else buckets.set(id, [place]);
+  }
+
+  return CONTINENT_ORDER.filter((id) => (buckets.get(id)?.length ?? 0) > 0).map(
+    (id) => ({
+      id,
+      label: CONTINENT_LABELS[id],
+      places: buckets.get(id) ?? [],
+    })
+  );
 }
 
 export const AIRPORT_PLACES: AirportPlace[] = [
@@ -432,7 +508,284 @@ export const AIRPORT_PLACES: AirportPlace[] = [
     cityId: "city-dps",
     keywords: ["응우라라이", "ngurah rai", "dps", "발리", "bali"],
   },
+  // 로스앤젤레스
+  {
+    id: "city-lax",
+    kind: "city",
+    name: "로스앤젤레스 (모두)",
+    city: "로스앤젤레스",
+    country: "미국",
+    keywords: ["로스앤젤레스", "엘에이", "los angeles", "la", "lax", "미국", "usa"],
+  },
+  {
+    id: "lax",
+    kind: "airport",
+    name: "로스앤젤레스 국제 (LAX)",
+    city: "로스앤젤레스",
+    country: "미국",
+    code: "LAX",
+    cityId: "city-lax",
+    keywords: ["로스앤젤레스", "엘에이", "los angeles", "lax"],
+  },
+  // 샌프란시스코
+  {
+    id: "city-sfo",
+    kind: "city",
+    name: "샌프란시스코 (모두)",
+    city: "샌프란시스코",
+    country: "미국",
+    keywords: ["샌프란시스코", "san francisco", "sfo", "미국", "usa"],
+  },
+  {
+    id: "sfo",
+    kind: "airport",
+    name: "샌프란시스코 국제 (SFO)",
+    city: "샌프란시스코",
+    country: "미국",
+    code: "SFO",
+    cityId: "city-sfo",
+    keywords: ["샌프란시스코", "san francisco", "sfo"],
+  },
+  // 하와이 호놀룰루
+  {
+    id: "city-hnl",
+    kind: "city",
+    name: "호놀룰루 (모두)",
+    city: "호놀룰루",
+    country: "미국",
+    keywords: ["호놀룰루", "하와이", "honolulu", "hawaii", "hnl"],
+  },
+  {
+    id: "hnl",
+    kind: "airport",
+    name: "대니얼 K. 이노우에 (HNL)",
+    city: "호놀룰루",
+    country: "미국",
+    code: "HNL",
+    cityId: "city-hnl",
+    keywords: ["호놀룰루", "하와이", "honolulu", "hawaii", "hnl"],
+  },
+  // 로마
+  {
+    id: "city-rom",
+    kind: "city",
+    name: "로마 (모두)",
+    city: "로마",
+    country: "이탈리아",
+    keywords: ["로마", "rome", "rom", "이탈리아", "italy"],
+  },
+  {
+    id: "fco",
+    kind: "airport",
+    name: "피우미치노 (FCO)",
+    city: "로마",
+    country: "이탈리아",
+    code: "FCO",
+    cityId: "city-rom",
+    keywords: ["피우미치노", "fiumicino", "fco", "로마", "rome"],
+  },
+  // 바르셀로나
+  {
+    id: "city-bcn",
+    kind: "city",
+    name: "바르셀로나 (모두)",
+    city: "바르셀로나",
+    country: "스페인",
+    keywords: ["바르셀로나", "barcelona", "bcn", "스페인", "spain"],
+  },
+  {
+    id: "bcn",
+    kind: "airport",
+    name: "바르셀로나 엘프라트 (BCN)",
+    city: "바르셀로나",
+    country: "스페인",
+    code: "BCN",
+    cityId: "city-bcn",
+    keywords: ["바르셀로나", "barcelona", "el prat", "bcn"],
+  },
+  // 두바이
+  {
+    id: "city-dxb",
+    kind: "city",
+    name: "두바이 (모두)",
+    city: "두바이",
+    country: "아랍에미리트",
+    keywords: ["두바이", "dubai", "dxb", "uae", "아랍"],
+  },
+  {
+    id: "dxb",
+    kind: "airport",
+    name: "두바이 국제 (DXB)",
+    city: "두바이",
+    country: "아랍에미리트",
+    code: "DXB",
+    cityId: "city-dxb",
+    keywords: ["두바이", "dubai", "dxb"],
+  },
+  // 프랑크푸르트
+  {
+    id: "city-fra",
+    kind: "city",
+    name: "프랑크푸르트 (모두)",
+    city: "프랑크푸르트",
+    country: "독일",
+    keywords: ["프랑크푸르트", "frankfurt", "fra", "독일", "germany"],
+  },
+  {
+    id: "fra",
+    kind: "airport",
+    name: "프랑크푸르트 암마인 (FRA)",
+    city: "프랑크푸르트",
+    country: "독일",
+    code: "FRA",
+    cityId: "city-fra",
+    keywords: ["프랑크푸르트", "frankfurt", "fra"],
+  },
+  // 상하이
+  {
+    id: "city-sha",
+    kind: "city",
+    name: "상하이 (모두)",
+    city: "상하이",
+    country: "중국",
+    keywords: ["상하이", "shanghai", "sha", "중국", "china"],
+  },
+  {
+    id: "pvg",
+    kind: "airport",
+    name: "푸동 (PVG)",
+    city: "상하이",
+    country: "중국",
+    code: "PVG",
+    cityId: "city-sha",
+    keywords: ["푸동", "pudong", "pvg", "상하이", "shanghai"],
+  },
+  {
+    id: "sha",
+    kind: "airport",
+    name: "홍차오 (SHA)",
+    city: "상하이",
+    country: "중국",
+    code: "SHA",
+    cityId: "city-sha",
+    keywords: ["홍차오", "hongqiao", "sha", "상하이"],
+  },
+  // 마닐라
+  {
+    id: "city-mnl",
+    kind: "city",
+    name: "마닐라 (모두)",
+    city: "마닐라",
+    country: "필리핀",
+    keywords: ["마닐라", "manila", "mnl", "필리핀", "philippines"],
+  },
+  {
+    id: "mnl",
+    kind: "airport",
+    name: "니노이 아키노 (MNL)",
+    city: "마닐라",
+    country: "필리핀",
+    code: "MNL",
+    cityId: "city-mnl",
+    keywords: ["마닐라", "manila", "아키노", "mnl"],
+  },
+  // 푸켓
+  {
+    id: "city-hkt",
+    kind: "city",
+    name: "푸켓 (모두)",
+    city: "푸켓",
+    country: "태국",
+    keywords: ["푸켓", "phuket", "hkt", "태국", "thailand"],
+  },
+  {
+    id: "hkt",
+    kind: "airport",
+    name: "푸켓 국제 (HKT)",
+    city: "푸켓",
+    country: "태국",
+    code: "HKT",
+    cityId: "city-hkt",
+    keywords: ["푸켓", "phuket", "hkt"],
+  },
+  // 후쿠오카
+  {
+    id: "city-fuk",
+    kind: "city",
+    name: "후쿠오카 (모두)",
+    city: "후쿠오카",
+    country: "일본",
+    keywords: ["후쿠오카", "fukuoka", "fuk", "일본", "japan"],
+  },
+  {
+    id: "fuk",
+    kind: "airport",
+    name: "후쿠오카 (FUK)",
+    city: "후쿠오카",
+    country: "일본",
+    code: "FUK",
+    cityId: "city-fuk",
+    keywords: ["후쿠오카", "fukuoka", "fuk"],
+  },
 ];
+
+/** 검색창을 열었을 때 보여줄 인기 도시·공항 (전 세계) */
+const POPULAR_PLACE_IDS = [
+  "city-sel",
+  "icn",
+  "gmp",
+  "city-pus",
+  "pus",
+  "city-cju",
+  "cju",
+  "city-tyo",
+  "hnd",
+  "nrt",
+  "city-osa",
+  "kix",
+  "city-fuk",
+  "fuk",
+  "city-bkk",
+  "bkk",
+  "city-hkt",
+  "hkt",
+  "city-dad",
+  "dad",
+  "city-sin",
+  "sin",
+  "city-hkg",
+  "hkg",
+  "city-tpe",
+  "tpe",
+  "city-dps",
+  "dps",
+  "city-mnl",
+  "mnl",
+  "city-par",
+  "cdg",
+  "city-lon",
+  "lhr",
+  "city-rom",
+  "fco",
+  "city-bcn",
+  "bcn",
+  "city-fra",
+  "fra",
+  "city-dxb",
+  "dxb",
+  "city-nyc",
+  "jfk",
+  "city-lax",
+  "lax",
+  "city-sfo",
+  "sfo",
+  "city-hnl",
+  "hnl",
+  "city-syd",
+  "syd",
+  "city-sha",
+  "pvg",
+] as const;
 
 /** 공항 입력/표시용 공식 명칭 (예: 인천국제공항(ICN)) */
 export const AIRPORT_OFFICIAL_NAMES: Record<string, string> = {
@@ -444,17 +797,26 @@ export const AIRPORT_OFFICIAL_NAMES: Record<string, string> = {
   NRT: "나리타국제공항",
   KIX: "간사이국제공항",
   ITM: "오사카국제공항",
+  FUK: "후쿠오카공항",
   BKK: "수완나품국제공항",
   DMK: "돈므앙국제공항",
+  HKT: "푸켓국제공항",
   DAD: "다낭국제공항",
   CDG: "샤를드골공항",
   ORY: "오를리공항",
   LHR: "히드로공항",
   LGW: "개트윅공항",
   STN: "스탠스테드공항",
+  FCO: "피우미치노공항",
+  BCN: "엘프라트공항",
+  FRA: "프랑크푸르트공항",
+  DXB: "두바이국제공항",
   JFK: "존 F. 케네디국제공항",
   EWR: "뉴어크리버티국제공항",
   LGA: "라과디아공항",
+  LAX: "로스앤젤레스국제공항",
+  SFO: "샌프란시스코국제공항",
+  HNL: "호놀룰루국제공항",
   YUL: "몬트리올트루도공항",
   YHU: "몬트리올생위베르공항",
   SIN: "창이국제공항",
@@ -463,6 +825,9 @@ export const AIRPORT_OFFICIAL_NAMES: Record<string, string> = {
   TSA: "송산공항",
   SYD: "킹스포드스미스공항",
   DPS: "응우라라이국제공항",
+  MNL: "니노이아키노국제공항",
+  PVG: "푸동국제공항",
+  SHA: "홍차오공항",
 };
 
 function normalize(q: string): string {
@@ -470,13 +835,13 @@ function normalize(q: string): string {
 }
 
 /** 검색어로 도시/공항 목록을 찾는다. 도시가 매칭되면 하위 공항도 함께 노출 */
-export function searchAirportPlaces(query: string, limit = 12): AirportPlace[] {
+export function searchAirportPlaces(query: string, limit = 24): AirportPlace[] {
   const q = normalize(query);
   if (!q) {
-    // 기본: 서울 + 인기 도시
-    return AIRPORT_PLACES.filter((p) =>
-      ["city-sel", "icn", "gmp", "city-tyo", "hnd", "nrt"].includes(p.id)
-    );
+    const popular = POPULAR_PLACE_IDS.map((id) =>
+      AIRPORT_PLACES.find((place) => place.id === id)
+    ).filter((place): place is AirportPlace => Boolean(place));
+    return popular.slice(0, limit);
   }
 
   const matched = AIRPORT_PLACES.filter((place) => {

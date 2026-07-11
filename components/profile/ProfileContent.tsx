@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -18,28 +17,25 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import {
   CURRENCY_OPTIONS,
-  MOCK_PROFILE,
   PROFILE_STYLE_OPTIONS,
 } from "@/lib/mock/profile";
 import { LEGAL_LINKS } from "@/lib/legal/documents";
-import { useAuth } from "@/lib/auth/AuthProvider";
 import { LoginMethodList } from "@/components/auth/LoginMethodList";
-import { useProfile } from "@/lib/profile/ProfileProvider";
-import {
-  isStoredAvatar,
-  removeProfileAvatar,
-  uploadProfileAvatar,
-} from "@/lib/profile/supabase";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
-import type { TravelStyle } from "@/components/onboarding/types";
-
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+import { useProfileContent } from "@/components/profile/useProfileContent";
 
 function isDataUrl(src: string): boolean {
   return src.startsWith("data:");
 }
 
 function ProfileAvatar({ src, alt }: { src: string; alt: string }) {
+  if (!src.trim()) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-surface-soft text-3xl">
+        👤
+      </div>
+    );
+  }
+
   if (isDataUrl(src)) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -53,176 +49,41 @@ function ProfileAvatar({ src, alt }: { src: string; alt: string }) {
 }
 
 export function ProfileContent() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { logout, provider, user } = useAuth();
-  const { profile, updateProfile } = useProfile();
-  const [selectedStyles, setSelectedStyles] = useState<TravelStyle[]>(
-    profile.styles
-  );
-  const [styleInsight, setStyleInsight] = useState(
-    "관심 스타일을 고르면 맞춤 여행지를 추천해 드려요."
-  );
-  const [styleInsightLoading, setStyleInsightLoading] = useState(false);
-  const [currency, setCurrency] = useState<(typeof CURRENCY_OPTIONS)[number]>("KRW");
-  const [notifications, setNotifications] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [draftName, setDraftName] = useState(profile.name);
-  const [draftBio, setDraftBio] = useState(profile.bio ?? "");
-  const [draftHomeCity, setDraftHomeCity] = useState(profile.homeCity ?? "");
-  const [avatarError, setAvatarError] = useState<string | null>(null);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-
-  useEffect(() => {
-    setSelectedStyles(profile.styles);
-    setDraftName(profile.name);
-    setDraftBio(profile.bio ?? "");
-    setDraftHomeCity(profile.homeCity ?? "");
-  }, [profile.bio, profile.homeCity, profile.name, profile.styles]);
-
-  useEffect(() => {
-    const local =
-      selectedStyles.length === 0
-        ? "관심 스타일을 고르면 맞춤 여행지를 추천해 드려요."
-        : "선택하신 스타일을 바탕으로 맞춤 여행지를 추천해 드려요.";
-    setStyleInsight(local);
-
-    if (selectedStyles.length === 0) {
-      setStyleInsightLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    setStyleInsightLoading(true);
-
-    const timer = window.setTimeout(() => {
-      fetch("/api/style-insight", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ styles: selectedStyles }),
-        signal: controller.signal,
-        cache: "no-store",
-      })
-        .then(async (res) => {
-          if (!res.ok) throw new Error("style-insight-failed");
-          return (await res.json()) as { insight?: string };
-        })
-        .then((data) => {
-          if (data.insight?.trim()) setStyleInsight(data.insight.trim());
-        })
-        .catch((error) => {
-          if ((error as Error)?.name === "AbortError") return;
-          setStyleInsight(local);
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setStyleInsightLoading(false);
-        });
-    }, 350);
-
-    return () => {
-      controller.abort();
-      window.clearTimeout(timer);
-    };
-  }, [selectedStyles]);
-
-  const toggleStyle = (style: TravelStyle) => {
-    setSelectedStyles((prev) => {
-      const next = prev.includes(style)
-        ? prev.filter((item) => item !== style)
-        : [...prev, style];
-      updateProfile({ styles: next });
-      return next;
-    });
-  };
-
-  const handleSaveProfile = () => {
-    const nextName = draftName.trim();
-    if (!nextName) {
-      setDraftName(profile.name);
-      setDraftBio(profile.bio ?? "");
-      setDraftHomeCity(profile.homeCity ?? "");
-      setIsEditing(false);
-      return;
-    }
-    updateProfile({
-      name: nextName,
-      bio: draftBio.trim(),
-      homeCity: draftHomeCity.trim(),
-    });
-    setIsEditing(false);
-  };
-
-  const handleCancelEdit = () => {
-    setDraftName(profile.name);
-    setDraftBio(profile.bio ?? "");
-    setDraftHomeCity(profile.homeCity ?? "");
-    setIsEditing(false);
-  };
-
-  const handleAvatarSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setAvatarError("이미지 파일만 업로드할 수 있어요.");
-      return;
-    }
-    if (file.size > MAX_AVATAR_BYTES) {
-      setAvatarError("2MB 이하 이미지만 업로드할 수 있어요.");
-      return;
-    }
-
-    const supabase = getBrowserSupabase();
-    const canUseStorage = Boolean(supabase && user?.id && provider !== "guest");
-
-    if (canUseStorage && supabase && user?.id) {
-      setIsUploadingAvatar(true);
-      void uploadProfileAvatar(supabase, user.id, file).then((result) => {
-        setIsUploadingAvatar(false);
-        if ("error" in result) {
-          setAvatarError("사진 업로드에 실패했어요. 다시 시도해주세요.");
-          return;
-        }
-        setAvatarError(null);
-        updateProfile({
-          customAvatarUrl: result.publicUrl,
-          avatarUrl: result.publicUrl,
-        });
-      });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      if (typeof dataUrl !== "string") return;
-      setAvatarError(null);
-      updateProfile({ customAvatarUrl: dataUrl, avatarUrl: dataUrl });
-    };
-    reader.onerror = () => {
-      setAvatarError("사진을 불러오지 못했어요. 다시 시도해주세요.");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveAvatar = () => {
-    setAvatarError(null);
-    const meta = user?.user_metadata ?? {};
-    const authAvatar =
-      (typeof meta.avatar_url === "string" && meta.avatar_url) ||
-      (typeof meta.picture === "string" && meta.picture) ||
-      MOCK_PROFILE.avatarUrl;
-
-    const supabase = getBrowserSupabase();
-    if (supabase && user?.id && provider !== "guest") {
-      void removeProfileAvatar(supabase, user.id);
-    }
-
-    updateProfile({ customAvatarUrl: null, avatarUrl: authAvatar });
-  };
-
-  const hasCustomAvatar =
-    Boolean(profile.customAvatarUrl) || isStoredAvatar(profile.avatarUrl);
+  const {
+    fileInputRef,
+    logout,
+    provider,
+    profile,
+    selectedStyles,
+    styleInsight,
+    styleInsightLoading,
+    currency,
+    setCurrency,
+    notifications,
+    setNotifications,
+    isEditing,
+    setIsEditing,
+    draftName,
+    setDraftName,
+    draftBio,
+    setDraftBio,
+    draftHomeCity,
+    setDraftHomeCity,
+    avatarError,
+    isUploadingAvatar,
+    hasCustomAvatar,
+    toggleStyle,
+    handleSaveProfile,
+    handleCancelEdit,
+    handleAvatarSelect,
+    handleRemoveAvatar,
+    isDeletingAccount,
+    deleteError,
+    deleteConfirmOpen,
+    openDeleteConfirm,
+    closeDeleteConfirm,
+    handleDeleteAccount,
+  } = useProfileContent();
 
   return (
     <MobileShell>
@@ -507,16 +368,82 @@ export function ProfileContent() {
           </section>
 
           {provider !== "guest" ? (
-            <button
-              type="button"
-              onClick={logout}
-              className="w-full rounded-xl2 border border-danger-border py-3.5 text-sm font-semibold tracking-wide text-danger transition-colors active:bg-danger/5"
-            >
-              로그아웃
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={logout}
+                disabled={isDeletingAccount}
+                className="w-full rounded-xl2 border border-danger-border py-3.5 text-sm font-semibold tracking-wide text-danger transition-colors active:bg-danger/5 disabled:opacity-60"
+              >
+                로그아웃
+              </button>
+              <button
+                type="button"
+                onClick={openDeleteConfirm}
+                disabled={isDeletingAccount}
+                className="w-full rounded-xl2 py-3 text-sm font-semibold tracking-wide text-ink-caption transition-colors active:bg-surface-soft disabled:opacity-60"
+              >
+                회원 탈퇴
+              </button>
+              {deleteError ? (
+                <p className="text-center text-xs text-danger">{deleteError}</p>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
+
+      {deleteConfirmOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-heading/40 px-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+          onClick={closeDeleteConfirm}
+        >
+          <div
+            className="w-full max-w-dialog rounded-xl2 bg-surface-white p-5 shadow-overlay"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2
+              id="delete-account-title"
+              className="text-lg font-extrabold text-ink-heading"
+            >
+              정말 탈퇴하시겠어요?
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-ink-body">
+              탈퇴하면 아래 데이터가 모두 삭제되며{" "}
+              <span className="font-bold text-danger">복구할 수 없어요.</span>
+            </p>
+            <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-ink-caption">
+              <li>프로필·닉네임·여행 취향</li>
+              <li>저장한 여행 계획과 예산·일정</li>
+              <li>작성한 게시글·댓글·동행 채팅</li>
+              <li>알림 및 계정 로그인 정보</li>
+            </ul>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteConfirm}
+                disabled={isDeletingAccount}
+                className="rounded-xl border border-line-muted py-3 text-sm font-bold text-ink-body disabled:opacity-60"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleDeleteAccount();
+                }}
+                disabled={isDeletingAccount}
+                className="rounded-xl bg-danger py-3 text-sm font-bold text-surface-white disabled:opacity-60"
+              >
+                {isDeletingAccount ? "탈퇴 중..." : "탈퇴하기"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </MobileShell>
   );
 }

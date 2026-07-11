@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TravelStyle } from "@/components/onboarding/types";
 import { TABLES } from "@/lib/constants";
 import { MOCK_PROFILE, type ProfileUser } from "@/lib/mock/profile";
-import type { ProfileUpdate } from "./storage";
 
 const AVATAR_BUCKET = "avatars";
 
@@ -83,28 +82,6 @@ export async function ensureProfileInSupabase(
   if (!ok) return seed;
 
   return (await fetchProfileFromSupabase(supabase, userId)) ?? seed;
-}
-
-export function applyProfileUpdate(
-  profile: ProfileUser,
-  update: ProfileUpdate
-): ProfileUser {
-  const nextAvatarUrl =
-    update.customAvatarUrl !== undefined
-      ? update.customAvatarUrl ?? profile.avatarUrl
-      : update.avatarUrl ?? profile.avatarUrl;
-
-  return {
-    ...profile,
-    ...update,
-    name: (update.name ?? profile.name).trim() || profile.name,
-    styles: update.styles ?? profile.styles,
-    avatarUrl: nextAvatarUrl,
-    customAvatarUrl:
-      update.customAvatarUrl !== undefined
-        ? update.customAvatarUrl
-        : profile.customAvatarUrl,
-  };
 }
 
 export async function uploadProfileAvatar(

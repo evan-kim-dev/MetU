@@ -10,6 +10,7 @@ import {
   CalendarDays,
   MapPin,
   Plane,
+  Sparkles,
   SquareArrowOutUpRight,
   Wallet,
 } from "lucide-react";
@@ -17,108 +18,70 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { AIInsightBadge } from "@/components/ui/AIInsightBadge";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
-import { formatKRW } from "@/lib/mock/home";
+import { usePlanQuotes } from "@/components/recommend/usePlanQuotes";
+import { formatKRW } from "@/lib/shared/format";
 import type { TripRecommendation } from "@/lib/ai/types";
 import { buildAgodaUrlFromPlan } from "@/lib/flights/agoda-url";
 import { buildAgodaHotelUrlFromPlan } from "@/lib/hotels/agoda-url";
-import {
-  fetchPlanHotelQuote,
-  type PlanHotelQuote,
-} from "@/lib/hotels/plan-hotel-quote";
-import {
-  fetchPlanFlightQuote,
-  type PlanFlightQuote,
-} from "@/lib/flights/plan-flight-quote";
-import { DEFAULTS } from "@/lib/constants";
 import { useTrips } from "@/lib/trips/TripProvider";
-import type { Trip } from "@/lib/trips/types";
-
-function planToTrip(
-  plan: TripRecommendation,
-  flightPrice: number,
-  flightAirline: string,
-  hotelPrice: number,
-  hotelName: string
-): Trip {
-  const expenses = [
-    {
-      id: "exp-flight",
-      category: "교통",
-      label: `${flightAirline} 항공권`,
-      amount: flightPrice,
-      date: "예약 예정",
-    },
-    {
-      id: "exp-hotel",
-      category: "숙소",
-      label: `${hotelName} ${plan.hotel.nights}박`,
-      amount: hotelPrice,
-      date: "예약 예정",
-    },
-  ];
-
-  return {
-    id: `trip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    destination: plan.destination,
-    country: plan.country,
-    origin: plan.origin,
-    dateRange: plan.dateRange,
-    dDay: DEFAULTS.dDayPlaceholder,
-    budget: plan.totalBudget,
-    spent: flightPrice + hotelPrice,
-    people: plan.people,
-    styles: plan.form.styles,
-    imageUrl: plan.imageUrl,
-    memo: plan.summary,
-    status: "upcoming",
-    expenses,
-    budgetAllocation: plan.budgetAllocation,
-    dailySchedule: plan.dailySchedule,
-    tips: plan.tips,
-  };
-}
+import { planToTrip } from "@/components/recommend/planToTrip";
 
 interface RecommendResultProps {
   plan: TripRecommendation;
+  /** true면 폴백을 먼저 보여주고 뒤에서 AI 보강 */
+  enrich?: boolean;
 }
 
-export function RecommendResult({ plan }: RecommendResultProps) {
+export function RecommendResult({
+  plan: initialPlan,
+  enrich = false,
+}: RecommendResultProps) {
   const router = useRouter();
   const { addTrip } = useTrips();
-  const [flightQuote, setFlightQuote] = useState<PlanFlightQuote | null>(null);
-  const [flightQuoteLoading, setFlightQuoteLoading] = useState(true);
-  const [hotelQuote, setHotelQuote] = useState<PlanHotelQuote | null>(null);
-  const [hotelQuoteLoading, setHotelQuoteLoading] = useState(true);
+  const [plan, setPlan] = useState(initialPlan);
+  const [enriching, setEnriching] = useState(enrich);
+  const {
+    flightQuote,
+    hotelQuote,
+    flightQuoteLoading,
+    hotelQuoteLoading,
+  } = usePlanQuotes(plan);
 
   useEffect(() => {
-    let cancelled = false;
-    setFlightQuoteLoading(true);
+    setPlan(initialPlan);
+    setEnriching(enrich);
+  }, [initialPlan.id, enrich]); // eslint-disable-line react-hooks/exhaustive-deps -- 새 폴백만 동기화
 
-    void fetchPlanFlightQuote(plan).then((quote) => {
-      if (cancelled) return;
-      setFlightQuote(quote);
-      setFlightQuoteLoading(false);
-    });
+  useEffect(() => {
+    if (!enrich) return;
+
+    let cancelled = false;
+    setEnriching(true);
+
+    void fetch("/api/onboarding/enrich-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ form: initialPlan.form, plan: initialPlan }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("enrich-failed");
+        return (await res.json()) as { plan?: TripRecommendation };
+      })
+      .then((data) => {
+        if (cancelled || !data.plan) return;
+        setPlan(data.plan);
+      })
+      .catch(() => {
+        // 폴백 일정 유지
+      })
+      .finally(() => {
+        if (!cancelled) setEnriching(false);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [plan]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setHotelQuoteLoading(true);
-
-    void fetchPlanHotelQuote(plan).then((quote) => {
-      if (cancelled) return;
-      setHotelQuote(quote);
-      setHotelQuoteLoading(false);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [plan]);
+  }, [enrich, initialPlan.id]); // eslint-disable-line react-hooks/exhaustive-deps -- 동일 일정 1회 보강
 
   const agodaFlightUrl =
     flightQuote?.agodaUrl ?? buildAgodaUrlFromPlan(plan) ?? undefined;
@@ -150,7 +113,21 @@ export function RecommendResult({ plan }: RecommendResultProps) {
   return (
     <MobileShell title="AI 추천 결과" showBack backHref="/onboarding" showBottomNav={false}>
       <div className="flex flex-col gap-6 px-4 pb-8 pt-5">
-        {/* 히어로 */}
+        {enriching ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 rounded-xl2 border border-brand/15 bg-brand/5 px-3.5 py-2.5 text-sm text-brand-strong"
+          >
+            <Sparkles
+              className="h-4 w-4 shrink-0 motion-safe:animate-pulse"
+              strokeWidth={2.2}
+              aria-hidden
+            />
+            <span className="font-semibold">AI가 맞춤 일정을 다듬고 있어요…</span>
+          </div>
+        ) : null}
+
         <section className="relative h-48 overflow-hidden rounded-xl2 shadow-soft">
           <Image
             src={plan.imageUrl}
@@ -174,7 +151,7 @@ export function RecommendResult({ plan }: RecommendResultProps) {
           {plan.summary}
         </AIInsightBadge>
 
-        <section className="rounded-xl2 border border-line-soft bg-surface-white p-4">
+        <section className="rounded-xl2 border border-line-soft bg-surface-white p-5 shadow-soft">
           <h3 className="mb-2 text-sm font-extrabold text-ink-heading">입력 요약</h3>
           <div className="grid grid-cols-2 gap-2 text-xs text-ink-body">
             <p>출발지: {plan.form.origin}</p>
@@ -185,7 +162,7 @@ export function RecommendResult({ plan }: RecommendResultProps) {
         </section>
 
         {plan.ragSources?.length > 0 && (
-          <section className="rounded-xl2 border border-line-soft bg-surface-white p-5 shadow-soft">
+          <section className="rounded-xl2 border border-line-soft bg-surface-white p-6 shadow-soft">
             <div className="mb-3 flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-brand" />
               <h3 className="text-lg font-extrabold text-ink-heading">
@@ -202,7 +179,7 @@ export function RecommendResult({ plan }: RecommendResultProps) {
                   className="rounded-xl border border-line-soft bg-surface-base px-3.5 py-3"
                 >
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
+                    <span className="rounded-full bg-brand/10 px-2 py-0.5 text-2xs font-bold text-brand">
                       {source.category}
                     </span>
                     <span className="text-xs font-extrabold text-ink-heading">
@@ -218,7 +195,6 @@ export function RecommendResult({ plan }: RecommendResultProps) {
           </section>
         )}
 
-        {/* 스타일 태그 */}
         <div className="flex flex-wrap gap-2">
           {plan.styleLabels.map((label) => (
             <span
@@ -230,8 +206,7 @@ export function RecommendResult({ plan }: RecommendResultProps) {
           ))}
         </div>
 
-        {/* 예산 분배 */}
-        <section className="rounded-xl2 bg-surface-white p-5 shadow-soft">
+        <section className="rounded-xl2 bg-surface-white p-6 shadow-soft">
           <div className="mb-4 flex items-center gap-2">
             <Wallet className="h-5 w-5 text-brand" />
             <h3 className="text-lg font-extrabold text-ink-heading">예산 분배</h3>
@@ -243,8 +218,12 @@ export function RecommendResult({ plan }: RecommendResultProps) {
           />
         </section>
 
-        {/* 항공 */}
-        <section className="rounded-xl2 border border-line-soft bg-surface-white p-5 shadow-soft">
+        <section
+          className={[
+            "rounded-xl2 border border-line-soft bg-surface-white p-6 shadow-soft transition-opacity",
+            enriching ? "opacity-90" : "",
+          ].join(" ")}
+        >
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Plane className="h-5 w-5 text-brand" />
@@ -301,8 +280,12 @@ export function RecommendResult({ plan }: RecommendResultProps) {
           <p className="mt-1 text-xs text-ink-caption">{plan.flight.note}</p>
         </section>
 
-        {/* 숙소 */}
-        <section className="rounded-xl2 border border-line-soft bg-surface-white p-5 shadow-soft">
+        <section
+          className={[
+            "rounded-xl2 border border-line-soft bg-surface-white p-6 shadow-soft transition-opacity",
+            enriching ? "opacity-90" : "",
+          ].join(" ")}
+        >
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <BedDouble className="h-5 w-5 text-brand" />
@@ -362,27 +345,37 @@ export function RecommendResult({ plan }: RecommendResultProps) {
           <p className="mt-1 text-xs text-ink-caption">{plan.hotel.note}</p>
         </section>
 
-        {/* 일정 */}
-        <section className="rounded-xl2 bg-surface-white p-5 shadow-soft">
+        <section className="rounded-xl2 bg-surface-white p-6 shadow-soft">
           <div className="mb-4 flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-brand" />
             <h3 className="text-lg font-extrabold text-ink-heading">일정표</h3>
+            {enriching ? (
+              <span className="ml-auto text-xs font-semibold text-brand">
+                다듬는 중
+              </span>
+            ) : null}
           </div>
-          <div className="flex flex-col gap-4">
+          <div
+            className={[
+              "flex flex-col gap-4 transition-opacity",
+              enriching ? "opacity-85" : "",
+            ].join(" ")}
+          >
             {plan.dailySchedule.map((day) => (
               <div
                 key={day.day}
-                className="rounded-xl border border-line-soft bg-surface-base p-4"
+                className="rounded-xl2 border border-line-soft bg-surface-soft p-4"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-sm font-extrabold text-brand">
                     Day {day.day}
+                    {day.label ? ` · ${day.label}` : ""}
                   </span>
                 </div>
                 <div className="flex flex-col gap-2">
                   {day.items.map((item) => (
                     <div
-                      key={`${day.day}-${item.time}`}
+                      key={`${day.day}-${item.time}-${item.title}`}
                       className="flex items-start justify-between gap-3"
                     >
                       <div>
@@ -409,20 +402,17 @@ export function RecommendResult({ plan }: RecommendResultProps) {
           </div>
         </section>
 
-        {/* AI 팁 */}
-        <section className="flex flex-col gap-2">
-          <h3 className="text-lg font-extrabold text-ink-heading">AI 팁</h3>
-          {plan.tips.map((tip) => (
-            <p
-              key={tip}
-              className="rounded-xl border border-line-soft bg-surface-white px-4 py-3 text-sm text-ink-body"
-            >
-              {tip}
-            </p>
-          ))}
-        </section>
+        {plan.tips.length > 0 ? (
+          <section className="rounded-xl2 border border-line-soft bg-surface-white p-5 shadow-soft">
+            <h3 className="mb-3 text-lg font-extrabold text-ink-heading">AI 팁</h3>
+            <div className="space-y-2.5 text-sm leading-relaxed text-ink-body">
+              {plan.tips.map((tip, index) => (
+                <p key={`${index}-${tip.slice(0, 24)}`}>{tip}</p>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
-        {/* CTA */}
         <div className="flex flex-col gap-3">
           <PrimaryButton onClick={handleSave}>이 일정 저장하기</PrimaryButton>
           <PrimaryButton variant="secondary" onClick={() => router.push("/")}>

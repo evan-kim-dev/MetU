@@ -11,7 +11,10 @@ import {
   Route,
   type LucideIcon,
 } from "lucide-react";
-import { useCommunity } from "@/lib/community/CommunityProvider";
+import {
+  useCommunityActions,
+  useCommunityState,
+} from "@/lib/community/CommunityProvider";
 import { useChatRoomSummaries } from "@/lib/community/useChatRoomSummaries";
 
 interface NavItem {
@@ -109,7 +112,8 @@ function SideNavItem({
 export function BottomNav() {
   const pathname = usePathname();
   const homeActive = isActive(pathname, HOME_ITEM.href);
-  const { posts, isPartyHost, isPartyJoined } = useCommunity();
+  const { posts } = useCommunityState();
+  const { isPartyHost, isPartyJoined } = useCommunityActions();
 
   const chatRoomPostIds = useMemo(
     () =>

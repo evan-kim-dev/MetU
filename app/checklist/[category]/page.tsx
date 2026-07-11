@@ -14,8 +14,6 @@ interface ChecklistCategoryPageProps {
   params: Promise<{ category: string }>;
 }
 
-export const dynamic = "force-dynamic";
-
 export function generateStaticParams() {
   return CHECKLIST_CATEGORIES.map((item) => ({ category: item.id }));
 }

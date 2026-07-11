@@ -98,17 +98,8 @@ export function StyleStep({ selected, onToggle }: StyleStepProps) {
         ))}
       </div>
 
-      {selected.length > 0 && insight ? (
-        <AIInsightBadge>
-          {loading ? (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
-              {insight}
-            </span>
-          ) : (
-            insight
-          )}
-        </AIInsightBadge>
+      {selected.length > 0 ? (
+        <AIInsightBadge loading={loading}>{insight}</AIInsightBadge>
       ) : null}
     </StepCard>
   );

@@ -1,8 +1,10 @@
-import { INITIAL_TRIPS } from "./data";
 import { STORAGE_KEYS } from "@/lib/constants";
 import type { Trip, TripUpdate } from "./types";
 
 const STORAGE_KEY = STORAGE_KEYS.trips;
+
+/** 예전 데모 시드 — 신규/로그인 계정에 섞이지 않도록 로드 시 제거 */
+const DEMO_TRIP_IDS = new Set(["trip-london", "trip-osaka"]);
 
 /** 중복·빈 ID를 고유 값으로 교정 */
 export function ensureUniqueTripIds(trips: Trip[]): Trip[] {
@@ -10,8 +12,7 @@ export function ensureUniqueTripIds(trips: Trip[]): Trip[] {
   let changed = false;
 
   const next = trips.map((trip, index) => {
-    const needsNewId =
-      !trip.id || seen.has(trip.id);
+    const needsNewId = !trip.id || seen.has(trip.id);
 
     if (!needsNewId) {
       seen.add(trip.id);
@@ -29,17 +30,27 @@ export function ensureUniqueTripIds(trips: Trip[]): Trip[] {
   return changed ? next : trips;
 }
 
+function stripDemoTrips(trips: Trip[]): Trip[] {
+  return trips.filter((trip) => !DEMO_TRIP_IDS.has(trip.id));
+}
+
 export function loadTrips(): Trip[] {
-  if (typeof window === "undefined") return INITIAL_TRIPS;
+  if (typeof window === "undefined") return [];
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return INITIAL_TRIPS;
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as Trip[];
-    if (!parsed.length) return INITIAL_TRIPS;
-    return ensureUniqueTripIds(parsed);
+    if (!Array.isArray(parsed) || parsed.length === 0) return [];
+
+    const cleaned = stripDemoTrips(ensureUniqueTripIds(parsed));
+    if (cleaned.length !== parsed.length) {
+      if (cleaned.length === 0) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
-    return INITIAL_TRIPS;
+    return [];
   }
 }
 

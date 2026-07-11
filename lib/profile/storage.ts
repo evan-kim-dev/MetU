@@ -18,7 +18,7 @@ export type ProfileUpdate = Partial<
   >
 >;
 
-export function getProfileStorageKey(
+function getProfileStorageKey(
   userId: string | null,
   isGuest: boolean
 ): string {

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { MetULogo } from "@/components/ui/MetULogo";
 
 const TAGLINES = [
+  "Nice to Met U!",
   "AI가 예산에 맞춘 여행 일정을 쉽고 빠르게 추천해 드려요.",
   "동행 모집부터 체크리스트까지 한번에 준비해요.",
   "지금 떠날 여행을 바로 계획해 보세요.",
@@ -20,6 +21,7 @@ export function LoginContent() {
   const { loginWithKakao, loginAsGuest } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(searchParams.get("error"));
+  const deleted = searchParams.get("deleted") === "1";
   const [taglineIndex, setTaglineIndex] = useState(0);
   const [taglineVisible, setTaglineVisible] = useState(true);
 
@@ -57,9 +59,9 @@ export function LoginContent() {
     <div className="relative flex h-dvh min-h-dvh flex-col overflow-hidden bg-surface-base">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div className="absolute inset-0 bg-gradient-to-b from-surface-base via-canvas to-canvas-deep" />
-        <div className="absolute -left-16 top-8 h-56 w-56 animate-glow-pulse rounded-full bg-brand/20 blur-3xl" />
-        <div className="absolute -right-10 top-28 h-44 w-44 animate-float-soft rounded-full bg-brand-mid/25 blur-3xl [animation-delay:1.2s]" />
-        <div className="absolute bottom-40 left-1/2 h-36 w-72 -translate-x-1/2 animate-glow-pulse rounded-full bg-brand/10 blur-3xl [animation-delay:0.6s]" />
+        <div className="absolute -left-16 top-8 h-48 w-48 rounded-full bg-brand/10 blur-3xl" />
+        <div className="absolute -right-10 top-28 h-40 w-40 rounded-full bg-brand-mid/12 blur-3xl" />
+        <div className="absolute bottom-48 left-1/2 h-28 w-56 -translate-x-1/2 rounded-full bg-brand/[0.06] blur-2xl" />
       </div>
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
@@ -67,10 +69,10 @@ export function LoginContent() {
           <header className="flex w-full flex-col items-center gap-6 text-center animate-fade-up">
             <MetULogo variant="hero" showPlannerBadge />
 
-            <div className="flex min-h-[52px] max-w-[320px] flex-col items-center justify-center gap-3">
+            <div className="flex min-h-touch max-w-prose flex-col items-center justify-center gap-3">
               <h1
                 className={[
-                  "text-[18px] font-bold leading-7 tracking-tight text-ink-heading transition-all duration-300",
+                  "text-lg font-bold leading-7 tracking-tight text-ink-heading transition-all duration-300",
                   taglineVisible
                     ? "translate-y-0 opacity-100"
                     : "translate-y-1 opacity-0",
@@ -98,6 +100,11 @@ export function LoginContent() {
           style={{ animationDelay: "180ms" }}
         >
           <div className="flex flex-col gap-3">
+            {deleted && !error ? (
+              <p className="rounded-xl border border-line-soft bg-white/90 px-3 py-2 text-center text-xs font-medium text-ink-body backdrop-blur-sm animate-fade-up">
+                회원 탈퇴가 완료되었어요. 이용해 주셔서 감사합니다.
+              </p>
+            ) : null}
             {error && (
               <p className="rounded-xl border border-danger-border bg-white/90 px-3 py-2 text-center text-xs font-medium text-danger backdrop-blur-sm animate-fade-up">
                 {error}
@@ -108,7 +115,7 @@ export function LoginContent() {
               type="button"
               onClick={() => void handleKakaoLogin()}
               disabled={isLoading}
-              className="relative flex h-[52px] w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-[#FEE500] text-base font-bold text-[#191919] shadow-[0_8px_24px_rgba(254,229,0,0.35)] transition-transform active:scale-[0.99] disabled:opacity-80"
+              className="relative flex h-touch w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-kakao text-base font-bold text-kakao-ink shadow-kakao-sm transition-transform active:scale-99 disabled:opacity-80"
             >
               {isLoading ? (
                 <span className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/35 to-transparent" />
@@ -121,13 +128,13 @@ export function LoginContent() {
               type="button"
               onClick={handleGuest}
               disabled={isLoading}
-              className="h-[52px] w-full rounded-2xl border border-line-soft bg-surface-white/90 text-sm font-semibold text-ink-body backdrop-blur-sm transition-all active:scale-[0.99] active:bg-surface-soft disabled:opacity-60"
+              className="h-touch w-full rounded-2xl border-0 bg-surface-white shadow-sm text-sm font-semibold text-ink-body backdrop-blur-sm transition-all active:scale-99 active:bg-surface-soft disabled:opacity-60"
             >
               둘러보기
             </button>
           </div>
 
-          <p className="text-center text-[11px] leading-5 text-ink-caption">
+          <p className="text-center text-xs leading-5 text-ink-caption">
             계속하면{" "}
             <Link href="/legal/terms" className="underline underline-offset-2">
               이용약관
@@ -146,9 +153,9 @@ export function LoginContent() {
 
 function KakaoIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="text-kakao-ink">
       <path
-        fill="#191919"
+        fill="currentColor"
         d="M10 3.2c-4.1 0-7.4 2.6-7.4 5.8 0 2.1 1.4 3.9 3.5 5l-.9 3.3c-.1.3.3.5.5.4l4-2.6c.2 0 .3 0 .5 0 4.1 0 7.4-2.6 7.4-5.8S14.1 3.2 10 3.2z"
       />
     </svg>

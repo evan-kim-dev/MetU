@@ -14,8 +14,10 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { loadTrips, saveTrips, updateTripInList } from "./storage";
 import {
   deleteTripFromSupabase,
+  fetchTripByIdFromSupabase,
   fetchTripsFromSupabase,
   insertTripToSupabase,
+  isTripDetailHydrated,
   updateTripInSupabase,
   upsertTripsToSupabase,
 } from "./supabase";
@@ -25,6 +27,8 @@ interface TripContextValue {
   trips: Trip[];
   isReady: boolean;
   getTrip: (id: string) => Trip | undefined;
+  /** Load full trip JSON (schedule/expenses) when list payload is light. */
+  ensureTripDetail: (id: string) => Promise<Trip | undefined>;
   updateTrip: (id: string, update: TripUpdate) => void;
   addTrip: (trip: Trip) => Promise<Trip>;
   removeTrip: (id: string) => void;
@@ -63,7 +67,7 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
       const supabase = getBrowserSupabase();
       if (!supabase) {
         if (!cancelled) {
-          setTrips(loadTrips());
+          setTrips([]);
           setIsReady(true);
         }
         return;
@@ -71,16 +75,34 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
 
       let remote = await fetchTripsFromSupabase(supabase, userId);
 
+      // 과거에 시드된 데모 여행이 DB에 남아 있으면 제거
+      const demoRemote = remote.filter(
+        (trip) => trip.id === "trip-london" || trip.id === "trip-osaka"
+      );
+      if (demoRemote.length > 0) {
+        await Promise.all(
+          demoRemote.map((trip) =>
+            deleteTripFromSupabase(supabase, userId, trip.id)
+          )
+        );
+        remote = remote.filter(
+          (trip) => trip.id !== "trip-london" && trip.id !== "trip-osaka"
+        );
+      }
+
+      // 게스트/로컬에서 만든 실제 여행만 계정으로 이전 (데모 시드는 loadTrips에서 제거됨)
       if (remote.length === 0 && hasPersistedLocalTrips()) {
         const local = loadTrips();
-        remote = await upsertTripsToSupabase(supabase, userId, local);
+        if (local.length > 0) {
+          remote = await upsertTripsToSupabase(supabase, userId, local);
+        }
         if (typeof window !== "undefined") {
           localStorage.removeItem(STORAGE_KEYS.trips);
         }
       }
 
       if (!cancelled) {
-        setTrips(remote.length > 0 ? remote : loadTrips());
+        setTrips(remote);
         setIsReady(true);
       }
     }
@@ -100,6 +122,27 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
   const getTrip = useCallback(
     (id: string) => trips.find((trip) => trip.id === id),
     [trips]
+  );
+
+  const ensureTripDetail = useCallback(
+    async (id: string): Promise<Trip | undefined> => {
+      const current = trips.find((trip) => trip.id === id);
+      if (!current) return undefined;
+      if (!useDb || !userId) return current;
+      if (isTripDetailHydrated(current)) return current;
+
+      const supabase = getBrowserSupabase();
+      if (!supabase) return current;
+
+      const full = await fetchTripByIdFromSupabase(supabase, userId, id);
+      if (!full) return current;
+
+      setTrips((prev) =>
+        prev.map((trip) => (trip.id === id ? full : trip))
+      );
+      return full;
+    },
+    [trips, useDb, userId]
   );
 
   const updateTrip = useCallback(
@@ -161,12 +204,22 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
       trips,
       isReady,
       getTrip,
+      ensureTripDetail,
       updateTrip,
       addTrip,
       removeTrip,
       activeTrips,
     }),
-    [trips, isReady, getTrip, updateTrip, addTrip, removeTrip, activeTrips]
+    [
+      trips,
+      isReady,
+      getTrip,
+      ensureTripDetail,
+      updateTrip,
+      addTrip,
+      removeTrip,
+      activeTrips,
+    ]
   );
 
   return <TripContext.Provider value={value}>{children}</TripContext.Provider>;

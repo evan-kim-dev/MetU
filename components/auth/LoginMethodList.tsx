@@ -13,9 +13,9 @@ interface LoginMethodListProps {
 
 function KakaoIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="text-kakao-ink">
       <path
-        fill="#191919"
+        fill="currentColor"
         d="M10 3.2c-4.1 0-7.4 2.6-7.4 5.8 0 2.1 1.4 3.9 3.5 5l-.9 3.3c-.1.3.3.5.5.4l4-2.6c.2 0 .3 0 .5 0 4.1 0 7.4-2.6 7.4-5.8S14.1 3.2 10 3.2z"
       />
     </svg>
@@ -66,9 +66,9 @@ export function LoginMethodList({
                 onClick={() => void handleLogin(method.id)}
                 disabled={Boolean(loadingId)}
                 className={[
-                  "relative flex w-full flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl px-4 py-3 transition-transform active:scale-[0.99] disabled:opacity-80",
+                  "relative flex w-full flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl px-4 py-3 transition-transform active:scale-99 disabled:opacity-80",
                   isKakao
-                    ? "bg-[#FEE500] text-[#191919] shadow-[0_4px_16px_rgba(254,229,0,0.3)]"
+                    ? "bg-kakao text-kakao-ink shadow-kakao-sm"
                     : "border border-line-soft bg-surface-white text-ink-body",
                 ].join(" ")}
               >
@@ -82,8 +82,8 @@ export function LoginMethodList({
                 {method.description ? (
                   <span
                     className={[
-                      "text-[11px] font-medium",
-                      isKakao ? "text-[#191919]/70" : "text-ink-caption",
+                      "text-xs font-medium",
+                      isKakao ? "text-kakao-ink/70" : "text-ink-caption",
                     ].join(" ")}
                   >
                     {method.description}

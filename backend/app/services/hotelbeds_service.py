@@ -8,7 +8,6 @@ from urllib.parse import quote
 import httpx
 
 HOTELBEDS_TEST_BASE = "https://api.test.hotelbeds.com"
-HOTELBEDS_PROD_BASE = "https://api.hotelbeds.com"
 
 DESTINATION_CODES: dict[str, str] = {
     "도쿄": "TYO",

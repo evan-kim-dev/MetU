@@ -1,7 +1,8 @@
-import type { OnboardingForm } from "@/components/onboarding/types";
-import { normalizeFlexibleYear } from "@/components/onboarding/types";
+import type { OnboardingForm } from "@/lib/onboarding/types";
+import { normalizeFlexibleYear } from "@/lib/onboarding/types";
 import type { TripRecommendation } from "@/lib/ai/types";
 import { AIRPORT_PLACES, findAirportPlaceByQuery } from "@/lib/airports/data";
+import { addDays } from "@/lib/shared/dates";
 
 const AGODA_FLIGHTS_BASE = "https://www.agoda.com/ko-kr/flights/results";
 
@@ -13,12 +14,6 @@ export type AgodaCabinType =
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
-}
-
-function addDays(isoDate: string, days: number): string {
-  const date = new Date(`${isoDate}T12:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
 }
 
 /** 도시·공항 문자열에서 IATA 공항 코드를 추출한다. */

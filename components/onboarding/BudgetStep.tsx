@@ -106,7 +106,7 @@ export function BudgetStep({ value, onChange }: BudgetStepProps) {
               key={item.amount}
               type="button"
               onClick={() => addAmount(item.amount)}
-              className="rounded-xl border border-line-muted bg-surface-white px-1 py-2.5 text-center text-xs font-bold text-ink-heading transition-all active:scale-[0.97] active:border-brand active:bg-brand/5 active:text-brand"
+              className="rounded-xl border border-line-muted bg-surface-white px-1 py-2.5 text-center text-xs font-bold text-ink-heading transition-all active:scale-97 active:border-brand active:bg-brand/5 active:text-brand"
             >
               +{item.label}
             </button>
@@ -114,16 +114,7 @@ export function BudgetStep({ value, onChange }: BudgetStepProps) {
         </div>
       </div>
 
-      <AIInsightBadge>
-        {loading ? (
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
-            {insight}
-          </span>
-        ) : (
-          insight
-        )}
-      </AIInsightBadge>
+      <AIInsightBadge loading={loading}>{insight}</AIInsightBadge>
     </StepCard>
   );
 }

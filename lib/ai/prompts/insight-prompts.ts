@@ -1,7 +1,7 @@
 import { retrieveBudgetRag } from "@/lib/rag/budgetBands";
+import { AI_NO_FAKE_QUOTES, AI_VOICE } from "@/lib/ai/prompts/shared";
 
-const BUDGET_SYSTEM_PROMPT =
-  "예산 RAG 밖 추천은 금지. 1인당/총예산 250만원 미만에서 유럽을 말하면 안 된다.";
+const BUDGET_SYSTEM_PROMPT = `${AI_VOICE} 예산 RAG 밖 추천은 금지. 1인당/총예산 250만원 미만에서 유럽을 말하면 안 돼요.`;
 
 export function getBudgetSystemPrompt(): string {
   return BUDGET_SYSTEM_PROMPT;
@@ -35,7 +35,8 @@ ${
     : `"총 예산 ○○이면(1인 기준) ~~한 여행이 가능하고, ~~를 추천해요. 인원이 늘면 1인당 예산이 줄어들어요."`
 }
 
-금지: 허용 목록 밖(특히 250만 미만에서 유럽), 항공·숙소 임의 견적, JSON.`;
+금지: 허용 목록 밖(특히 250만 미만에서 유럽), ${AI_NO_FAKE_QUOTES}, JSON.
+${AI_VOICE}`;
 }
 
 export function buildPartyPrompt(
@@ -78,11 +79,11 @@ ${
 }
 
 포함: 인원 팁 한 줄${rag.allowedRegions.length === 0 ? " + 예산 상향 안내" : " + 허용 권역 추천"}.
-금지: 유럽/장거리 등 허용 목록 밖 추천, 항공·숙소 임의 견적 금액, JSON/불릿.`;
+금지: 유럽/장거리 등 허용 목록 밖 추천, 항공·숙소 임의 견적 금액, JSON/불릿.
+${AI_VOICE}`;
 }
 
-const FACTBOMB_SYSTEM_PROMPT =
-  "예산 RAG만 근거로 직설적인 팩트폭격 1~2문장을 쓴다. 허용 권역 밖 대안은 금지.";
+const FACTBOMB_SYSTEM_PROMPT = `${AI_VOICE} 예산 RAG만 근거로 직설적인 팩트폭격 1~2문장을 써요. 허용 권역 밖 대안은 금지.`;
 
 export function getFactBombSystemPrompt(): string {
   return FACTBOMB_SYSTEM_PROMPT;
@@ -103,7 +104,8 @@ export function buildFactBombPrompt(params: {
     : params.destination;
 
   return `당신은 Met U의 예산 현실 체크 AI입니다.
-사용자가 예산에 비해 무리한 목적지를 골랐습니다. 아래 RAG만 근거로 팩트폭격 멘트를 쓰세요. 밈을 활용해도 좋아요.
+사용자가 말도 안 되는 목적지이거나, 예산에 비해 무리한 목적지를 골랐습니다.
+아래 RAG만 근거로 직설적인 팩트폭격 멘트를 쓰세요. 밈을 활용해도 좋아요.
 
 [입력]
 - 목적지: ${label}
@@ -117,18 +119,19 @@ export function buildFactBombPrompt(params: {
 ${rag.contexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
 [허용 대안 권역 — 이 안에서만 언급]
-${rag.allowedRegions.join(", ")}
+${rag.allowedRegions.length > 0 ? rag.allowedRegions.join(", ") : "(없음 — 예산 상향만 안내)"}
 
 [출력 규칙]
 - 한국어 1~2문장만
+- ${AI_VOICE}
 - 직설·유머 OK, 욕설 금지
-- 왜 무리인지(거리/항공/예산 구간) + 현실 대안(허용 권역 중 2~3곳) 포함
+- 목적지가 허구/검색 불가 장소면 "여행지가 아니에요"를 먼저 짚고, 허용 권역 대안을 제시
+- 예산 무리면 왜 무리인지(거리/항공/예산 구간) + 현실 대안(허용 권역 중 2~3곳) 포함
 - 항공·숙소 임의 견적 금액 금지
 - JSON/불릿/제목 금지`;
 }
 
-const WEATHER_SYSTEM_PROMPT =
-  "여행 월 평균 기후와 제공된 데이터만 근거로 대비 안내를 작성한다. 단기 예보가 아닌 경우 해당 월의 전형적 기후를 설명한다. JSON만 출력.";
+const WEATHER_SYSTEM_PROMPT = `${AI_VOICE} 여행 월 평균 기후와 제공된 데이터만 근거로 대비 안내를 작성해요. 단기 예보가 아니면 해당 월의 전형적 기후를 설명해요. JSON만 출력.`;
 
 export function getWeatherSystemPrompt(): string {
   return WEATHER_SYSTEM_PROMPT;
@@ -186,13 +189,13 @@ ${params.monthCaution}
 {"summary":"2~3문장 종합 예측·대비 요약","preparation":["대비 팁1","대비 팁2","대비 팁3"]}
 
 규칙:
-- summary: ${params.month}월 기후 특성 + 기온·강수 중심, 친근한 한국어
-- preparation: 해당 월에 맞는 실행 가능한 준비물·옷차림 3~4개
-- 데이터에 없는 날씨는 추측하지 말 것`;
+- summary: ${params.month}월 기후 특성 + 기온·강수 중심, 친근한 해요체
+- preparation: 해당 월에 맞는 실행 가능한 준비물·옷차림 3~4개 (해요체)
+- 데이터에 없는 날씨는 추측하지 말 것
+- ${AI_VOICE}`;
 }
 
-const TIPS_SYSTEM_PROMPT =
-  "여행 RAG만 근거로 실용적인 AI Tip을 JSON으로 작성한다. 허위 시세·환율 단정 금지.";
+const TIPS_SYSTEM_PROMPT = `${AI_VOICE} 여행 RAG만 근거로 실용적인 AI Tip을 JSON으로 작성해요. 허위 시세·환율 단정 금지.`;
 
 export function getTipsSystemPrompt(): string {
   return TIPS_SYSTEM_PROMPT;
@@ -231,14 +234,13 @@ ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
 규칙:
 - tips 정확히 4개
-- title 8자 내외, description 1문장
+- title 8자 내외, description 1문장 (해요체)
 - 목적지·예산·스타일에 맞출 것
 - 임의 항공/숙소 가격·환율 수치 단정 금지
-- 한국어`;
+- ${AI_VOICE}`;
 }
 
-const STYLE_SYSTEM_PROMPT =
-  "선택한 여행 스타일과 RAG만 근거로 1문장 맞춤 안내를 쓴다.";
+const STYLE_SYSTEM_PROMPT = `${AI_VOICE} 선택한 여행 스타일과 RAG만 근거로 1문장 맞춤 안내를 써요.`;
 
 export function getStyleSystemPrompt(): string {
   return STYLE_SYSTEM_PROMPT;
@@ -261,11 +263,11 @@ ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 출력:
 - 한국어 1문장만
 - "~를 반영해 ~~한 코스를 짜드릴게요" 톤
-- JSON/불릿 금지`;
+- JSON/불릿 금지
+- ${AI_VOICE}`;
 }
 
-const SCHEDULE_SYSTEM_PROMPT =
-  "출발지·일정·시즌 RAG만 근거로 일정 단계 안내를 2문장 이내로 쓴다. 허위 시세 단정 금지.";
+const SCHEDULE_SYSTEM_PROMPT = `${AI_VOICE} 출발지·일정·시즌·예산 RAG만 근거로, 언제·어디가 가성비인지와 추천지를 2~3문장으로 안내해요. 허위 시세 단정 금지.`;
 
 export function getScheduleSystemPrompt(): string {
   return SCHEDULE_SYSTEM_PROMPT;
@@ -279,65 +281,45 @@ export function buildScheduleInsightPrompt(params: {
   endDate: string;
   flexibleYear: number;
   flexibleMonth: number;
+  budget?: number;
+  people?: number;
   ragContexts: string[];
 }): string {
   const scheduleLabel =
     params.dateType === "specific"
       ? `${params.startDate || "미정"} ~ ${params.endDate || "미정"}`
       : `${params.flexibleYear}년 ${params.flexibleMonth}월 (유연 일정)`;
+  const people = Math.max(1, params.people ?? 1);
+  const budget = params.budget ?? 0;
+  const perPerson = budget > 0 ? Math.floor(budget / people) : 0;
 
   return `당신은 Met U 온보딩 일정 단계 어시스턴트입니다.
-출발지·목적지·날짜를 반영해 지금 선택에 맞는 일정 조언을 하세요.
+사용자가 고른 출발지·목적지·시기를 보고, "언제 어디가 싸고 / 어디를 추천하는지"를 구체적으로 알려주세요.
+토큰을 아끼지 말고 실용적인 정보를 넣으세요.
 
 [입력]
 - 출발지: ${params.origin || "미입력"}
-- 목적지: ${params.destination || "미입력"}
+- 목적지: ${params.destination || "미입력(어디든지)"}
 - 일정 유형: ${params.dateType === "specific" ? "날짜 지정" : "언제든지(월 선택)"}
 - 일정: ${scheduleLabel}
+- 총예산: ${budget > 0 ? `${budget.toLocaleString("ko-KR")}원` : "미입력"}
+- 인원: ${people}명${perPerson > 0 ? ` (1인 약 ${perPerson.toLocaleString("ko-KR")}원)` : ""}
 
-[시즌 RAG]
+[시즌·예산 RAG]
 ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
 [출력]
-- 한국어 1~2문장
-- 출발지/목적지/시기가 있으면 반영
-- 유연 일정이면 해당 월의 가성비·주의점 중심
-- 날짜 지정이면 선택 기간 기준으로 예산·예약 팁 중심
-- 항공·숙소 임의 견적 금액 금지
-- JSON/불릿 금지`;
+- 한국어 2~3문장
+- 반드시 포함: (1) 해당 시기 가성비 좋은 도시/권역 2~3곳 (2) 왜 싼지 또는 주의점 한 가지
+- 목적지가 있으면: 그 목적지가 이 시기에 괜찮은지 + 더 싸게 가려면 대안 1곳
+- 목적지가 없으면: RAG 허용 권역·가성비 권역 안에서 추천
+- 유연 일정이면 월 기준 시즌 딜 중심, 날짜 지정이면 선택 기간 예약 타이밍 팁 포함
+- 항공·숙소 임의 견적 금액(원/%) 금지
+- JSON/불릿 금지
+- ${AI_VOICE}`;
 }
 
-export function buildPlanTipsPrompt(params: {
-  destination: string;
-  country: string;
-  nights: number;
-  people: number;
-  perPerson: number;
-  styleLabels: string[];
-  ragContexts: string[];
-}): string {
-  return `당신은 Met U 일정 결과 화면의 AI Tip 작성기입니다.
-RAG만 근거로 실행 가능한 팁 3개를 만드세요.
-
-[일정]
-- 목적지: ${params.destination}${params.country ? `, ${params.country}` : ""}
-- ${params.nights}박 ${params.nights + 1}일
-- ${params.people}명 / 1인당 약 ${params.perPerson.toLocaleString("ko-KR")}원
-- 스타일: ${params.styleLabels.join(", ")}
-
-[RAG]
-${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
-
-출력(JSON만):
-{"tips":["팁1","팁2","팁3"]}
-
-규칙:
-- 각 팁 1문장, 한국어
-- 항공·숙소 임의 견적 금액 금지`;
-}
-
-const PLAN_SYSTEM_PROMPT =
-  "여행 RAG만 근거로 일정·항공·숙소 안내를 JSON으로 작성한다. 허위 시세 금액 단정 금지.";
+const PLAN_SYSTEM_PROMPT = `${AI_VOICE} 여행 RAG만 근거로 풍부한 일정·항공·숙소 안내를 JSON으로 작성해요. 구체적 장소명을 쓰고 허위 시세 금액 단정은 금지.`;
 
 export function getPlanSystemPrompt(): string {
   return PLAN_SYSTEM_PROMPT;
@@ -358,7 +340,8 @@ export function buildPlanItineraryPrompt(params: {
   ragContexts: string[];
 }): string {
   const days = params.nights + 1;
-  return `당신은 Met U 여행 플래너입니다. 입력과 RAG만 근거로 맞춤 일정을 JSON으로 만드세요.
+  return `당신은 Met U 여행 플래너입니다. 입력과 RAG만 근거로 풍부하고 구체적인 맞춤 일정을 JSON으로 만드세요.
+토큰을 아끼지 말고, 현지 장소·동선·식사·휴식까지 디테일하게 채워 주세요.
 
 [입력]
 - 출발: ${params.origin || "미입력"}
@@ -375,25 +358,28 @@ ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
 출력(JSON만):
 {
-  "summary": "2문장 일정 요약",
-  "flight": {"airline":"항공사 또는 저비용 항공 추천","schedule":"가는 편 HH:MM · 오는 편 HH:MM","note":"예약 팁 1문장"},
-  "hotel": {"name":"숙소 유형명","area":"추천 지역","note":"숙소 팁 1문장"},
+  "summary": "2~3문장 일정 요약 (분위기·하이라이트·동선 포인트)",
+  "flight": {"airline":"항공사 또는 저비용 항공 추천","schedule":"가는 편 HH:MM · 오는 편 HH:MM","note":"예약·환승·수하물 팁 1~2문장"},
+  "hotel": {"name":"숙소 유형명","area":"추천 지역","note":"위치·조식·체크인 팁 1~2문장"},
   "dailySchedule":[
-    {"day":1,"label":"데이 제목","items":[{"time":"14:00","title":"활동"}]}
+    {"day":1,"label":"데이 제목","items":[{"time":"14:00","title":"구체적 장소·활동 설명"}]}
   ],
-  "tips":["팁1","팁2","팁3"]
+  "tips":["팁1","팁2","팁3","팁4","팁5"]
 }
 
 규칙:
 - dailySchedule은 정확히 ${days}일
-- 각 day items 2~4개, time은 HH:MM
-- 목적지·스타일·시즌을 반영한 구체적 장소/활동
+- 각 day items 4~6개, time은 HH:MM, title은 실제 장소/거리/활동이 드러나게
+- 아침·점심·저녁·이동·핵심 관광을 균형 있게
+- 목적지·스타일·시즌을 반영한 구체적 장소/활동 (막연한 '자유 시간' 최소화)
+- tips는 5개, 각각 실용적인 한 문장 (해요체)
 - 항공·숙소 임의 견적 금액(원/%) 금지
-- JSON만 출력`;
+- summary·note·tips 모두 해요체
+- JSON만 출력
+- ${AI_VOICE}`;
 }
 
-const SUMMARY_SYSTEM_PROMPT =
-  "여행 입력과 RAG만 근거로 일정 요약 2문장을 쓴다. 허위 시세 단정 금지.";
+const SUMMARY_SYSTEM_PROMPT = `${AI_VOICE} 여행 입력과 RAG만 근거로 일정 요약 2~3문장을 풍부하게 써요. 허위 시세 단정 금지.`;
 
 export function getSummarySystemPrompt(): string {
   return SUMMARY_SYSTEM_PROMPT;
@@ -411,7 +397,8 @@ export function buildNormalPlanSummaryPrompt(params: {
   ragContexts: string[];
 }): string {
   return `당신은 Met U 일정 요약 어시스턴트입니다.
-정상 예산 범위의 여행을 친근하게 2문장으로 요약하세요.
+정상 예산 범위의 여행을 친근하고 구체적으로 2~3문장으로 요약하세요.
+분위기, 핵심 동선, 스타일 반영 포인트를 넣되 토큰을 아끼지 마세요.
 
 [입력]
 - 출발: ${params.origin || "미입력"}
@@ -424,13 +411,13 @@ export function buildNormalPlanSummaryPrompt(params: {
 ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
 출력:
-- 한국어 2문장
+- 한국어 2~3문장
 - 항공·숙소 임의 견적 금액 금지
-- JSON/불릿 금지`;
+- JSON/불릿 금지
+- ${AI_VOICE}`;
 }
 
-const DEALS_SYSTEM_PROMPT =
-  "시즌 RAG와 후보 목록만 근거로 이번 달 가성비 여행지를 JSON으로 큐레이션한다.";
+const DEALS_SYSTEM_PROMPT = `${AI_VOICE} 시즌 RAG와 후보 목록만 근거로 이번 달 가성비 여행지를 JSON으로 큐레이션해요.`;
 
 export function getDealsSystemPrompt(): string {
   return DEALS_SYSTEM_PROMPT;
@@ -469,6 +456,7 @@ ${params.candidates
 규칙:
 - 후보 id만 사용, 전부 포함
 - 시즌·가성비 좋은 순 정렬
-- highlight는 한국어 18자 내외
-- 허위 시세 단정 금지`;
+- highlight는 한국어 18자 내외, 해요체
+- 허위 시세 단정 금지
+- ${AI_VOICE}`;
 }

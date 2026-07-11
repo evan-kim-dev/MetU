@@ -5,7 +5,10 @@ import { formatRelativeTime } from "@/lib/community/storage";
 export type AppNotificationType =
   | "party_join_request"
   | "party_join_accepted"
-  | "party_join_rejected";
+  | "party_join_rejected"
+  | "friend_request"
+  | "friend_accepted"
+  | "friend_rejected";
 
 export interface AppNotification {
   id: string;

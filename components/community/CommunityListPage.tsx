@@ -1,51 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ArrowUpDown, PenLine, Search, Settings, X } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { CommunityGatedLayout } from "@/components/auth/AuthGateOverlay";
 import { PostCard } from "@/components/community/PostCard";
 import { WritePostSheet } from "@/components/community/WritePostSheet";
+import {
+  SORT_LABELS,
+  formatChatClock,
+  useCommunityListState,
+  type PostSort,
+} from "@/components/community/useCommunityListState";
 import { HorizontalScroller } from "@/components/ui/HorizontalScroller";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { requiresCommunityLogin } from "@/lib/auth/community-access";
 import { markChatSeen } from "@/lib/community/chat-notice";
-import { useCommunity } from "@/lib/community/CommunityProvider";
-import { useChatRoomSummaries } from "@/lib/community/useChatRoomSummaries";
+import { useFriends } from "@/lib/friends/FriendsProvider";
+import { isAvatarImage } from "@/lib/profile/public";
 import {
   CATEGORY_LABELS,
   type PostCategory,
   type WritablePostCategory,
 } from "@/lib/mock/community";
-import type { CommunityPost } from "@/lib/community/types";
-
-function postMatchesSearch(post: CommunityPost, query: string): boolean {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return true;
-
-  const haystack = [
-    post.title,
-    post.preview,
-    post.destination,
-    post.author,
-    CATEGORY_LABELS[post.category],
-    post.party?.budgetPerPerson ?? "",
-    ...post.commentList.map((comment) => comment.content),
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  return haystack.includes(normalized);
-}
-
-type PostSort = "latest" | "likes" | "comments";
-
-const SORT_LABELS: Record<PostSort, string> = {
-  latest: "최신순",
-  likes: "좋아요순",
-  comments: "댓글순",
-};
+import { AuthorAvatarLink } from "@/components/community/AuthorAvatarLink";
 
 interface CommunityListPageProps {
   title?: string;
@@ -74,188 +52,59 @@ export function CommunityListPage({
 }: CommunityListPageProps) {
   const router = useRouter();
   const { user, provider, isReady: isAuthReady } = useAuth();
+  const { friends, isReady: friendsReady } = useFriends();
   const gated =
     isAuthReady && requiresCommunityLogin(user, provider);
   const {
-    posts,
     isReady,
     addPost,
-    isPartyHost,
-    isPartyJoined,
-    leaveParty,
-    removePost,
     canEdit,
-  } = useCommunity();
-  const [activeCategory, setActiveCategory] = useState<PostCategory>(defaultCategory);
-  const [sortBy, setSortBy] = useState<PostSort>("latest");
-  const [sortMenuOpen, setSortMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [writeOpen, setWriteOpen] = useState(false);
-  const [writeCategory, setWriteCategory] = useState<WritablePostCategory>(
-    defaultWriteCategory
-  );
-  const [chatMenuOpen, setChatMenuOpen] = useState(false);
-  const [chatManageMode, setChatManageMode] = useState(false);
-  const [selectedChatIds, setSelectedChatIds] = useState<string[]>([]);
-  const [postManageMode, setPostManageMode] = useState(false);
-  const [selectedPostIds, setSelectedPostIds] = useState<string[]>([]);
-
-  const filteredPosts = useMemo(() => {
-    const filtered =
-      activeCategory === "all"
-        ? posts
-        : posts.filter((post) => post.category === activeCategory);
-
-    const searched = searchQuery.trim()
-      ? filtered.filter((post) => postMatchesSearch(post, searchQuery))
-      : filtered;
-
-    const sorted = [...searched];
-    sorted.sort((a, b) => {
-      if (sortBy === "likes") {
-        return (
-          b.likes - a.likes ||
-          new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime()
-        );
-      }
-      if (sortBy === "comments") {
-        return (
-          b.comments - a.comments ||
-          new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime()
-        );
-      }
-      return new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime();
-    });
-
-    return sorted;
-  }, [activeCategory, posts, searchQuery, sortBy]);
-
-  const chatRoomPosts = useMemo(
-    () =>
-      posts.filter(
-        (post) =>
-          post.category === "party" &&
-          (isPartyHost(post) || isPartyJoined(post))
-      ),
-    [isPartyHost, isPartyJoined, posts]
-  );
-
-  const { lastMessageByPostId, lastTimeByPostId, unreadCountByPostId } = useChatRoomSummaries(
-    chatRoomPosts.map((post) => post.id),
-    showChatRooms
-  );
-
-  function resolveWriteCategory(): WritablePostCategory {
-    return activeCategory === "all" ? defaultWriteCategory : activeCategory;
-  }
-
-  function openWrite(category: WritablePostCategory = defaultWriteCategory) {
-    setWriteCategory(category);
-    setWriteOpen(true);
-  }
-
-  function formatChatClock(iso?: string): string {
-    if (!iso) return "--:--";
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return "--:--";
-    const hour = String(date.getHours()).padStart(2, "0");
-    const minute = String(date.getMinutes()).padStart(2, "0");
-    return `${hour}:${minute}`;
-  }
-
-  function openChatManage() {
-    setChatMenuOpen(false);
-    setSelectedChatIds([]);
-    setChatManageMode(true);
-  }
-
-  function exitChatManage() {
-    setChatManageMode(false);
-    setSelectedChatIds([]);
-  }
-
-  function toggleChatSelection(postId: string) {
-    setSelectedChatIds((prev) =>
-      prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]
-    );
-  }
-
-  function handleLeaveSelected() {
-    if (selectedChatIds.length === 0) return;
-
-    const selectedPosts = chatRoomPosts.filter((post) =>
-      selectedChatIds.includes(post.id)
-    );
-    const hostCount = selectedPosts.filter((post) => isPartyHost(post)).length;
-    const memberCount = selectedPosts.length - hostCount;
-
-    let confirmMessage = `선택한 채팅방 ${selectedPosts.length}개에서 나갈까요?`;
-    if (hostCount > 0 && memberCount > 0) {
-      confirmMessage =
-        "방장 채팅방은 모집 글과 함께 삭제되고, 참여 중인 채팅방에서는 나갑니다. 계속할까요?";
-    } else if (hostCount > 0) {
-      confirmMessage = `선택한 채팅방 ${hostCount}개를 삭제할까요? 모집 글도 함께 삭제돼요.`;
-    }
-
-    if (!window.confirm(confirmMessage)) return;
-
-    selectedPosts.forEach((post) => {
-      if (isPartyHost(post)) {
-        removePost(post.id);
-      } else {
-        leaveParty(post.id);
-      }
-    });
-    exitChatManage();
-  }
-
-  function openPostManage() {
-    setPostManageMode(true);
-    setSelectedPostIds([]);
-    setSearchOpen(false);
-    setSortMenuOpen(false);
-  }
-
-  function exitPostManage() {
-    setPostManageMode(false);
-    setSelectedPostIds([]);
-  }
-
-  function togglePostSelection(post: CommunityPost) {
-    if (!canEdit(post)) return;
-    setSelectedPostIds((prev) =>
-      prev.includes(post.id) ? prev.filter((id) => id !== post.id) : [...prev, post.id]
-    );
-  }
-
-  function handleDeleteSelectedPosts() {
-    if (selectedPostIds.length === 0) return;
-
-    const selectedPosts = filteredPosts.filter(
-      (post) => selectedPostIds.includes(post.id) && canEdit(post)
-    );
-    if (selectedPosts.length === 0) return;
-
-    if (
-      !window.confirm(
-        `선택한 게시글 ${selectedPosts.length}개를 삭제할까요? 삭제 후 되돌릴 수 없어요.`
-      )
-    ) {
-      return;
-    }
-
-    selectedPosts.forEach((post) => {
-      removePost(post.id);
-    });
-    exitPostManage();
-  }
+    isPartyHost,
+    activeCategory,
+    setActiveCategory,
+    sortBy,
+    setSortBy,
+    sortMenuOpen,
+    setSortMenuOpen,
+    searchOpen,
+    setSearchOpen,
+    searchQuery,
+    setSearchQuery,
+    writeOpen,
+    setWriteOpen,
+    writeCategory,
+    chatMenuOpen,
+    setChatMenuOpen,
+    chatManageMode,
+    selectedChatIds,
+    postManageMode,
+    selectedPostIds,
+    filteredPosts,
+    chatRoomPosts,
+    lastMessageByPostId,
+    lastTimeByPostId,
+    unreadCountByPostId,
+    resolveWriteCategory,
+    openWrite,
+    openChatManage,
+    exitChatManage,
+    toggleChatSelection,
+    handleLeaveSelected,
+    openPostManage,
+    exitPostManage,
+    togglePostSelection,
+    handleDeleteSelectedPosts,
+  } = useCommunityListState({
+    defaultCategory,
+    defaultWriteCategory,
+    showChatRooms,
+  });
 
   const listBody = (
     <div className="flex flex-col gap-5 px-5 pb-20 pt-5">
         {heading ? (
           <div className="flex items-center justify-between gap-3">
-            <h1 className="text-[22px] font-bold tracking-tight text-ink-heading">
+            <h1 className="text-heading font-bold tracking-tight text-ink-heading">
               {postManageMode ? "게시글 관리" : heading}
             </h1>
             {showPostList && !gated ? (
@@ -272,7 +121,7 @@ export function CommunityListPage({
                   type="button"
                   aria-label="게시글 관리"
                   onClick={openPostManage}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-line-soft bg-surface-white text-ink-caption transition-colors hover:bg-surface-soft hover:text-ink-heading"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border-0 bg-surface-white text-ink-caption shadow-sm transition-all duration-300 hover:bg-surface-soft hover:text-ink-heading"
                 >
                   <PenLine className="h-4 w-4" strokeWidth={2.2} />
                 </button>
@@ -286,7 +135,7 @@ export function CommunityListPage({
         {showChatRooms ? (
           <section className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-[22px] font-extrabold leading-7 tracking-tight text-ink-heading">
+              <h2 className="text-heading font-extrabold leading-7 tracking-tight text-ink-heading">
                 {chatManageMode ? "채팅방 관리" : "내 채팅방"}
               </h2>
               {chatManageMode ? (
@@ -308,7 +157,7 @@ export function CommunityListPage({
                     <Settings className="h-4 w-4" />
                   </button>
                   {chatMenuOpen ? (
-                    <div className="absolute right-0 top-8 z-10 min-w-[132px] rounded-lg border border-line-soft bg-surface-white p-1 shadow-soft">
+                    <div className="absolute right-0 top-8 z-10 min-w-menu rounded-2xl border-0 bg-surface-white p-1 shadow-md">
                       <button
                         type="button"
                         onClick={openChatManage}
@@ -330,7 +179,7 @@ export function CommunityListPage({
               </p>
             ) : (
               <>
-                <div className="mt-2 overflow-hidden rounded-xl2 border border-line-soft bg-surface-white shadow-soft">
+                <div className="mt-2 overflow-hidden rounded-2xl border-0 bg-surface-white shadow-sm">
                   {chatRoomPosts.map((post) => {
                     const host = isPartyHost(post);
                     const selected = selectedChatIds.includes(post.id);
@@ -365,7 +214,7 @@ export function CommunityListPage({
                               ) : null}
                             </span>
                           ) : null}
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FEE500] text-sm font-extrabold text-ink-heading">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-kakao text-sm font-extrabold text-ink-heading">
                             {post.title.slice(0, 1)}
                           </span>
                           <div className="min-w-0">
@@ -379,17 +228,17 @@ export function CommunityListPage({
                         </div>
                         {chatManageMode ? (
                           host ? (
-                            <span className="shrink-0 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
+                            <span className="shrink-0 rounded-full bg-brand/10 px-2 py-0.5 text-2xs font-bold text-brand">
                               방장
                             </span>
                           ) : null
                         ) : (
                           <div className="ml-3 flex shrink-0 flex-col items-end">
-                            <span className="text-[11px] font-semibold text-ink-caption">
+                            <span className="text-xs font-semibold text-ink-caption">
                               {formatChatClock(lastTimeByPostId[post.id])}
                             </span>
                             {(unreadCountByPostId[post.id] ?? 0) > 0 ? (
-                              <span className="mt-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#FAE100] px-1.5 py-0.5 text-[10px] font-bold text-ink-heading">
+                              <span className="mt-1 inline-flex min-w-5 items-center justify-center rounded-full bg-kakao-strong px-1.5 py-0.5 text-2xs font-bold text-ink-heading">
                                 {unreadCountByPostId[post.id]}
                               </span>
                             ) : null}
@@ -416,6 +265,41 @@ export function CommunityListPage({
           </section>
         ) : null}
 
+        {showChatRooms ? (
+          <section className="flex flex-col gap-2">
+            <h2 className="text-heading font-extrabold leading-7 tracking-tight text-ink-heading">
+              친구
+            </h2>
+            {!friendsReady ? (
+              <p className="mt-2 text-xs text-ink-caption">친구 불러오는 중...</p>
+            ) : friends.length === 0 ? (
+              <p className="mt-2 text-xs leading-relaxed text-ink-caption">
+                게시글에서 친구를 추가하고, 상대가 수락하면 여기에 보여요.
+              </p>
+            ) : (
+              <div className="mt-1 overflow-hidden rounded-2xl border-0 bg-surface-white shadow-sm">
+                {friends.map((friend) => (
+                  <div
+                    key={friend.id}
+                    className="flex items-center justify-between gap-3 border-b border-line-soft px-3 py-3 last:border-b-0"
+                  >
+                    <AuthorAvatarLink
+                      userId={friend.id}
+                      name={friend.name}
+                      avatar={
+                        isAvatarImage(friend.avatar) ? friend.avatar : friend.avatar
+                      }
+                      size="sm"
+                      showName
+                      className="min-w-0 flex-1"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : null}
+
         {showPostList ? (
           <>
             <div className="flex flex-col gap-2">
@@ -433,9 +317,9 @@ export function CommunityListPage({
                               "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors",
                               active
                                 ? category === "party"
-                                  ? "ai-gradient-bg text-surface-white shadow-glow"
-                                  : "bg-brand text-surface-white shadow-soft"
-                                : "border border-line-soft bg-surface-white text-ink-caption",
+                                  ? "bg-brand text-surface-white shadow-md"
+                                  : "bg-brand text-surface-white shadow-md"
+                                : "border-0 bg-surface-white text-ink-caption shadow-sm",
                             ].join(" ")}
                           >
                             {CATEGORY_LABELS[category]}
@@ -484,7 +368,7 @@ export function CommunityListPage({
                     <ArrowUpDown className="h-4 w-4" strokeWidth={2.2} />
                   </button>
                   {sortMenuOpen ? (
-                    <div className="absolute right-0 top-10 z-10 min-w-[132px] rounded-lg border border-line-soft bg-surface-white p-1 shadow-soft">
+                    <div className="absolute right-0 top-10 z-10 min-w-menu rounded-2xl border-0 bg-surface-white p-1 shadow-md">
                       {(Object.keys(SORT_LABELS) as PostSort[]).map((option) => {
                         const selected = sortBy === option;
                         return (
@@ -516,7 +400,7 @@ export function CommunityListPage({
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="제목, 내용, 여행지, 작성자 검색"
-                    className="h-11 w-full rounded-xl border border-line-soft bg-surface-white pl-10 pr-10 text-sm text-ink-heading outline-none transition-colors placeholder:text-ink-caption focus:border-brand"
+                    className="h-11 w-full rounded-2xl border-0 bg-surface-white shadow-sm pl-10 pr-10 text-sm text-ink-heading outline-none transition-colors placeholder:text-ink-caption focus:border-brand"
                     autoFocus
                   />
                   {searchQuery ? (
@@ -535,9 +419,16 @@ export function CommunityListPage({
 
             <div className="flex flex-col gap-3">
               {!isReady ? (
-                <p className="py-10 text-center text-sm text-ink-caption">불러오는 중...</p>
+                <div className="flex flex-col gap-3" aria-busy="true" aria-label="불러오는 중">
+                  {[1, 2, 3].map((item) => (
+                    <div
+                      key={item}
+                      className="h-28 animate-pulse rounded-xl2 bg-surface-soft"
+                    />
+                  ))}
+                </div>
               ) : filteredPosts.length === 0 && searchQuery.trim() ? (
-                <div className="rounded-xl2 border border-dashed border-line-soft px-4 py-10 text-center">
+                <div className="rounded-2xl border-0 bg-surface-soft shadow-sm px-4 py-10 text-center">
                   <p className="text-sm font-semibold text-ink-heading">
                     &apos;{searchQuery.trim()}&apos; 검색 결과가 없어요
                   </p>
@@ -546,9 +437,12 @@ export function CommunityListPage({
                   </p>
                 </div>
               ) : filteredPosts.length === 0 ? (
-                <div className="rounded-xl2 border border-dashed border-line-soft px-4 py-10 text-center">
+                <div className="rounded-2xl border-0 bg-surface-soft shadow-sm px-4 py-10 text-center">
                   <p className="text-sm font-semibold text-ink-heading">
                     아직 게시글이 없어요
+                  </p>
+                  <p className="mt-1 text-xs text-ink-caption">
+                    얼리 액세스 첫 글을 남겨보세요.
                   </p>
                   <button
                     type="button"
@@ -576,7 +470,7 @@ export function CommunityListPage({
                       disabled={!editable}
                       onClick={() => togglePostSelection(post)}
                       className={[
-                        "flex w-full items-start gap-3 rounded-xl2 border bg-surface-white p-3 text-left shadow-soft transition-colors",
+                        "flex w-full items-start gap-3 rounded-2xl border-0 bg-surface-white p-4 text-left shadow-sm transition-all duration-300",
                         selected
                           ? "border-brand/40 bg-brand/[0.03]"
                           : "border-line-soft",
@@ -635,14 +529,14 @@ export function CommunityListPage({
       )}
 
       {showPostList && !gated && !postManageMode ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-30 flex justify-center">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.75rem+env(safe-area-inset-bottom))] z-30 flex justify-center">
           <div className="pointer-events-none w-full max-w-mobile px-5">
             <div className="pointer-events-none flex justify-end">
               <button
                 type="button"
                 aria-label="글쓰기"
                 onClick={() => openWrite(resolveWriteCategory())}
-                className="pointer-events-auto flex h-12 min-w-[48px] items-center justify-center gap-1.5 rounded-full bg-brand px-4 text-sm font-bold text-surface-white shadow-soft transition-all active:scale-95 active:brightness-95"
+                className="pointer-events-auto flex h-12 min-w-fab items-center justify-center gap-1.5 rounded-full bg-brand px-4 text-sm font-bold text-surface-white shadow-md transition-all duration-300 active:scale-95 active:brightness-95"
               >
                 <PenLine className="h-5 w-5" strokeWidth={2.4} />
                 <span>글쓰기</span>
@@ -657,8 +551,8 @@ export function CommunityListPage({
           open={writeOpen}
           initialCategory={writeCategory}
           onClose={() => setWriteOpen(false)}
-          onSubmit={(input) => {
-            const created = addPost(input);
+          onSubmit={async (input) => {
+            const created = await addPost(input);
             setWriteOpen(false);
             router.push(`${basePath}/${created.id}`);
           }}

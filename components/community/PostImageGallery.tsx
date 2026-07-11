@@ -17,7 +17,7 @@ export function PostImageGallery({
         {images.map((url) => (
           <div
             key={url}
-            className="relative aspect-[4/3] overflow-hidden rounded-xl2 border border-line-soft"
+            className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-line-soft"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

@@ -6,7 +6,10 @@ import { Plus, Send } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { useCommunity } from "@/lib/community/CommunityProvider";
+import {
+  useCommunityActions,
+  useCommunityState,
+} from "@/lib/community/CommunityProvider";
 import {
   fetchPartyChatMessages,
   sendPartyChatMessage,
@@ -22,6 +25,7 @@ import {
 import { markChatSeen } from "@/lib/community/chat-notice";
 import { formatRelativeTime } from "@/lib/community/storage";
 import { useProfile } from "@/lib/profile/ProfileProvider";
+import { isAvatarImage } from "@/lib/profile/public";
 import {
   formatPartyChatAttachmentMessage,
   parsePartyChatAttachment,
@@ -32,14 +36,6 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
 interface PartyChatPageContentProps {
   postId: string;
   listHref: "/opod" | "/board";
-}
-
-function isAvatarImage(src: string): boolean {
-  return (
-    src.startsWith("http://") ||
-    src.startsWith("https://") ||
-    src.startsWith("data:")
-  );
 }
 
 function ChatMessageBody({ message }: { message: string }) {
@@ -108,8 +104,12 @@ export function PartyChatPageContent({
   const router = useRouter();
   const { user, provider } = useAuth();
   const { profile } = useProfile();
-  const { getPost, isPartyHost, isPartyJoined, isPartyPending } = useCommunity();
-  const post = getPost(postId);
+  const { posts } = useCommunityState();
+  const { isPartyHost, isPartyJoined, isPartyPending } = useCommunityActions();
+  const post = useMemo(
+    () => posts.find((item) => item.id === postId),
+    [postId, posts]
+  );
   const [messages, setMessages] = useState<PartyChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
@@ -324,7 +324,7 @@ export function PartyChatPageContent({
                 >
                   {mine ? (
                     <>
-                      <p className="shrink-0 pb-1 text-[10px] text-ink-caption">
+                      <p className="shrink-0 pb-1 text-2xs text-ink-caption">
                         {timeLabel}
                       </p>
                       <div className="max-w-[80%] rounded-2xl bg-brand px-3.5 py-2.5 text-surface-white">
@@ -338,14 +338,14 @@ export function PartyChatPageContent({
                         name={message.senderName}
                       />
                       <div className="flex min-w-0 flex-col items-start gap-1">
-                        <p className="text-[11px] font-bold text-ink-caption">
+                        <p className="text-xs font-bold text-ink-caption">
                           {message.senderName}
                         </p>
                         <div className="flex items-end gap-1.5">
                           <div className="rounded-2xl bg-surface-soft px-3.5 py-2.5 text-ink-body">
                             <ChatMessageBody message={message.message} />
                           </div>
-                          <p className="shrink-0 pb-1 text-[10px] text-ink-caption">
+                          <p className="shrink-0 pb-1 text-2xs text-ink-caption">
                             {timeLabel}
                           </p>
                         </div>
@@ -383,7 +383,7 @@ export function PartyChatPageContent({
               aria-label="사진 또는 파일 첨부"
               disabled={sending}
               onClick={() => fileInputRef.current?.click()}
-              className="flex min-h-[40px] w-10 shrink-0 items-center justify-center self-stretch rounded-xl border border-line-soft bg-surface-soft text-ink-body transition-all hover:bg-surface-base active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex min-h-control w-10 shrink-0 items-center justify-center self-stretch rounded-xl border border-line-soft bg-surface-soft text-ink-body transition-all hover:bg-surface-base active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="h-5 w-5" />
             </button>
@@ -393,7 +393,7 @@ export function PartyChatPageContent({
               rows={1}
               placeholder="메시지를 입력하세요"
               disabled={sending}
-              className="min-h-[40px] max-h-28 min-w-0 flex-1 resize-none rounded-xl border border-line-soft px-3 py-2 text-sm leading-5 text-ink-body outline-none focus:border-brand"
+              className="min-h-control max-h-28 min-w-0 flex-1 resize-none rounded-xl border border-line-soft px-3 py-2 text-sm leading-5 text-ink-body outline-none focus:border-brand"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -408,7 +408,7 @@ export function PartyChatPageContent({
               onClick={() => {
                 void handleSend();
               }}
-              className="flex min-h-[40px] w-10 shrink-0 items-center justify-center self-stretch rounded-xl bg-brand text-surface-white shadow-soft transition-all hover:brightness-105 active:brightness-95 disabled:cursor-not-allowed disabled:bg-line-muted disabled:text-surface-white/80 disabled:shadow-none"
+              className="flex min-h-control w-10 shrink-0 items-center justify-center self-stretch rounded-xl bg-brand text-surface-white shadow-soft transition-all hover:brightness-105 active:brightness-95 disabled:cursor-not-allowed disabled:bg-line-muted disabled:text-surface-white/80 disabled:shadow-none"
             >
               <Send className="h-4 w-4" />
             </button>

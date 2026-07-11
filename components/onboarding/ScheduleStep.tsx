@@ -6,15 +6,16 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
 } from "lucide-react";
 import { StepCard } from "@/components/ui/StepCard";
+import { AIInsightBadge } from "@/components/ui/AIInsightBadge";
 import { AirportSearchField } from "@/components/onboarding/AirportSearchField";
 import {
   formatDestinationForPlan,
   formatPlaceLabel,
 } from "@/lib/airports/data";
-import { formatMonthDealInsight } from "@/lib/rag/monthDeals";
+import { buildLocalScheduleInsight } from "@/lib/ai/schedule-insight";
+import { parseBudgetAmount } from "@/lib/ai/budget-insight";
 import { getFlexibleYearOptions } from "./types";
 import type { DateType } from "./types";
 
@@ -26,6 +27,8 @@ interface ScheduleStepProps {
   endDate: string;
   flexibleYear: number;
   flexibleMonth: number;
+  budget?: string;
+  people?: number;
   onOriginChange: (value: string) => void;
   onDestinationChange: (value: string) => void;
   onDateTypeChange: (value: DateType) => void;
@@ -50,6 +53,18 @@ function toIsoDate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function startOfToday(): Date {
+  return startOfDay(new Date());
+}
+
+function isPastDate(date: Date): boolean {
+  return startOfDay(date).getTime() < startOfToday().getTime();
+}
+
 function parseIsoDate(value: string): Date | null {
   if (!value) return null;
   const date = new Date(`${value}T00:00:00`);
@@ -69,17 +84,20 @@ function localScheduleInsight(params: {
   endDate: string;
   flexibleYear: number;
   flexibleMonth: number;
+  budget?: string;
+  people?: number;
 }): string {
-  if (params.dateType === "specific") {
-    if (params.startDate && params.endDate) {
-      const from = params.origin || "출발지";
-      const to = params.destination || "목적지";
-      return `${from} → ${to}, ${params.startDate}~${params.endDate} 기준으로 항공·숙소 예산을 맞춰 드릴게요.`;
-    }
-    return "선택한 기간 기반으로 최적 예산 분배를 진행해요.";
-  }
-
-  return `${params.flexibleYear}년 ${formatMonthDealInsight(params.flexibleMonth)}`;
+  return buildLocalScheduleInsight({
+    origin: params.origin,
+    destination: params.destination,
+    dateType: params.dateType,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    flexibleYear: params.flexibleYear,
+    flexibleMonth: params.flexibleMonth,
+    budget: parseBudgetAmount(params.budget ?? ""),
+    people: params.people ?? 1,
+  });
 }
 
 export function ScheduleStep({
@@ -90,6 +108,8 @@ export function ScheduleStep({
   endDate,
   flexibleYear,
   flexibleMonth,
+  budget = "",
+  people = 1,
   onOriginChange,
   onDestinationChange,
   onDateTypeChange,
@@ -114,6 +134,8 @@ export function ScheduleStep({
       endDate,
       flexibleYear,
       flexibleMonth,
+      budget,
+      people,
     })
   );
   const [loading, setLoading] = useState(false);
@@ -151,6 +173,8 @@ export function ScheduleStep({
       endDate,
       flexibleYear,
       flexibleMonth,
+      budget,
+      people,
     });
     setInsight(local);
 
@@ -169,6 +193,8 @@ export function ScheduleStep({
           endDate,
           flexibleYear,
           flexibleMonth,
+          budget,
+          people,
         }),
         signal: controller.signal,
         cache: "no-store",
@@ -201,9 +227,13 @@ export function ScheduleStep({
     endDate,
     flexibleYear,
     flexibleMonth,
+    budget,
+    people,
   ]);
 
   const handlePickDate = (date: Date) => {
+    if (isPastDate(date)) return;
+
     const iso = toIsoDate(date);
     if (!start || (start && end)) {
       onStartDateChange(iso);
@@ -217,6 +247,13 @@ export function ScheduleStep({
     }
     onEndDateChange(iso);
   };
+
+  const today = startOfToday();
+  const todayIso = toIsoDate(today);
+  const canGoPrevMonth =
+    viewDate.getFullYear() > today.getFullYear() ||
+    (viewDate.getFullYear() === today.getFullYear() &&
+      viewDate.getMonth() > today.getMonth());
 
   const isInRange = (date: Date) => {
     if (!start || !end) return false;
@@ -273,7 +310,7 @@ export function ScheduleStep({
         </p>
       </div>
 
-      <section className="flex w-full flex-col gap-4 rounded-xl border border-line-soft bg-surface-white p-4 shadow-soft">
+      <section className="flex w-full flex-col gap-4 rounded-2xl border-0 bg-surface-white shadow-sm p-4 shadow-soft">
         <div className="flex w-full items-center gap-3">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10">
             <CalendarDays className="h-4 w-4 text-brand" strokeWidth={2.2} />
@@ -311,7 +348,8 @@ export function ScheduleStep({
                 <button
                   type="button"
                   aria-label="이전 달"
-                  className="rounded-md p-1 text-ink-body active:bg-surface-soft"
+                  disabled={!canGoPrevMonth}
+                  className="rounded-md p-1 text-ink-body active:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-30"
                   onClick={() =>
                     setViewDate(
                       (prev) =>
@@ -360,20 +398,26 @@ export function ScheduleStep({
                 {monthCells.map(({ date, inMonth }) => {
                   const selected = isStartOrEnd(date);
                   const ranged = isInRange(date);
+                  const past = isPastDate(date);
+                  const disabled = !inMonth || past;
                   return (
                     <button
                       key={toIsoDate(date)}
                       type="button"
-                      disabled={!inMonth}
+                      disabled={disabled}
                       onClick={() => handlePickDate(date)}
                       className={[
                         "h-9 rounded-full text-sm font-medium transition-colors",
-                        !inMonth ? "text-line-muted" : "text-ink-heading",
-                        selected
+                        disabled
+                          ? "cursor-not-allowed text-line-muted"
+                          : "text-ink-heading",
+                        !disabled && selected
                           ? "bg-brand text-surface-white"
-                          : ranged
+                          : !disabled && ranged
                             ? "bg-brand/20 text-ink-heading"
-                            : "hover:bg-surface-soft",
+                            : !disabled
+                              ? "hover:bg-surface-soft"
+                              : "",
                       ].join(" ")}
                     >
                       {date.getDate()}
@@ -386,14 +430,25 @@ export function ScheduleStep({
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => onStartDateChange(e.target.value)}
+                min={todayIso}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (next && next < todayIso) return;
+                  onStartDateChange(next);
+                  if (endDate && next && endDate < next) onEndDateChange("");
+                }}
                 className="h-11 rounded-lg border border-line-muted bg-surface-white px-3 text-sm text-ink-heading focus:border-brand focus:outline-none"
               />
               <input
                 type="date"
                 value={endDate}
-                min={startDate || undefined}
-                onChange={(e) => onEndDateChange(e.target.value)}
+                min={startDate || todayIso}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  const minDate = startDate || todayIso;
+                  if (next && next < minDate) return;
+                  onEndDateChange(next);
+                }}
                 className="h-11 rounded-lg border border-line-muted bg-surface-white px-3 text-sm text-ink-heading focus:border-brand focus:outline-none"
               />
             </div>
@@ -455,18 +510,7 @@ export function ScheduleStep({
           </div>
         )}
 
-        <div className="w-full">
-          <div className="inline-flex max-w-full items-start gap-1.5 rounded-2xl bg-brand/10 px-3 py-2 text-xs leading-relaxed text-brand">
-            <Sparkles
-              className={[
-                "mt-0.5 h-3.5 w-3.5 shrink-0",
-                loading ? "animate-pulse" : "",
-              ].join(" ")}
-              strokeWidth={2.3}
-            />
-            <span>{insight}</span>
-          </div>
-        </div>
+        <AIInsightBadge loading={loading}>{insight}</AIInsightBadge>
       </section>
     </StepCard>
   );

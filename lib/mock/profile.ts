@@ -14,15 +14,15 @@ export interface ProfileUser {
   homeCity?: string;
 }
 
+/** Early-access 중립 기본값 (데모 인물/소개 없음) */
 export const MOCK_PROFILE: ProfileUser = {
-  name: "지훈",
-  email: "traveler@budgettrip.ai",
-  avatarUrl:
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
-  membershipLabel: "골드 멤버",
-  styles: ["healing", "sightseeing", "food", "shopping"],
-  bio: "예산 안에서 최대한 즐기는 여행을 좋아해요.",
-  homeCity: "서울",
+  name: "여행자",
+  email: "",
+  avatarUrl: "",
+  membershipLabel: "회원",
+  styles: [],
+  bio: "",
+  homeCity: "",
 };
 
 export const PROFILE_STYLE_OPTIONS: {

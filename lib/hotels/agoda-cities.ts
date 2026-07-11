@@ -1,5 +1,5 @@
 /** Agoda 숙소 검색용 city ID (숫자) */
-export const AGODA_CITY_IDS: Record<string, number> = {
+const AGODA_CITY_IDS: Record<string, number> = {
   서울: 14690,
   seoul: 14690,
   부산: 9394,

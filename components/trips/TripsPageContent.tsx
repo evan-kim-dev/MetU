@@ -102,7 +102,7 @@ export function TripsPageContent() {
           ) : (
             <>
               <div className="min-w-0">
-                <h1 className="text-[22px] font-bold tracking-tight text-ink-heading">
+                <h1 className="text-heading font-bold tracking-tight text-ink-heading">
                   내 여행
                 </h1>
                 <p className="mt-1 text-sm text-ink-caption">
@@ -128,7 +128,7 @@ export function TripsPageContent() {
             {[1, 2].map((item) => (
               <div
                 key={item}
-                className="h-28 animate-pulse rounded-xl2 bg-surface-soft"
+                className="h-28 animate-pulse rounded-2xl bg-surface-soft"
               />
             ))}
           </div>
@@ -162,13 +162,13 @@ export function TripsPageContent() {
         )}
 
         {editMode && trips.length > 0 && (
-          <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 pt-2">
+          <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 pt-2">
             <button
               type="button"
               disabled={selectedIds.length === 0}
               onClick={handleDeleteSelected}
               className={[
-                "flex w-full items-center justify-center gap-2 rounded-xl2 py-3.5 text-sm font-bold transition-colors",
+                "flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold transition-colors",
                 selectedIds.length > 0
                   ? "bg-danger text-surface-white active:brightness-95"
                   : "cursor-not-allowed bg-surface-soft text-ink-caption",

@@ -20,11 +20,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const { isReady, isLoggedIn } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const publicPath = isPublicPath(pathname);
 
   useEffect(() => {
     if (!isReady) return;
 
-    if (!isLoggedIn && !isPublicPath(pathname)) {
+    if (!isLoggedIn && !publicPath) {
       const next = pathname === "/" ? "" : `?next=${encodeURIComponent(pathname)}`;
       router.replace(`/login${next}`);
       return;
@@ -34,7 +35,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       // Soft nav can keep a stale client bundle after OAuth; force a full load.
       window.location.replace("/");
     }
-  }, [isReady, isLoggedIn, pathname, router]);
+  }, [isReady, isLoggedIn, pathname, publicPath, router]);
+
+  // Public routes: render immediately (no auth spinner waterfall).
+  if (publicPath) {
+    return <>{children}</>;
+  }
 
   if (!isReady) {
     return (
@@ -44,7 +50,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isLoggedIn && !isPublicPath(pathname)) {
+  if (!isLoggedIn) {
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-base">
         <div className="h-8 w-8 animate-pulse rounded-full bg-brand/20" />

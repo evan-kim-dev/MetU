@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -13,309 +12,62 @@ import {
   Trash2,
   Users,
   Wallet,
-  X,
 } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
-import { useAuth } from "@/lib/auth/AuthProvider";
-import { formatKRW } from "@/lib/mock/home";
-import { STYLE_LABELS } from "@/lib/trips/data";
 import {
-  buildSharedTripUrl,
-  ensureTripShareToken,
-} from "@/lib/trips/share";
-import { useTrips } from "@/lib/trips/TripProvider";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
-import type { TripDaySchedule, TripExpense } from "@/lib/trips/types";
+  TripExpenseEditor,
+  TripIconButton,
+  TripInfoCard,
+} from "@/components/trips/TripDetailParts";
+import { useTripDetailEditor } from "@/components/trips/useTripDetailEditor";
+import { formatKRW } from "@/lib/shared/format";
 
 interface TripDetailContentProps {
   tripId: string;
 }
 
-type EditSection = "budget" | "expense" | "memo" | null;
-
-function parseAmount(raw: string): number {
-  return Number(raw.replace(/[^0-9]/g, "")) || 0;
-}
-
-function recalcDayTotal(day: TripDaySchedule): TripDaySchedule {
-  return {
-    ...day,
-    dayTotal: day.items.reduce((sum, item) => sum + (item.cost || 0), 0),
-  };
-}
-
 export function TripDetailContent({ tripId }: TripDetailContentProps) {
   const router = useRouter();
-  const { user, provider } = useAuth();
-  const { getTrip, updateTrip, removeTrip, isReady } = useTrips();
-  const trip = getTrip(tripId);
-
-  const [editSection, setEditSection] = useState<EditSection>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
-  const [shareError, setShareError] = useState("");
-
-  // budget
-  const [draftBudget, setDraftBudget] = useState("");
-  // expense
-  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
-  const [expenseForm, setExpenseForm] = useState({
-    label: "",
-    category: "",
-    amount: "",
-    date: "",
-  });
-  // memo
-  const [draftMemo, setDraftMemo] = useState("");
-  // schedule
-  const [editingDayIndex, setEditingDayIndex] = useState<number | null>(null);
-  const [draftDay, setDraftDay] = useState<TripDaySchedule | null>(null);
-
-  const remaining = trip ? trip.budget - trip.spent : 0;
-  const usedPercent = trip
-    ? Math.round((trip.spent / Math.max(trip.budget, 1)) * 100)
-    : 0;
-
-  const styleLabels = useMemo(
-    () => trip?.styles.map((style) => STYLE_LABELS[style] ?? style) ?? [],
-    [trip?.styles]
-  );
-
-  const openBudgetEdit = () => {
-    if (!trip) return;
-    setDraftBudget(String(trip.budget));
-    setEditSection("budget");
-    setEditingExpenseId(null);
-    setEditingDayIndex(null);
-    setDraftDay(null);
-  };
-
-  const saveBudget = () => {
-    if (!trip) return;
-    const budget = parseAmount(draftBudget);
-    if (budget < 1) return;
-    updateTrip(trip.id, { budget });
-    setEditSection(null);
-  };
-
-  const openExpenseEdit = (expense: TripExpense) => {
-    setEditingExpenseId(expense.id);
-    setExpenseForm({
-      label: expense.label,
-      category: expense.category,
-      amount: String(expense.amount),
-      date: expense.date,
-    });
-    setEditSection("expense");
-    setEditingDayIndex(null);
-    setDraftDay(null);
-  };
-
-  const openExpenseAdd = () => {
-    setEditingExpenseId("new");
-    setExpenseForm({
-      label: "",
-      category: "기타",
-      amount: "",
-      date: "직접 입력",
-    });
-    setEditSection("expense");
-    setEditingDayIndex(null);
-    setDraftDay(null);
-  };
-
-  const saveExpense = () => {
-    if (!trip) return;
-    const amount = parseAmount(expenseForm.amount);
-    if (!expenseForm.label.trim() || amount < 1) return;
-
-    let nextExpenses: TripExpense[];
-    if (editingExpenseId === "new") {
-      nextExpenses = [
-        ...trip.expenses,
-        {
-          id: `exp-${Date.now()}`,
-          label: expenseForm.label.trim(),
-          category: expenseForm.category.trim() || "기타",
-          amount,
-          date: expenseForm.date.trim() || "직접 입력",
-        },
-      ];
-    } else {
-      nextExpenses = trip.expenses.map((item) =>
-        item.id === editingExpenseId
-          ? {
-              ...item,
-              label: expenseForm.label.trim(),
-              category: expenseForm.category.trim() || "기타",
-              amount,
-              date: expenseForm.date.trim() || item.date,
-            }
-          : item
-      );
-    }
-
-    updateTrip(trip.id, { expenses: nextExpenses });
-    setEditSection(null);
-    setEditingExpenseId(null);
-  };
-
-  const deleteExpense = (id: string) => {
-    if (!trip) return;
-    const ok = window.confirm("이 지출 항목을 삭제할까요?");
-    if (!ok) return;
-    updateTrip(trip.id, {
-      expenses: trip.expenses.filter((item) => item.id !== id),
-    });
-    if (editingExpenseId === id) {
-      setEditSection(null);
-      setEditingExpenseId(null);
-    }
-  };
-
-  const openMemoEdit = () => {
-    if (!trip) return;
-    setDraftMemo(trip.memo ?? "");
-    setEditSection("memo");
-    setEditingExpenseId(null);
-    setEditingDayIndex(null);
-    setDraftDay(null);
-  };
-
-  const saveMemo = () => {
-    if (!trip) return;
-    updateTrip(trip.id, { memo: draftMemo.trim() });
-    setEditSection(null);
-  };
-
-  const openDayEdit = (dayIndex: number) => {
-    if (!trip?.dailySchedule?.[dayIndex]) return;
-    const day = trip.dailySchedule[dayIndex];
-    setDraftDay({
-      ...day,
-      items: day.items.map((item) => ({ ...item })),
-    });
-    setEditingDayIndex(dayIndex);
-    setEditSection(null);
-    setEditingExpenseId(null);
-  };
-
-  const cancelDayEdit = () => {
-    setEditingDayIndex(null);
-    setDraftDay(null);
-  };
-
-  const updateDraftItem = (
-    itemIndex: number,
-    patch: Partial<{ time: string; title: string; cost: string }>
-  ) => {
-    setDraftDay((prev) => {
-      if (!prev) return prev;
-      const items = prev.items.map((item, iIdx) => {
-        if (iIdx !== itemIndex) return item;
-        return {
-          ...item,
-          time: patch.time ?? item.time,
-          title: patch.title ?? item.title,
-          cost: patch.cost !== undefined ? parseAmount(patch.cost) : item.cost,
-        };
-      });
-      return recalcDayTotal({ ...prev, items });
-    });
-  };
-
-  const addDraftItem = () => {
-    setDraftDay((prev) => {
-      if (!prev) return prev;
-      return recalcDayTotal({
-        ...prev,
-        items: [...prev.items, { time: "12:00", title: "", cost: 0 }],
-      });
-    });
-  };
-
-  const removeDraftItem = (itemIndex: number) => {
-    setDraftDay((prev) => {
-      if (!prev) return prev;
-      return recalcDayTotal({
-        ...prev,
-        items: prev.items.filter((_, i) => i !== itemIndex),
-      });
-    });
-  };
-
-  const saveDayEdit = (dayIndex: number) => {
-    if (!trip || !draftDay) return;
-    const cleaned = recalcDayTotal({
-      ...draftDay,
-      label: `Day ${draftDay.day}`,
-      items: draftDay.items
-        .map((item) => ({
-          ...item,
-          time: item.time.trim() || "00:00",
-          title: item.title.trim(),
-          cost: item.cost || 0,
-        }))
-        .filter((item) => item.title.length > 0),
-    });
-    const nextSchedule = (trip.dailySchedule ?? []).map((day, idx) =>
-      idx === dayIndex ? cleaned : day
-    );
-    updateTrip(trip.id, { dailySchedule: nextSchedule });
-    cancelDayEdit();
-  };
-
-  const handleDelete = () => {
-    if (!trip || isDeleting) return;
-    const ok = window.confirm(
-      `"${trip.destination}" 여행을 삭제할까요?\n홈의 진행 중 여행·팁·환율도 함께 갱신돼요.`
-    );
-    if (!ok) return;
-    setIsDeleting(true);
-    removeTrip(trip.id);
-    router.replace("/");
-  };
-
-  async function handleShareTrip() {
-    if (!trip) return;
-
-    setShareError("");
-
-    const supabase = getBrowserSupabase();
-    if (!supabase || !user?.id || provider === "guest") {
-      setShareError("공유하려면 로그인한 뒤 Supabase에 저장된 여행이어야 해요.");
-      return;
-    }
-
-    const token = await ensureTripShareToken(supabase, user.id, trip.id);
-    if (!token) {
-      setShareError("공유 링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
-      return;
-    }
-
-    const url = buildSharedTripUrl(token);
-    const title = `${trip.destination} 여행`;
-    const text = `${trip.destination} 여행 일정을 함께 봐요.`;
-
-    try {
-      if (navigator.share) {
-        await navigator.share({ title, text, url });
-        return;
-      }
-    } catch (error) {
-      if ((error as Error).name === "AbortError") return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(url);
-      setShareCopied(true);
-      window.setTimeout(() => setShareCopied(false), 2000);
-    } catch {
-      window.prompt("아래 링크를 복사하세요", url);
-    }
-  }
+  const {
+    trip,
+    isReady,
+    remaining,
+    usedPercent,
+    styleLabels,
+    editSection,
+    setEditSection,
+    isDeleting,
+    shareCopied,
+    shareError,
+    draftBudget,
+    setDraftBudget,
+    editingExpenseId,
+    setEditingExpenseId,
+    expenseForm,
+    setExpenseForm,
+    draftMemo,
+    setDraftMemo,
+    editingDayIndex,
+    draftDay,
+    openBudgetEdit,
+    saveBudget,
+    openExpenseEdit,
+    openExpenseAdd,
+    saveExpense,
+    deleteExpense,
+    openMemoEdit,
+    saveMemo,
+    openDayEdit,
+    cancelDayEdit,
+    updateDraftItem,
+    addDraftItem,
+    removeDraftItem,
+    saveDayEdit,
+    handleDelete,
+    handleShareTrip,
+  } = useTripDetailEditor(tripId);
 
   const shareButton = (
     <button
@@ -337,8 +89,13 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
   if (!isReady) {
     return (
       <MobileShell title="여행 상세" showBack backHref="/trips">
-        <div className="px-5 pt-5">
-          <div className="h-56 animate-pulse rounded-xl2 bg-surface-soft" />
+        <div className="flex flex-col gap-4 px-5 pt-5" aria-busy="true" aria-label="불러오는 중">
+          <div className="h-52 animate-pulse rounded-xl2 bg-surface-soft" />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="h-20 animate-pulse rounded-2xl bg-surface-soft" />
+            <div className="h-20 animate-pulse rounded-2xl bg-surface-soft" />
+          </div>
+          <div className="h-36 animate-pulse rounded-2xl bg-surface-soft" />
         </div>
       </MobileShell>
     );
@@ -371,7 +128,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
       ) : null}
       <div className="flex flex-col gap-6 px-5 pb-8 pt-5">
         {/* 히어로 */}
-        <div className="relative h-56 overflow-hidden rounded-xl2 shadow-soft">
+        <div className="relative h-56 overflow-hidden rounded-2xl shadow-md">
           <Image
             src={trip.imageUrl}
             alt={`${trip.destination} 여행`}
@@ -403,12 +160,12 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
 
         {/* 요약 정보 */}
         <section className="grid grid-cols-2 gap-3">
-          <InfoCard
+          <TripInfoCard
             icon={<Users className="h-4 w-4" />}
             label="인원"
             value={`${trip.people}명`}
           />
-          <InfoCard
+          <TripInfoCard
             icon={<MapPin className="h-4 w-4" />}
             label="출발지"
             value={trip.origin}
@@ -416,16 +173,16 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
         </section>
 
         {/* 예산 */}
-        <section className="rounded-xl2 border border-line-soft bg-surface-white p-4">
+        <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-brand" />
               <h3 className="text-lg font-extrabold text-ink-heading">예산</h3>
             </div>
             {editSection !== "budget" && (
-              <IconButton label="예산 수정" onClick={openBudgetEdit}>
+              <TripIconButton label="예산 수정" onClick={openBudgetEdit}>
                 <Pencil className="h-4 w-4" strokeWidth={2.2} />
-              </IconButton>
+              </TripIconButton>
             )}
           </div>
 
@@ -504,7 +261,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
 
         {/* AI 일정표 */}
         {trip.dailySchedule && trip.dailySchedule.length > 0 ? (
-          <section className="rounded-xl2 border border-line-soft bg-surface-white p-4">
+          <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <CalendarDays className="h-5 w-5 text-brand" />
               <h3 className="text-lg font-extrabold text-ink-heading">일정표</h3>
@@ -517,7 +274,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                 return (
                   <div
                     key={day.day}
-                    className="rounded-xl border border-line-soft bg-surface-base p-4"
+                    className="rounded-2xl border-0 bg-surface-soft shadow-sm p-4"
                   >
                     {isEditing ? (
                       <>
@@ -615,12 +372,12 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                           <span className="text-sm font-extrabold text-brand">
                             Day {day.day}
                           </span>
-                          <IconButton
+                          <TripIconButton
                             label={`Day ${day.day} 일정 수정`}
                             onClick={() => openDayEdit(dayIndex)}
                           >
                             <Pencil className="h-4 w-4" strokeWidth={2.2} />
-                          </IconButton>
+                          </TripIconButton>
                         </div>
                         <div className="flex flex-col gap-2">
                           {day.items.map((item) => (
@@ -692,7 +449,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
           </div>
 
           {editSection === "expense" && editingExpenseId === "new" && (
-            <ExpenseEditor
+            <TripExpenseEditor
               form={expenseForm}
               onChange={setExpenseForm}
               onCancel={() => {
@@ -712,7 +469,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
 
             {trip.expenses.map((expense) =>
               editSection === "expense" && editingExpenseId === expense.id ? (
-                <ExpenseEditor
+                <TripExpenseEditor
                   key={expense.id}
                   form={expenseForm}
                   onChange={setExpenseForm}
@@ -739,12 +496,12 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                   <span className="shrink-0 text-sm font-extrabold text-ink-heading">
                     {formatKRW(expense.amount)}
                   </span>
-                  <IconButton
+                  <TripIconButton
                     label={`${expense.label} 수정`}
                     onClick={() => openExpenseEdit(expense)}
                   >
                     <Pencil className="h-4 w-4" strokeWidth={2.2} />
-                  </IconButton>
+                  </TripIconButton>
                 </div>
               )
             )}
@@ -756,9 +513,9 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-extrabold text-ink-heading">메모</h3>
             {editSection !== "memo" && (
-              <IconButton label="메모 수정" onClick={openMemoEdit}>
+              <TripIconButton label="메모 수정" onClick={openMemoEdit}>
                 <Pencil className="h-4 w-4" strokeWidth={2.2} />
-              </IconButton>
+              </TripIconButton>
             )}
           </div>
 
@@ -807,126 +564,5 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
         </button>
       </div>
     </MobileShell>
-  );
-}
-
-function IconButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors active:bg-surface-soft"
-    >
-      {children}
-    </button>
-  );
-}
-
-function ExpenseEditor({
-  form,
-  onChange,
-  onCancel,
-  onSave,
-  onDelete,
-}: {
-  form: { label: string; category: string; amount: string; date: string };
-  onChange: (next: {
-    label: string;
-    category: string;
-    amount: string;
-    date: string;
-  }) => void;
-  onCancel: () => void;
-  onSave: () => void;
-  onDelete?: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-brand/30 bg-brand/5 p-3">
-      <input
-        value={form.label}
-        onChange={(e) => onChange({ ...form, label: e.target.value })}
-        placeholder="항목명 (예: 항공권)"
-        className="h-10 rounded-xl border border-line-muted bg-surface-white px-3 text-sm font-bold text-ink-heading focus:border-brand focus:outline-none"
-      />
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          value={form.category}
-          onChange={(e) => onChange({ ...form, category: e.target.value })}
-          placeholder="카테고리"
-          className="h-10 rounded-xl border border-line-muted bg-surface-white px-3 text-sm text-ink-heading focus:border-brand focus:outline-none"
-        />
-        <input
-          value={form.date}
-          onChange={(e) => onChange({ ...form, date: e.target.value })}
-          placeholder="날짜/메모"
-          className="h-10 rounded-xl border border-line-muted bg-surface-white px-3 text-sm text-ink-heading focus:border-brand focus:outline-none"
-        />
-      </div>
-      <input
-        inputMode="numeric"
-        value={form.amount}
-        onChange={(e) =>
-          onChange({ ...form, amount: e.target.value.replace(/[^0-9]/g, "") })
-        }
-        placeholder="금액"
-        className="h-10 rounded-xl border border-line-muted bg-surface-white px-3 text-sm font-bold text-ink-heading focus:border-brand focus:outline-none"
-      />
-      <div className="flex gap-2">
-        {onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="rounded-xl border border-red-200 px-3 py-2.5 text-sm font-bold text-red-600"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-line-muted py-2.5 text-sm font-bold text-ink-body"
-        >
-          <X className="h-4 w-4" />
-          취소
-        </button>
-        <button
-          type="button"
-          onClick={onSave}
-          className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-brand py-2.5 text-sm font-bold text-surface-white"
-        >
-          <Check className="h-4 w-4" />
-          저장
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function InfoCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-line-soft bg-surface-white p-4">
-      <div className="mb-2 flex items-center gap-1.5 text-brand">
-        {icon}
-        <span className="text-xs font-semibold text-ink-caption">{label}</span>
-      </div>
-      <p className="text-base font-extrabold text-ink-heading">{value}</p>
-    </div>
   );
 }

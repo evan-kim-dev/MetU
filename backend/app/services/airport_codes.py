@@ -138,37 +138,3 @@ def build_google_flights_url(
         f"?tfs={tfs_param}&hl=ko&gl=KR&curr=KRW&tfu=EgQIABABIgA"
     )
 
-
-def build_naver_flights_url(
-    *,
-    origin: str,
-    destination: str,
-    depart_date: str,
-    return_date: str | None = None,
-    adults: int = 1,
-    seat: str = "economy",
-) -> str:
-    seat_map = {
-        "economy": "Y",
-        "premium_economy": "W",
-        "business": "C",
-        "first": "F",
-    }
-    depart_compact = depart_date.replace("-", "")
-    fare_type = seat_map.get(seat, "Y")
-    adult_count = max(adults, 1)
-
-    if return_date:
-        return_compact = return_date.replace("-", "")
-        return (
-            "https://flight.naver.com/flights/international/"
-            f"{origin}:airport-{destination}:airport-{depart_compact}/"
-            f"{destination}:airport-{origin}:airport-{return_compact}"
-            f"?adult={adult_count}&fareType={fare_type}"
-        )
-
-    return (
-        "https://flight.naver.com/flights/international/"
-        f"{origin}:airport-{destination}:airport-{depart_compact}"
-        f"?adult={adult_count}&fareType={fare_type}"
-    )

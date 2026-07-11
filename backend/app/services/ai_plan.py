@@ -9,28 +9,28 @@ class InsightService:
     def __init__(self) -> None:
         self.openai = OpenAIService()
 
-    async def budget_insight(self, *, budget: int, prompt: str, system: str) -> str | None:
+    async def budget_insight(self, *, prompt: str, system: str) -> str | None:
         return await self.openai.chat(
             system=system,
             user=prompt,
-            temperature=0.3,
-            max_tokens=120,
+            temperature=0.35,
+            max_tokens=280,
         )
 
     async def party_insight(self, *, prompt: str, system: str) -> str | None:
         return await self.openai.chat(
             system=system,
             user=prompt,
-            temperature=0.3,
-            max_tokens=140,
+            temperature=0.35,
+            max_tokens=280,
         )
 
     async def weather_insight(self, *, prompt: str, system: str) -> str | None:
         return await self.openai.chat(
             system=system,
             user=prompt,
-            temperature=0.35,
-            max_tokens=320,
+            temperature=0.4,
+            max_tokens=700,
             json_mode=True,
         )
 
@@ -38,8 +38,8 @@ class InsightService:
         return await self.openai.chat(
             system=system,
             user=prompt,
-            temperature=0.75,
-            max_tokens=140,
+            temperature=0.8,
+            max_tokens=280,
         )
 
     async def tips_insight(self, *, prompt: str, system: str) -> str | None:
@@ -47,7 +47,7 @@ class InsightService:
             system=system,
             user=prompt,
             temperature=0.55,
-            max_tokens=420,
+            max_tokens=900,
             json_mode=True,
         )
 
@@ -56,23 +56,23 @@ class InsightService:
             system=system,
             user=prompt,
             temperature=0.45,
-            max_tokens=120,
+            max_tokens=280,
         )
 
     async def schedule_insight(self, *, prompt: str, system: str) -> str | None:
         return await self.openai.chat(
             system=system,
             user=prompt,
-            temperature=0.5,
-            max_tokens=160,
+            temperature=0.55,
+            max_tokens=520,
         )
 
     async def plan_itinerary(self, *, prompt: str, system: str) -> str | None:
         return await self.openai.chat(
             system=system,
             user=prompt,
-            temperature=0.55,
-            max_tokens=1600,
+            temperature=0.6,
+            max_tokens=4500,
             json_mode=True,
         )
 
@@ -81,7 +81,7 @@ class InsightService:
             system=system,
             user=prompt,
             temperature=0.5,
-            max_tokens=700,
+            max_tokens=1400,
             json_mode=True,
         )
 
@@ -89,8 +89,8 @@ class InsightService:
         return await self.openai.chat(
             system=system,
             user=prompt,
-            temperature=0.45,
-            max_tokens=160,
+            temperature=0.5,
+            max_tokens=400,
         )
 
     async def deal_enrich(self, *, prompt: str, system: str) -> str | None:
@@ -98,6 +98,6 @@ class InsightService:
             system=system,
             user=prompt,
             temperature=0.6,
-            max_tokens=500,
+            max_tokens=900,
             json_mode=True,
         )
