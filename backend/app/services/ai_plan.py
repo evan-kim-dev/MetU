@@ -115,3 +115,12 @@ class InsightService:
             json_mode=True,
             timeout=180.0,
         )
+
+    async def buddy_chat(self, *, prompt: str, system: str) -> str | None:
+        return await self.openai.chat(
+            system=system,
+            user=prompt,
+            temperature=0.9,
+            max_tokens=1200,
+            timeout=60.0,
+        )

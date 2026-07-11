@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { memo } from "react";
 import { CalendarDays, Check, ChevronRight, MapPin } from "lucide-react";
 import { formatKRW } from "@/lib/mock/home";
 import type { Trip } from "@/lib/trips/types";
+import { DestinationImage } from "@/components/ui/DestinationImage";
 
 interface TripListCardProps {
   trip: Trip;
@@ -45,13 +45,13 @@ export const TripListCard = memo(function TripListCard({
         </span>
       )}
 
-      <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl">
-        <Image
-          src={trip.imageUrl}
+      <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-surface-soft">
+        <DestinationImage
+          destination={trip.destination}
+          country={trip.country}
+          storedUrl={trip.imageUrl}
           alt={`${trip.destination} 여행`}
-          fill
           sizes="96px"
-          className="object-cover"
         />
       </div>
 

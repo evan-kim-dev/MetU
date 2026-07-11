@@ -12,7 +12,7 @@ class ChatRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
     mode: str = Field(
         default="budget",
-        pattern="^(budget|party|deal|weather|factbomb|tips|style|schedule|plan|deals|summary)$",
+        pattern="^(budget|party|deal|weather|factbomb|tips|style|schedule|plan|deals|summary|buddy)$",
     )
 
 
@@ -43,6 +43,8 @@ async def chat(body: ChatRequest) -> ChatResponse:
         content = await service.deals_curate(prompt=body.prompt, system=body.system)
     elif body.mode == "summary":
         content = await service.summary_insight(prompt=body.prompt, system=body.system)
+    elif body.mode == "buddy":
+        content = await service.buddy_chat(prompt=body.prompt, system=body.system)
     else:
         content = await service.budget_insight(
             prompt=body.prompt, system=body.system

@@ -47,6 +47,14 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "upload.wikimedia.org",
+      },
+      {
+        protocol: "https",
+        hostname: "**.wikipedia.org",
+      },
+      {
+        protocol: "https",
         hostname: "**.kakaocdn.net",
       },
       {

@@ -11,6 +11,10 @@ import {
   resolveFxTarget,
   type FxTarget,
 } from "@/lib/fx/currencies";
+import {
+  useEasterEggToast,
+  useSecretTap,
+} from "@/components/ui/EasterEggToast";
 
 const DEFAULT_EMPTY_FX: FxTarget = {
   code: "USD",
@@ -26,6 +30,15 @@ export function HomeGreeting() {
   const { activeTrips, isReady } = useTrips();
   const primaryTrip = activeTrips[0];
   const hasTrip = Boolean(isReady && primaryTrip);
+  const { summonBuddy } = useEasterEggToast();
+  const onGreetingTap = useSecretTap({
+    tapsRequired: 7,
+    windowMs: 3000,
+    onceKey: "metu-egg-greeting",
+    onTrigger: () => {
+      summonBuddy("손가락 근력이 여행 예산보다 낫네요. 반갑습니다, Met U.");
+    },
+  });
 
   const fxTarget = useMemo(() => {
     if (!hasTrip || !primaryTrip) return DEFAULT_EMPTY_FX;
@@ -96,9 +109,13 @@ export function HomeGreeting() {
 
   return (
     <div className="flex items-center justify-between gap-3">
-      <p className="min-w-0 truncate text-sm font-medium text-ink-caption">
+      <button
+        type="button"
+        onClick={onGreetingTap}
+        className="min-w-0 truncate text-left text-sm font-medium text-ink-caption"
+      >
         안녕하세요, {profile.name}님 👋
-      </p>
+      </button>
       <div
         className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-line-soft bg-surface-white px-2.5 py-1.5 shadow-sm"
         title={

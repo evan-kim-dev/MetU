@@ -15,6 +15,7 @@ import {
 } from "@/lib/ai/prompts/insight-prompts";
 import { backendFetch } from "@/lib/backend/client";
 import { optimizeDailyScheduleRoutes } from "@/lib/route/optimize-schedule";
+import { resolveDestinationImage } from "@/lib/trips/destination-image";
 import type {
   BudgetAllocation,
   DaySchedule,
@@ -23,23 +24,6 @@ import type {
   RagSource,
   TripRecommendation,
 } from "./types";
-
-const DESTINATION_IMAGES: Record<string, string> = {
-  default:
-    "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=800&q=80",
-  파리:
-    "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80",
-  도쿄:
-    "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=800&q=80",
-  오사카:
-    "https://images.unsplash.com/photo-1590559899731-a382839e5549?auto=format&fit=crop&w=800&q=80",
-  방콕:
-    "https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&w=800&q=80",
-  런던:
-    "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80",
-  다낭:
-    "https://images.unsplash.com/photo-1559592413-7cec4b0e8f9f?auto=format&fit=crop&w=800&q=80",
-};
 
 function parseBudget(raw: string): number {
   return Number(raw.replace(/[^0-9]/g, "")) || 0;
@@ -72,13 +56,6 @@ function formatIsoDateToKorean(value: string): string {
   const [year, month, day] = value.split("-").map((v) => Number(v));
   if (!year || !month || !day) return value;
   return `${month}월 ${day}일`;
-}
-
-function getImageUrl(city: string): string {
-  for (const [key, url] of Object.entries(DESTINATION_IMAGES)) {
-    if (key !== "default" && city.includes(key)) return url;
-  }
-  return DESTINATION_IMAGES.default;
 }
 
 function getNights(dateType: OnboardingForm["dateType"]): number {
@@ -526,7 +503,7 @@ export function buildFallbackTripPlan(
     nights,
     summary: summaryResult.summary,
     summaryTone: summaryResult.tone,
-    imageUrl: getImageUrl(city),
+    imageUrl: resolveDestinationImage(city, country),
     styleLabels,
     budgetAllocation,
     flight: {

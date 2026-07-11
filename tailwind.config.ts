@@ -152,6 +152,19 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(18px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "buddy-pop": {
+          "0%": { opacity: "0", transform: "translateY(48px) scale(0.6)" },
+          "60%": { opacity: "1", transform: "translateY(-6px) scale(1.08)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "typing-dot": {
+          "0%, 60%, 100%": { transform: "translateY(0)", opacity: "0.35" },
+          "30%": { transform: "translateY(-5px)", opacity: "1" },
+        },
+        "buddy-think": {
+          "0%, 100%": { opacity: "0.55" },
+          "50%": { opacity: "1" },
+        },
         "float-soft": {
           "0%, 100%": { transform: "translate(0, 0) scale(1)" },
           "50%": { transform: "translate(0, -10px) scale(1.03)" },
@@ -191,6 +204,9 @@ const config: Config = {
         shimmer: "shimmer 1.4s ease-in-out infinite",
         "text-wave": "text-wave 1.1s ease-in-out infinite",
         "fade-up": "fade-up 0.65s ease-out both",
+        "buddy-pop": "buddy-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "typing-dot": "typing-dot 1.05s ease-in-out infinite",
+        "buddy-think": "buddy-think 1.6s ease-in-out infinite",
         "float-soft": "float-soft 5s ease-in-out infinite",
         "glow-pulse": "glow-pulse 4s ease-in-out infinite",
         "logo-gradient": "gradient-shift 5s ease-in-out infinite",

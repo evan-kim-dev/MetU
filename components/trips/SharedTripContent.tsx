@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { CalendarDays, MapPin, Users, Wallet } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { DestinationImage } from "@/components/ui/DestinationImage";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatKRW } from "@/lib/mock/home";
@@ -115,13 +115,13 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
           가져와 수정할 수 있어요.
         </div>
 
-        <div className="relative h-56 overflow-hidden rounded-2xl shadow-md">
-          <Image
-            src={trip.imageUrl}
+        <div className="relative h-56 overflow-hidden rounded-2xl bg-surface-soft shadow-md">
+          <DestinationImage
+            destination={trip.destination}
+            country={trip.country}
+            storedUrl={trip.imageUrl}
             alt={`${trip.destination} 여행`}
-            fill
             sizes="440px"
-            className="object-cover"
             priority
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />

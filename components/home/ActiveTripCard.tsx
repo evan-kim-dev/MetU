@@ -1,8 +1,8 @@
 import Link from "next/link";
-import Image from "next/image";
 import { CalendarDays, MapPin } from "lucide-react";
 import { formatKRW } from "@/lib/mock/home";
 import type { Trip } from "@/lib/trips/types";
+import { DestinationImage } from "@/components/ui/DestinationImage";
 
 interface ActiveTripCardProps {
   trip: Trip;
@@ -22,12 +22,12 @@ export function ActiveTripCard({ trip, priority = false }: ActiveTripCardProps) 
       href={`/trips/${trip.id}`}
       className="relative block h-52 w-full overflow-hidden rounded-xl2 shadow-soft transition-transform active:scale-[0.99]"
     >
-      <Image
-        src={trip.imageUrl}
+      <DestinationImage
+        destination={trip.destination}
+        country={trip.country}
+        storedUrl={trip.imageUrl}
         alt={`${trip.destination} 여행 이미지`}
-        fill
         sizes="440px"
-        className="object-cover"
         priority={priority}
       />
       {/* 가독성용 어둠 오버레이 */}

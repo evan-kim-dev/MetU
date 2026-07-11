@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { DestinationImage } from "@/components/ui/DestinationImage";
 import { AIInsightBadge } from "@/components/ui/AIInsightBadge";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
 import { usePlanQuotes } from "@/components/recommend/usePlanQuotes";
@@ -47,13 +47,18 @@ export function RecommendResult({
     hotelQuoteLoading,
   } = usePlanQuotes(plan);
 
+  const isUnrealistic = plan.summaryTone === "factbomb";
+
   useEffect(() => {
     setPlan(initialPlan);
-    setEnriching(enrich);
+    setEnriching(enrich && initialPlan.summaryTone !== "factbomb");
   }, [initialPlan.id, enrich]); // eslint-disable-line react-hooks/exhaustive-deps -- 새 폴백만 동기화
 
   useEffect(() => {
-    if (!enrich) return;
+    if (!enrich || initialPlan.summaryTone === "factbomb") {
+      setEnriching(false);
+      return;
+    }
 
     let cancelled = false;
     setEnriching(true);
@@ -128,13 +133,13 @@ export function RecommendResult({
           </div>
         ) : null}
 
-        <section className="relative h-48 overflow-hidden rounded-xl2 shadow-soft">
-          <Image
-            src={plan.imageUrl}
+        <section className="relative h-48 overflow-hidden rounded-xl2 bg-surface-soft shadow-soft">
+          <DestinationImage
+            destination={plan.destination}
+            country={plan.country}
+            storedUrl={plan.imageUrl}
             alt={plan.destination}
-            fill
             sizes="440px"
-            className="object-cover"
             priority
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
@@ -161,40 +166,6 @@ export function RecommendResult({
           </div>
         </section>
 
-        {plan.ragSources?.length > 0 && (
-          <section className="rounded-xl2 border border-line-soft bg-surface-white p-6 shadow-soft">
-            <div className="mb-3 flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-brand" />
-              <h3 className="text-lg font-extrabold text-ink-heading">
-                AI가 참고한 내용
-              </h3>
-            </div>
-            <p className="mb-3 text-xs text-ink-caption">
-              아래 지식을 바탕으로 예산·시즌·일정 추천을 만들었어요.
-            </p>
-            <div className="flex flex-col gap-2.5">
-              {plan.ragSources.map((source) => (
-                <div
-                  key={source.id}
-                  className="rounded-xl border border-line-soft bg-surface-base px-3.5 py-3"
-                >
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="rounded-full bg-brand/10 px-2 py-0.5 text-2xs font-bold text-brand">
-                      {source.category}
-                    </span>
-                    <span className="text-xs font-extrabold text-ink-heading">
-                      {source.title}
-                    </span>
-                  </div>
-                  <p className="text-xs leading-relaxed text-ink-body">
-                    {source.content}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
         {plan.tips.length > 0 ? (
           <section className="rounded-xl2 border border-line-soft bg-surface-white p-5 shadow-soft">
             <h3 className="mb-3 text-lg font-extrabold text-ink-heading">AI 팁</h3>
@@ -206,6 +177,22 @@ export function RecommendResult({
           </section>
         ) : null}
 
+        {isUnrealistic ? (
+          <section className="rounded-xl2 border border-line-soft bg-surface-white p-5 shadow-soft">
+            <p className="text-sm leading-relaxed text-ink-body">
+              지금은 현실적인 일정을 만들기 어려워요. 예산을 올리거나 인원·목적지를
+              바꾼 뒤 다시 추천받아 보세요.
+            </p>
+            <PrimaryButton
+              className="mt-4"
+              variant="secondary"
+              onClick={() => router.push("/onboarding")}
+            >
+              조건 다시 입력하기
+            </PrimaryButton>
+          </section>
+        ) : (
+          <>
         <div className="flex flex-wrap gap-2">
           {plan.styleLabels.map((label) => (
             <span
@@ -426,14 +413,82 @@ export function RecommendResult({
             ))}
           </div>
         </section>
+          </>
+        )}
 
         <div className="flex flex-col gap-3">
-          <PrimaryButton onClick={handleSave}>이 일정 저장하기</PrimaryButton>
+          {!isUnrealistic ? (
+            <PrimaryButton onClick={handleSave}>이 일정 저장하기</PrimaryButton>
+          ) : null}
           <PrimaryButton variant="secondary" onClick={() => router.push("/")}>
             홈으로 돌아가기
           </PrimaryButton>
         </div>
+
+        {plan.ragSources?.length > 0 && (
+          <RagSourcesSection sources={plan.ragSources} />
+        )}
       </div>
     </MobileShell>
+  );
+}
+
+function RagSourcesSection({
+  sources,
+}: {
+  sources: TripRecommendation["ragSources"];
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <section className="rounded-xl2 border border-line-soft bg-surface-white p-6 shadow-soft">
+      <div className="mb-3 flex items-center gap-2">
+        <BookOpen className="h-5 w-5 text-brand" />
+        <h3 className="text-lg font-extrabold text-ink-heading">
+          AI가 참고한 내용
+        </h3>
+      </div>
+      <p className="mb-3 text-xs text-ink-caption">
+        아래 지식을 바탕으로 예산·시즌·일정 추천을 만들었어요.
+      </p>
+      {expanded ? (
+        <div className="flex flex-col gap-2.5">
+          {sources.map((source) => (
+            <RagSourceCard key={source.id} source={source} />
+          ))}
+        </div>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className={[
+          "w-full rounded-xl border border-line-soft bg-surface-base py-2.5 text-sm font-bold text-brand transition-colors active:bg-surface-soft",
+          expanded ? "mt-3" : "",
+        ].join(" ")}
+      >
+        {expanded ? "접기" : `더보기 · ${sources.length}개`}
+      </button>
+    </section>
+  );
+}
+
+function RagSourceCard({
+  source,
+}: {
+  source: TripRecommendation["ragSources"][number];
+}) {
+  return (
+    <div className="rounded-xl border border-line-soft bg-surface-base px-3.5 py-3">
+      <div className="mb-1 flex items-center gap-2">
+        <span className="rounded-full bg-brand/10 px-2 py-0.5 text-2xs font-bold text-brand">
+          {source.category}
+        </span>
+        <span className="text-xs font-extrabold text-ink-heading">
+          {source.title}
+        </span>
+      </div>
+      <p className="text-xs leading-relaxed text-ink-body">{source.content}</p>
+    </div>
   );
 }

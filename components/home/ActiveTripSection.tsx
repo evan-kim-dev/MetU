@@ -47,7 +47,7 @@ export function ActiveTripSection() {
           className="relative block h-52 w-full overflow-hidden rounded-xl2 shadow-soft transition-transform active:scale-[0.99]"
         >
           <Image
-            src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=800&q=80"
+            src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=800&q=80"
             alt="다음 여행 계획하기"
             fill
             sizes="440px"

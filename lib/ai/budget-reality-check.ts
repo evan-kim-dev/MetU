@@ -42,6 +42,77 @@ const LONG_HAUL_KEYWORDS = [
 
 const DOMESTIC_KEYWORDS = ["제주", "부산", "서울", "국내", "대한민국", "강릉", "전주"];
 
+/** 이스터 에그 목적지 — 전용 팩트폭격 멘트 (해요체, 야유 OK) */
+const EASTER_EGG_DESTINATIONS: Array<{ keys: string[]; message: string }> = [
+  {
+    keys: ["달", "moon", "lunar"],
+    message:
+      "달이요? 저비용 항공이 달까지 안 가요. 지갑부터 지구에 착륙시키세요.",
+  },
+  {
+    keys: ["화성", "mars"],
+    message:
+      "화성 왕복은 아직 오픈런도 없어요. 일단 지구에서 예산부터 살려 보세요.",
+  },
+  {
+    keys: ["아틀란티스", "atlantis"],
+    message:
+      "아틀란티스요? 수중 리조트도 예약 불가야요. 가라앉은 건 도시가 아니라 당신의 현실감각이에요.",
+  },
+  {
+    keys: ["나니아", "narnia"],
+    message:
+      "나니아는 옷장 환승만 가능해요. Met U 검색창에 판타지 소설 제목 넣지 마세요.",
+  },
+  {
+    keys: ["호그와트", "hogwarts"],
+    message:
+      "호그와트행은 9¾ 승강장이에요. 인천엔 안내 방송 없고, 당신 예산엔 마법도 없어요.",
+  },
+  {
+    keys: ["남극", "antarctica", "antarctic"],
+    message:
+      "남극은 펭귄 미팅비가 당신 총예산보다 비싸요. 덜 추한 현실부터 가요.",
+  },
+  {
+    keys: ["북극", "arctic", "북극점"],
+    message:
+      "북극은 산타 특송만 열려 있어요. 일반석 매진이고, 당신 예산도 매진이에요.",
+  },
+  {
+    keys: ["꿈나라", "꿈 속", "드림랜드"],
+    message:
+      "꿈나라는 체크인이 잠들기예요. 깨면 일정표랑 잔고가 같이 사라져요. 현실 도시로요.",
+  },
+  {
+    keys: ["내 방", "우리 집", "집콕", "안방"],
+    message:
+      "내 방은 이미 체크인 완료예요. 여행 앱 켜놓고 안방 가는 거, 그거 메타 유머예요.",
+  },
+];
+
+function matchEasterEggDestination(
+  destination: string,
+  country: string
+): string | null {
+  const text = normalizeText(`${destination} ${country}`);
+  if (!text) return null;
+
+  for (const egg of EASTER_EGG_DESTINATIONS) {
+    const hit = egg.keys.some((key) => {
+      const k = normalizeText(key);
+      if (!k) return false;
+      // 짧은 키(달 등)는 토큰 일치만 — "달랏" 오탐 방지
+      if (k.length <= 2) {
+        return text.split(/[\s,·/\-]+/).some((token) => token === k);
+      }
+      return text.includes(k);
+    });
+    if (hit) return egg.message;
+  }
+  return null;
+}
+
 const ASIA_NEAR_KEYWORDS = [
   "도쿄",
   "오사카",
@@ -244,6 +315,9 @@ function isUnrealisticBudgetDestination(
 }
 
 function buildBudgetFactBomb(input: BudgetRealityInput): string | null {
+  const easter = matchEasterEggDestination(input.destination, input.country);
+  if (easter) return easter;
+
   if (!isUnrealisticBudgetDestination(input)) return null;
 
   const {
@@ -268,9 +342,10 @@ function buildBudgetFactBomb(input: BudgetRealityInput): string | null {
       : "항공+숙소만 해도 예산이 빠듯해요";
 
   const nonsenseTemplates = [
-    `"${destination}"이요? 그건 항공권 검색창에 안 뜨는 여행지예요. 현실적인 도시부터 골라주세요.`,
-    `${label} 가는 비행기는 아직 발명 전이에요. ${alt} 같은 실제 목적지로 다시 짜보죠.`,
-    `팩트폭격: "${destination}"는 여행지가 아니라 소원이에요. 예산 ${perLabel}으론 ${alt}가 정답이에요.`,
+    `"${destination}"이요? 항공권 검색창에 안 뜨는 소원이에요. 도시 이름부터 현실로 오세요.`,
+    `${label} 가는 비행기는 아직 발명 전이에요. ${alt} 같은 실제 목적지부터요.`,
+    `팩트: "${destination}"는 여행지가 아니라 뇌내 팬픽이에요. 예산 ${perLabel}으론 ${alt}가 정답이에요.`,
+    `그 목적지, 지도 앱에도 안 나와요. 창의력은 칭찬하고 일정은 거절할게요.`,
   ];
 
   const templates =
@@ -279,16 +354,18 @@ function buildBudgetFactBomb(input: BudgetRealityInput): string | null {
       : allowedRegions.length === 0
         ? [
             `1인당 ${perLabel}으로 ${label}? 말 되는 소리 좀 해봐요. 지금은 목적지보다 예산부터예요.`,
-            `총 ${totalLabel}(${people}명)으로 ${label}는 ${flightOnlyHint}. 돼지저금통부터 털어보실래요? 🐷`,
-            `${label} 티켓은 예산한테 먼저 사과받으세요. 숙박 여행 자체가 아직 일러요.`,
+            `총 ${totalLabel}(${people}명)으로 ${label}는 ${flightOnlyHint}. 돼지저금통부터 털어요.`,
+            `${label} 티켓은 예산한테 먼저 사과받으세요. 숙박 여행 자체가 아직 사치예요.`,
+            `그 돈으로 ${label}? 저는 일정표 말고 저금 챌린지부터 추천해요.`,
           ]
         : [
-            `1인당 ${perLabel}으로 ${label}? 말 되는 소리 좀 해봐요. 서울에서 약 ${km.toLocaleString("ko-KR")}km니까 수영 ${km.toLocaleString("ko-KR")}번 하면 도착이에요 🏊`,
-            `${label} 가고 싶다고요? 그건 제가 아는 ${formatBudgetLabel(perPerson)} 여행이 아니에요. 현실은 ${alt} 쪽이에요.`,
-            `총 ${totalLabel}(${people}명)으로 ${label}는 ${flightOnlyHint}. 아니면 돼지저금통부터 털어보실래요? 🐷`,
-            `예산 ${perLabel}에 ${label}는 밈으로도 빡세요. "현실 좀 봐" 버전 추천지는 ${alt}예요.`,
+            `1인당 ${perLabel}으로 ${label}? 서울에서 약 ${km.toLocaleString("ko-KR")}km예요. 수영 ${km.toLocaleString("ko-KR")}번 하면 도착하니 그날 오세요.`,
+            `${label} 가고 싶다고요? 제가 아는 ${formatBudgetLabel(perPerson)} 여행이 아니에요. 현실은 ${alt} 쪽이에요.`,
+            `총 ${totalLabel}(${people}명)으로 ${label}는 ${flightOnlyHint}. 아니면 돼지저금통부터요.`,
+            `예산 ${perLabel}에 ${label}는 밈으로도 빡세요. "현실 좀 봐" 추천지는 ${alt}예요.`,
             `${label} 티켓은 예산한테 먼저 사과받으세요. 이 정도면 ${band.nights} ${alt}이 정답이에요.`,
             `${destination} 가려면 지갑부터 유럽 가야 해요. 지금 예산으론 ${alt}나 가보죠. (진심)`,
+            `야, ${label}은(는) 지금 예산 리그 바깥이에요. ${alt}부터 워밍업하세요.`,
           ];
 
   const seed = `${destination}-${perPerson}-${totalBudget}`;
@@ -329,6 +406,11 @@ type SummaryParams = {
 export function resolvePlanSummaryLocal(
   params: SummaryParams
 ): { summary: string; tone: SummaryTone; source: "local" | "template" } {
+  const easter = matchEasterEggDestination(params.destination, params.country);
+  if (easter) {
+    return { summary: easter, tone: "factbomb", source: "template" };
+  }
+
   const realityInput = {
     perPerson: params.perPerson,
     totalBudget: params.totalBudget,
@@ -366,6 +448,11 @@ export function resolvePlanSummaryLocal(
 export async function resolvePlanSummaryWithRag(
   params: SummaryParams
 ): Promise<{ summary: string; tone: SummaryTone; source: "ai+rag" | "template" | "local" }> {
+  const easter = matchEasterEggDestination(params.destination, params.country);
+  if (easter) {
+    return { summary: easter, tone: "factbomb", source: "template" };
+  }
+
   const local = resolvePlanSummaryLocal(params);
   const rag = retrieveBudgetRag(params.perPerson, params.month);
 
