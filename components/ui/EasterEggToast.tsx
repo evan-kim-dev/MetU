@@ -327,9 +327,6 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
                   <p className="text-sm font-extrabold text-ink-heading">
                     MetU 버디
                   </p>
-                  <p className="text-2xs font-medium text-ink-caption">
-                    태도 미러링 · 자유 분방 AI
-                  </p>
                 </div>
                 <button
                   type="button"
