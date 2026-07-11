@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapPin, Plane, Search, X } from "lucide-react";
 import {
   formatPlaceLabel,
@@ -21,7 +21,6 @@ interface AirportSearchFieldProps {
   /** 선택 시 값 포맷 (기본: place.name) */
   formatValue?: (place: AirportPlace) => string;
   variant?: "default" | "compact";
-  trailing?: ReactNode;
 }
 
 export function AirportSearchField({
@@ -31,7 +30,6 @@ export function AirportSearchField({
   onChange,
   formatValue = formatPlaceLabel,
   variant = "default",
-  trailing,
 }: AirportSearchFieldProps) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -169,7 +167,6 @@ export function AirportSearchField({
             </button>
           ) : null}
         </div>
-        {trailing}
       </div>
 
       {open && (

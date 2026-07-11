@@ -1,21 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LocateFixed, Plane, ShieldCheck } from "lucide-react";
+import { Plane, ShieldCheck } from "lucide-react";
 import { AirportSearchField } from "@/components/onboarding/AirportSearchField";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Counter } from "@/components/ui/Counter";
+import { DateField } from "@/components/ui/DateField";
 import type { AirportPlace } from "@/lib/airports/data";
-import {
-  formatAirportInputLabel,
-  formatAirportKeyword,
-} from "@/lib/airports/data";
+import { formatAirportInputLabel } from "@/lib/airports/data";
 import {
   fetchIcnAirlineProfiles,
   type IcnAirlineProfile,
 } from "@/lib/airlines/icn";
 import { filterValidFlights } from "@/lib/flights/validate";
 import { useWithactChecklist } from "@/lib/checklist/useWithactChecklist";
+import { todayIsoDate } from "@/lib/shared/dates";
 
 type FlightItem = {
   id: string;
@@ -70,15 +69,15 @@ function formatFlightSearchValue(place: AirportPlace): string {
 }
 
 export function FlightChecklistContent() {
-  const [origin, setOrigin] = useState("인천국제공항(ICN)");
-  const [destination, setDestination] = useState("나리타국제공항(NRT)");
+  const todayIso = todayIsoDate();
+  const [origin, setOrigin] = useState("");
+  const [destination, setDestination] = useState("");
   const [departDate, setDepartDate] = useState(defaultDate(30));
   const [returnDate, setReturnDate] = useState(defaultDate(37));
   const [adults, setAdults] = useState(1);
   const [cabinClass, setCabinClass] = useState("economy");
   const [sortBy, setSortBy] = useState("best");
   const [loading, setLoading] = useState(false);
-  const [nearbyLoading, setNearbyLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [source, setSource] = useState<SearchResponse["source"]>();
@@ -158,44 +157,6 @@ export function FlightChecklistContent() {
     }
   }
 
-  async function onUseNearbyOrigin() {
-    if (nearbyLoading || typeof navigator === "undefined") return;
-    setNearbyLoading(true);
-    setError(null);
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-        });
-      });
-      const params = new URLSearchParams({
-        lat: String(position.coords.latitude),
-        lng: String(position.coords.longitude),
-      });
-      const res = await fetch(`/api/flights/nearby?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const data = (await res.json()) as {
-        airports?: string[];
-        warning?: string;
-        error?: string;
-      };
-      if (!res.ok || !data.airports?.length) {
-        setError(data.error ?? "주변 공항을 찾지 못했어요.");
-        return;
-      }
-      setOrigin(formatAirportKeyword(data.airports[0]));
-      if (data.warning) {
-        setWarning(data.warning);
-      }
-    } catch {
-      setError("위치 권한이 필요해요. 브라우저에서 위치 허용 후 다시 시도해주세요.");
-    } finally {
-      setNearbyLoading(false);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-5 px-5 pb-10 pt-5">
       <header className="flex flex-col gap-2">
@@ -217,17 +178,6 @@ export function FlightChecklistContent() {
               onChange={setOrigin}
               formatValue={formatFlightSearchValue}
               variant="compact"
-              trailing={
-                <button
-                  type="button"
-                  onClick={onUseNearbyOrigin}
-                  disabled={nearbyLoading}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line-soft text-ink-body"
-                  title="내 주변 공항"
-                >
-                  <LocateFixed className="h-4 w-4" />
-                </button>
-              }
             />
           </div>
           <div className="col-span-1">
@@ -242,19 +192,24 @@ export function FlightChecklistContent() {
           </div>
           <label className="col-span-1 flex flex-col gap-1">
             <span className="text-xs font-semibold text-ink-caption">출발일</span>
-            <input
-              type="date"
+            <DateField
+              aria-label="출발일"
               value={departDate}
-              onChange={(e) => setDepartDate(e.target.value)}
+              min={todayIso}
+              onChange={(next) => {
+                setDepartDate(next);
+                if (returnDate && next && returnDate < next) setReturnDate("");
+              }}
               className="h-10 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
             />
           </label>
           <label className="col-span-1 flex flex-col gap-1">
             <span className="text-xs font-semibold text-ink-caption">귀국일</span>
-            <input
-              type="date"
+            <DateField
+              aria-label="귀국일"
               value={returnDate}
-              onChange={(e) => setReturnDate(e.target.value)}
+              min={departDate || todayIso}
+              onChange={setReturnDate}
               className="h-10 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
             />
           </label>

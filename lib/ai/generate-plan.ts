@@ -14,6 +14,7 @@ import {
   getPlanSystemPrompt,
 } from "@/lib/ai/prompts/insight-prompts";
 import { backendFetch } from "@/lib/backend/client";
+import { optimizeDailyScheduleRoutes } from "@/lib/route/optimize-schedule";
 import type {
   BudgetAllocation,
   DaySchedule,
@@ -667,15 +668,54 @@ export async function enrichTripPlanWithAi(
       ? baseSummary
       : enriched.summary || baseSummary;
 
+  let dailySchedule = enriched.dailySchedule;
+  let tipsOut = tips;
+  let routeOptimization: TripRecommendation["routeOptimization"];
+
+  try {
+    const { schedule, meta } = await optimizeDailyScheduleRoutes(
+      enriched.dailySchedule,
+      city,
+      country || ""
+    );
+    dailySchedule = schedule;
+    routeOptimization = {
+      applied: meta.applied,
+      method: meta.method,
+      savedKm: meta.savedKm,
+      totalKmBefore: meta.totalKmBefore,
+      totalKmAfter: meta.totalKmAfter,
+    };
+    if (meta.applied) {
+      const savedLabel =
+        meta.savedKm >= 0.1
+          ? `약 ${meta.savedKm.toFixed(1)}km`
+          : "이동 거리";
+      tipsOut = [
+        `유전 알고리즘으로 하루 동선을 재배치해 ${savedLabel}를 줄였어요.`,
+        ...tipsOut,
+      ].slice(0, 5);
+      ragSources.push({
+        id: "route-ga",
+        category: "동선",
+        title: "유전 알고리즘 경로 최적화",
+        content: `일정 장소 좌표를 기준으로 open-path TSP를 유전 알고리즘으로 풀어, 이동 거리를 ${meta.totalKmBefore.toFixed(1)}km → ${meta.totalKmAfter.toFixed(1)}km로 줄였어요.`,
+      });
+    }
+  } catch (error) {
+    console.error("[route-optimize] skipped:", error);
+  }
+
   return {
     ...fallback,
     summary,
     summaryTone,
     flight: enriched.flight,
     hotel: enriched.hotel,
-    dailySchedule: enriched.dailySchedule,
-    tips,
+    dailySchedule,
+    tips: tipsOut,
     ragSources,
+    routeOptimization,
   };
 }
 

@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { BedDouble, MapPin, ShieldCheck, SlidersHorizontal, Star } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Counter } from "@/components/ui/Counter";
+import { DateField } from "@/components/ui/DateField";
 import { HOTEL_DESTINATION_SUGGESTIONS } from "@/lib/hotels/destinations";
 import { useWithactChecklist } from "@/lib/checklist/useWithactChecklist";
+import { todayIsoDate } from "@/lib/shared/dates";
 
 type HotelItem = {
   id: string;
@@ -52,6 +54,7 @@ function defaultDate(offsetDays: number): string {
 }
 
 export function HotelChecklistContent() {
+  const todayIso = todayIsoDate();
   const [destination, setDestination] = useState("도쿄 · 시부야");
   const [checkIn, setCheckIn] = useState(defaultDate(30));
   const [checkOut, setCheckOut] = useState(defaultDate(32));
@@ -148,19 +151,24 @@ export function HotelChecklistContent() {
           </label>
           <label className="col-span-1 flex flex-col gap-1">
             <span className="text-xs font-semibold text-ink-caption">체크인</span>
-            <input
-              type="date"
+            <DateField
+              aria-label="체크인"
               value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
+              min={todayIso}
+              onChange={(next) => {
+                setCheckIn(next);
+                if (checkOut && next && checkOut < next) setCheckOut("");
+              }}
               className="h-10 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
             />
           </label>
           <label className="col-span-1 flex flex-col gap-1">
             <span className="text-xs font-semibold text-ink-caption">체크아웃</span>
-            <input
-              type="date"
+            <DateField
+              aria-label="체크아웃"
               value={checkOut}
-              onChange={(e) => setCheckOut(e.target.value)}
+              min={checkIn || todayIso}
+              onChange={setCheckOut}
               className="h-10 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
             />
           </label>

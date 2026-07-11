@@ -54,6 +54,14 @@ export interface TripRecommendation {
   tips: string[];
   /** 실제 참고한 RAG 출처 */
   ragSources: RagSource[];
+  /** 유전 알고리즘 동선 최적화 결과 */
+  routeOptimization?: {
+    applied: boolean;
+    method: "genetic";
+    savedKm: number;
+    totalKmBefore: number;
+    totalKmAfter: number;
+  };
 }
 
 export interface RagSource {

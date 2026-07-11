@@ -353,8 +353,22 @@ export function RecommendResult({
               <span className="ml-auto text-xs font-semibold text-brand">
                 다듬는 중
               </span>
+            ) : plan.routeOptimization?.applied ? (
+              <span className="ml-auto rounded-full bg-brand/10 px-2.5 py-1 text-2xs font-bold text-brand">
+                GA 동선 최적화
+                {plan.routeOptimization.savedKm >= 0.1
+                  ? ` · −${plan.routeOptimization.savedKm.toFixed(1)}km`
+                  : ""}
+              </span>
             ) : null}
           </div>
+          {plan.routeOptimization?.applied ? (
+            <p className="mb-3 text-xs leading-relaxed text-ink-caption">
+              유전 알고리즘으로 같은 날 장소를 이동 거리가 짧은 순서로 재배치했어요.
+              ({plan.routeOptimization.totalKmBefore.toFixed(1)}km →{" "}
+              {plan.routeOptimization.totalKmAfter.toFixed(1)}km)
+            </p>
+          ) : null}
           <div
             className={[
               "flex flex-col gap-4 transition-opacity",

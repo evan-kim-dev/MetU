@@ -20,6 +20,8 @@ import { formatDestinationForPlan } from "@/lib/airports/data";
 import { useTrips } from "@/lib/trips/TripProvider";
 import type { Trip } from "@/lib/trips/types";
 import { parseTripDateRange } from "@/lib/weather/parse-trip-dates";
+import { todayIsoDate } from "@/lib/shared/dates";
+import { DateField } from "@/components/ui/DateField";
 
 const WRITE_CATEGORIES: WritablePostCategory[] = [
   "party",
@@ -80,6 +82,7 @@ export function WritePostSheet({
 }: WritePostSheetProps) {
   const { user, provider } = useAuth();
   const { trips } = useTrips();
+  const todayIso = todayIsoDate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isEditing = Boolean(editingPost);
   const [category, setCategory] = useState<WritablePostCategory>(initialCategory);
@@ -368,19 +371,24 @@ export function WritePostSheet({
               <div className="grid grid-cols-2 gap-2">
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-semibold text-ink-caption">출발일</span>
-                  <input
-                    type="date"
+                  <DateField
+                    aria-label="출발일"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    min={todayIso}
+                    onChange={(next) => {
+                      setStartDate(next);
+                      if (endDate && next && endDate < next) setEndDate("");
+                    }}
                     className="h-11 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
                   />
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-semibold text-ink-caption">귀국일</span>
-                  <input
-                    type="date"
+                  <DateField
+                    aria-label="귀국일"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate || todayIso}
+                    onChange={setEndDate}
                     className="h-11 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
                   />
                 </label>
