@@ -51,7 +51,7 @@ function dismiss() {
 
 /**
  * Android/Chrome: native install prompt via beforeinstallprompt.
- * iOS Safari: guide to Share ? Add to Home Screen.
+ * iOS Safari: guide to Share → Add to Home Screen.
  */
 export function InstallBanner() {
   const [visible, setVisible] = useState(false);
@@ -110,18 +110,18 @@ export function InstallBanner() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold text-ink-heading">
-              MetU? ? ??? ??
+              MetU를 홈 화면에 추가
             </p>
             {mode === "ios" ? (
               <p className="mt-1 text-xs leading-5 text-ink-body">
-                ??{" "}
+                하단{" "}
                 <Share className="inline h-3.5 w-3.5 align-text-bottom text-brand" />{" "}
-                ?? ? <span className="font-bold">? ??? ??</span>?
-                ?????.
+                공유를 누른 뒤 <span className="font-bold">홈 화면에 추가</span>를
+                선택하세요.
               </p>
             ) : (
               <p className="mt-1 text-xs leading-5 text-ink-body">
-                ??? ?? ??, ?? ?? ??? ? ??? ?????.
+                앱처럼 바로 열고, 더 빠르게 MetU를 이용할 수 있어요.
               </p>
             )}
             <div className="mt-3 flex items-center gap-2">
@@ -131,7 +131,7 @@ export function InstallBanner() {
                   onClick={() => void handleInstall()}
                   className="rounded-xl bg-brand px-3.5 py-2 text-xs font-bold text-white active:scale-98"
                 >
-                  ????
+                  설치하기
                 </button>
               ) : null}
               <button
@@ -139,13 +139,13 @@ export function InstallBanner() {
                 onClick={handleClose}
                 className="rounded-xl border border-line-soft bg-white px-3.5 py-2 text-xs font-bold text-ink-body"
               >
-                ???
+                나중에
               </button>
             </div>
           </div>
           <button
             type="button"
-            aria-label="??"
+            aria-label="닫기"
             onClick={handleClose}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption active:bg-surface-soft"
           >

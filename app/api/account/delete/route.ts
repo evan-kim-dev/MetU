@@ -37,8 +37,14 @@ export async function POST() {
 
   const admin = getServiceSupabase();
   if (!admin) {
+    console.error(
+      "[account/delete] SUPABASE_SERVICE_ROLE_KEY is missing on the server"
+    );
     return NextResponse.json(
-      { error: "탈퇴 처리를 할 수 없어요. 잠시 후 다시 시도해 주세요." },
+      {
+        error:
+          "탈퇴 설비가 아직 준비되지 않았어요. 잠시 후 다시 시도해 주세요.",
+      },
       { status: 503 }
     );
   }
@@ -55,7 +61,10 @@ export async function POST() {
       admin.from(TABLES.commentLikes).delete().eq("user_id", userId),
       admin.from(TABLES.partyMembers).delete().eq("user_id", userId),
       admin.from(TABLES.notifications).delete().eq("user_id", userId),
+      admin.from(TABLES.notifications).delete().eq("actor_id", userId),
       admin.from(TABLES.partyChatMessages).delete().eq("sender_id", userId),
+      admin.from(TABLES.friendships).delete().eq("user_id", userId),
+      admin.from(TABLES.friendships).delete().eq("friend_id", userId),
     ]);
 
     const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
