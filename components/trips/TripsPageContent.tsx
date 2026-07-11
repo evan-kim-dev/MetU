@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { TripListCard } from "@/components/trips/TripListCard";
+import { VisitedWorldMap } from "@/components/trips/VisitedWorldMap";
 import { useTrips } from "@/lib/trips/TripProvider";
 
 export function TripsPageContent() {
@@ -50,6 +51,8 @@ export function TripsPageContent() {
   return (
     <MobileShell>
       <div className="flex flex-col gap-4 px-5 pt-5">
+        {isReady && !editMode ? <VisitedWorldMap trips={trips} /> : null}
+
         <div className="flex items-start justify-between gap-3">
           {editMode ? (
             <div className="flex w-full flex-col gap-2">

@@ -25,6 +25,7 @@ export const STORAGE_KEYS = {
   guestAuthorId: "budgettrip-guest-author-id",
   withactChecklistSession: "budgettrip-withact-checklist-session",
   docsChecklist: "budgettrip-docs-checklist",
+  countryMemories: "budgettrip-country-memories",
 } as const;
 
 /** App defaults */

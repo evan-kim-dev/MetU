@@ -195,6 +195,17 @@ export function RecommendResult({
           </section>
         )}
 
+        {plan.tips.length > 0 ? (
+          <section className="rounded-xl2 border border-line-soft bg-surface-white p-5 shadow-soft">
+            <h3 className="mb-3 text-lg font-extrabold text-ink-heading">AI 팁</h3>
+            <div className="space-y-2.5 text-sm leading-relaxed text-ink-body">
+              {plan.tips.map((tip, index) => (
+                <p key={`${index}-${tip.slice(0, 24)}`}>{tip}</p>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <div className="flex flex-wrap gap-2">
           {plan.styleLabels.map((label) => (
             <span
@@ -415,17 +426,6 @@ export function RecommendResult({
             ))}
           </div>
         </section>
-
-        {plan.tips.length > 0 ? (
-          <section className="rounded-xl2 border border-line-soft bg-surface-white p-5 shadow-soft">
-            <h3 className="mb-3 text-lg font-extrabold text-ink-heading">AI 팁</h3>
-            <div className="space-y-2.5 text-sm leading-relaxed text-ink-body">
-              {plan.tips.map((tip, index) => (
-                <p key={`${index}-${tip.slice(0, 24)}`}>{tip}</p>
-              ))}
-            </div>
-          </section>
-        ) : null}
 
         <div className="flex flex-col gap-3">
           <PrimaryButton onClick={handleSave}>이 일정 저장하기</PrimaryButton>

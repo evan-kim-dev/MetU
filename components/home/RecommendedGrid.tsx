@@ -67,10 +67,10 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
     return (
       <div className="rounded-2xl border border-dashed border-line-soft bg-surface-soft/50 px-4 py-8 text-center">
         <p className="text-sm font-semibold text-ink-heading">
-          얼리 액세스 준비 중이에요
+          추천 여행지를 불러오지 못했어요
         </p>
         <p className="mt-1 text-xs leading-relaxed text-ink-caption">
-          추천 여행지는 곧 열려요. 지금은 직접 여행을 계획해 보세요.
+          잠시 후 다시 시도하거나, 직접 여행을 계획해 보세요.
         </p>
       </div>
     );

@@ -32,7 +32,7 @@ export function ActiveTripSection() {
   if (!isReady) {
     return (
       <section className="flex flex-col gap-3">
-        <SectionHeader title="계획 중인 여행" />
+        <SectionHeader title="계획 중인 여행" ai />
         <div className="h-52 animate-pulse rounded-xl2 bg-surface-soft" />
       </section>
     );
@@ -41,7 +41,7 @@ export function ActiveTripSection() {
   if (activeTrips.length === 0) {
     return (
       <section className="flex flex-col gap-3">
-        <SectionHeader title="계획 중인 여행" />
+        <SectionHeader title="계획 중인 여행" ai />
         <Link
           href="/onboarding"
           className="relative block h-52 w-full overflow-hidden rounded-xl2 shadow-soft transition-transform active:scale-[0.99]"
@@ -81,6 +81,7 @@ export function ActiveTripSection() {
     <section className="flex flex-col gap-3">
       <SectionHeader
         title="계획 중인 여행"
+        ai
         actionLabel={activeTrips.length > 1 ? "전체보기" : undefined}
         actionHref="/trips"
       />

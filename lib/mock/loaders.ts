@@ -1,8 +1,8 @@
 import { cache } from "react";
-import type { DealPlace } from "@/lib/deals/data";
+import { MOCK_DEALS, type DealPlace } from "@/lib/deals/data";
 
-/** Early-access: 홈 추천은 데모 없이 빈 목록으로 시작 */
-const loadRecommended = cache(async (): Promise<DealPlace[]> => []);
+/** SSR 초기값: 시즌 AI 보강은 클라이언트 RecommendedGrid에서 수행 */
+const loadRecommended = cache(async (): Promise<DealPlace[]> => MOCK_DEALS);
 
 export async function loadHomeData() {
   const recommended = await loadRecommended();
