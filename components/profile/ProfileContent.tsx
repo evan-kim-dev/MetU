@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   Bell,
   Camera,
@@ -27,8 +28,23 @@ function isDataUrl(src: string): boolean {
   return src.startsWith("data:");
 }
 
+function isRemoteUrl(src: string): boolean {
+  return /^https?:\/\//i.test(src.trim());
+}
+
+function normalizeAvatarSrc(src: string): string {
+  return src.trim().replace(/^http:\/\//i, "https://");
+}
+
 function ProfileAvatar({ src, alt }: { src: string; alt: string }) {
-  if (!src.trim()) {
+  const [failed, setFailed] = useState(false);
+  const value = src.trim();
+
+  useEffect(() => {
+    setFailed(false);
+  }, [value]);
+
+  if (!value || failed) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-surface-soft text-3xl">
         👤
@@ -36,15 +52,22 @@ function ProfileAvatar({ src, alt }: { src: string; alt: string }) {
     );
   }
 
-  if (isDataUrl(src)) {
+  // 카카오 CDN 등 외부 아바타는 next/image 호스트 제한에 자주 걸려 일반 img 사용
+  if (isDataUrl(value) || isRemoteUrl(value)) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={alt} className="h-full w-full object-cover" />
+      <img
+        src={normalizeAvatarSrc(value)}
+        alt={alt}
+        className="h-full w-full object-cover"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+      />
     );
   }
 
   return (
-    <Image src={src} alt={alt} fill sizes="96px" className="object-cover" />
+    <Image src={value} alt={alt} fill sizes="96px" className="object-cover" />
   );
 }
 

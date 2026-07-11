@@ -46,6 +46,26 @@ const nextConfig = {
         hostname: "images.unsplash.com",
       },
       {
+        protocol: "https",
+        hostname: "**.kakaocdn.net",
+      },
+      {
+        protocol: "http",
+        hostname: "**.kakaocdn.net",
+      },
+      {
+        protocol: "https",
+        hostname: "**.kakao.co.kr",
+      },
+      {
+        protocol: "http",
+        hostname: "**.kakao.co.kr",
+      },
+      {
+        protocol: "https",
+        hostname: "t1.kakaocdn.net",
+      },
+      {
         protocol: "http",
         hostname: "t1.kakaocdn.net",
       },
@@ -59,7 +79,19 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "t1.kakaocdn.net",
+        hostname: "p.kakaocdn.net",
+      },
+      {
+        protocol: "http",
+        hostname: "p.kakaocdn.net",
+      },
+      {
+        protocol: "https",
+        hostname: "k.kakaocdn.net",
+      },
+      {
+        protocol: "http",
+        hostname: "k.kakaocdn.net",
       },
       {
         protocol: "https",

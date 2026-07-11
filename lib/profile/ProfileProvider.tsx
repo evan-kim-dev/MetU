@@ -46,10 +46,13 @@ function getAuthSeed(
     (typeof meta.nickname === "string" && meta.nickname.trim()) ||
     (typeof user.email === "string" && user.email.split("@")[0]) ||
     "여행자";
-  const authAvatarUrl =
+  const authAvatarUrlRaw =
     (typeof meta.avatar_url === "string" && meta.avatar_url) ||
     (typeof meta.picture === "string" && meta.picture) ||
     undefined;
+  const authAvatarUrl = authAvatarUrlRaw
+    ? authAvatarUrlRaw.replace(/^http:\/\//i, "https://")
+    : undefined;
 
   return {
     displayName,
