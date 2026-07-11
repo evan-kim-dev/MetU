@@ -25,32 +25,6 @@ const EasterEggContext = createContext<EasterEggContextValue | null>(null);
 
 const TOAST_MS = 2500;
 
-const BUDDY_REPLIES: Record<string, string[]> = {
-  default: [
-    "저예요, MetU 버디. 지갑 감시 카메라 겸 양심이예요.",
-    "숨은 메뉴까지 파고드는 열정이면, 예산 계산은 왜 대충이에요?",
-    "여행은 설레야 해요. 통장 잔고만 설레면 그건 공포예요.",
-    "말 걸었으면 각오하세요. 저는 달콤한 플래너가 아니라 팩트 담당이에요.",
-  ],
-  budget: [
-    "그 예산으로 유럽이요? 수영해서 가든지, 저금통부터 부수든지요.",
-    "1인당 15만 원 미만이면 왕복+숙박은 판타지 소설이에요. 현실 편 읽어요.",
-    "유럽은 최소 250만 원대부터예요. 그 아래면 '유럽 가고 싶다'가 아니라 '유럽 꿈꿨다'예요.",
-    "예산이 그 모양이면 목적지도 겸손해야 해요. 파리 대신 편의점 도시락부터.",
-    "지갑이 울면 여행은 조용히 접어요. 제가 대신 울어 드릴 수는 없거든요.",
-  ],
-  secret: [
-    "달·화성·호그와트 넣으면 제가 더 세게 놀려 드려요. 해보세요.",
-    "홈 인사말을 3초 안에 일곱 번 두드리면 저를 불러요. 손가락 헬스예요.",
-    "이스터 에그 찾는 근면함이면 항공권 비교는 왜 안 해요?",
-  ],
-  metu: [
-    "Met U = Meet you. 당신과 예산이 먼저 만나야 여행도 만나요.",
-    "저는 AI 비서예요. 듣기 좋은 말만 원하면 ChatGPT 가서 칭찬받아요.",
-    "MetU는 여행 앱이지 소원 수리함이 아니에요. 숫자부터 맞춰요.",
-  ],
-};
-
 const QUICK_CHIPS = [
   { id: "chat", label: "뭐 도와줄 수 있어?" },
   { id: "budget", label: "예산 조언" },
@@ -60,15 +34,6 @@ const QUICK_CHIPS = [
 
 function pickReply(pool: string[]): string {
   return pool[Math.floor(Math.random() * pool.length)] ?? pool[0];
-}
-
-function matchReply(input: string): string {
-  const t = input.trim().toLowerCase();
-  if (/예산|돈|만원|저금|싸/.test(t)) return pickReply(BUDDY_REPLIES.budget);
-  if (/숨|이스터|비밀|달|화성|호그와트/.test(t))
-    return pickReply(BUDDY_REPLIES.secret);
-  if (/met|메트|너|누구|뭐야/.test(t)) return pickReply(BUDDY_REPLIES.metu);
-  return pickReply(BUDDY_REPLIES.default);
 }
 
 function BuddyTypingBubble() {
@@ -189,6 +154,15 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
     }, 4500);
   }, []);
 
+  const dismissBuddy = useCallback(() => {
+    setBuddyVisible(false);
+    setChatOpen(false);
+    setBubble(null);
+    setDraft("");
+    setSending(false);
+    setMessages([]);
+  }, []);
+
   const openChat = useCallback(() => {
     setChatOpen(true);
     setBubble(null);
@@ -239,13 +213,16 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
             history: historyForApi.slice(0, -1),
           }),
         });
-        if (!res.ok) throw new Error("buddy-failed");
+        if (!res.ok) throw new Error(`buddy-failed:${res.status}`);
         const data = (await res.json()) as { reply?: string };
         const reply = data.reply?.trim();
         if (!reply) throw new Error("empty-reply");
         pushBuddy(reply);
       } catch {
-        pushBuddy(matchReply(trimmed));
+        // 배포에서 OpenRouter/BACKEND 미연결이면 여기로 떨어짐 (가드레일 아님)
+        pushBuddy(
+          "지금 진짜 AI랑 연결이 안 됐어. 로컬 복붙 멘트만 나오는 중이야. 배포면 Vercel의 BACKEND_URL이랑 Render의 OPENROUTER_API_KEY부터 확인해봐."
+        );
       } finally {
         setSending(false);
       }
@@ -299,14 +276,24 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
                     {bubble}
                   </div>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={openChat}
-                  aria-label="MetU 버디와 대화하기"
-                  className="pointer-events-auto relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-brand/30 bg-surface-white shadow-glow transition-transform active:scale-95 animate-buddy-pop"
-                >
-                  <BuddyAvatar className="h-12 w-12 motion-safe:animate-float-soft" />
-                </button>
+                <div className="pointer-events-auto relative">
+                  <button
+                    type="button"
+                    onClick={openChat}
+                    aria-label="MetU 버디와 대화하기"
+                    className="relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-brand/30 bg-surface-white shadow-glow transition-transform active:scale-95 animate-buddy-pop"
+                  >
+                    <BuddyAvatar className="h-12 w-12 motion-safe:animate-float-soft" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={dismissBuddy}
+                    aria-label="버디 닫기"
+                    className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border border-line-soft bg-surface-white text-ink-caption shadow-sm active:scale-95"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2.6} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
