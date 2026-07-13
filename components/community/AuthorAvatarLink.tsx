@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type MouseEvent, type ReactNode } from "react";
-import { isAvatarImage } from "@/lib/profile/public";
+import { SafeAvatar } from "@/components/ui/SafeAvatar";
 import { AuthorProfilePopup } from "@/components/community/AuthorProfilePopup";
 
 interface AuthorAvatarLinkProps {
@@ -33,8 +33,6 @@ export function AuthorAvatarLink({
   nameTrailing,
 }: AuthorAvatarLinkProps) {
   const [open, setOpen] = useState(false);
-  const src = avatar.trim();
-  const showImage = isAvatarImage(src);
 
   const openProfile = (event: MouseEvent) => {
     event.preventDefault();
@@ -50,12 +48,7 @@ export function AuthorAvatarLink({
       ].join(" ")}
       aria-hidden
     >
-      {showImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" className="h-full w-full object-cover" />
-      ) : (
-        <span className="leading-none">{src || "👤"}</span>
-      )}
+      <SafeAvatar src={avatar} />
     </span>
   );
 
@@ -94,14 +87,7 @@ export function AuthorAvatarLink({
             className,
           ].join(" ")}
         >
-          {showImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={src} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span className="leading-none" aria-hidden>
-              {src || "👤"}
-            </span>
-          )}
+          <SafeAvatar src={avatar} />
         </button>
       )}
 

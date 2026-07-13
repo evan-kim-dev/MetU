@@ -14,6 +14,7 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { WritePostSheet } from "@/components/community/WritePostSheet";
 import { PostImageGallery } from "@/components/community/PostImageGallery";
 import { AuthorAvatarLink } from "@/components/community/AuthorAvatarLink";
+import { SafeAvatar } from "@/components/ui/SafeAvatar";
 import {
   formatPartyDateRange,
   usePostDetailActions,
@@ -195,8 +196,8 @@ export function PostDetailContent({
                     key={member.id}
                     className="flex items-center gap-2 rounded-lg bg-white/70 px-2.5 py-2"
                   >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand/10 text-sm">
-                      {member.avatar}
+                    <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-brand/10 text-sm">
+                      <SafeAvatar src={member.avatar} />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-ink-heading">
@@ -224,8 +225,8 @@ export function PostDetailContent({
                       key={member.id}
                       className="flex items-center gap-2 rounded-lg bg-white/70 px-2.5 py-2"
                     >
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand/10 text-sm">
-                        {member.avatar}
+                      <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-brand/10 text-sm">
+                        <SafeAvatar src={member.avatar} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-ink-heading">

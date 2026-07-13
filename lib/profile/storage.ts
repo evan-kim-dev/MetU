@@ -117,10 +117,12 @@ export function mergeAuthProfile(
     name: saved.name && saved.name !== MOCK_PROFILE.name ? saved.name : input.displayName,
     email: input.email ?? saved.email,
     membershipLabel: input.membershipLabel,
+    // 직접 올린 사진이 없으면 카카오 로그인 아바타를 최신으로 유지
     avatarUrl: hasCustomAvatar
       ? saved.customAvatarUrl!
-      : saved.avatarUrl && saved.avatarUrl !== MOCK_PROFILE.avatarUrl
-        ? saved.avatarUrl
-        : input.authAvatarUrl ?? saved.avatarUrl,
+      : input.authAvatarUrl ??
+        (saved.avatarUrl && saved.avatarUrl !== MOCK_PROFILE.avatarUrl
+          ? saved.avatarUrl
+          : ""),
   });
 }

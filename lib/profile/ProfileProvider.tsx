@@ -167,7 +167,24 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!cancelled) {
-        setProfile(nextProfile ?? mergedLocal);
+        let resolved = nextProfile ?? mergedLocal;
+
+        // 직접 업로드한 아바타가 아니면 카카오(auth) 프로필 사진을 우선 사용
+        if (
+          authSeed.authAvatarUrl &&
+          !resolved.customAvatarUrl &&
+          !isStoredAvatar(resolved.avatarUrl)
+        ) {
+          if (resolved.avatarUrl !== authSeed.authAvatarUrl) {
+            resolved = {
+              ...resolved,
+              avatarUrl: authSeed.authAvatarUrl,
+            };
+            void upsertProfileToSupabase(supabase, userId, resolved);
+          }
+        }
+
+        setProfile(resolved);
         lastLoadedKey.current = storageKey;
         setIsReady(true);
       }

@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { isAvatarImage, type PublicProfile } from "@/lib/profile/public";
+import { SafeAvatar } from "@/components/ui/SafeAvatar";
 import { FriendAddButton } from "@/components/community/FriendAddButton";
 
 interface AuthorProfilePopupProps {
@@ -15,21 +16,13 @@ interface AuthorProfilePopupProps {
 }
 
 function ProfileAvatar({ src, name }: { src: string; name: string }) {
-  const value = src.trim();
   return (
     <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-surface-base bg-surface-soft shadow-sm">
-      {isAvatarImage(value) ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={value}
-          alt={`${name} 프로필`}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <span className="text-4xl leading-none" aria-hidden>
-          {value || "👤"}
-        </span>
-      )}
+      <SafeAvatar
+        src={src}
+        alt={`${name} 프로필`}
+        textClassName="text-4xl leading-none"
+      />
     </div>
   );
 }

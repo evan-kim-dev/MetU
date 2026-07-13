@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Mail } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { MetULogo } from "@/components/ui/MetULogo";
 
@@ -15,15 +16,24 @@ const TAGLINES = [
 
 const FEATURES = ["예산 맞춤", "AI 일정", "동행·게시판"] as const;
 
+type EmailMode = "login" | "signup";
+
 export function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { loginWithKakao, loginAsGuest } = useAuth();
+  const { loginWithKakao, loginWithEmail, signUpWithEmail, loginAsGuest } =
+    useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(searchParams.get("error"));
+  const [notice, setNotice] = useState<string | null>(null);
   const deleted = searchParams.get("deleted") === "1";
   const [taglineIndex, setTaglineIndex] = useState(0);
   const [taglineVisible, setTaglineVisible] = useState(true);
+
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailMode, setEmailMode] = useState<EmailMode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -37,10 +47,16 @@ export function LoginContent() {
     return () => window.clearInterval(interval);
   }, []);
 
+  const goNext = () => {
+    const next = searchParams.get("next");
+    router.replace(next?.startsWith("/") ? next : "/");
+  };
+
   const handleKakaoLogin = async () => {
     if (isLoading) return;
     setIsLoading(true);
     setError(null);
+    setNotice(null);
 
     const message = await loginWithKakao();
     if (message) {
@@ -51,8 +67,40 @@ export function LoginContent() {
 
   const handleGuest = () => {
     loginAsGuest();
-    const next = searchParams.get("next");
-    router.replace(next?.startsWith("/") ? next : "/");
+    goNext();
+  };
+
+  const handleEmailSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    setNotice(null);
+
+    if (emailMode === "login") {
+      const message = await loginWithEmail(email, password);
+      if (message) {
+        setError(message);
+        setIsLoading(false);
+        return;
+      }
+      goNext();
+      return;
+    }
+
+    const result = await signUpWithEmail(email, password);
+    if (result.status === "error") {
+      setError(result.message);
+      setIsLoading(false);
+      return;
+    }
+    if (result.status === "confirm_email") {
+      setNotice(result.message);
+      setEmailMode("login");
+      setIsLoading(false);
+      return;
+    }
+    goNext();
   };
 
   return (
@@ -100,16 +148,21 @@ export function LoginContent() {
           style={{ animationDelay: "180ms" }}
         >
           <div className="flex flex-col gap-3">
-            {deleted && !error ? (
+            {deleted && !error && !notice ? (
               <p className="rounded-xl border border-line-soft bg-white/90 px-3 py-2 text-center text-xs font-medium text-ink-body backdrop-blur-sm animate-fade-up">
                 회원 탈퇴가 완료되었어요. 이용해 주셔서 감사합니다.
               </p>
             ) : null}
-            {error && (
+            {notice ? (
+              <p className="rounded-xl border border-brand/20 bg-brand/5 px-3 py-2 text-center text-xs font-medium text-brand-strong backdrop-blur-sm animate-fade-up">
+                {notice}
+              </p>
+            ) : null}
+            {error ? (
               <p className="rounded-xl border border-danger-border bg-white/90 px-3 py-2 text-center text-xs font-medium text-danger backdrop-blur-sm animate-fade-up">
                 {error}
               </p>
-            )}
+            ) : null}
 
             <button
               type="button"
@@ -123,6 +176,110 @@ export function LoginContent() {
               <KakaoIcon />
               {isLoading ? "카카오로 이동 중…" : "카카오 간편로그인"}
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmailOpen((prev) => !prev);
+                setError(null);
+                setNotice(null);
+              }}
+              disabled={isLoading}
+              className="flex h-touch w-full items-center justify-center gap-2 rounded-2xl border border-line-soft bg-surface-white text-sm font-bold text-ink-heading shadow-sm transition-all active:scale-99 active:bg-surface-soft disabled:opacity-60"
+            >
+              <Mail className="h-4 w-4 text-brand" strokeWidth={2.4} />
+              이메일로 {emailMode === "signup" ? "가입" : "로그인"}
+            </button>
+
+            {emailOpen ? (
+              <form
+                onSubmit={(e) => void handleEmailSubmit(e)}
+                className="flex flex-col gap-2.5 rounded-2xl border border-line-soft bg-surface-white/95 p-3.5 shadow-sm backdrop-blur-sm animate-fade-up"
+              >
+                <div className="flex gap-2 rounded-xl bg-surface-soft p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmailMode("login");
+                      setError(null);
+                      setNotice(null);
+                    }}
+                    className={[
+                      "flex-1 rounded-lg py-2 text-xs font-bold transition-colors",
+                      emailMode === "login"
+                        ? "bg-surface-white text-ink-heading shadow-sm"
+                        : "text-ink-caption",
+                    ].join(" ")}
+                  >
+                    로그인
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmailMode("signup");
+                      setError(null);
+                      setNotice(null);
+                    }}
+                    className={[
+                      "flex-1 rounded-lg py-2 text-xs font-bold transition-colors",
+                      emailMode === "signup"
+                        ? "bg-surface-white text-ink-heading shadow-sm"
+                        : "text-ink-caption",
+                    ].join(" ")}
+                  >
+                    회원가입
+                  </button>
+                </div>
+
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-2xs font-bold text-ink-caption">이메일</span>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                    placeholder="you@example.com"
+                    className="h-11 rounded-xl border border-line-soft bg-surface-base px-3.5 text-sm text-ink-heading outline-none placeholder:text-ink-caption focus:border-brand/40 disabled:opacity-60"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-2xs font-bold text-ink-caption">비밀번호</span>
+                  <input
+                    type="password"
+                    autoComplete={
+                      emailMode === "signup" ? "new-password" : "current-password"
+                    }
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                    placeholder="6자 이상"
+                    className="h-11 rounded-xl border border-line-soft bg-surface-base px-3.5 text-sm text-ink-heading outline-none placeholder:text-ink-caption focus:border-brand/40 disabled:opacity-60"
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={isLoading || !email.trim() || password.length < 6}
+                  className="relative mt-0.5 flex h-11 w-full items-center justify-center overflow-hidden rounded-xl bg-brand text-sm font-bold text-surface-white transition-transform active:scale-99 disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <span className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+                  ) : null}
+                  {isLoading
+                    ? emailMode === "signup"
+                      ? "가입 중…"
+                      : "로그인 중…"
+                    : emailMode === "signup"
+                      ? "이메일로 가입하기"
+                      : "이메일로 로그인"}
+                </button>
+              </form>
+            ) : null}
 
             <button
               type="button"

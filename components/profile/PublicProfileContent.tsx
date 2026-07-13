@@ -7,6 +7,7 @@ import { useGoBack } from "@/lib/navigation/useGoBack";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useCommunityState } from "@/lib/community/CommunityProvider";
 import { isAvatarImage, type PublicProfile } from "@/lib/profile/public";
+import { SafeAvatar } from "@/components/ui/SafeAvatar";
 import { STYLE_LABELS } from "@/lib/trips/data";
 import { useRouter } from "next/navigation";
 
@@ -15,21 +16,13 @@ interface PublicProfileContentProps {
 }
 
 function Avatar({ src, name }: { src: string | null; name: string }) {
-  const value = src?.trim() || "";
   return (
     <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-surface-base bg-surface-soft shadow-sm">
-      {isAvatarImage(value) ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={value}
-          alt={`${name} 프로필`}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-4xl">
-          {value || "👤"}
-        </div>
-      )}
+      <SafeAvatar
+        src={src}
+        alt={`${name} 프로필`}
+        textClassName="flex h-full w-full items-center justify-center text-4xl"
+      />
     </div>
   );
 }

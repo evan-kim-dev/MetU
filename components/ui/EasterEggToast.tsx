@@ -173,7 +173,7 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
             {
               id: "hello",
               role: "buddy",
-              text: "나 MetU 버디. 착하면 착하게, 싸가지 없으면 똑같이 간다. 뭐든 물어봐.",
+              text: "나 MetU 버디. 뭐든 물어봐.",
             },
           ]
     );

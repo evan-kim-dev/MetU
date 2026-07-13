@@ -25,7 +25,7 @@ import {
 import { markChatSeen } from "@/lib/community/chat-notice";
 import { formatRelativeTime } from "@/lib/community/storage";
 import { useProfile } from "@/lib/profile/ProfileProvider";
-import { isAvatarImage } from "@/lib/profile/public";
+import { SafeAvatar } from "@/components/ui/SafeAvatar";
 import {
   formatPartyChatAttachmentMessage,
   parsePartyChatAttachment,
@@ -79,20 +79,14 @@ function ChatMessageBody({ message }: { message: string }) {
 }
 
 function ChatSenderAvatar({ src, name }: { src: string; name: string }) {
-  const avatar = src.trim() || "💬";
-
   return (
     <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line-soft bg-surface-soft">
-      {isAvatarImage(avatar) ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={avatar}
-          alt={`${name} 프로필`}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <span className="text-lg leading-none">{avatar}</span>
-      )}
+      <SafeAvatar
+        src={src}
+        alt={`${name} 프로필`}
+        fallback="💬"
+        textClassName="text-lg leading-none"
+      />
     </div>
   );
 }
