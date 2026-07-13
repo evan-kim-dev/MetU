@@ -5,6 +5,7 @@ import { memo } from "react";
 import { CalendarDays, Check, ChevronRight, MapPin } from "lucide-react";
 import { formatKRW } from "@/lib/mock/home";
 import type { Trip } from "@/lib/trips/types";
+import { computeTripDDay, formatTripDDayLabel } from "@/lib/trips/d-day";
 import { DestinationImage } from "@/components/ui/DestinationImage";
 
 interface TripListCardProps {
@@ -28,6 +29,7 @@ export const TripListCard = memo(function TripListCard({
 }: TripListCardProps) {
   const remaining = trip.budget - trip.spent;
   const usedPercent = Math.round((trip.spent / trip.budget) * 100);
+  const dDay = computeTripDDay(trip.dateRange, trip.dDay);
 
   const content = (
     <>
@@ -68,7 +70,7 @@ export const TripListCard = memo(function TripListCard({
           </div>
           <span className="shrink-0 rounded-full bg-surface-soft px-2.5 py-1 text-[11px] font-bold text-brand-strong">
             {trip.status === "upcoming"
-              ? `D-${trip.dDay}`
+              ? formatTripDDayLabel(dDay)
               : STATUS_LABEL[trip.status]}
           </span>
         </div>

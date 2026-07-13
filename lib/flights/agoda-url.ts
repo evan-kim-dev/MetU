@@ -2,7 +2,7 @@ import type { OnboardingForm } from "@/lib/onboarding/types";
 import { normalizeFlexibleYear } from "@/lib/onboarding/types";
 import type { TripRecommendation } from "@/lib/ai/types";
 import { AIRPORT_PLACES, findAirportPlaceByQuery } from "@/lib/airports/data";
-import { addDays } from "@/lib/shared/dates";
+import { addDays, todayIsoDate } from "@/lib/shared/dates";
 
 const AGODA_FLIGHTS_BASE = "https://www.agoda.com/ko-kr/flights/results";
 
@@ -56,29 +56,44 @@ export function resolveTripFlightDates(
   form: OnboardingForm,
   nights: number
 ): { departDate: string; returnDate: string } {
+  const today = todayIsoDate();
+  let departDate: string;
+  let returnDate: string;
+
   if (form.dateType === "specific" && form.startDate) {
-    return {
-      departDate: form.startDate,
-      returnDate: form.endDate || addDays(form.startDate, Math.max(1, nights)),
-    };
+    departDate = form.startDate;
+    returnDate = form.endDate || addDays(form.startDate, Math.max(1, nights));
+  } else {
+    const year =
+      form.dateType === "flexible"
+        ? normalizeFlexibleYear(form.flexibleYear)
+        : new Date().getFullYear();
+    const month =
+      form.dateType === "flexible" &&
+      form.flexibleMonth >= 1 &&
+      form.flexibleMonth <= 12
+        ? form.flexibleMonth
+        : new Date().getMonth() + 2;
+
+    departDate = `${year}-${pad(month)}-12`;
+    returnDate = addDays(departDate, Math.max(1, nights));
   }
 
-  const year =
-    form.dateType === "flexible"
-      ? normalizeFlexibleYear(form.flexibleYear)
-      : new Date().getFullYear();
-  const month =
-    form.dateType === "flexible" &&
-    form.flexibleMonth >= 1 &&
-    form.flexibleMonth <= 12
-      ? form.flexibleMonth
-      : new Date().getMonth() + 2;
+  // Google Flights는 과거 날짜면 빈 결과 — 오늘 이후로 보정
+  if (departDate < today) {
+    const span = Math.max(
+      1,
+      Math.round(
+        (new Date(`${returnDate}T12:00:00`).getTime() -
+          new Date(`${departDate}T12:00:00`).getTime()) /
+          86_400_000
+      )
+    );
+    departDate = addDays(today, 14);
+    returnDate = addDays(departDate, span);
+  }
 
-  const departDate = `${year}-${pad(month)}-12`;
-  return {
-    departDate,
-    returnDate: addDays(departDate, Math.max(1, nights)),
-  };
+  return { departDate, returnDate };
 }
 
 function inferCabinType(totalBudget: number): AgodaCabinType {

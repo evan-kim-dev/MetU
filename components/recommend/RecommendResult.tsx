@@ -41,7 +41,7 @@ function parseWonInput(value: string): number {
 function priceCaption(params: {
   kind: "flight" | "hotel";
   overridden: boolean;
-  source: "live" | "estimate" | undefined;
+  source: "live" | "estimate" | "city-estimate" | undefined;
   withinBand: boolean | undefined;
   loading: boolean;
   people: number;
@@ -59,7 +59,10 @@ function priceCaption(params: {
   }
   if (source === "live") {
     const band = withinBand === false ? " · 예산 밴드(40%) 초과" : "";
-    return `실시간 최저가${band} · ${people}인 기준`;
+    return `Hotelbeds 실시간 최저가${band} · ${people}인 기준`;
+  }
+  if (source === "city-estimate") {
+    return "도시 시세 추정가 · Hotelbeds 테스트에 해당 지역 재고 없음 · Google Hotels 확인";
   }
   return "예상가 · 시세 조회 실패 · Agoda에서 확인";
 }
@@ -282,7 +285,9 @@ export function RecommendResult({
   const liveBudget = useMemo(() => {
     const hasOverride = Boolean(flightOverride || hotelOverride);
     const hasLive =
-      flightQuote?.source === "live" || hotelQuote?.source === "live";
+      flightQuote?.source === "live" ||
+      hotelQuote?.source === "live" ||
+      hotelQuote?.source === "city-estimate";
     if (!hasOverride && !hasLive) {
       return {
         items: plan.budgetAllocation,

@@ -22,6 +22,13 @@ function isPublicPath(pathname: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // API는 JSON을 반환해야 함 — 로그인 HTML로 리다이렉트하면 시세 연동이 깨짐
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next({
+      request: { headers: request.headers },
+    });
+  }
+
   if (pathname === "/login" || pathname === "/auth/logout") {
     return NextResponse.next({
       request: { headers: request.headers },
@@ -90,6 +97,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

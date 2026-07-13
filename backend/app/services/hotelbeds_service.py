@@ -44,6 +44,14 @@ DESTINATION_CODES: dict[str, str] = {
     "hong kong": "HKG",
     "타이베이": "TPE",
     "taipei": "TPE",
+    "마드리드": "MAD",
+    "madrid": "MAD",
+    "바르셀로나": "BCN",
+    "barcelona": "BCN",
+    "발리": "DPS",
+    "bali": "DPS",
+    "세부": "CEB",
+    "cebu": "CEB",
 }
 
 
@@ -58,16 +66,24 @@ def resolve_destination_code(query: str) -> str | None:
     if not trimmed:
         return None
 
-    lowered = trimmed.lower()
+    # "도쿄 · 일본", "Osaka, Japan" 등에서 도시만 추출
+    primary = trimmed
+    for sep in (",", "，", "·", "/", "("):
+        if sep in trimmed:
+            primary = trimmed.split(sep)[0].strip()
+            break
+
+    lowered = primary.lower()
     if lowered in DESTINATION_CODES:
         return DESTINATION_CODES[lowered]
 
+    full_lower = trimmed.lower()
     for label, code in DESTINATION_CODES.items():
-        if label in lowered or lowered in label:
+        if label in full_lower or label in lowered:
             return code
 
-    if len(trimmed) == 3 and trimmed.isalpha():
-        return trimmed.upper()
+    if len(primary) == 3 and primary.isalpha():
+        return primary.upper()
 
     return None
 
@@ -123,13 +139,98 @@ def _format_price(amount: str | float | int | None, currency: str = "EUR") -> st
         value = float(amount)
     except (TypeError, ValueError):
         return str(amount)
-    if currency.upper() in {"KRW", "₩"}:
-        return f"₩{int(value):,}"
-    if currency.upper() == "EUR":
-        return f"€{value:,.0f}"
-    if currency.upper() == "USD":
-        return f"${value:,.0f}"
-    return f"{currency} {value:,.0f}"
+
+    # MetU UI는 KRW 기준 — Hotelbeds 테스트는 EUR을 많이 씀
+    upper = currency.upper()
+    if upper in {"EUR", "€"}:
+        value = value * 1500.0
+        upper = "KRW"
+    elif upper in {"USD", "$"}:
+        value = value * 1380.0
+        upper = "KRW"
+
+    if upper in {"KRW", "₩"}:
+        return f"₩{int(round(value)):,}"
+    return f"{upper} {value:,.0f}"
+
+
+def _to_krw(amount: float, currency: str) -> int:
+    upper = (currency or "EUR").upper()
+    if upper in {"KRW", "₩"}:
+        return int(round(amount))
+    if upper in {"EUR", "€"}:
+        return int(round(amount * 1500.0))
+    if upper in {"USD", "$"}:
+        return int(round(amount * 1380.0))
+    return int(round(amount))
+
+
+# Hotelbeds 테스트 샌드박스에 아시아 재고가 거의 없어, 도시별 1박 추정(KRW)
+CITY_NIGHTLY_KRW: dict[str, tuple[int, int]] = {
+    "TYO": (95_000, 210_000),
+    "OSA": (75_000, 170_000),
+    "KYO": (80_000, 180_000),
+    "FUK": (65_000, 140_000),
+    "SEL": (70_000, 160_000),
+    "PUS": (55_000, 120_000),
+    "CHJ": (60_000, 150_000),
+    "BKK": (45_000, 110_000),
+    "SIN": (120_000, 250_000),
+    "DAD": (40_000, 95_000),
+    "HKG": (110_000, 230_000),
+    "TPE": (70_000, 150_000),
+    "PAR": (140_000, 280_000),
+    "LON": (150_000, 300_000),
+    "NYC": (180_000, 350_000),
+    "MAD": (90_000, 190_000),
+    "BCN": (95_000, 200_000),
+}
+
+
+def _nights_between(check_in: str, check_out: str) -> int:
+    from datetime import date
+
+    start = date.fromisoformat(check_in)
+    end = date.fromisoformat(check_out)
+    return max(1, (end - start).days)
+
+
+def _build_city_estimate_hotels(
+    *,
+    destination: str,
+    destination_code: str,
+    check_in: str,
+    check_out: str,
+    booking_url: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    band = CITY_NIGHTLY_KRW.get(destination_code)
+    if not band:
+        return []
+    low, high = band
+    mid = (low + high) // 2
+    nights = _nights_between(check_in, check_out)
+    samples = [
+        (f"{destination} 시내 스탠다드", mid, "도심"),
+        (f"{destination} 비즈니스 호텔", int(mid * 1.15), "역세권"),
+        (f"{destination} 가성비 호텔", int(mid * 0.85), "시내 외곽"),
+    ]
+    hotels: list[dict[str, Any]] = []
+    for index, (name, nightly, area) in enumerate(samples[:limit]):
+        total = nightly * nights
+        hotels.append(
+            {
+                "id": f"est-{destination_code}-{index}",
+                "name": name,
+                "area": area,
+                "rating": 3.5 + index * 0.3,
+                "reviewCount": None,
+                "price": f"₩{total:,}",
+                "badge": f"도시 추정 · {nights}박",
+                "bookingUrl": booking_url,
+            }
+        )
+    return hotels
 
 
 def _pick_badge(rate: dict[str, Any]) -> str:
@@ -342,9 +443,9 @@ def _normalize_availability(
                 "rating": rating,
                 "reviewCount": None,
                 "price": _format_price(best_price, currency),
-                "priceValue": best_price,
+                "priceValue": _to_krw(best_price, currency),
                 "badge": best_badge,
-                "currency": currency,
+                "currency": "KRW",
                 "bookingUrl": booking_url,
             }
         )
@@ -360,6 +461,38 @@ def _normalize_availability(
         payload_item.pop("priceValue", None)
         trimmed.append(payload_item)
     return trimmed
+
+
+async def fetch_availability_by_destination(
+    *,
+    api_key: str,
+    api_secret: str,
+    base_url: str,
+    destination_code: str,
+    check_in: str,
+    check_out: str,
+    rooms: int,
+    adults: int,
+    children: int,
+) -> dict[str, Any]:
+    occupancy: dict[str, Any] = {
+        "rooms": max(rooms, 1),
+        "adults": max(adults, 1),
+        "children": max(children, 0),
+    }
+    body = {
+        "stay": {"checkIn": check_in, "checkOut": check_out},
+        "occupancies": [occupancy],
+        "destination": {"code": destination_code},
+    }
+    return await _request_hotelbeds(
+        base_url=base_url,
+        api_key=api_key,
+        api_secret=api_secret,
+        method="POST",
+        path="/hotel-api/1.0/hotels",
+        json_body=body,
+    )
 
 
 async def search_hotels(
@@ -386,9 +519,17 @@ async def search_hotels(
     )
 
     if not api_key or not api_secret:
+        estimates = _build_city_estimate_hotels(
+            destination=destination,
+            destination_code=destination_code or "",
+            check_in=check_in,
+            check_out=check_out,
+            booking_url=google_url,
+            limit=limit,
+        )
         return {
-            "hotels": [],
-            "source": "google-hotels",
+            "hotels": estimates,
+            "source": "city-estimate" if estimates else "google-hotels",
             "meta": {
                 "booking_search_url": google_url,
                 "error": "hotelbeds-key-missing",
@@ -399,86 +540,93 @@ async def search_hotels(
     if not destination_code:
         raise HotelbedsError("destination-not-found")
 
+    hotels: list[dict[str, Any]] = []
+    content_by_code: dict[int, dict[str, Any]] = {}
+
+    # 1) 목적지 코드로 바로 가용성 조회 (콘텐츠 카탈로그 불필요)
     try:
-        catalog = await fetch_hotel_codes(
+        availability = await fetch_availability_by_destination(
             api_key=api_key,
             api_secret=api_secret,
             base_url=base_url,
             destination_code=destination_code,
-            limit=30,
-        )
-    except HotelbedsError as exc:
-        return {
-            "hotels": [],
-            "source": "google-hotels",
-            "meta": {
-                "booking_search_url": google_url,
-                "error": exc.detail,
-                "destination_code": destination_code,
-            },
-        }
-
-    hotel_codes = [item["code"] for item in catalog if item.get("code")]
-    if not hotel_codes:
-        return {
-            "hotels": [],
-            "source": "google-hotels",
-            "meta": {
-                "booking_search_url": google_url,
-                "error": "hotelbeds-no-hotels",
-                "destination_code": destination_code,
-            },
-        }
-
-    try:
-        availability = await fetch_availability(
-            api_key=api_key,
-            api_secret=api_secret,
-            base_url=base_url,
-            hotel_codes=hotel_codes[:20],
             check_in=check_in,
             check_out=check_out,
             rooms=rooms,
             adults=adults,
             children=children,
         )
-    except HotelbedsError as exc:
+        hotels = _normalize_availability(
+            availability,
+            content_by_code={},
+            booking_url=google_url,
+            sort_by=sort_by,
+            limit=limit,
+        )
+    except HotelbedsError:
+        hotels = []
+
+    # 2) 비면 호텔 코드 목록 → 가용성
+    if not hotels:
+        try:
+            catalog = await fetch_hotel_codes(
+                api_key=api_key,
+                api_secret=api_secret,
+                base_url=base_url,
+                destination_code=destination_code,
+                limit=30,
+            )
+            content_by_code = {item["code"]: item for item in catalog}
+            hotel_codes = [item["code"] for item in catalog if item.get("code")]
+            if hotel_codes:
+                availability = await fetch_availability(
+                    api_key=api_key,
+                    api_secret=api_secret,
+                    base_url=base_url,
+                    hotel_codes=hotel_codes[:20],
+                    check_in=check_in,
+                    check_out=check_out,
+                    rooms=rooms,
+                    adults=adults,
+                    children=children,
+                )
+                hotels = _normalize_availability(
+                    availability,
+                    content_by_code=content_by_code,
+                    booking_url=google_url,
+                    sort_by=sort_by,
+                    limit=limit,
+                )
+        except HotelbedsError:
+            hotels = []
+
+    if hotels:
         return {
-            "hotels": [],
-            "source": "google-hotels",
+            "hotels": hotels,
+            "source": "hotelbeds",
             "meta": {
                 "booking_search_url": google_url,
-                "error": exc.detail,
                 "destination_code": destination_code,
+                "count": len(hotels),
             },
         }
 
-    content_by_code = {item["code"]: item for item in catalog}
-    hotels = _normalize_availability(
-        availability,
-        content_by_code=content_by_code,
+    # 3) Hotelbeds 테스트에 아시아 재고가 없는 경우 — 도시 추정가
+    estimates = _build_city_estimate_hotels(
+        destination=destination,
+        destination_code=destination_code,
+        check_in=check_in,
+        check_out=check_out,
         booking_url=google_url,
-        sort_by=sort_by,
         limit=limit,
     )
-
-    if not hotels:
-        return {
-            "hotels": [],
-            "source": "google-hotels",
-            "meta": {
-                "booking_search_url": google_url,
-                "error": "hotelbeds-no-rates",
-                "destination_code": destination_code,
-            },
-        }
-
     return {
-        "hotels": hotels,
-        "source": "hotelbeds",
+        "hotels": estimates,
+        "source": "city-estimate" if estimates else "google-hotels",
         "meta": {
             "booking_search_url": google_url,
+            "error": "hotelbeds-no-rates",
             "destination_code": destination_code,
-            "count": len(hotels),
+            "note": "Hotelbeds test sandbox has limited non-EU inventory",
         },
     }

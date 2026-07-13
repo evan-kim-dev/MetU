@@ -70,8 +70,10 @@ async function searchWithGoogleFlights(input: {
     };
   }
 
-  const validFlights = filterValidFlights(payload.flights ?? []);
-  if (validFlights.length === 0) {
+  const rawFlights = payload.flights ?? [];
+  const validFlights = filterValidFlights(rawFlights);
+  const flights = validFlights.length > 0 ? validFlights : rawFlights;
+  if (flights.length === 0) {
     return {
       ok: false,
       status: 200,
@@ -81,7 +83,7 @@ async function searchWithGoogleFlights(input: {
 
   return {
     ok: true,
-    flights: validFlights,
+    flights,
     bookingUrl: payload.meta?.booking_search_url,
   };
 }

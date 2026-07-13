@@ -1,6 +1,7 @@
 import { DEFAULTS } from "@/lib/constants";
 import type { TripRecommendation } from "@/lib/ai/types";
 import type { Trip } from "@/lib/trips/types";
+import { computeTripDDay } from "@/lib/trips/d-day";
 
 export function planToTrip(
   plan: TripRecommendation,
@@ -32,7 +33,7 @@ export function planToTrip(
     country: plan.country,
     origin: plan.origin,
     dateRange: plan.dateRange,
-    dDay: DEFAULTS.dDayPlaceholder,
+    dDay: computeTripDDay(plan.dateRange, DEFAULTS.dDayPlaceholder),
     budget: plan.totalBudget,
     spent: flightPrice + hotelPrice,
     people: plan.people,

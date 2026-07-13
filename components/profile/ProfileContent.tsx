@@ -236,12 +236,12 @@ export function ProfileContent() {
               <ProfileDogBuddy active={dogBuddyActive} />
 
               {provider === "guest" ? (
-                <LoginMethodList collapsible className={dogBuddyActive ? "mt-2" : "mt-4"} />
+                <LoginMethodList collapsible className={dogBuddyActive ? "mt-0" : "mt-4"} />
               ) : isEditing ? (
                 <div
                   className={[
                     "grid w-full grid-cols-2 gap-2",
-                    dogBuddyActive ? "mt-2" : "mt-4",
+                    dogBuddyActive ? "mt-0" : "mt-4",
                   ].join(" ")}
                 >
                   <button
@@ -270,7 +270,7 @@ export function ProfileContent() {
                   }}
                   className={[
                     "w-full rounded-lg border border-line-muted bg-surface-white py-3 text-sm font-semibold tracking-wide text-brand",
-                    dogBuddyActive ? "mt-2" : "mt-4",
+                    dogBuddyActive ? "mt-0" : "mt-4",
                   ].join(" ")}
                 >
                   프로필 수정

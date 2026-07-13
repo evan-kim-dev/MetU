@@ -17,9 +17,11 @@ async def search_hotels_route(
     adults: int = Query(default=2, ge=1, le=9),
     rooms: int = Query(default=1, ge=1, le=4),
     children: int = Query(default=0, ge=0, le=8),
-    sort_by: str = Query(default="best", pattern="^(best|price_high)$"),
+    sort_by: str = Query(default="best", pattern="^(best|price|price_high)$"),
     limit: int = Query(default=8, ge=1, le=20),
 ) -> dict[str, Any]:
+    # 클라이언트는 price를 보내지만 Hotelbeds 쪽은 best/price_high만 쓰므로 매핑
+    resolved_sort = "best" if sort_by == "price" else sort_by
     try:
         return await search_hotels(
             destination=destination,
@@ -28,7 +30,7 @@ async def search_hotels_route(
             adults=adults,
             rooms=rooms,
             children=children,
-            sort_by=sort_by,
+            sort_by=resolved_sort,
             limit=limit,
             api_key=settings.hotelbeds_api_key,
             api_secret=settings.hotelbeds_api_secret,

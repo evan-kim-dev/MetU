@@ -143,7 +143,7 @@ def _search_sync(
             trip=trip,
             seat=SEAT_MAP.get(seat, "economy"),
             passengers=Passengers(adults=adults),
-            fetch_mode="fallback",
+            fetch_mode="common",
         )
     except Exception:
         try:
@@ -152,12 +152,22 @@ def _search_sync(
                 trip=trip,
                 seat=SEAT_MAP.get(seat, "economy"),
                 passengers=Passengers(adults=adults),
-                fetch_mode="common",
+                fetch_mode="fallback",
             )
         except Exception:
             result = type("EmptyResult", (), {"flights": [], "current_price": None})()
 
     flights = [item for item in list(result.flights or []) if _is_complete_flight(item)]
+    # 필터가 전부 걸러내면 원본에서 가격·항공사만 있는 항목이라도 살려 최저가 연동
+    if not flights:
+        raw = list(result.flights or [])
+        flights = [
+            item
+            for item in raw
+            if (item.price or "").strip() not in {"", "-"}
+            and (item.name or "").strip()
+            and not _is_cargo_carrier(item.name or "")
+        ]
     if sort_by == "fastest":
         flights.sort(key=lambda item: _parse_duration_minutes(item.duration))
     elif sort_by == "price_high":

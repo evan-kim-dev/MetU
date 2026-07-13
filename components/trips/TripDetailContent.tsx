@@ -23,6 +23,7 @@ import {
 } from "@/components/trips/TripDetailParts";
 import { useTripDetailEditor, sortScheduleItemsByTime } from "@/components/trips/useTripDetailEditor";
 import { formatKRW } from "@/lib/shared/format";
+import { computeTripDDay, formatTripDDayLabel } from "@/lib/trips/d-day";
 
 interface TripDetailContentProps {
   tripId: string;
@@ -152,7 +153,9 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
           </div>
           <span className="absolute right-3 top-3 rounded-full bg-surface-white/90 px-3 py-1 text-xs font-extrabold text-brand-strong">
             {trip.status === "upcoming"
-              ? `D-${trip.dDay}`
+              ? formatTripDDayLabel(
+                  computeTripDDay(trip.dateRange, trip.dDay)
+                )
               : trip.status === "ongoing"
                 ? "진행 중"
                 : "완료"}

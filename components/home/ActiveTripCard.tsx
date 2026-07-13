@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarDays, MapPin } from "lucide-react";
 import { formatKRW } from "@/lib/mock/home";
 import type { Trip } from "@/lib/trips/types";
+import { computeTripDDay, formatTripDDayLabel } from "@/lib/trips/d-day";
 import { DestinationImage } from "@/components/ui/DestinationImage";
 
 interface ActiveTripCardProps {
@@ -16,6 +17,7 @@ interface ActiveTripCardProps {
 export function ActiveTripCard({ trip, priority = false }: ActiveTripCardProps) {
   const remaining = trip.budget - trip.spent;
   const usedPercent = Math.round((trip.spent / trip.budget) * 100);
+  const dDay = computeTripDDay(trip.dateRange, trip.dDay);
 
   return (
     <Link
@@ -35,7 +37,7 @@ export function ActiveTripCard({ trip, priority = false }: ActiveTripCardProps) 
 
       {/* D-Day 뱃지 */}
       <span className="absolute right-3 top-3 rounded-full bg-surface-white/85 px-3 py-1 text-xs font-extrabold text-brand-strong backdrop-blur-md">
-        D-{trip.dDay}
+        {formatTripDDayLabel(dDay)}
       </span>
 
       {/* 상단 목적지 */}

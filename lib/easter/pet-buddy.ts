@@ -40,6 +40,12 @@ export const PET_BUDDY_SRC: Record<PetBuddyKind, string> = {
   dog: "/easter/dog.gif",
 };
 
+/** 강아지 앞을 굴러가는 공 */
+export const DOG_BALL_SRC = "/easter/ball.gif";
+
+/** 강아지·공 트랙 잔디 배경 */
+export const DOG_TRACK_SRC = "/easter/dog-track.png";
+
 export const PET_BUDDY_LABEL: Record<PetBuddyKind, string> = {
   cat: "고양이",
   dog: "강아지",

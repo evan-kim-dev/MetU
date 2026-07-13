@@ -76,6 +76,29 @@ function buildEstimateQuote(plan: TripRecommendation): PlanFlightQuote | null {
   };
 }
 
+async function parseFlightSearchJson(
+  res: Response
+): Promise<{ flights: FlightSearchItem[]; bookingUrl?: string } | null> {
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return null;
+  }
+  try {
+    const data = (await res.json()) as {
+      flights?: FlightSearchItem[];
+      bookingUrl?: string;
+      error?: string;
+    };
+    if (data.error) return null;
+    return {
+      flights: data.flights ?? [],
+      bookingUrl: data.bookingUrl,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Google Flights 실시간 최저가. 실패 시에만 예산 배분 예상가. */
 export async function fetchPlanFlightQuote(
   plan: TripRecommendation
@@ -100,21 +123,22 @@ export async function fetchPlanFlightQuote(
   });
 
   try {
-    const res = await fetch(`/api/flights/search?${qs.toString()}`);
+    const res = await fetch(`/api/flights/search?${qs.toString()}`, {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
     if (!res.ok) return estimate;
 
-    const data = (await res.json()) as {
-      flights?: FlightSearchItem[];
-      bookingUrl?: string;
-    };
-    const flights = data.flights ?? [];
+    const data = await parseFlightSearchJson(res);
+    if (!data || data.flights.length === 0) return estimate;
 
     const picked = pickCheapestInBand(
-      flights,
+      data.flights,
       (f) => parsePriceKrw(f.price),
       Number.POSITIVE_INFINITY
     );
-    if (!picked) return estimate;
+    if (!picked || picked.price <= 0) return estimate;
 
     const googleFlightsUrl =
       data.bookingUrl ||
