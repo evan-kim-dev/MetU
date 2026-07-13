@@ -16,6 +16,10 @@ import {
   isFlexibleScheduleValid,
   type TravelStyle,
 } from "@/components/onboarding/types";
+import {
+  isKangwonUniversityDestination,
+  KANGWON_GRAD_ADMISSION_URL,
+} from "@/lib/easter/kangwon-univ";
 
 const TOTAL_STEPS = 4;
 
@@ -77,6 +81,16 @@ function OnboardingPageContent() {
   };
 
   const handleNext = async () => {
+    // 도착지 이스터에그: 강원대학교 → 대학원 입시 모집요강
+    if (
+      step === 3 &&
+      canProceed &&
+      isKangwonUniversityDestination(form.destination)
+    ) {
+      window.location.assign(KANGWON_GRAD_ADMISSION_URL);
+      return;
+    }
+
     if (step < TOTAL_STEPS) {
       setSubmitError(null);
       return setStep((s) => s + 1);
