@@ -353,43 +353,48 @@ export function DmChatPageContent({ peerId }: DmChatPageContentProps) {
           ) : (
             displayMessages.map((message) => {
               const mine = message.senderId === me;
+              const timeLabel = formatRelativeTime(message.createdAt);
               return (
                 <div
                   key={message.id}
                   className={[
-                    "flex max-w-[88%] gap-2",
-                    mine ? "ml-auto flex-row-reverse" : "mr-auto",
+                    "flex gap-1.5",
+                    mine ? "items-end justify-end" : "items-start justify-start",
                   ].join(" ")}
                 >
-                  {!mine ? (
-                    <ChatSenderAvatar
-                      src={message.senderAvatar}
-                      name={message.senderName}
-                    />
-                  ) : null}
-                  <div
-                    className={[
-                      "rounded-2xl px-3.5 py-2.5",
-                      mine
-                        ? "rounded-br-md bg-brand text-surface-white"
-                        : "rounded-bl-md bg-surface-soft text-ink-body",
-                    ].join(" ")}
-                  >
-                    {!mine ? (
-                      <p className="mb-1 text-2xs font-bold text-ink-caption">
-                        {message.senderName}
+                  {mine ? (
+                    <>
+                      <p className="shrink-0 pb-1 text-2xs text-ink-caption">
+                        {timeLabel}
                       </p>
-                    ) : null}
-                    <ChatMessageBody message={message.message} mine={mine} />
-                    <p
-                      className={[
-                        "mt-1 text-[10px]",
-                        mine ? "text-surface-white/70" : "text-ink-caption",
-                      ].join(" ")}
-                    >
-                      {formatRelativeTime(message.createdAt)}
-                    </p>
-                  </div>
+                      <div className="max-w-[80%] rounded-2xl rounded-br-md bg-brand px-3.5 py-2.5 text-surface-white">
+                        <ChatMessageBody message={message.message} mine />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex max-w-[88%] items-start gap-2">
+                      <ChatSenderAvatar
+                        src={message.senderAvatar}
+                        name={message.senderName}
+                      />
+                      <div className="flex min-w-0 flex-col items-start gap-1">
+                        <p className="text-2xs font-bold text-ink-caption">
+                          {message.senderName}
+                        </p>
+                        <div className="flex items-end gap-1.5">
+                          <div className="rounded-2xl rounded-bl-md bg-surface-soft px-3.5 py-2.5 text-ink-body">
+                            <ChatMessageBody
+                              message={message.message}
+                              mine={false}
+                            />
+                          </div>
+                          <p className="shrink-0 pb-1 text-2xs text-ink-caption">
+                            {timeLabel}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })
