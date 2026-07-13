@@ -8,7 +8,23 @@ function includesAny(text: string, keys: string[]): boolean {
   return keys.some((key) => lower.includes(key.toLowerCase()));
 }
 
-/** 프로필 소개에서 커서 펫 이스터에그 종류를 추출 */
+/** 프로필 소개에서 커서 펫(고양이)만 — 강아지는 프로필 카드 전용 */
+export function detectCursorPetsFromBio(
+  bio: string | null | undefined
+): PetBuddyKind[] {
+  const text = bio?.trim() ?? "";
+  if (!text) return [];
+  const pets: PetBuddyKind[] = [];
+  if (includesAny(text, CAT_KEYS)) pets.push("cat");
+  return pets;
+}
+
+/** 프로필 카드 안에서 움직이는 강아지 */
+export function hasDogBuddyInBio(bio: string | null | undefined): boolean {
+  return includesAny(bio?.trim() ?? "", DOG_KEYS);
+}
+
+/** @deprecated 커서+카드 통합 감지 — 호환용 */
 export function detectPetBuddiesFromBio(bio: string | null | undefined): PetBuddyKind[] {
   const text = bio?.trim() ?? "";
   if (!text) return [];
@@ -20,8 +36,8 @@ export function detectPetBuddiesFromBio(bio: string | null | undefined): PetBudd
 }
 
 export const PET_BUDDY_SRC: Record<PetBuddyKind, string> = {
-  cat: "/easter/cat.png",
-  dog: "/easter/dog.png",
+  cat: "/easter/cat.gif",
+  dog: "/easter/dog.gif",
 };
 
 export const PET_BUDDY_LABEL: Record<PetBuddyKind, string> = {

@@ -7,7 +7,6 @@ import { AuthGate } from "@/components/auth/AuthGate";
 import { BuildRevalidator } from "@/components/ui/BuildRevalidator";
 import { BuildStamp } from "@/components/ui/BuildStamp";
 import { EasterEggToastProvider } from "@/components/ui/EasterEggToast";
-import { PetCursorFollower } from "@/components/ui/PetCursorFollower";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 
@@ -24,7 +23,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
               <TripProvider>
                 <CommunityProvider>
                   <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-                  <PetCursorFollower />
                 </CommunityProvider>
               </TripProvider>
             </FriendsProvider>

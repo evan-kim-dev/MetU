@@ -1,52 +1,27 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useProfile } from "@/lib/profile/ProfileProvider";
-import {
-  detectPetBuddiesFromBio,
-  PET_BUDDY_LABEL,
-  PET_BUDDY_SRC,
-  type PetBuddyKind,
-} from "@/lib/easter/pet-buddy";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { PET_BUDDY_SRC } from "@/lib/easter/pet-buddy";
 
-type Point = { x: number; y: number };
+const SIZE = 80;
+const OFFSET = { x: -60, y: -56 };
 
-const OFFSETS: Record<PetBuddyKind, { x: number; y: number }> = {
-  cat: { x: 18, y: 18 },
-  dog: { x: 28, y: -8 },
+type Props = {
+  /** 이 컨테이너 안에서만 커서를 따라다님 */
+  containerRef: RefObject<HTMLElement | null>;
+  active: boolean;
 };
 
 /**
- * 프로필 소개에 고양이/강아지가 있으면 커서를 따라다니는 펫.
+ * 내 프로필 페이지 전체에서만 고양이 GIF가 커서를 따라다닌다.
  */
-export function PetCursorFollower() {
-  const { profile } = useProfile();
-  const petsKey = useMemo(
-    () => detectPetBuddiesFromBio(profile.bio).join(","),
-    [profile.bio]
-  );
-  const pets = useMemo(
-    () => (petsKey ? (petsKey.split(",") as PetBuddyKind[]) : []),
-    [petsKey]
-  );
-  const [mounted, setMounted] = useState(false);
-  const [visible, setVisible] = useState(false);
+export function PetCursorFollower({ containerRef, active }: Props) {
   const [reducedMotion, setReducedMotion] = useState(false);
-  const targetRef = useRef<Point>({ x: -999, y: -999 });
-  const currentRef = useRef<Record<PetBuddyKind, Point>>({
-    cat: { x: -999, y: -999 },
-    dog: { x: -999, y: -999 },
-  });
-  const nodeRefs = useRef<Partial<Record<PetBuddyKind, HTMLDivElement | null>>>(
-    {}
-  );
+  const [visible, setVisible] = useState(false);
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+  const targetRef = useRef({ x: 12, y: 12 });
+  const currentRef = useRef({ x: 12, y: 12 });
   const rafRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -57,41 +32,58 @@ export function PetCursorFollower() {
   }, []);
 
   useEffect(() => {
-    if (pets.length === 0 || reducedMotion) {
+    if (!active || reducedMotion) {
       setVisible(false);
       return;
     }
 
-    const onMove = (clientX: number, clientY: number) => {
-      targetRef.current = { x: clientX, y: clientY };
-      setVisible(true);
+    const host = containerRef.current;
+    if (!host) return;
+
+    const clamp = (x: number, y: number) => {
+      const maxX = Math.max(0, host.clientWidth - SIZE);
+      const maxY = Math.max(0, host.clientHeight - SIZE);
+      return {
+        x: Math.min(maxX, Math.max(0, x)),
+        y: Math.min(maxY, Math.max(0, y)),
+      };
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      onMove(e.clientX, e.clientY);
+      const rect = host.getBoundingClientRect();
+      const inside =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom;
+      if (!inside) {
+        setVisible(false);
+        return;
+      }
+      targetRef.current = clamp(
+        e.clientX - rect.left + OFFSET.x,
+        e.clientY - rect.top + OFFSET.y
+      );
+      setVisible(true);
     };
-    const onTouchMove = (e: TouchEvent) => {
-      const t = e.touches[0];
-      if (t) onMove(t.clientX, t.clientY);
-    };
+
     const onLeave = () => setVisible(false);
 
     window.addEventListener("pointermove", onPointerMove, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    document.documentElement.addEventListener("mouseleave", onLeave);
+    host.addEventListener("pointerleave", onLeave);
 
     const tick = () => {
-      const target = targetRef.current;
-      for (const kind of pets) {
-        const cur = currentRef.current[kind];
-        const offset = OFFSETS[kind];
-        const nextX = cur.x + (target.x + offset.x - cur.x) * 0.18;
-        const nextY = cur.y + (target.y + offset.y - cur.y) * 0.18;
-        currentRef.current[kind] = { x: nextX, y: nextY };
-        const node = nodeRefs.current[kind];
-        if (node) {
-          node.style.transform = `translate3d(${nextX}px, ${nextY}px, 0)`;
-        }
+      const cur = currentRef.current;
+      const t = targetRef.current;
+      const next = {
+        x: cur.x + (t.x - cur.x) * 0.18,
+        y: cur.y + (t.y - cur.y) * 0.18,
+      };
+      currentRef.current = next;
+      const node = nodeRef.current;
+      if (node) {
+        node.style.left = `${next.x}px`;
+        node.style.top = `${next.y}px`;
       }
       rafRef.current = window.requestAnimationFrame(tick);
     };
@@ -99,46 +91,36 @@ export function PetCursorFollower() {
 
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("touchmove", onTouchMove);
-      document.documentElement.removeEventListener("mouseleave", onLeave);
+      host.removeEventListener("pointerleave", onLeave);
       if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
     };
-  }, [pets, reducedMotion]);
+  }, [active, reducedMotion, containerRef]);
 
-  if (!mounted || pets.length === 0 || reducedMotion) return null;
-  if (typeof document === "undefined") return null;
+  if (!active || reducedMotion) return null;
 
-  return createPortal(
+  return (
     <div
-      className="pointer-events-none fixed inset-0 z-[190] overflow-hidden"
+      ref={nodeRef}
+      className="pointer-events-none absolute z-20"
+      style={{
+        left: 12,
+        top: 12,
+        width: SIZE,
+        height: SIZE,
+        visibility: visible ? "visible" : "hidden",
+      }}
       aria-hidden
     >
-      {pets.map((kind) => (
-        <div
-          key={kind}
-          ref={(el) => {
-            nodeRefs.current[kind] = el;
-          }}
-          className={[
-            "absolute left-0 top-0 will-change-transform",
-            visible ? "opacity-100" : "opacity-0",
-            "transition-opacity duration-200",
-          ].join(" ")}
-          style={{ transform: "translate3d(-999px, -999px, 0)" }}
-        >
-          <Image
-            src={PET_BUDDY_SRC[kind]}
-            alt=""
-            width={56}
-            height={56}
-            draggable={false}
-            className="h-14 w-14 select-none object-contain drop-shadow-md"
-            priority
-          />
-          <span className="sr-only">{PET_BUDDY_LABEL[kind]} 버디</span>
-        </div>
-      ))}
-    </div>,
-    document.body
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`${PET_BUDDY_SRC.cat}?v=4`}
+        alt=""
+        width={SIZE}
+        height={SIZE}
+        draggable={false}
+        decoding="async"
+        className="h-full w-full select-none object-contain drop-shadow-md"
+      />
+    </div>
   );
 }

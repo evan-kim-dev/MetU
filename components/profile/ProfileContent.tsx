@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bell,
   Camera,
@@ -23,6 +23,12 @@ import {
 import { LEGAL_LINKS } from "@/lib/legal/documents";
 import { LoginMethodList } from "@/components/auth/LoginMethodList";
 import { useProfileContent } from "@/components/profile/useProfileContent";
+import { ProfileDogBuddy } from "@/components/ui/ProfileDogBuddy";
+import { PetCursorFollower } from "@/components/ui/PetCursorFollower";
+import {
+  detectCursorPetsFromBio,
+  hasDogBuddyInBio,
+} from "@/lib/easter/pet-buddy";
 
 function isDataUrl(src: string): boolean {
   return src.startsWith("data:");
@@ -108,9 +114,21 @@ export function ProfileContent() {
     handleDeleteAccount,
   } = useProfileContent();
 
+  const profilePageRef = useRef<HTMLDivElement | null>(null);
+  const bioText = isEditing ? draftBio : profile.bio;
+  const dogBuddyActive = hasDogBuddyInBio(bioText);
+  const catBuddyActive = detectCursorPetsFromBio(bioText).includes("cat");
+
   return (
     <MobileShell>
-      <div className="flex flex-col gap-8 px-4 pb-6 pt-6">
+      <div
+        ref={profilePageRef}
+        className="relative flex flex-col gap-8 px-4 pb-6 pt-6"
+      >
+        <PetCursorFollower
+          containerRef={profilePageRef}
+          active={catBuddyActive}
+        />
         <header>
           <h1 className="text-[22px] font-bold leading-7 tracking-tight text-ink-heading">
             내 프로필
@@ -118,8 +136,8 @@ export function ProfileContent() {
         </header>
 
         <div className="flex flex-col gap-4">
-          <section className="relative rounded-xl2 bg-surface-white p-6 shadow-soft">
-            <div className="flex flex-col items-center">
+          <section className="relative overflow-hidden rounded-xl2 bg-surface-white p-6 shadow-soft">
+            <div className="relative z-[1] flex flex-col items-center">
               <div className="relative mb-4">
                 <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-surface-base shadow-sm">
                   <ProfileAvatar
@@ -215,10 +233,17 @@ export function ProfileContent() {
                 </>
               )}
 
+              <ProfileDogBuddy active={dogBuddyActive} />
+
               {provider === "guest" ? (
-                <LoginMethodList collapsible className="mt-4" />
+                <LoginMethodList collapsible className={dogBuddyActive ? "mt-2" : "mt-4"} />
               ) : isEditing ? (
-                <div className="mt-4 grid w-full grid-cols-2 gap-2">
+                <div
+                  className={[
+                    "grid w-full grid-cols-2 gap-2",
+                    dogBuddyActive ? "mt-2" : "mt-4",
+                  ].join(" ")}
+                >
                   <button
                     type="button"
                     onClick={handleCancelEdit}
@@ -243,7 +268,10 @@ export function ProfileContent() {
                     setDraftHomeCity(profile.homeCity ?? "");
                     setIsEditing(true);
                   }}
-                  className="mt-4 w-full rounded-lg border border-line-muted bg-surface-white py-3 text-sm font-semibold tracking-wide text-brand"
+                  className={[
+                    "w-full rounded-lg border border-line-muted bg-surface-white py-3 text-sm font-semibold tracking-wide text-brand",
+                    dogBuddyActive ? "mt-2" : "mt-4",
+                  ].join(" ")}
                 >
                   프로필 수정
                 </button>
