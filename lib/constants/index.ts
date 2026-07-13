@@ -13,6 +13,8 @@ export const TABLES = {
   partyChatMessages: "party_chat_messages",
   notifications: "notifications",
   friendships: "friendships",
+  dmThreads: "dm_threads",
+  dmMessages: "dm_messages",
 } as const;
 
 /** localStorage keys (MVP until Auth+DB 연동) */

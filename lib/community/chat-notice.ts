@@ -20,3 +20,11 @@ export function markChatSeen(postId: string, seenAtIso = new Date().toISOString(
   const next = { ...prev, [postId]: seenAtIso };
   localStorage.setItem(CHAT_LAST_SEEN_KEY, JSON.stringify(next));
 }
+
+/** DM thread 읽음 — key: `dm:{threadId}` */
+export function markDmChatSeen(
+  threadId: string,
+  seenAtIso = new Date().toISOString()
+): void {
+  markChatSeen(`dm:${threadId}`, seenAtIso);
+}

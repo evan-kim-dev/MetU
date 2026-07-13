@@ -8,7 +8,8 @@ export type AppNotificationType =
   | "party_join_rejected"
   | "friend_request"
   | "friend_accepted"
-  | "friend_rejected";
+  | "friend_rejected"
+  | "dm_message";
 
 export interface AppNotification {
   id: string;

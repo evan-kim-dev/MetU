@@ -2,10 +2,13 @@
 
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { MessageCircle, X } from "lucide-react";
 import { isAvatarImage, type PublicProfile } from "@/lib/profile/public";
 import { SafeAvatar } from "@/components/ui/SafeAvatar";
 import { FriendAddButton } from "@/components/community/FriendAddButton";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { useFriends } from "@/lib/friends/FriendsProvider";
 
 interface AuthorProfilePopupProps {
   open: boolean;
@@ -35,6 +38,9 @@ export function AuthorProfilePopup({
   fallbackAvatar,
 }: AuthorProfilePopupProps) {
   const titleId = useId();
+  const router = useRouter();
+  const { user, provider } = useAuth();
+  const { isFriend } = useFriends();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -94,6 +100,11 @@ export function AuthorProfilePopup({
     (isAvatarImage(fallbackAvatar) ? fallbackAvatar : fallbackAvatar) ||
     "👤";
   const bio = profile?.bio?.trim() || "";
+  const canMessage =
+    Boolean(user?.id) &&
+    provider !== "guest" &&
+    user?.id !== userId &&
+    isFriend(userId);
 
   return createPortal(
     <div
@@ -152,6 +163,20 @@ export function AuthorProfilePopup({
               </p>
             )}
           </div>
+
+          {canMessage ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                router.push(`/opod/dm/${userId}`);
+              }}
+              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-brand text-sm font-bold text-surface-white transition-all active:scale-[0.99]"
+            >
+              <MessageCircle className="h-4 w-4" strokeWidth={2.4} />
+              메시지
+            </button>
+          ) : null}
 
           <FriendAddButton
             friendId={userId}

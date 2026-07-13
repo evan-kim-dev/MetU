@@ -51,6 +51,11 @@ function notificationCopy(n: AppNotification): { title: string; body: string } {
         title: "친구 거절",
         body: `${actorName}님이 친구 요청을 거절했어요.`,
       };
+    case "dm_message":
+      return {
+        title: "새 메시지",
+        body: `${actorName}: ${n.payload.preview ?? "메시지를 보냈어요."}`,
+      };
     default:
       return { title: "알림", body: postTitle };
   }
@@ -116,6 +121,10 @@ export function NotificationsPageContent() {
 
   async function handleOpen(n: AppNotification) {
     await markRead(n);
+    if (n.type === "dm_message" && n.actorId) {
+      router.push(`/opod/dm/${n.actorId}`);
+      return;
+    }
     if (n.type.startsWith("friend_")) {
       router.push("/opod");
       return;

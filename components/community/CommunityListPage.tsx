@@ -293,6 +293,13 @@ export function CommunityListPage({
                       showName
                       className="min-w-0 flex-1"
                     />
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/opod/dm/${friend.id}`)}
+                      className="shrink-0 rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold text-brand active:bg-brand/15"
+                    >
+                      채팅
+                    </button>
                   </div>
                 ))}
               </div>
