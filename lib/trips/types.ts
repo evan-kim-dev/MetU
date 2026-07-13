@@ -18,7 +18,10 @@ export interface TripBudgetAllocation {
 
 export interface TripScheduleItem {
   time: string;
+  /** 소제목 (예: 지하철 → 오테마치역) */
   title: string;
+  /** 상세 내용 (예: 역에서 황거동 어원 입구로 이동) */
+  detail?: string;
   cost: number;
 }
 

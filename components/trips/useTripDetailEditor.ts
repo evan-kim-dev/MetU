@@ -18,6 +18,31 @@ function parseAmount(raw: string): number {
   return Number(raw.replace(/[^0-9]/g, "")) || 0;
 }
 
+function timeToMinutes(time: string): number {
+  const match = time.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return Number.MAX_SAFE_INTEGER;
+  return hours * 60 + minutes;
+}
+
+/** 일정 항목을 HH:MM 기준 오름차순 정렬 */
+export function sortScheduleItemsByTime<T extends { time: string }>(
+  items: T[]
+): T[] {
+  return [...items].sort(
+    (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)
+  );
+}
+
+function sortDayItemsByTime(day: TripDaySchedule): TripDaySchedule {
+  return recalcDayTotal({
+    ...day,
+    items: sortScheduleItemsByTime(day.items),
+  });
+}
+
 function recalcDayTotal(day: TripDaySchedule): TripDaySchedule {
   return {
     ...day,
@@ -182,10 +207,12 @@ export function useTripDetailEditor(tripId: string) {
   const openDayEdit = (dayIndex: number) => {
     if (!trip?.dailySchedule?.[dayIndex]) return;
     const day = trip.dailySchedule[dayIndex];
-    setDraftDay({
-      ...day,
-      items: day.items.map((item) => ({ ...item })),
-    });
+    setDraftDay(
+      sortDayItemsByTime({
+        ...day,
+        items: day.items.map((item) => ({ ...item })),
+      })
+    );
     setEditingDayIndex(dayIndex);
     setEditSection(null);
     setEditingExpenseId(null);
@@ -198,7 +225,7 @@ export function useTripDetailEditor(tripId: string) {
 
   const updateDraftItem = (
     itemIndex: number,
-    patch: Partial<{ time: string; title: string; cost: string }>
+    patch: Partial<{ time: string; title: string; detail: string; cost: string }>
   ) => {
     setDraftDay((prev) => {
       if (!prev) return prev;
@@ -208,6 +235,8 @@ export function useTripDetailEditor(tripId: string) {
           ...item,
           time: patch.time ?? item.time,
           title: patch.title ?? item.title,
+          detail:
+            patch.detail !== undefined ? patch.detail : item.detail,
           cost: patch.cost !== undefined ? parseAmount(patch.cost) : item.cost,
         };
       });
@@ -215,12 +244,20 @@ export function useTripDetailEditor(tripId: string) {
     });
   };
 
+  /** 시간 입력 완료 시 하루 일정을 시간순으로 재정렬 */
+  const sortDraftDayByTime = () => {
+    setDraftDay((prev) => (prev ? sortDayItemsByTime(prev) : prev));
+  };
+
   const addDraftItem = () => {
     setDraftDay((prev) => {
       if (!prev) return prev;
-      return recalcDayTotal({
+      return sortDayItemsByTime({
         ...prev,
-        items: [...prev.items, { time: "12:00", title: "", cost: 0 }],
+        items: [
+          ...prev.items,
+          { time: "12:00", title: "", detail: "", cost: 0 },
+        ],
       });
     });
   };
@@ -237,7 +274,7 @@ export function useTripDetailEditor(tripId: string) {
 
   const saveDayEdit = (dayIndex: number) => {
     if (!trip || !draftDay) return;
-    const cleaned = recalcDayTotal({
+    const cleaned = sortDayItemsByTime({
       ...draftDay,
       label: `Day ${draftDay.day}`,
       items: draftDay.items
@@ -245,6 +282,7 @@ export function useTripDetailEditor(tripId: string) {
           ...item,
           time: item.time.trim() || "00:00",
           title: item.title.trim(),
+          detail: item.detail?.trim() || undefined,
           cost: item.cost || 0,
         }))
         .filter((item) => item.title.length > 0),
@@ -339,6 +377,7 @@ export function useTripDetailEditor(tripId: string) {
     openDayEdit,
     cancelDayEdit,
     updateDraftItem,
+    sortDraftDayByTime,
     addDraftItem,
     removeDraftItem,
     saveDayEdit,

@@ -21,7 +21,7 @@ import {
   TripIconButton,
   TripInfoCard,
 } from "@/components/trips/TripDetailParts";
-import { useTripDetailEditor } from "@/components/trips/useTripDetailEditor";
+import { useTripDetailEditor, sortScheduleItemsByTime } from "@/components/trips/useTripDetailEditor";
 import { formatKRW } from "@/lib/shared/format";
 
 interface TripDetailContentProps {
@@ -62,6 +62,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
     openDayEdit,
     cancelDayEdit,
     updateDraftItem,
+    sortDraftDayByTime,
     addDraftItem,
     removeDraftItem,
     saveDayEdit,
@@ -298,6 +299,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                                       time: e.target.value,
                                     })
                                   }
+                                  onBlur={sortDraftDayByTime}
                                   placeholder="14:00"
                                   className="h-9 w-20 rounded-lg border border-line-muted px-2 text-xs font-semibold text-ink-caption focus:border-brand focus:outline-none"
                                 />
@@ -328,8 +330,18 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                                     title: e.target.value,
                                   })
                                 }
-                                placeholder="일정 내용"
-                                className="h-9 w-full rounded-lg border border-line-muted px-2.5 text-sm text-ink-body focus:border-brand focus:outline-none"
+                                placeholder="소제목 예: 지하철 → 오테마치역"
+                                className="h-9 w-full rounded-lg border border-line-muted px-2.5 text-sm font-semibold text-ink-heading focus:border-brand focus:outline-none"
+                              />
+                              <input
+                                value={item.detail ?? ""}
+                                onChange={(e) =>
+                                  updateDraftItem(itemIndex, {
+                                    detail: e.target.value,
+                                  })
+                                }
+                                placeholder="내용 예: 역에서 황거동 어원 입구로 이동"
+                                className="mt-2 h-9 w-full rounded-lg border border-line-muted px-2.5 text-sm text-ink-body focus:border-brand focus:outline-none"
                               />
                             </div>
                           ))}
@@ -380,7 +392,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                           </TripIconButton>
                         </div>
                         <div className="flex flex-col gap-2">
-                          {day.items.map((item) => (
+                          {sortScheduleItemsByTime(day.items).map((item) => (
                             <div
                               key={`${day.day}-${item.time}-${item.title}`}
                               className="flex items-start justify-between gap-3"
@@ -389,9 +401,14 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                                 <p className="text-xs font-semibold text-ink-caption">
                                   {item.time}
                                 </p>
-                                <p className="text-sm font-medium text-ink-body">
+                                <p className="text-sm font-bold text-ink-heading">
                                   {item.title}
                                 </p>
+                                {item.detail ? (
+                                  <p className="mt-0.5 text-sm leading-snug text-ink-body">
+                                    {item.detail}
+                                  </p>
+                                ) : null}
                               </div>
                               {item.cost > 0 ? (
                                 <span className="shrink-0 text-xs font-bold text-ink-heading">

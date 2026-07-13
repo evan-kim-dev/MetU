@@ -64,7 +64,11 @@ function buildScheduleShareText(trip: Trip): string {
   const days = trip.dailySchedule
     .map((day) => {
       const items = day.items
-        .map((item) => `· ${item.time} ${item.title}`)
+        .map((item) =>
+          item.detail
+            ? `· ${item.time} ${item.title}\n  ${item.detail}`
+            : `· ${item.time} ${item.title}`
+        )
         .join("\n");
       return `${day.label}\n${items}`;
     })

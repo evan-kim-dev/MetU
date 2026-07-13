@@ -28,10 +28,8 @@ function parsePriceKrw(value: string): number {
   return Number(value.replace(/[^0-9]/g, "")) || 0;
 }
 
-function buildEstimateQuote(plan: TripRecommendation): PlanHotelQuote | null {
-  const agodaUrl = buildAgodaHotelUrlFromPlan(plan);
-  if (!agodaUrl) return null;
-
+function buildEstimateQuote(plan: TripRecommendation): PlanHotelQuote {
+  const agodaUrl = buildAgodaHotelUrlFromPlan(plan) ?? "";
   return {
     priceKrw: plan.hotel.total,
     pricePerNight: plan.hotel.pricePerNight,
@@ -47,9 +45,8 @@ function buildEstimateQuote(plan: TripRecommendation): PlanHotelQuote | null {
 /** AI 추천 일정 기준 실시간 숙소 — 예산 밴드 안 최저가 우선. */
 export async function fetchPlanHotelQuote(
   plan: TripRecommendation
-): Promise<PlanHotelQuote | null> {
+): Promise<PlanHotelQuote> {
   const estimate = buildEstimateQuote(plan);
-  if (!estimate) return null;
 
   const destination = plan.destination || plan.form.destination;
   const nights = plan.hotel.nights || plan.nights;

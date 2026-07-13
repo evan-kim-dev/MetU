@@ -191,9 +191,14 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
                         <p className="text-xs font-semibold text-ink-caption">
                           {item.time}
                         </p>
-                        <p className="text-sm font-medium text-ink-body">
+                        <p className="text-sm font-bold text-ink-heading">
                           {item.title}
                         </p>
+                        {item.detail ? (
+                          <p className="mt-0.5 text-sm leading-snug text-ink-body">
+                            {item.detail}
+                          </p>
+                        ) : null}
                       </div>
                       {item.cost > 0 ? (
                         <span className="shrink-0 text-xs font-bold text-ink-heading">

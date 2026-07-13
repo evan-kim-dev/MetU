@@ -28,7 +28,7 @@ export interface HotelPlan {
 export interface DaySchedule {
   day: number;
   label: string;
-  items: { time: string; title: string; cost: number }[];
+  items: { time: string; title: string; detail?: string; cost: number }[];
   dayTotal: number;
 }
 

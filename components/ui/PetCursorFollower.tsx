@@ -132,7 +132,7 @@ export function PetCursorFollower() {
             width={56}
             height={56}
             draggable={false}
-            className="h-14 w-14 select-none drop-shadow-md"
+            className="h-14 w-14 select-none object-contain drop-shadow-md"
             priority
           />
           <span className="sr-only">{PET_BUDDY_LABEL[kind]} 버디</span>

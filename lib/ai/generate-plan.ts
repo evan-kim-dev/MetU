@@ -16,6 +16,7 @@ import {
 import { backendFetch } from "@/lib/backend/client";
 import { optimizeDailyScheduleRoutes } from "@/lib/route/optimize-schedule";
 import { resolveDestinationImage } from "@/lib/trips/destination-image";
+import { buildDestinationPoiSchedule } from "@/lib/ai/destination-pois";
 import type {
   BudgetAllocation,
   DaySchedule,
@@ -135,37 +136,49 @@ function buildDailySchedule(
   const { city } = parseDestination(form.destination);
   const styleSet = new Set(form.styles);
 
+  const poiSchedule = buildDestinationPoiSchedule(
+    city,
+    nights,
+    form.styles,
+    {
+      food: foodPerDay,
+      activity: activityPerDay,
+      transport: transportPerDay,
+    }
+  );
+  if (poiSchedule) return poiSchedule;
+
   const dayTemplates = [
     {
       label: "도착 & 시내 적응",
       items: [
         { time: "14:00", title: `${city} 공항 도착 · 시내 이동`, cost: transportPerDay },
         { time: "16:00", title: "숙소 체크인 & 휴식", cost: 0 },
-        { time: "18:30", title: "현지 맛집 탐방", cost: foodPerDay },
+        { time: "18:30", title: `${city} 시내 대표 맛집`, cost: foodPerDay },
       ],
     },
     {
       label: styleSet.has("sightseeing") ? "핵심 관광" : "여유로운 탐방",
       items: [
-        { time: "09:30", title: `${city} 대표 명소 투어`, cost: activityPerDay },
-        { time: "13:00", title: "로컬 레스토랑", cost: foodPerDay },
-        { time: "15:30", title: "카페 & 산책", cost: Math.round(activityPerDay * 0.3) },
+        { time: "09:30", title: `${city} 대표 명소`, cost: activityPerDay },
+        { time: "13:00", title: `${city} 로컬 레스토랑`, cost: foodPerDay },
+        { time: "15:30", title: `${city} 카페거리 산책`, cost: Math.round(activityPerDay * 0.3) },
       ],
     },
     {
       label: styleSet.has("culture") ? "문화·예술" : "로컬 체험",
       items: [
-        { time: "10:00", title: "박물관/문화 공간", cost: activityPerDay },
-        { time: "14:00", title: "시장 또는 쇼핑 거리", cost: Math.round(foodPerDay * 0.8) },
-        { time: "19:00", title: "야경 스팟", cost: transportPerDay },
+        { time: "10:00", title: `${city} 박물관`, cost: activityPerDay },
+        { time: "14:00", title: `${city} 시장`, cost: Math.round(foodPerDay * 0.8) },
+        { time: "19:00", title: `${city} 야경 스팟`, cost: transportPerDay },
       ],
     },
     {
       label: styleSet.has("healing") ? "힐링 데이" : "자유 일정",
       items: [
-        { time: "11:00", title: "스파/온천 또는 해변", cost: activityPerDay },
-        { time: "15:00", title: "브런치 카페", cost: foodPerDay },
-        { time: "17:00", title: "기념품 쇼핑", cost: Math.round(activityPerDay * 0.4) },
+        { time: "11:00", title: `${city} 공원 또는 해변`, cost: activityPerDay },
+        { time: "15:00", title: `${city} 브런치 카페`, cost: foodPerDay },
+        { time: "17:00", title: `${city} 기념품 거리`, cost: Math.round(activityPerDay * 0.4) },
       ],
     },
     {
@@ -206,7 +219,7 @@ function mergeAiSchedule(
   aiDays: Array<{
     day?: number;
     label?: string;
-    items?: Array<{ time?: string; title?: string }>;
+    items?: Array<{ time?: string; title?: string; detail?: string }>;
   }>,
   fallback: DaySchedule[],
   allocation: BudgetAllocation[],
@@ -242,10 +255,12 @@ function mergeAiSchedule(
         ? rawItems
             .map((item) => {
               const title = item.title?.trim() || "자유 시간";
+              const detail = item.detail?.trim() || undefined;
               return {
                 time: item.time?.trim() || "10:00",
                 title,
-                cost: estimateItemCost(title, budgets),
+                detail,
+                cost: estimateItemCost(`${title} ${detail ?? ""}`, budgets),
               };
             })
             .slice(0, 12)
@@ -267,7 +282,7 @@ type AiPlanPayload = {
   dailySchedule?: Array<{
     day?: number;
     label?: string;
-    items?: Array<{ time?: string; title?: string }>;
+    items?: Array<{ time?: string; title?: string; detail?: string }>;
   }>;
   tips?: string[];
 };

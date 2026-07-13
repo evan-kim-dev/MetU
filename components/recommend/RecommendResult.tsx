@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BedDouble,
   BookOpen,
   CalendarDays,
   MapPin,
+  Pencil,
   Plane,
   Sparkles,
   SquareArrowOutUpRight,
   Wallet,
+  X,
 } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
@@ -29,23 +31,37 @@ import { buildAgodaHotelUrlFromPlan } from "@/lib/hotels/agoda-url";
 import { useTrips } from "@/lib/trips/TripProvider";
 import { planToTrip } from "@/components/recommend/planToTrip";
 
-function liveQuoteCaption(
-  kind: "flight" | "hotel",
-  source: "live" | "estimate" | undefined,
-  withinBand: boolean | undefined
-): string {
+type FlightOverride = { price: number; airline: string };
+type HotelOverride = { price: number; name: string };
+
+function parseWonInput(value: string): number {
+  return Number(value.replace(/[^0-9]/g, "")) || 0;
+}
+
+function priceCaption(params: {
+  kind: "flight" | "hotel";
+  overridden: boolean;
+  source: "live" | "estimate" | undefined;
+  withinBand: boolean | undefined;
+  loading: boolean;
+  people: number;
+}): string {
+  const { kind, overridden, source, withinBand, loading, people } = params;
+  if (overridden) return "직접 입력가 · 예산 분배에 반영됨";
+  if (loading) return "시세 조회 중…";
   if (kind === "flight") {
-    if (source !== "live") return "예상가 · Google Flights에서 확인";
-    if (withinBand === false) {
-      return "Google Flights 실시간 최저가 · 예산 밴드(45%) 초과";
+    if (source === "live") {
+      const band =
+        withinBand === false ? " · 예산 밴드(45%) 초과" : "";
+      return `Google Flights 실시간 최저가${band} · ${people}인 합계`;
     }
-    return "Google Flights 실시간 최저가";
+    return "예상가 · 시세 조회 실패 · Google Flights에서 확인";
   }
-  if (source !== "live") return "예상가 · Agoda에서 검색";
-  if (withinBand === false) {
-    return "실시간 최저가 · 예산 밴드(40%) 초과";
+  if (source === "live") {
+    const band = withinBand === false ? " · 예산 밴드(40%) 초과" : "";
+    return `실시간 최저가${band} · ${people}인 기준`;
   }
-  return "실시간 최저가 · 예산 밴드 내";
+  return "예상가 · 시세 조회 실패 · Agoda에서 확인";
 }
 
 const EASTER_CELEB_PREFIX = "metu:easter-celeb:v2:";
@@ -84,12 +100,25 @@ export function RecommendResult({
   const { addTrip } = useTrips();
   const [plan, setPlan] = useState(initialPlan);
   const [enriching, setEnriching] = useState(enrich);
+  const [routeOptimizing, setRouteOptimizing] = useState(false);
+  const routeOptimizeAttemptedRef = useRef<Set<string>>(new Set());
   const {
     flightQuote,
     hotelQuote,
     flightQuoteLoading,
     hotelQuoteLoading,
   } = usePlanQuotes(plan);
+
+  const [flightOverride, setFlightOverride] = useState<FlightOverride | null>(
+    null
+  );
+  const [hotelOverride, setHotelOverride] = useState<HotelOverride | null>(null);
+  const [editingFlight, setEditingFlight] = useState(false);
+  const [editingHotel, setEditingHotel] = useState(false);
+  const [flightDraftPrice, setFlightDraftPrice] = useState("");
+  const [flightDraftAirline, setFlightDraftAirline] = useState("");
+  const [hotelDraftPrice, setHotelDraftPrice] = useState("");
+  const [hotelDraftName, setHotelDraftName] = useState("");
 
   const isUnrealistic = plan.summaryTone === "factbomb";
   const isEasterEgg = planHasEasterEgg(plan);
@@ -103,6 +132,11 @@ export function RecommendResult({
   useEffect(() => {
     setPlan(initialPlan);
     setEnriching(enrich && initialPlan.summaryTone !== "factbomb");
+    routeOptimizeAttemptedRef.current.clear();
+    setFlightOverride(null);
+    setHotelOverride(null);
+    setEditingFlight(false);
+    setEditingHotel(false);
   }, [initialPlan.id, enrich]); // eslint-disable-line react-hooks/exhaustive-deps -- 새 폴백만 동기화
 
   useEffect(() => {
@@ -152,32 +186,110 @@ export function RecommendResult({
     };
   }, [enrich, initialPlan.id]); // eslint-disable-line react-hooks/exhaustive-deps -- 동일 일정 1회 보강
 
+  // 동선 GA: enrich 전·후에도 실명 POI 기준 재최적화 (동일 일정은 1회만)
+  useEffect(() => {
+    if (isUnrealistic) return;
+    if (plan.routeOptimization?.applied) return;
+
+    const fingerprint = plan.dailySchedule
+      .map((d) => `${d.day}:${d.items.map((i) => i.title).join("|")}`)
+      .join("||");
+    const key = `${plan.id}::${fingerprint}`;
+    if (routeOptimizeAttemptedRef.current.has(key)) return;
+    routeOptimizeAttemptedRef.current.add(key);
+
+    let cancelled = false;
+    setRouteOptimizing(true);
+
+    void fetch("/api/route/optimize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dailySchedule: plan.dailySchedule,
+        destination: plan.destination,
+        country: plan.country,
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("route-optimize-failed");
+        return (await res.json()) as {
+          dailySchedule?: TripRecommendation["dailySchedule"];
+          routeOptimization?: TripRecommendation["routeOptimization"];
+        };
+      })
+      .then((data) => {
+        if (cancelled || !data.dailySchedule) return;
+        setPlan((prev) => ({
+          ...prev,
+          dailySchedule: data.dailySchedule!,
+          routeOptimization: data.routeOptimization ?? prev.routeOptimization,
+          tips:
+            data.routeOptimization?.applied &&
+            !prev.tips.some((t) => t.includes("유전 알고리즘"))
+              ? [
+                  "유전 알고리즘으로 하루 동선을 재배치해 이동을 줄였어요.",
+                  ...prev.tips,
+                ].slice(0, 10)
+              : prev.tips,
+        }));
+      })
+      .catch(() => {
+        // 최적화 실패 시 기존 일정 유지
+      })
+      .finally(() => {
+        if (!cancelled) setRouteOptimizing(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isUnrealistic,
+    plan.id,
+    plan.destination,
+    plan.country,
+    plan.dailySchedule,
+    plan.routeOptimization?.applied,
+  ]);
+
   const flightBookingUrl =
     flightQuote?.googleFlightsUrl ??
     buildGoogleFlightsUrlFromPlan(plan) ??
     undefined;
   const agodaHotelUrl =
-    hotelQuote?.agodaUrl ?? buildAgodaHotelUrlFromPlan(plan) ?? undefined;
-  const flightPrice = flightQuote?.priceKrw ?? plan.flight.price;
-  const flightAirline = flightQuote?.airline ?? plan.flight.airline;
+    (hotelQuote?.agodaUrl ? hotelQuote.agodaUrl : null) ??
+    buildAgodaHotelUrlFromPlan(plan) ??
+    undefined;
+
+  const baseFlightPrice = flightQuote?.priceKrw ?? plan.flight.price;
+  const baseFlightAirline = flightQuote?.airline ?? plan.flight.airline;
+  const baseHotelPrice = hotelQuote?.priceKrw ?? plan.hotel.total;
+  const baseHotelName = hotelQuote?.name ?? plan.hotel.name;
+
+  const flightPrice = flightOverride?.price ?? baseFlightPrice;
+  const flightAirline = flightOverride?.airline ?? baseFlightAirline;
   const flightRoute = flightQuote?.route ?? plan.flight.route;
   const flightSchedule = flightQuote?.schedule ?? plan.flight.schedule;
-  const hotelName = hotelQuote?.name ?? plan.hotel.name;
+  const hotelName = hotelOverride?.name ?? baseHotelName;
   const hotelArea = hotelQuote?.area ?? plan.hotel.area;
-  const hotelNightsLabel =
-    hotelQuote?.nightsLabel ??
-    `${plan.hotel.nights}박 · 1박 ${formatKRW(plan.hotel.pricePerNight)}`;
-  const hotelPrice = hotelQuote?.priceKrw ?? plan.hotel.total;
+  const hotelPrice = hotelOverride?.price ?? baseHotelPrice;
+  const hotelNights = plan.hotel.nights || plan.nights;
+  const hotelPricePerNight = Math.round(
+    hotelPrice / Math.max(1, hotelNights)
+  );
+  const hotelNightsLabel = `${hotelNights}박 · 1박 ${formatKRW(hotelPricePerNight)}`;
 
   const liveBudget = useMemo(() => {
+    const hasOverride = Boolean(flightOverride || hotelOverride);
     const hasLive =
       flightQuote?.source === "live" || hotelQuote?.source === "live";
-    if (!hasLive) {
+    if (!hasOverride && !hasLive) {
       return {
         items: plan.budgetAllocation,
         remaining: plan.totalBudget - plan.flight.price - plan.hotel.total,
         overBudget: false,
         adjusted: false,
+        mode: "none" as const,
       };
     }
     const result = reallocateBudgetWithLiveQuotes(
@@ -186,7 +298,11 @@ export function RecommendResult({
       flightPrice,
       hotelPrice
     );
-    return { ...result, adjusted: true };
+    return {
+      ...result,
+      adjusted: true,
+      mode: hasOverride ? ("override" as const) : ("live" as const),
+    };
   }, [
     plan.budgetAllocation,
     plan.totalBudget,
@@ -194,11 +310,55 @@ export function RecommendResult({
     plan.hotel.total,
     flightQuote?.source,
     hotelQuote?.source,
+    flightOverride,
+    hotelOverride,
     flightPrice,
     hotelPrice,
   ]);
 
+  const openFlightEdit = () => {
+    setFlightDraftPrice(String(flightPrice));
+    setFlightDraftAirline(flightAirline);
+    setEditingFlight(true);
+  };
+
+  const applyFlightEdit = () => {
+    const price = parseWonInput(flightDraftPrice);
+    const airline = flightDraftAirline.trim() || baseFlightAirline;
+    if (price <= 0) return;
+    setFlightOverride({ price, airline });
+    setEditingFlight(false);
+  };
+
+  const clearFlightOverride = () => {
+    setFlightOverride(null);
+    setEditingFlight(false);
+  };
+
+  const openHotelEdit = () => {
+    setHotelDraftPrice(String(hotelPrice));
+    setHotelDraftName(hotelName);
+    setEditingHotel(true);
+  };
+
+  const applyHotelEdit = () => {
+    const price = parseWonInput(hotelDraftPrice);
+    const name = hotelDraftName.trim() || baseHotelName;
+    if (price <= 0) return;
+    setHotelOverride({ price, name });
+    setEditingHotel(false);
+  };
+
+  const clearHotelOverride = () => {
+    setHotelOverride(null);
+    setEditingHotel(false);
+  };
+
+  const budgetExceeded =
+    liveBudget.overBudget || flightPrice + hotelPrice > plan.totalBudget;
+
   const handleSave = async () => {
+    if (budgetExceeded) return;
     const trip = planToTrip(
       plan,
       flightPrice,
@@ -318,21 +478,24 @@ export function RecommendResult({
             <h3 className="text-lg font-extrabold text-ink-heading">예산 분배</h3>
             {liveBudget.adjusted ? (
               <span className="ml-auto rounded-full bg-brand/10 px-2.5 py-1 text-2xs font-bold text-brand">
-                실시간가 반영
+                {liveBudget.mode === "override"
+                  ? "직접 입력가 반영"
+                  : "실시간가 반영"}
               </span>
             ) : null}
           </div>
           {liveBudget.overBudget ? (
             <p className="mb-3 rounded-xl2 border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
-              항공·숙소 실시간가만으로 이미 총예산을{" "}
+              항공·숙소 금액만으로 이미 총예산을{" "}
               {formatKRW(Math.abs(liveBudget.remaining))} 초과해요. 날짜·인원·목적지를
               조정하거나 예산을 올려 보세요.
             </p>
           ) : liveBudget.adjusted ? (
             <p className="mb-3 text-xs leading-relaxed text-ink-caption">
-              항공·숙소는 실시간 시세로 고정하고, 남은{" "}
-              {formatKRW(Math.max(0, liveBudget.remaining))}을 식비·교통·관광에
-              다시 나눴어요.
+              항공·숙소는{" "}
+              {liveBudget.mode === "override" ? "직접 입력가" : "실시간 시세"}로
+              고정하고, 남은 {formatKRW(Math.max(0, liveBudget.remaining))}을
+              식비·교통·관광에 다시 나눴어요.
             </p>
           ) : null}
           <BudgetDonutChart
@@ -353,57 +516,136 @@ export function RecommendResult({
               <Plane className="h-5 w-5 text-brand" />
               <h3 className="text-lg font-extrabold text-ink-heading">항공권</h3>
             </div>
-            {flightBookingUrl ? (
-              <a
-                href={flightBookingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Google Flights 항공권 검색 바로가기"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={editingFlight ? () => setEditingFlight(false) : openFlightEdit}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                aria-label={editingFlight ? "항공 수정 닫기" : "항공 가격 수정"}
               >
-                <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
-              </a>
-            ) : (
-              <Link
-                href="/checklist/flight"
-                aria-label="항공권 검색 바로가기"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
-              >
-                <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
-              </Link>
-            )}
-          </div>
-          <p className="font-bold text-ink-heading">{flightAirline}</p>
-          <p className="mt-1 text-sm text-ink-body">{flightRoute}</p>
-          <p className="text-sm text-ink-caption">{flightSchedule}</p>
-          {flightBookingUrl ? (
-            <a
-              href={flightBookingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 block rounded-lg transition-colors hover:bg-surface-soft active:bg-surface-base"
-            >
-              {flightQuoteLoading ? (
-                <div className="h-7 w-28 animate-pulse rounded-md bg-surface-soft" />
-              ) : (
-                <p className="text-lg font-extrabold text-brand">
-                  {formatKRW(flightPrice)}
-                </p>
-              )}
-              <p className="mt-1 text-xs text-ink-caption">
-                {liveQuoteCaption(
-                  "flight",
-                  flightQuote?.source,
-                  flightQuote?.withinBand
+                {editingFlight ? (
+                  <X className="h-4 w-4" strokeWidth={2.2} />
+                ) : (
+                  <Pencil className="h-4 w-4" strokeWidth={2.2} />
                 )}
-              </p>
-            </a>
+              </button>
+              {flightBookingUrl ? (
+                <a
+                  href={flightBookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Google Flights 항공권 검색 바로가기"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                >
+                  <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
+                </a>
+              ) : (
+                <Link
+                  href="/checklist/flight"
+                  aria-label="항공권 검색 바로가기"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                >
+                  <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {editingFlight ? (
+            <div className="space-y-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-ink-caption">항공사</span>
+                <input
+                  value={flightDraftAirline}
+                  onChange={(e) => setFlightDraftAirline(e.target.value)}
+                  className="w-full rounded-lg border border-line-soft bg-surface-white px-3 py-2.5 text-sm text-ink-body focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10"
+                  placeholder="예: 제주항공"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-ink-caption">
+                  총 항공비 (원, {plan.people}인 합계)
+                </span>
+                <input
+                  inputMode="numeric"
+                  value={flightDraftPrice}
+                  onChange={(e) => setFlightDraftPrice(e.target.value.replace(/[^0-9]/g, ""))}
+                  className="w-full rounded-lg border border-line-soft bg-surface-white px-3 py-2.5 text-sm text-ink-body focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10"
+                  placeholder="예: 580000"
+                />
+              </label>
+              <div className="flex gap-2">
+                <PrimaryButton className="flex-1" onClick={applyFlightEdit}>
+                  적용
+                </PrimaryButton>
+                {flightOverride ? (
+                  <PrimaryButton
+                    className="flex-1"
+                    variant="secondary"
+                    onClick={clearFlightOverride}
+                  >
+                    원래 가격
+                  </PrimaryButton>
+                ) : null}
+              </div>
+            </div>
           ) : (
-            <p className="mt-2 text-lg font-extrabold text-brand">
-              {formatKRW(flightPrice)}
-            </p>
+            <>
+              <p className="font-bold text-ink-heading">{flightAirline}</p>
+              <p className="mt-1 text-sm text-ink-body">{flightRoute}</p>
+              <p className="text-sm text-ink-caption">{flightSchedule}</p>
+              {flightBookingUrl ? (
+                <a
+                  href={flightBookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 block rounded-lg transition-colors hover:bg-surface-soft active:bg-surface-base"
+                >
+                  {flightQuoteLoading && !flightOverride ? (
+                    <div className="h-7 w-28 animate-pulse rounded-md bg-surface-soft" />
+                  ) : (
+                    <p className="text-lg font-extrabold text-brand">
+                      {formatKRW(flightPrice)}
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-ink-caption">
+                    {priceCaption({
+                      kind: "flight",
+                      overridden: Boolean(flightOverride),
+                      source: flightQuote?.source,
+                      withinBand: flightQuote?.withinBand,
+                      loading: flightQuoteLoading,
+                      people: plan.people,
+                    })}
+                  </p>
+                </a>
+              ) : (
+                <>
+                  <p className="mt-2 text-lg font-extrabold text-brand">
+                    {formatKRW(flightPrice)}
+                  </p>
+                  <p className="mt-1 text-xs text-ink-caption">
+                    {priceCaption({
+                      kind: "flight",
+                      overridden: Boolean(flightOverride),
+                      source: flightQuote?.source,
+                      withinBand: flightQuote?.withinBand,
+                      loading: flightQuoteLoading,
+                      people: plan.people,
+                    })}
+                  </p>
+                </>
+              )}
+              <p className="mt-1 text-xs text-ink-caption">{plan.flight.note}</p>
+              <button
+                type="button"
+                onClick={openFlightEdit}
+                className="mt-3 text-xs font-bold text-brand"
+              >
+                가격이 이상하면 직접 수정
+              </button>
+            </>
           )}
-          <p className="mt-1 text-xs text-ink-caption">{plan.flight.note}</p>
         </section>
 
         <section
@@ -417,69 +659,148 @@ export function RecommendResult({
               <BedDouble className="h-5 w-5 text-brand" />
               <h3 className="text-lg font-extrabold text-ink-heading">숙소</h3>
             </div>
-            {agodaHotelUrl ? (
-              <a
-                href={agodaHotelUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Agoda 숙소 검색 바로가기"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={editingHotel ? () => setEditingHotel(false) : openHotelEdit}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                aria-label={editingHotel ? "숙소 수정 닫기" : "숙소 가격 수정"}
               >
-                <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
-              </a>
-            ) : (
-              <Link
-                href="/checklist/hotel"
-                aria-label="숙소 검색 바로가기"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
-              >
-                <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
-              </Link>
-            )}
-          </div>
-          <p className="font-bold text-ink-heading">{hotelName}</p>
-          <div className="mt-1 flex items-center gap-1 text-sm text-ink-caption">
-            <MapPin className="h-3.5 w-3.5" />
-            {hotelArea}
-          </div>
-          <p className="mt-2 text-sm text-ink-body">{hotelNightsLabel}</p>
-          {agodaHotelUrl ? (
-            <a
-              href={agodaHotelUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 block rounded-lg transition-colors hover:bg-surface-soft active:bg-surface-base"
-            >
-              {hotelQuoteLoading ? (
-                <div className="h-7 w-28 animate-pulse rounded-md bg-surface-soft" />
-              ) : (
-                <p className="text-lg font-extrabold text-brand">
-                  {formatKRW(hotelPrice)}
-                </p>
-              )}
-              <p className="mt-1 text-xs text-ink-caption">
-                {liveQuoteCaption(
-                  "hotel",
-                  hotelQuote?.source,
-                  hotelQuote?.withinBand
+                {editingHotel ? (
+                  <X className="h-4 w-4" strokeWidth={2.2} />
+                ) : (
+                  <Pencil className="h-4 w-4" strokeWidth={2.2} />
                 )}
-              </p>
-            </a>
+              </button>
+              {agodaHotelUrl ? (
+                <a
+                  href={agodaHotelUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Agoda 숙소 검색 바로가기"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                >
+                  <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
+                </a>
+              ) : (
+                <Link
+                  href="/checklist/hotel"
+                  aria-label="숙소 검색 바로가기"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                >
+                  <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {editingHotel ? (
+            <div className="space-y-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-ink-caption">숙소명</span>
+                <input
+                  value={hotelDraftName}
+                  onChange={(e) => setHotelDraftName(e.target.value)}
+                  className="w-full rounded-lg border border-line-soft bg-surface-white px-3 py-2.5 text-sm text-ink-body focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10"
+                  placeholder="예: Marina Bay 호텔"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-ink-caption">
+                  숙소 총액 (원, {hotelNights}박)
+                </span>
+                <input
+                  inputMode="numeric"
+                  value={hotelDraftPrice}
+                  onChange={(e) => setHotelDraftPrice(e.target.value.replace(/[^0-9]/g, ""))}
+                  className="w-full rounded-lg border border-line-soft bg-surface-white px-3 py-2.5 text-sm text-ink-body focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10"
+                  placeholder="예: 720000"
+                />
+              </label>
+              <div className="flex gap-2">
+                <PrimaryButton className="flex-1" onClick={applyHotelEdit}>
+                  적용
+                </PrimaryButton>
+                {hotelOverride ? (
+                  <PrimaryButton
+                    className="flex-1"
+                    variant="secondary"
+                    onClick={clearHotelOverride}
+                  >
+                    원래 가격
+                  </PrimaryButton>
+                ) : null}
+              </div>
+            </div>
           ) : (
-            <p className="mt-1 text-lg font-extrabold text-brand">
-              {formatKRW(hotelPrice)}
-            </p>
+            <>
+              <p className="font-bold text-ink-heading">{hotelName}</p>
+              <div className="mt-1 flex items-center gap-1 text-sm text-ink-caption">
+                <MapPin className="h-3.5 w-3.5" />
+                {hotelArea}
+              </div>
+              <p className="mt-2 text-sm text-ink-body">{hotelNightsLabel}</p>
+              {agodaHotelUrl ? (
+                <a
+                  href={agodaHotelUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 block rounded-lg transition-colors hover:bg-surface-soft active:bg-surface-base"
+                >
+                  {hotelQuoteLoading && !hotelOverride ? (
+                    <div className="h-7 w-28 animate-pulse rounded-md bg-surface-soft" />
+                  ) : (
+                    <p className="text-lg font-extrabold text-brand">
+                      {formatKRW(hotelPrice)}
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-ink-caption">
+                    {priceCaption({
+                      kind: "hotel",
+                      overridden: Boolean(hotelOverride),
+                      source: hotelQuote?.source,
+                      withinBand: hotelQuote?.withinBand,
+                      loading: hotelQuoteLoading,
+                      people: plan.people,
+                    })}
+                  </p>
+                </a>
+              ) : (
+                <>
+                  <p className="mt-1 text-lg font-extrabold text-brand">
+                    {formatKRW(hotelPrice)}
+                  </p>
+                  <p className="mt-1 text-xs text-ink-caption">
+                    {priceCaption({
+                      kind: "hotel",
+                      overridden: Boolean(hotelOverride),
+                      source: hotelQuote?.source,
+                      withinBand: hotelQuote?.withinBand,
+                      loading: hotelQuoteLoading,
+                      people: plan.people,
+                    })}
+                  </p>
+                </>
+              )}
+              <p className="mt-1 text-xs text-ink-caption">{plan.hotel.note}</p>
+              <button
+                type="button"
+                onClick={openHotelEdit}
+                className="mt-3 text-xs font-bold text-brand"
+              >
+                가격이 이상하면 직접 수정
+              </button>
+            </>
           )}
-          <p className="mt-1 text-xs text-ink-caption">{plan.hotel.note}</p>
         </section>
 
         <section className="rounded-xl2 bg-surface-white p-6 shadow-soft">
           <div className="mb-4 flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-brand" />
             <h3 className="text-lg font-extrabold text-ink-heading">일정표</h3>
-            {enriching ? (
+            {enriching || routeOptimizing ? (
               <span className="ml-auto text-xs font-semibold text-brand">
-                다듬는 중
+                {enriching ? "AI 다듬는 중" : "동선 최적화 중"}
               </span>
             ) : plan.routeOptimization?.applied ? (
               <span className="ml-auto rounded-full bg-brand/10 px-2.5 py-1 text-2xs font-bold text-brand">
@@ -524,9 +845,14 @@ export function RecommendResult({
                         <p className="text-xs font-semibold text-ink-caption">
                           {item.time}
                         </p>
-                        <p className="text-sm font-medium text-ink-body">
+                        <p className="text-sm font-bold text-ink-heading">
                           {item.title}
                         </p>
+                        {item.detail ? (
+                          <p className="mt-0.5 text-sm leading-snug text-ink-body">
+                            {item.detail}
+                          </p>
+                        ) : null}
                       </div>
                       {item.cost > 0 && (
                         <span className="shrink-0 text-xs font-bold text-ink-heading">
@@ -547,7 +873,7 @@ export function RecommendResult({
         )}
 
         <div className="flex flex-col gap-3">
-          {!isUnrealistic ? (
+          {!isUnrealistic && !budgetExceeded ? (
             <PrimaryButton onClick={handleSave}>이 일정 저장하기</PrimaryButton>
           ) : null}
           <PrimaryButton variant="secondary" onClick={() => router.push("/")}>
