@@ -45,7 +45,7 @@ async def search_google_flights_route(
     ),
     sort_by: str = Query(
         default="best",
-        pattern="^(best|price_high|fastest)$",
+        pattern="^(best|price|price_high|fastest)$",
     ),
     limit: int = Query(default=8, ge=1, le=20),
 ) -> Any:

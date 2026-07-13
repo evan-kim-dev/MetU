@@ -162,6 +162,8 @@ def _search_sync(
         flights.sort(key=lambda item: _parse_duration_minutes(item.duration))
     elif sort_by == "price_high":
         flights.sort(key=lambda item: _parse_price_value(item.price), reverse=True)
+    elif sort_by == "price":
+        flights.sort(key=lambda item: _parse_price_value(item.price))
     else:
         flights.sort(
             key=lambda item: (

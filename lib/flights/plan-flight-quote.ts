@@ -1,9 +1,16 @@
 import type { TripRecommendation } from "@/lib/ai/types";
 import {
-  buildAgodaFlightSearchUrl,
+  flightBudgetCap,
+  pickCheapestInBand,
+} from "@/lib/ai/realloc-budget";
+import {
   resolveIataCode,
   resolveTripFlightDates,
 } from "@/lib/flights/agoda-url";
+import {
+  buildGoogleFlightsSearchUrl,
+  buildGoogleFlightsUrlFromPlan,
+} from "@/lib/flights/google-flights-url";
 
 export interface PlanFlightQuote {
   priceKrw: number;
@@ -11,8 +18,12 @@ export interface PlanFlightQuote {
   airline: string;
   route: string;
   schedule: string;
-  agodaUrl: string;
+  /** Google Flights 검색 링크 */
+  googleFlightsUrl: string;
   source: "live" | "estimate";
+  /** live일 때 총예산 밴드(45%) 이내 여부 */
+  withinBand?: boolean;
+  budgetCap?: number;
 }
 
 type FlightSearchItem = {
@@ -21,6 +32,7 @@ type FlightSearchItem = {
   outbound: string;
   inbound: string;
   route: string;
+  bookingUrl?: string;
 };
 
 function parsePriceKrw(value: string): number {
@@ -36,26 +48,21 @@ function formatSchedule(outbound: string, inbound: string): string {
   return `가는 편 ${extractTimeLabel(outbound)} · 오는 편 ${extractTimeLabel(inbound)}`;
 }
 
-function inferCabinType(totalBudget: number): "Economy" | "PremiumEconomy" | "Business" | "First" {
-  if (totalBudget >= 8_000_000) return "Business";
-  if (totalBudget >= 4_000_000) return "PremiumEconomy";
-  return "Economy";
-}
-
 function buildEstimateQuote(plan: TripRecommendation): PlanFlightQuote | null {
   const originCode = resolveIataCode(plan.form.origin || plan.origin);
   const destCode = resolveIataCode(plan.form.destination || plan.destination);
   if (!originCode || !destCode) return null;
 
   const { departDate, returnDate } = resolveTripFlightDates(plan.form, plan.nights);
-  const agodaUrl = buildAgodaFlightSearchUrl({
-    departureFrom: originCode,
-    arrivalTo: destCode,
-    departDate,
-    returnDate,
-    adults: plan.people,
-    cabinType: inferCabinType(plan.totalBudget),
-  });
+  const googleFlightsUrl =
+    buildGoogleFlightsUrlFromPlan(plan) ??
+    buildGoogleFlightsSearchUrl({
+      origin: originCode,
+      destination: destCode,
+      departDate,
+      returnDate,
+      adults: plan.people,
+    });
 
   return {
     priceKrw: plan.flight.price,
@@ -63,29 +70,13 @@ function buildEstimateQuote(plan: TripRecommendation): PlanFlightQuote | null {
     airline: plan.flight.airline,
     route: plan.flight.route,
     schedule: plan.flight.schedule,
-    agodaUrl,
+    googleFlightsUrl,
     source: "estimate",
+    budgetCap: flightBudgetCap(plan.totalBudget),
   };
 }
 
-function pickBestFlight(
-  flights: FlightSearchItem[],
-  targetPrice: number
-): FlightSearchItem | null {
-  if (flights.length === 0) return null;
-
-  return flights.reduce<FlightSearchItem>((best, flight) => {
-    const price = parsePriceKrw(flight.price);
-    const bestPrice = parsePriceKrw(best.price);
-    const priceGap = Math.abs(price - targetPrice);
-    const bestGap = Math.abs(bestPrice - targetPrice);
-    if (priceGap < bestGap) return flight;
-    if (priceGap === bestGap && price < bestPrice) return flight;
-    return best;
-  }, flights[0]);
-}
-
-/** AI 추천 일정 기준 실시간 항공 최저가를 조회한다. */
+/** Google Flights 실시간 최저가. 실패 시에만 예산 배분 예상가. */
 export async function fetchPlanFlightQuote(
   plan: TripRecommendation
 ): Promise<PlanFlightQuote | null> {
@@ -97,6 +88,7 @@ export async function fetchPlanFlightQuote(
   if (!originCode || !destCode) return estimate;
 
   const { departDate, returnDate } = resolveTripFlightDates(plan.form, plan.nights);
+  const cap = flightBudgetCap(plan.totalBudget);
   const qs = new URLSearchParams({
     origin: originCode,
     destination: destCode,
@@ -111,22 +103,34 @@ export async function fetchPlanFlightQuote(
     const res = await fetch(`/api/flights/search?${qs.toString()}`);
     if (!res.ok) return estimate;
 
-    const data = (await res.json()) as { flights?: FlightSearchItem[] };
+    const data = (await res.json()) as {
+      flights?: FlightSearchItem[];
+      bookingUrl?: string;
+    };
     const flights = data.flights ?? [];
-    const best = pickBestFlight(flights, plan.flight.price);
-    if (!best) return estimate;
 
-    const priceKrw = parsePriceKrw(best.price);
-    if (priceKrw <= 0) return estimate;
+    const picked = pickCheapestInBand(
+      flights,
+      (f) => parsePriceKrw(f.price),
+      Number.POSITIVE_INFINITY
+    );
+    if (!picked) return estimate;
+
+    const googleFlightsUrl =
+      data.bookingUrl ||
+      picked.item.bookingUrl ||
+      estimate.googleFlightsUrl;
 
     return {
-      priceKrw,
-      priceLabel: best.price,
-      airline: best.carrier,
-      route: best.route,
-      schedule: formatSchedule(best.outbound, best.inbound),
-      agodaUrl: estimate.agodaUrl,
+      priceKrw: picked.price,
+      priceLabel: picked.item.price,
+      airline: picked.item.carrier,
+      route: picked.item.route,
+      schedule: formatSchedule(picked.item.outbound, picked.item.inbound),
+      googleFlightsUrl,
       source: "live",
+      withinBand: picked.price <= cap,
+      budgetCap: cap,
     };
   } catch {
     return estimate;

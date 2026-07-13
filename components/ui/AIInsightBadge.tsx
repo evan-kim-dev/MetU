@@ -1,6 +1,6 @@
 interface AIInsightBadgeProps {
   children: React.ReactNode;
-  variant?: "insight" | "factbomb";
+  variant?: "insight" | "factbomb" | "easter";
   /** true면 본문 대신 로딩 애니메이션만 표시 */
   loading?: boolean;
 }
@@ -15,14 +15,18 @@ export function AIInsightBadge({
   loading = false,
 }: AIInsightBadgeProps) {
   const isFactBomb = variant === "factbomb";
+  const isEaster = variant === "easter";
+  const isSpecial = isFactBomb || isEaster;
 
   return (
     <div
       className={[
         "flex w-full items-start gap-2.5 rounded-xl2 px-4 py-3 backdrop-blur-sm",
-        isFactBomb
-          ? "border border-amber-300/80 bg-gradient-to-br from-amber-50 via-surface-white to-orange-50"
-          : "border border-brand/15 bg-gradient-to-br from-brand/6 via-surface-soft to-brand-soft/8",
+        isEaster
+          ? "border border-amber-300/90 bg-gradient-to-br from-amber-50 via-orange-50/80 to-surface-white"
+          : isFactBomb
+            ? "border border-amber-300/80 bg-gradient-to-br from-amber-50 via-surface-white to-orange-50"
+            : "border border-brand/15 bg-gradient-to-br from-brand/6 via-surface-soft to-brand-soft/8",
       ].join(" ")}
       role={loading ? "status" : undefined}
       aria-live={loading ? "polite" : undefined}
@@ -31,15 +35,15 @@ export function AIInsightBadge({
       <span
         className={[
           "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
-          isFactBomb ? "bg-amber-500" : "ai-gradient-bg",
+          isSpecial ? "bg-amber-500" : "ai-gradient-bg",
           loading ? "motion-safe:animate-pulse" : "",
         ].join(" ")}
         aria-hidden
       />
       <div className="min-w-0 flex-1">
-        {isFactBomb && !loading ? (
+        {isSpecial && !loading ? (
           <p className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-amber-700">
-            AI 팩트폭격
+            {isEaster ? "이스터 에그 발견" : "AI 팩트폭격"}
           </p>
         ) : null}
 
@@ -65,7 +69,7 @@ export function AIInsightBadge({
           <p
             className={[
               "whitespace-pre-wrap break-words text-sm font-medium leading-relaxed",
-              isFactBomb ? "text-ink-heading" : "text-brand-strong",
+              isSpecial ? "text-ink-heading" : "text-brand-strong",
             ].join(" ")}
           >
             {children}

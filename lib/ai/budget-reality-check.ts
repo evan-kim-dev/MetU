@@ -113,6 +113,27 @@ function matchEasterEggDestination(
   return null;
 }
 
+/** 온보딩/추천 결과에서 이스터 에그 목적지 여부 */
+export function isEasterEggDestination(
+  destination: string,
+  country = ""
+): boolean {
+  return matchEasterEggDestination(destination, country) !== null;
+}
+
+/** plan.destination 또는 사용자가 입력한 form.destination 기준 */
+export function planHasEasterEgg(plan: {
+  destination: string;
+  country?: string;
+  form?: { destination?: string };
+}): boolean {
+  if (isEasterEggDestination(plan.destination, plan.country ?? "")) {
+    return true;
+  }
+  const typed = plan.form?.destination?.trim();
+  return Boolean(typed && isEasterEggDestination(typed, ""));
+}
+
 const ASIA_NEAR_KEYWORDS = [
   "도쿄",
   "오사카",

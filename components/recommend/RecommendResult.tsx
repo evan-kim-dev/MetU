@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BedDouble,
   BookOpen,
@@ -17,14 +17,58 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { DestinationImage } from "@/components/ui/DestinationImage";
 import { AIInsightBadge } from "@/components/ui/AIInsightBadge";
+import { EasterEggCelebration } from "@/components/ui/EasterEggCelebration";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
 import { usePlanQuotes } from "@/components/recommend/usePlanQuotes";
 import { formatKRW } from "@/lib/shared/format";
+import { planHasEasterEgg } from "@/lib/ai/budget-reality-check";
+import { reallocateBudgetWithLiveQuotes } from "@/lib/ai/realloc-budget";
 import type { TripRecommendation } from "@/lib/ai/types";
-import { buildAgodaUrlFromPlan } from "@/lib/flights/agoda-url";
+import { buildGoogleFlightsUrlFromPlan } from "@/lib/flights/google-flights-url";
 import { buildAgodaHotelUrlFromPlan } from "@/lib/hotels/agoda-url";
 import { useTrips } from "@/lib/trips/TripProvider";
 import { planToTrip } from "@/components/recommend/planToTrip";
+
+function liveQuoteCaption(
+  kind: "flight" | "hotel",
+  source: "live" | "estimate" | undefined,
+  withinBand: boolean | undefined
+): string {
+  if (kind === "flight") {
+    if (source !== "live") return "예상가 · Google Flights에서 확인";
+    if (withinBand === false) {
+      return "Google Flights 실시간 최저가 · 예산 밴드(45%) 초과";
+    }
+    return "Google Flights 실시간 최저가";
+  }
+  if (source !== "live") return "예상가 · Agoda에서 검색";
+  if (withinBand === false) {
+    return "실시간 최저가 · 예산 밴드(40%) 초과";
+  }
+  return "실시간 최저가 · 예산 밴드 내";
+}
+
+const EASTER_CELEB_PREFIX = "metu:easter-celeb:v2:";
+
+function easterCelebKey(destination: string) {
+  return `${EASTER_CELEB_PREFIX}${destination.trim().toLowerCase()}`;
+}
+
+function wasEasterCelebrated(destination: string): boolean {
+  try {
+    return sessionStorage.getItem(easterCelebKey(destination)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markEasterCelebrated(destination: string) {
+  try {
+    sessionStorage.setItem(easterCelebKey(destination), "1");
+  } catch {
+    // ignore
+  }
+}
 
 interface RecommendResultProps {
   plan: TripRecommendation;
@@ -48,11 +92,31 @@ export function RecommendResult({
   } = usePlanQuotes(plan);
 
   const isUnrealistic = plan.summaryTone === "factbomb";
+  const isEasterEgg = planHasEasterEgg(plan);
+  const [showEasterCelebration, setShowEasterCelebration] = useState(false);
+
+  const closeEasterCelebration = useCallback(() => {
+    setShowEasterCelebration(false);
+    markEasterCelebrated(initialPlan.destination || initialPlan.form.destination);
+  }, [initialPlan.destination, initialPlan.form.destination]);
 
   useEffect(() => {
     setPlan(initialPlan);
     setEnriching(enrich && initialPlan.summaryTone !== "factbomb");
   }, [initialPlan.id, enrich]); // eslint-disable-line react-hooks/exhaustive-deps -- 새 폴백만 동기화
+
+  useEffect(() => {
+    if (!planHasEasterEgg(initialPlan)) {
+      setShowEasterCelebration(false);
+      return;
+    }
+    // sessionStorage는 닫을 때만 기록 — Strict Mode 재실행 시 팝업이 바로 꺼지는 것 방지
+    if (wasEasterCelebrated(initialPlan.destination || initialPlan.form.destination)) {
+      setShowEasterCelebration(false);
+      return;
+    }
+    setShowEasterCelebration(true);
+  }, [initialPlan]);
 
   useEffect(() => {
     if (!enrich || initialPlan.summaryTone === "factbomb") {
@@ -88,8 +152,10 @@ export function RecommendResult({
     };
   }, [enrich, initialPlan.id]); // eslint-disable-line react-hooks/exhaustive-deps -- 동일 일정 1회 보강
 
-  const agodaFlightUrl =
-    flightQuote?.agodaUrl ?? buildAgodaUrlFromPlan(plan) ?? undefined;
+  const flightBookingUrl =
+    flightQuote?.googleFlightsUrl ??
+    buildGoogleFlightsUrlFromPlan(plan) ??
+    undefined;
   const agodaHotelUrl =
     hotelQuote?.agodaUrl ?? buildAgodaHotelUrlFromPlan(plan) ?? undefined;
   const flightPrice = flightQuote?.priceKrw ?? plan.flight.price;
@@ -102,6 +168,35 @@ export function RecommendResult({
     hotelQuote?.nightsLabel ??
     `${plan.hotel.nights}박 · 1박 ${formatKRW(plan.hotel.pricePerNight)}`;
   const hotelPrice = hotelQuote?.priceKrw ?? plan.hotel.total;
+
+  const liveBudget = useMemo(() => {
+    const hasLive =
+      flightQuote?.source === "live" || hotelQuote?.source === "live";
+    if (!hasLive) {
+      return {
+        items: plan.budgetAllocation,
+        remaining: plan.totalBudget - plan.flight.price - plan.hotel.total,
+        overBudget: false,
+        adjusted: false,
+      };
+    }
+    const result = reallocateBudgetWithLiveQuotes(
+      plan.budgetAllocation,
+      plan.totalBudget,
+      flightPrice,
+      hotelPrice
+    );
+    return { ...result, adjusted: true };
+  }, [
+    plan.budgetAllocation,
+    plan.totalBudget,
+    plan.flight.price,
+    plan.hotel.total,
+    flightQuote?.source,
+    hotelQuote?.source,
+    flightPrice,
+    hotelPrice,
+  ]);
 
   const handleSave = async () => {
     const trip = planToTrip(
@@ -117,6 +212,11 @@ export function RecommendResult({
 
   return (
     <MobileShell title="AI 추천 결과" showBack backHref="/onboarding" showBottomNav={false}>
+      <EasterEggCelebration
+        open={showEasterCelebration}
+        destination={plan.destination}
+        onClose={closeEasterCelebration}
+      />
       <div className="flex flex-col gap-6 px-4 pb-8 pt-5">
         {enriching ? (
           <div
@@ -152,7 +252,15 @@ export function RecommendResult({
           </div>
         </section>
 
-        <AIInsightBadge variant={plan.summaryTone === "factbomb" ? "factbomb" : "insight"}>
+        <AIInsightBadge
+          variant={
+            isEasterEgg
+              ? "easter"
+              : plan.summaryTone === "factbomb"
+                ? "factbomb"
+                : "insight"
+          }
+        >
           {plan.summary}
         </AIInsightBadge>
 
@@ -208,9 +316,27 @@ export function RecommendResult({
           <div className="mb-4 flex items-center gap-2">
             <Wallet className="h-5 w-5 text-brand" />
             <h3 className="text-lg font-extrabold text-ink-heading">예산 분배</h3>
+            {liveBudget.adjusted ? (
+              <span className="ml-auto rounded-full bg-brand/10 px-2.5 py-1 text-2xs font-bold text-brand">
+                실시간가 반영
+              </span>
+            ) : null}
           </div>
+          {liveBudget.overBudget ? (
+            <p className="mb-3 rounded-xl2 border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
+              항공·숙소 실시간가만으로 이미 총예산을{" "}
+              {formatKRW(Math.abs(liveBudget.remaining))} 초과해요. 날짜·인원·목적지를
+              조정하거나 예산을 올려 보세요.
+            </p>
+          ) : liveBudget.adjusted ? (
+            <p className="mb-3 text-xs leading-relaxed text-ink-caption">
+              항공·숙소는 실시간 시세로 고정하고, 남은{" "}
+              {formatKRW(Math.max(0, liveBudget.remaining))}을 식비·교통·관광에
+              다시 나눴어요.
+            </p>
+          ) : null}
           <BudgetDonutChart
-            items={plan.budgetAllocation}
+            items={liveBudget.items}
             totalBudget={plan.totalBudget}
             people={plan.people}
           />
@@ -227,12 +353,12 @@ export function RecommendResult({
               <Plane className="h-5 w-5 text-brand" />
               <h3 className="text-lg font-extrabold text-ink-heading">항공권</h3>
             </div>
-            {agodaFlightUrl ? (
+            {flightBookingUrl ? (
               <a
-                href={agodaFlightUrl}
+                href={flightBookingUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Agoda 항공권 검색 바로가기"
+                aria-label="Google Flights 항공권 검색 바로가기"
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
               >
                 <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
@@ -250,9 +376,9 @@ export function RecommendResult({
           <p className="font-bold text-ink-heading">{flightAirline}</p>
           <p className="mt-1 text-sm text-ink-body">{flightRoute}</p>
           <p className="text-sm text-ink-caption">{flightSchedule}</p>
-          {agodaFlightUrl ? (
+          {flightBookingUrl ? (
             <a
-              href={agodaFlightUrl}
+              href={flightBookingUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 block rounded-lg transition-colors hover:bg-surface-soft active:bg-surface-base"
@@ -265,9 +391,11 @@ export function RecommendResult({
                 </p>
               )}
               <p className="mt-1 text-xs text-ink-caption">
-                {flightQuote?.source === "live"
-                  ? "실시간 최저가 · Agoda에서 같은 조건으로 검색"
-                  : "예상가 · Agoda에서 검색"}
+                {liveQuoteCaption(
+                  "flight",
+                  flightQuote?.source,
+                  flightQuote?.withinBand
+                )}
               </p>
             </a>
           ) : (
@@ -330,9 +458,11 @@ export function RecommendResult({
                 </p>
               )}
               <p className="mt-1 text-xs text-ink-caption">
-                {hotelQuote?.source === "live"
-                  ? "실시간 최저가 · Agoda에서 같은 조건으로 검색"
-                  : "예상가 · Agoda에서 검색"}
+                {liveQuoteCaption(
+                  "hotel",
+                  hotelQuote?.source,
+                  hotelQuote?.withinBand
+                )}
               </p>
             </a>
           ) : (
