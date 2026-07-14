@@ -95,7 +95,16 @@ export function VisitedWorldMap({ trips }: VisitedWorldMapProps) {
     };
   }, []);
 
-  if (failed) return null;
+  if (failed) {
+    return (
+      <section className="rounded-2xl border border-dashed border-line-soft bg-surface-soft/40 px-4 py-6 text-center">
+        <h2 className="text-sm font-extrabold text-ink-heading">방문 지도</h2>
+        <p className="mt-1 text-xs leading-relaxed text-ink-caption">
+          지도를 불러오지 못했어요. 네트워크를 확인한 뒤 다시 열어 주세요.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <>

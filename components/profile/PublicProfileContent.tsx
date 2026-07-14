@@ -35,6 +35,7 @@ export function PublicProfileContent({ userId }: PublicProfileContentProps) {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const fallbackFromPosts = useMemo(() => {
     const match = posts.find((post) => post.authorId === userId);
@@ -60,16 +61,23 @@ export function PublicProfileContent({ userId }: PublicProfileContentProps) {
     let cancelled = false;
     setLoading(true);
     setNotFound(false);
+    setLoadError(false);
 
     void fetch(`/api/users/${encodeURIComponent(userId)}`, {
       cache: "no-store",
+      signal: AbortSignal.timeout?.(20_000),
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error("not-found");
+        if (res.status === 404) {
+          setProfile(null);
+          setNotFound(true);
+          return null;
+        }
+        if (!res.ok) throw new Error("profile-load-failed");
         return (await res.json()) as { profile?: PublicProfile };
       })
       .then((data) => {
-        if (cancelled) return;
+        if (cancelled || data === null) return;
         if (data.profile) {
           setProfile(data.profile);
           setNotFound(false);
@@ -80,8 +88,14 @@ export function PublicProfileContent({ userId }: PublicProfileContentProps) {
       })
       .catch(() => {
         if (cancelled) return;
-        setProfile(null);
-        setNotFound(true);
+        if (fallbackFromPosts) {
+          setLoadError(true);
+          setNotFound(false);
+        } else {
+          setProfile(null);
+          setLoadError(true);
+          setNotFound(false);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -124,10 +138,14 @@ export function PublicProfileContent({ userId }: PublicProfileContentProps) {
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <UserRound className="h-10 w-10 text-ink-caption" />
             <p className="text-base font-bold text-ink-heading">
-              프로필을 찾을 수 없어요
+              {loadError
+                ? "프로필을 불러오지 못했어요"
+                : "프로필을 찾을 수 없어요"}
             </p>
             <p className="text-sm text-ink-caption">
-              탈퇴했거나 아직 공개 정보가 없는 계정일 수 있어요.
+              {loadError
+                ? "네트워크 상태를 확인한 뒤 다시 시도해 주세요."
+                : "탈퇴했거나 아직 공개 정보가 없는 계정일 수 있어요."}
             </p>
           </div>
         ) : (

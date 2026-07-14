@@ -241,7 +241,7 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
             m.id === buddyId
               ? {
                   ...m,
-                  text: "지금 진짜 AI랑 연결이 안 됐어. 로컬 복붙 멘트만 나오는 중이야. 배포면 Vercel의 BACKEND_URL이랑 Render의 OPENROUTER_API_KEY부터 확인해봐.",
+                  text: "지금 AI랑 연결이 안 됐어. 잠시 후 다시 말 걸어봐.",
                 }
               : m
           )

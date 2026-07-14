@@ -38,3 +38,5 @@ async def search_hotels_route(
         )
     except HotelbedsError as exc:
         raise HTTPException(status_code=400, detail=exc.detail) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="hotel-search-failed") from exc

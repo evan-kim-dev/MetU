@@ -69,6 +69,7 @@ ${message}
         prompt,
         mode: "buddy",
       }),
+      timeoutMs: 90_000,
     });
 
     if (!res.ok || !res.body) {

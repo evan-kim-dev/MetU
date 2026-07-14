@@ -82,7 +82,9 @@ export default async function HomePage() {
         {/* AI 예산별 추천 */}
         <section className="flex flex-col gap-3">
           <SectionHeader title="AI 추천 여행지" ai />
-          <RecommendedGrid places={recommended} />
+          <SectionErrorBoundary fallbackTitle="추천 여행지를 불러오지 못했어요">
+            <RecommendedGrid places={recommended} />
+          </SectionErrorBoundary>
         </section>
       </div>
     </MobileShell>

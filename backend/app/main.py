@@ -1,9 +1,15 @@
-from fastapi import FastAPI
+from __future__ import annotations
+
+import logging
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.routers import ai, checklist, flights, hotels
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 app = FastAPI(
@@ -24,6 +30,16 @@ app.include_router(ai.router)
 app.include_router(checklist.router)
 app.include_router(flights.router)
 app.include_router(hotels.router)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
+    """Never leak raw traceback / DB internals to clients."""
+    logger.exception("Unhandled backend error: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"error": "internal-error", "detail": "server-error"},
+    )
 
 
 @app.get("/health")

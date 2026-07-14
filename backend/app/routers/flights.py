@@ -62,6 +62,8 @@ async def search_google_flights_route(
         )
     except FastFlightsError as exc:
         raise _handle_google_error(exc) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="flight-search-failed") from exc
 
 
 @router.get("/airport-codes/search")

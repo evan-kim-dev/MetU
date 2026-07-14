@@ -107,6 +107,7 @@ export function RecommendResult({
   const [enrichNotice, setEnrichNotice] = useState<"fallback" | "error" | null>(
     null
   );
+  const [routeOptimizeNotice, setRouteOptimizeNotice] = useState(false);
   const [routeOptimizing, setRouteOptimizing] = useState(false);
   const routeOptimizeAttemptedRef = useRef<Set<string>>(new Set());
   const {
@@ -249,7 +250,8 @@ export function RecommendResult({
         }));
       })
       .catch(() => {
-        // 최적화 실패 시 기존 일정 유지
+        // 최적화 실패 시 기존 일정 유지 + 안내
+        if (!cancelled) setRouteOptimizeNotice(true);
       })
       .finally(() => {
         if (!cancelled) setRouteOptimizing(false);
@@ -414,6 +416,12 @@ export function RecommendResult({
                 : "AI 일정 생성은 생략되고, 지식 기반 기본 일정으로 보여드려요."}
             </p>
           </div>
+        ) : null}
+
+        {routeOptimizeNotice && !routeOptimizing ? (
+          <p className="text-xs text-ink-caption">
+            동선 자동 최적화는 건너뛰었어요. 일정 순서는 그대로예요.
+          </p>
         ) : null}
 
         <section className="relative h-48 overflow-hidden rounded-xl2 bg-surface-soft shadow-soft">

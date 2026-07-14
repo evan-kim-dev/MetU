@@ -18,6 +18,7 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
   const [selected, setSelected] = useState<DealPlace | null>(null);
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [refreshFailed, setRefreshFailed] = useState(false);
 
   useEffect(() => {
     setItems(places);
@@ -26,6 +27,9 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
+    setRefreshFailed(false);
+
+    const timer = window.setTimeout(() => controller.abort(), 45_000);
 
     fetch("/api/recommended-deals", {
       signal: controller.signal,
@@ -38,16 +42,25 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
       .then((data) => {
         if (Array.isArray(data.places) && data.places.length > 0) {
           setItems(data.places);
+          setRefreshFailed(false);
         }
       })
       .catch((error) => {
-        if ((error as Error)?.name === "AbortError") return;
+        if ((error as Error)?.name === "AbortError") {
+          setRefreshFailed(true);
+          return;
+        }
+        setRefreshFailed(true);
       })
       .finally(() => {
+        window.clearTimeout(timer);
         if (!controller.signal.aborted) setLoading(false);
       });
 
-    return () => controller.abort();
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, []);
 
   if (items.length === 0) {
@@ -78,6 +91,11 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
 
   return (
     <>
+      {refreshFailed && !loading ? (
+        <p className="text-xs text-ink-caption">
+          최신 추천을 갱신하지 못해 기본 목록을 보여드려요.
+        </p>
+      ) : null}
       <div
         className={[
           "grid grid-cols-2 gap-3 transition-opacity",

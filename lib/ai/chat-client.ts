@@ -31,6 +31,17 @@ export async function aiChat(params: {
   system: string;
   prompt: string;
 }): Promise<AiChatResult> {
+  const timeoutByMode: Partial<Record<AiMode, number>> = {
+    plan: 240_000,
+    tips: 150_000,
+    weather: 150_000,
+    deals: 150_000,
+    deal: 180_000,
+    factbomb: 120_000,
+    summary: 120_000,
+  };
+  const timeoutMs = timeoutByMode[params.mode] ?? 120_000;
+
   let res: Response;
   try {
     res = await backendFetch("/ai/chat", {
@@ -40,6 +51,7 @@ export async function aiChat(params: {
         prompt: params.prompt,
         mode: params.mode,
       }),
+      timeoutMs,
     });
   } catch (error) {
     if (error instanceof BackendUnavailableError) {

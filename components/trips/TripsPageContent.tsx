@@ -136,18 +136,28 @@ export function TripsPageContent() {
             ))}
           </div>
         ) : trips.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <p className="text-base font-bold text-ink-heading">
-              아직 여행이 없어요
-            </p>
-            <p className="text-sm text-ink-caption">
-              첫 여행을 계획하고 AI 추천을 받아보세요.
-            </p>
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-brand/20 bg-gradient-to-b from-brand/5 to-surface-soft/40 px-5 py-14 text-center">
+            <span
+              className="flex h-14 w-14 items-center justify-center rounded-2xl ai-gradient-bg text-2xl shadow-glow"
+              aria-hidden
+            >
+              ✈
+            </span>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-base font-extrabold text-ink-heading">
+                아직 여행이 없어요
+              </p>
+              <p className="text-sm leading-relaxed text-ink-caption">
+                예산만 알려주면 AI가 맞춤 일정을 짜드려요.
+                <br />
+                첫 여행을 만들어 보세요.
+              </p>
+            </div>
             <Link
               href="/onboarding"
-              className="mt-2 rounded-2xl bg-brand px-5 py-3 text-sm font-bold text-surface-white"
+              className="mt-1 rounded-2xl ai-gradient-bg px-6 py-3.5 text-sm font-bold text-surface-white shadow-glow transition-transform active:scale-[0.98]"
             >
-              여행 계획하기
+              첫 여행 계획하기
             </Link>
           </div>
         ) : (
