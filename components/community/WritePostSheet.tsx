@@ -363,9 +363,10 @@ export function WritePostSheet({
 
           <AirportSearchField
             label="여행지"
-            placeholder="예: 도쿄, 파리"
+            placeholder="예: 도쿄, 일본"
             value={destination}
             onChange={setDestination}
+            placesMode="cities"
             formatValue={formatDestinationForPlan}
             variant="compact"
           />

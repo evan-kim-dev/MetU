@@ -10,10 +10,7 @@ import {
 import { StepCard } from "@/components/ui/StepCard";
 import { AIInsightBadge } from "@/components/ui/AIInsightBadge";
 import { AirportSearchField } from "@/components/onboarding/AirportSearchField";
-import {
-  formatDestinationForPlan,
-  formatPlaceLabel,
-} from "@/lib/airports/data";
+import { formatCityCountryLabel } from "@/lib/airports/data";
 import { buildLocalScheduleInsight } from "@/lib/ai/schedule-insight";
 import { parseBudgetAmount } from "@/lib/ai/budget-insight";
 import { getFlexibleYearOptions } from "./types";
@@ -275,10 +272,11 @@ export function ScheduleStep({
         <div className="flex flex-col gap-2">
           <AirportSearchField
             label="출발지"
-            placeholder="예: 서울"
+            placeholder="예: 서울, 대한민국"
             value={origin}
             onChange={onOriginChange}
-            formatValue={formatPlaceLabel}
+            placesMode="cities"
+            formatValue={formatCityCountryLabel}
           />
           <div className="relative z-10 -my-1 flex justify-center">
             <button
@@ -295,18 +293,15 @@ export function ScheduleStep({
           </div>
           <AirportSearchField
             label="도착지"
-            placeholder="어디든지"
+            placeholder="예: 도쿄, 일본"
             value={destination}
             onChange={onDestinationChange}
-            formatValue={(place) =>
-              place.kind === "city"
-                ? formatDestinationForPlan(place)
-                : `${place.city} · ${formatPlaceLabel(place)}`
-            }
+            placesMode="cities"
+            formatValue={formatCityCountryLabel}
           />
         </div>
         <p className="text-xs text-ink-caption">
-          도시(모두) 또는 공항을 고르면 AI가 항공 구간을 더 정확히 맞춰요.
+          도시와 나라 이름으로 고르면 AI가 맞춤 일정을 짜드려요.
         </p>
       </div>
 

@@ -364,6 +364,25 @@ function mergeAiSchedule(
   const expectedDays = nights + 1;
   const sliced = aiDays.slice(0, expectedDays);
 
+  // AI가 같은 날(도착일)을 복제해 오면 폴백 일정을 쓴다
+  const signatures = sliced.map((day) => {
+    const titles = (Array.isArray(day.items) ? day.items : [])
+      .map((item) => item.title?.trim() || "")
+      .join("|");
+    return `${day.label?.trim() || ""}::${titles}`;
+  });
+  const uniqueSigs = new Set(signatures.filter(Boolean));
+  if (
+    sliced.length >= 2 &&
+    uniqueSigs.size === 1 &&
+    fallback.length >= sliced.length
+  ) {
+    return fallback.slice(0, expectedDays).map((day, index) => ({
+      ...day,
+      day: index + 1,
+    }));
+  }
+
   return sliced.map((day, index) => {
     const fallbackDay = fallback[index] ?? fallback[fallback.length - 1];
     const rawItems = Array.isArray(day.items) ? day.items : [];

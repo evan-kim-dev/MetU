@@ -3,9 +3,11 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapPin, Plane, Search, X } from "lucide-react";
 import {
+  formatCityCountryLabel,
   formatPlaceLabel,
   groupPlacesByContinent,
   searchAirportPlaces,
+  searchCityPlaces,
   type AirportPlace,
 } from "@/lib/airports/data";
 import {
@@ -21,6 +23,11 @@ interface AirportSearchFieldProps {
   /** 선택 시 값 포맷 (기본: place.name) */
   formatValue?: (place: AirportPlace) => string;
   variant?: "default" | "compact";
+  /**
+   * all — 도시+공항(코드 포함, 항공권 체크리스트용)
+   * cities — 도시·나라만 (온보딩용, IATA 숨김)
+   */
+  placesMode?: "all" | "cities";
 }
 
 export function AirportSearchField({
@@ -28,9 +35,13 @@ export function AirportSearchField({
   placeholder,
   value,
   onChange,
-  formatValue = formatPlaceLabel,
+  formatValue,
   variant = "default",
+  placesMode = "all",
 }: AirportSearchFieldProps) {
+  const resolvedFormat =
+    formatValue ??
+    (placesMode === "cities" ? formatCityCountryLabel : formatPlaceLabel);
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -58,13 +69,15 @@ export function AirportSearchField({
     return query;
   }, [open, query, value]);
 
-  const staticResults = useMemo(
-    () => searchAirportPlaces(searchText, 40),
-    [searchText]
-  );
+  const staticResults = useMemo(() => {
+    if (placesMode === "cities") {
+      return searchCityPlaces(searchText, 40);
+    }
+    return searchAirportPlaces(searchText, 40);
+  }, [placesMode, searchText]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open || placesMode === "cities") {
       setApiResults([]);
       return;
     }
@@ -86,12 +99,12 @@ export function AirportSearchField({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, searchText]);
+  }, [open, placesMode, searchText]);
 
-  const results = useMemo(
-    () => mergeAirportPlaces(staticResults, apiResults, 40),
-    [staticResults, apiResults]
-  );
+  const results = useMemo(() => {
+    if (placesMode === "cities") return staticResults;
+    return mergeAirportPlaces(staticResults, apiResults, 40);
+  }, [placesMode, staticResults, apiResults]);
 
   const groupedResults = useMemo(
     () => groupPlacesByContinent(results),
@@ -99,13 +112,14 @@ export function AirportSearchField({
   );
 
   const handleSelect = (place: AirportPlace) => {
-    const next = formatValue(place);
+    const next = resolvedFormat(place);
     onChange(next);
     setQuery(next);
     setOpen(false);
   };
 
   const isCompact = variant === "compact";
+  const citiesOnly = placesMode === "cities";
 
   return (
     <div ref={rootRef} className="relative flex flex-col gap-1">
@@ -198,7 +212,17 @@ export function AirportSearchField({
                 <ul role="group" aria-label={group.label}>
                   {group.places.map((place) => {
                     const isAirport = place.kind === "airport";
-                    const selected = value === formatValue(place);
+                    const selected = value === resolvedFormat(place);
+                    const title = citiesOnly
+                      ? place.city
+                      : resolvedFormat(place);
+                    const subtitle = citiesOnly
+                      ? place.country
+                      : place.kind === "city"
+                        ? place.country
+                        : place.country
+                          ? `${place.city} · ${place.country}`
+                          : place.city || place.name;
                     return (
                       <li key={place.id} role="option" aria-selected={selected}>
                         <button
@@ -211,19 +235,23 @@ export function AirportSearchField({
                             selected
                               ? "bg-brand/8"
                               : "hover:bg-surface-soft active:bg-surface-soft",
-                            isAirport ? (isCompact ? "pl-6" : "pl-8") : "",
+                            isAirport && !citiesOnly
+                              ? isCompact
+                                ? "pl-6"
+                                : "pl-8"
+                              : "",
                           ].join(" ")}
                         >
                           <span
                             className={[
                               "mt-0.5 flex shrink-0 items-center justify-center rounded-full",
                               isCompact ? "h-6 w-6" : "h-8 w-8",
-                              isAirport
+                              isAirport && !citiesOnly
                                 ? "bg-surface-soft text-ink-caption"
                                 : "bg-brand/10 text-brand",
                             ].join(" ")}
                           >
-                            {isAirport ? (
+                            {isAirport && !citiesOnly ? (
                               <Plane
                                 className={isCompact ? "h-3 w-3" : "h-4 w-4"}
                                 strokeWidth={2.2}
@@ -242,14 +270,10 @@ export function AirportSearchField({
                                 isCompact ? "text-xs" : "text-sm",
                               ].join(" ")}
                             >
-                              {formatValue(place)}
+                              {title}
                             </span>
                             <span className="block text-xs text-ink-caption">
-                              {place.kind === "city"
-                                ? place.country
-                                : place.country
-                                  ? `${place.city} · ${place.country}`
-                                  : place.city || place.name}
+                              {subtitle}
                             </span>
                           </span>
                         </button>

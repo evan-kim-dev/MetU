@@ -84,13 +84,39 @@ const CITY_POI_DAYS: Record<string, PoiDay[]> = {
       ],
     },
     {
-      label: "성곽 · 성심교",
+      label: "오사카성 · 성심교",
       items: [
         { time: "09:30", title: "Osaka Castle", kind: "activity" },
         { time: "12:30", title: "Tenmabashi 점심", kind: "food" },
         { time: "14:30", title: "Shinsaibashi Shopping Street", kind: "activity" },
         { time: "17:00", title: "Amerikamura", kind: "activity" },
         { time: "19:00", title: "Hozenji Yokocho 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "우메다 · 보다 전망",
+      items: [
+        { time: "10:00", title: "Umeda Sky Building", kind: "activity" },
+        { time: "12:30", title: "우메다 식당가 점심", kind: "food" },
+        { time: "15:00", title: "Hep Five · 한큐 백화점", kind: "activity" },
+        { time: "18:30", title: "우메다 야경 · 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "신세카이 · 덴노지",
+      items: [
+        { time: "10:00", title: "Shinsekai · Tsutenkaku", kind: "activity" },
+        { time: "12:00", title: "쿠시카츠 점심", kind: "food" },
+        { time: "14:00", title: "Tennoji Park · Abeno Harukas", kind: "activity" },
+        { time: "18:00", title: "덴노지 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "출발 · 귀국",
+      items: [
+        { time: "09:30", title: "체크아웃 & 짐 보관", kind: "free" },
+        { time: "11:00", title: "난바·신사이바시 마지막 쇼핑", kind: "activity" },
+        { time: "14:00", title: "Kansai Airport 이동 · 출국", kind: "transport" },
       ],
     },
   ],
@@ -101,7 +127,54 @@ const CITY_POI_DAYS: Record<string, PoiDay[]> = {
         { time: "14:00", title: "Narita / Haneda 도착 · 시부야 이동", kind: "transport" },
         { time: "16:00", title: "숙소 체크인 (Shibuya / Shinjuku)", kind: "free" },
         { time: "17:30", title: "Shibuya Crossing · Hachiko", kind: "activity" },
-        { time: "19:00", title: "센터가이 저녁", kind: "food" },
+        { time: "19:00", title: "센터가이 · 비스트로 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "아사쿠사 · 스카이트리",
+      items: [
+        { time: "09:30", title: "Senso-ji · Nakamise-dori", kind: "activity" },
+        { time: "12:00", title: "아사쿠사 점심 (덴푸라·소바)", kind: "food" },
+        { time: "14:00", title: "Tokyo Skytree · Solamachi", kind: "activity" },
+        { time: "17:30", title: "스미다 강변 산책", kind: "activity" },
+        { time: "19:00", title: "아사쿠사·키타센주 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "하라주쿠 · 메이지신궁",
+      items: [
+        { time: "09:30", title: "Meiji Shrine", kind: "activity" },
+        { time: "11:30", title: "Takeshita Street · Harajuku", kind: "activity" },
+        { time: "13:00", title: "오모테산도 카페 점심", kind: "food" },
+        { time: "15:00", title: "Omotesando Hills · Cat Street", kind: "activity" },
+        { time: "18:30", title: "시부야·에비스 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "시부야 · 신주쿠 야경",
+      items: [
+        { time: "10:00", title: "Shinjuku Gyoen", kind: "activity" },
+        { time: "12:30", title: "카부키초·오지쿄 점심", kind: "food" },
+        { time: "15:00", title: "Omoide Yokocho · 골목 산책", kind: "activity" },
+        { time: "17:30", title: "Tokyo Metropolitan Government Building 전망", kind: "activity" },
+        { time: "19:30", title: "신주쿠 이자카야 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "우에노 · 아키하바라",
+      items: [
+        { time: "09:30", title: "Ueno Park · Tokyo National Museum", kind: "activity" },
+        { time: "12:30", title: "우에노 아메요코 점심", kind: "food" },
+        { time: "14:30", title: "Akihabara Electric Town", kind: "activity" },
+        { time: "18:00", title: "아키하바라·칸다 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "출발 · 귀국",
+      items: [
+        { time: "09:30", title: "체크아웃 & 짐 보관", kind: "free" },
+        { time: "11:00", title: "시부야·신주쿠 기념품", kind: "activity" },
+        { time: "14:00", title: "공항 이동 · 출국", kind: "transport" },
       ],
     },
   ],
@@ -112,7 +185,34 @@ const CITY_POI_DAYS: Record<string, PoiDay[]> = {
         { time: "14:00", title: "Suvarnabhumi / Don Mueang 도착", kind: "transport" },
         { time: "16:00", title: "숙소 체크인 (Sukhumvit / Silom)", kind: "free" },
         { time: "18:00", title: "Asiatique / Chao Phraya 강변", kind: "activity" },
-        { time: "19:30", title: "수상마켓 스타일 저녁 또는 팟타이", kind: "food" },
+        { time: "19:30", title: "팟타이 · 해산물 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "왕궁 · 왓아룬",
+      items: [
+        { time: "08:30", title: "Grand Palace · Wat Phra Kaew", kind: "activity" },
+        { time: "12:00", title: "타나혼·카오산 근처 점심", kind: "food" },
+        { time: "14:00", title: "Wat Arun", kind: "activity" },
+        { time: "16:30", title: "짜오프라야 보트 이동", kind: "transport" },
+        { time: "19:00", title: "Iconsiam · 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "챗차닥 · 쇼핑",
+      items: [
+        { time: "09:30", title: "Chatuchak Weekend Market (운영일) 또는 MBK", kind: "activity" },
+        { time: "13:00", title: "시장·몰 점심", kind: "food" },
+        { time: "15:30", title: "Siam Paragon · Pratunam", kind: "activity" },
+        { time: "19:00", title: "스쿰빗 저녁 · 야시장", kind: "food" },
+      ],
+    },
+    {
+      label: "출발 · 귀국",
+      items: [
+        { time: "09:30", title: "체크아웃", kind: "free" },
+        { time: "11:00", title: "마지막 마사지 또는 카페", kind: "activity" },
+        { time: "14:00", title: "공항 이동 · 출국", kind: "transport" },
       ],
     },
   ],
@@ -124,6 +224,33 @@ const CITY_POI_DAYS: Record<string, PoiDay[]> = {
         { time: "16:00", title: "숙소 체크인 (My Khe Beach)", kind: "free" },
         { time: "17:30", title: "My Khe Beach 산책", kind: "activity" },
         { time: "19:00", title: "해산물 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "참섬 · 미술관",
+      items: [
+        { time: "09:00", title: "Marble Mountains (Ngu Hanh Son)", kind: "activity" },
+        { time: "12:00", title: "근처 점심", kind: "food" },
+        { time: "14:30", title: "Museum of Cham Sculpture 또는 드래곤 브릿지", kind: "activity" },
+        { time: "18:30", title: "한강변 저녁", kind: "food" },
+      ],
+    },
+    {
+      label: "호이안 원데이",
+      items: [
+        { time: "09:00", title: "Hoi An Ancient Town 이동", kind: "transport" },
+        { time: "10:30", title: "일본교 · 올드타운 산책", kind: "activity" },
+        { time: "13:00", title: "호이안 카오라우 점심", kind: "food" },
+        { time: "15:30", title: "등불 골목 · 맞춤 옷", kind: "activity" },
+        { time: "18:30", title: "투본강 저녁 · 다낭 복귀", kind: "food" },
+      ],
+    },
+    {
+      label: "출발 · 귀국",
+      items: [
+        { time: "09:30", title: "체크아웃 · 비치 마지막 산책", kind: "free" },
+        { time: "12:00", title: "공항 이동", kind: "transport" },
+        { time: "14:00", title: "출국", kind: "transport" },
       ],
     },
   ],
@@ -492,15 +619,23 @@ function mapPoiDaysToSchedule(
   });
 }
 
-function assembleTemplateDays(styled: PoiDay[], daysNeeded: number): PoiDay[] {
-  const middle = styled.slice(1, Math.max(1, styled.length - 1));
-  const assembled: PoiDay[] = [];
-  assembled.push(styled[0]);
+function assembleTemplateDays(styled: PoiDay[], daysNeeded: number): PoiDay[] | null {
+  // 도착일만 있으면 전 날짜가 복제되므로 동적 POI로 넘긴다
+  if (styled.length < 2) return null;
+
+  const arrival = styled[0];
+  const departure = styled[styled.length - 1];
+  const middle =
+    styled.length >= 3 ? styled.slice(1, -1) : styled.slice(0, -1);
+
+  if (middle.length === 0) return null;
+
+  const assembled: PoiDay[] = [arrival];
   for (let i = 1; i < daysNeeded - 1; i++) {
-    assembled.push(middle[(i - 1) % Math.max(1, middle.length)] ?? styled[0]);
+    assembled.push(middle[(i - 1) % middle.length]);
   }
   if (daysNeeded > 1) {
-    assembled.push(styled[styled.length - 1]);
+    assembled.push(departure);
   }
   return assembled.slice(0, daysNeeded);
 }
@@ -520,7 +655,10 @@ export function buildDestinationPoiSchedule(
 
   const daysNeeded = Math.max(1, nights + 1);
   const styled = pickStyleDays(template, styles);
-  return mapPoiDaysToSchedule(assembleTemplateDays(styled, daysNeeded), budgets);
+  const assembled = assembleTemplateDays(styled, daysNeeded);
+  if (!assembled) return null;
+
+  return mapPoiDaysToSchedule(assembled, budgets);
 }
 
 export function hasHardcodedCityPois(city: string): boolean {

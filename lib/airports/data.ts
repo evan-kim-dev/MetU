@@ -931,12 +931,54 @@ export function formatAirportKeyword(keyword: string): string {
   return place ? formatAirportInputLabel(place) : keyword;
 }
 
-/** 표시 라벨을 place name으로, destination용은 "도시, 국가" 포맷도 지원 */
+/** 표시 라벨 — 도시 선택 시 "(모두)"·공항코드 없이 도시명 */
 export function formatPlaceLabel(place: AirportPlace): string {
-  if (place.kind === "city") return place.name;
-  return place.name;
+  if (place.kind === "city") return place.city;
+  return place.code ? `${place.city} (${place.code})` : place.name;
+}
+
+/** 온보딩/일정용: 도시 · 나라 (공항코드 없음) */
+export function formatCityCountryLabel(place: AirportPlace): string {
+  if (place.country) return `${place.city}, ${place.country}`;
+  return place.city || place.name;
 }
 
 export function formatDestinationForPlan(place: AirportPlace): string {
-  return `${place.city}, ${place.country}`;
+  return formatCityCountryLabel(place);
+}
+
+/** 인기 도시만 (공항코드 항목 제외) */
+export function getPopularCities(limit = 24): AirportPlace[] {
+  const cities: AirportPlace[] = [];
+  const seen = new Set<string>();
+  for (const id of POPULAR_PLACE_IDS) {
+    const place = AIRPORT_PLACES.find((p) => p.id === id);
+    if (!place) continue;
+    const cityPlace =
+      place.kind === "city"
+        ? place
+        : AIRPORT_PLACES.find(
+            (p) => p.kind === "city" && p.id === place.cityId
+          ) ?? null;
+    if (!cityPlace || seen.has(cityPlace.id)) continue;
+    seen.add(cityPlace.id);
+    cities.push(cityPlace);
+    if (cities.length >= limit) break;
+  }
+  return cities;
+}
+
+/** 도시만 검색 (공항·IATA 목록 제외) */
+export function searchCityPlaces(query: string, limit = 24): AirportPlace[] {
+  const q = normalize(query);
+  if (!q) return getPopularCities(limit);
+
+  const cities = AIRPORT_PLACES.filter((place) => place.kind === "city");
+  const matched = cities.filter((place) => {
+    const hay = [place.name, place.city, place.country, ...place.keywords]
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(q);
+  });
+  return matched.slice(0, limit);
 }
