@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  BackendUnavailableError,
-  backendFetch,
-} from "@/lib/backend/client";
+import { aiChatOrNull } from "@/lib/ai/chat-client";
+import { parseDealEnrichOut } from "@/lib/ai/contracts";
 import {
   buildLocalDealDetail,
   getDealById,
@@ -37,40 +35,33 @@ JSON 스키마:
 
   const system = `${AI_VOICE} ${AI_QUALITY_FIRST} 항공·숙소 저가 데이터를 근거로 예산별 추천을 풍부하고 실용적으로 설명해. JSON만 출력.`;
 
-  try {
-    const res = await backendFetch("/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({ system, prompt, mode: "deal" }),
-    });
-    if (!res.ok) return detail;
+  const chat = await aiChatOrNull({
+    mode: "deal",
+    system,
+    prompt,
+  });
+  if (!chat) return detail;
 
-    const data = (await res.json()) as { content?: string | null };
-    if (!data.content) return detail;
+  const parsed = parseDealEnrichOut(chat.content);
+  if (!parsed) return detail;
 
-    const parsed = JSON.parse(data.content) as Partial<DealDetail>;
-    return {
-      ...detail,
-      summary: parsed.summary || detail.summary,
-      whyCheap:
-        Array.isArray(parsed.whyCheap) && parsed.whyCheap.length > 0
-          ? parsed.whyCheap
-          : detail.whyCheap,
-      budgetTips:
-        Array.isArray(parsed.budgetTips) && parsed.budgetTips.length > 0
-          ? parsed.budgetTips
-          : detail.budgetTips,
-      mustTry:
-        Array.isArray(parsed.mustTry) && parsed.mustTry.length > 0
-          ? parsed.mustTry
-          : detail.mustTry,
-      caution: parsed.caution || detail.caution,
-    };
-  } catch (error) {
-    if (error instanceof BackendUnavailableError || error instanceof SyntaxError) {
-      return detail;
-    }
-    return detail;
-  }
+  return {
+    ...detail,
+    summary: parsed.summary || detail.summary,
+    whyCheap:
+      parsed.whyCheap && parsed.whyCheap.length > 0
+        ? parsed.whyCheap
+        : detail.whyCheap,
+    budgetTips:
+      parsed.budgetTips && parsed.budgetTips.length > 0
+        ? parsed.budgetTips
+        : detail.budgetTips,
+    mustTry:
+      parsed.mustTry && parsed.mustTry.length > 0
+        ? parsed.mustTry
+        : detail.mustTry,
+    caution: parsed.caution || detail.caution,
+  };
 }
 
 export async function GET(

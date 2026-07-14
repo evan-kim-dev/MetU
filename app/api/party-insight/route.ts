@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildLocalPartyInsight } from "@/lib/ai/party-insight";
-import {
-  BackendUnavailableError,
-  backendFetch,
-} from "@/lib/backend/client";
+import { aiChatOrNull } from "@/lib/ai/chat-client";
 import {
   buildPartyPrompt,
   getBudgetSystemPrompt,
@@ -48,51 +45,24 @@ export async function GET(request: Request) {
   const prompt = buildPartyPrompt(budget, people, month);
   const system = getBudgetSystemPrompt();
 
-  try {
-    const res = await backendFetch("/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({ system, prompt, mode: "party" }),
-    });
+  const chat = await aiChatOrNull({ mode: "party", system, prompt });
+  const content = chat?.content?.trim();
 
-    if (!res.ok) {
-      return NextResponse.json({
-        insight: fallback,
-        source: "fallback",
-        rag: rag.contexts,
-      });
-    }
-
-    const data = (await res.json()) as {
-      content?: string | null;
-      source?: string;
-    };
-    const content = data.content?.trim();
-
-    if (
-      !content ||
-      looksLikeFakeQuote(content) ||
-      violatesBudgetBand(content, perPerson)
-    ) {
-      return NextResponse.json({
-        insight: fallback,
-        source: "fallback",
-        rag: rag.contexts,
-      });
-    }
-
-    return NextResponse.json({
-      insight: content,
-      source: data.source === "ai" ? "ai+rag" : "fallback",
-      rag: rag.contexts,
-    });
-  } catch (error) {
-    if (!(error instanceof BackendUnavailableError)) {
-      /* ignore */
-    }
+  if (
+    !content ||
+    looksLikeFakeQuote(content) ||
+    violatesBudgetBand(content, perPerson)
+  ) {
     return NextResponse.json({
       insight: fallback,
       source: "fallback",
       rag: rag.contexts,
     });
   }
+
+  return NextResponse.json({
+    insight: content,
+    source: "ai+rag",
+    rag: rag.contexts,
+  });
 }

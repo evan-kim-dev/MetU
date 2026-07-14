@@ -1,18 +1,12 @@
-import {
-  BackendUnavailableError,
-  backendFetch,
-} from "@/lib/backend/client";
+import { BackendUnavailableError } from "@/lib/backend/client";
+import { aiChatOrNull } from "@/lib/ai/chat-client";
+import { parseDealsOut } from "@/lib/ai/contracts";
 import {
   buildRecommendedDealsPrompt,
   getDealsSystemPrompt,
 } from "@/lib/ai/prompts/insight-prompts";
 import { MOCK_DEALS, type DealPlace } from "@/lib/deals/data";
 import { getMonthDealTip } from "@/lib/rag/monthDeals";
-
-type AiDealRow = {
-  id?: string;
-  highlight?: string;
-};
 
 function monthAwareFallback(month: number): DealPlace[] {
   const tip = getMonthDealTip(month);
@@ -41,7 +35,7 @@ function monthAwareFallback(month: number): DealPlace[] {
 
 function applyAiOrder(
   base: DealPlace[],
-  rows: AiDealRow[]
+  rows: { id: string; highlight: string }[]
 ): DealPlace[] | null {
   if (!Array.isArray(rows) || rows.length === 0) return null;
 
@@ -63,7 +57,6 @@ function applyAiOrder(
     });
   }
 
-  // AI가 일부만 주면 나머지도 뒤에 붙임
   for (const deal of base) {
     if (!used.has(deal.id)) next.push(deal);
   }
@@ -106,37 +99,28 @@ export async function curateRecommendedDeals(): Promise<{
       ragContexts,
     });
 
-    const res = await backendFetch("/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({
-        system: getDealsSystemPrompt(),
-        prompt,
-        mode: "deals",
-      }),
+    const chat = await aiChatOrNull({
+      mode: "deals",
+      system: getDealsSystemPrompt(),
+      prompt,
     });
-
-    if (!res.ok) {
+    if (!chat) {
       return { places: fallback, source: "fallback" };
     }
 
-    const data = (await res.json()) as { content?: string | null };
-    const content = data.content?.trim();
-    if (!content) {
+    const parsed = parseDealsOut(chat.content);
+    if (!parsed) {
       return { places: fallback, source: "fallback" };
     }
 
-    const parsed = JSON.parse(content) as { deals?: AiDealRow[] };
-    const ordered = applyAiOrder(MOCK_DEALS, parsed.deals ?? []);
+    const ordered = applyAiOrder(MOCK_DEALS, parsed.deals);
     if (!ordered) {
       return { places: fallback, source: "fallback" };
     }
 
     return { places: ordered, source: "ai+rag" };
   } catch (error) {
-    if (
-      error instanceof BackendUnavailableError ||
-      error instanceof SyntaxError
-    ) {
+    if (error instanceof BackendUnavailableError) {
       return { places: fallback, source: "fallback" };
     }
     console.error("[recommended-deals]", error);

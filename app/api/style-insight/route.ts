@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { backendFetch } from "@/lib/backend/client";
+import { aiChatOrNull } from "@/lib/ai/chat-client";
 import {
   buildStyleInsightPrompt,
   getStyleSystemPrompt,
@@ -48,30 +48,17 @@ export async function POST(request: Request) {
       ragContexts: rag.map((item) => item.content),
     });
 
-    const res = await backendFetch("/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({
-        system: getStyleSystemPrompt(),
-        prompt,
-        mode: "style",
-      }),
+    const chat = await aiChatOrNull({
+      mode: "style",
+      system: getStyleSystemPrompt(),
+      prompt,
     });
-
-    if (!res.ok) {
-      return NextResponse.json({ insight: fallback, source: "fallback" });
-    }
-
-    const data = (await res.json()) as {
-      content?: string | null;
-      source?: string;
-    };
-    const content = data.content?.trim();
-    if (!content || data.source !== "ai") {
+    if (!chat) {
       return NextResponse.json({ insight: fallback, source: "fallback" });
     }
 
     return NextResponse.json({
-      insight: content,
+      insight: chat.content,
       source: "ai+rag",
     });
   } catch {

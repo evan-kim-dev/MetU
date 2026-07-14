@@ -1,6 +1,6 @@
 import { getBudgetBand, retrieveBudgetRag, BUDGET_BAND_DOCS } from "@/lib/rag/budgetBands";
 import { AIRPORT_PLACES } from "@/lib/airports/data";
-import { backendFetch } from "@/lib/backend/client";
+import { aiChatOrNull } from "@/lib/ai/chat-client";
 import {
   buildFactBombPrompt,
   buildNormalPlanSummaryPrompt,
@@ -478,47 +478,28 @@ export async function resolvePlanSummaryWithRag(
   const rag = retrieveBudgetRag(params.perPerson, params.month);
 
   if (local.tone === "normal") {
-    try {
-      const res = await backendFetch("/ai/chat", {
-        method: "POST",
-        body: JSON.stringify({
-          system: getSummarySystemPrompt(),
-          prompt: buildNormalPlanSummaryPrompt({
-            origin: params.formOrigin,
-            destination: params.destination,
-            country: params.country,
-            nights: params.nights,
-            people: params.people,
-            totalBudget: params.totalBudget,
-            perPerson: params.perPerson,
-            styleLabels: params.styleLabels ?? [],
-            ragContexts: [
-              ...rag.contexts,
-              rag.seasonTip,
-              `허용 권역: ${rag.allowedRegions.join(", ")}`,
-            ],
-          }),
-          mode: "summary",
-        }),
-      });
-
-      if (res.ok) {
-        const data = (await res.json()) as {
-          content?: string | null;
-          source?: string;
-        };
-        const content = data.content?.trim();
-        if (
-          content &&
-          data.source === "ai" &&
-          content.length >= 12 &&
-          content.length <= 480
-        ) {
-          return { summary: content, tone: "normal", source: "ai+rag" };
-        }
-      }
-    } catch {
-      // fall through to local
+    const chat = await aiChatOrNull({
+      mode: "summary",
+      system: getSummarySystemPrompt(),
+      prompt: buildNormalPlanSummaryPrompt({
+        origin: params.formOrigin,
+        destination: params.destination,
+        country: params.country,
+        nights: params.nights,
+        people: params.people,
+        totalBudget: params.totalBudget,
+        perPerson: params.perPerson,
+        styleLabels: params.styleLabels ?? [],
+        ragContexts: [
+          ...rag.contexts,
+          rag.seasonTip,
+          `허용 권역: ${rag.allowedRegions.join(", ")}`,
+        ],
+      }),
+    });
+    const content = chat?.content?.trim();
+    if (content && content.length >= 12 && content.length <= 480) {
+      return { summary: content, tone: "normal", source: "ai+rag" };
     }
 
     return { ...local, source: "local" };
@@ -535,24 +516,10 @@ export async function resolvePlanSummaryWithRag(
     month: params.month,
   });
 
-  try {
-    const res = await backendFetch("/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({ system, prompt, mode: "factbomb" }),
-    });
-
-    if (res.ok) {
-      const data = (await res.json()) as {
-        content?: string | null;
-        source?: string;
-      };
-      const content = data.content?.trim();
-      if (content && data.source === "ai" && content.length >= 12 && content.length <= 480) {
-        return { summary: content, tone: "factbomb", source: "ai+rag" };
-      }
-    }
-  } catch {
-    // fall through to template
+  const chat = await aiChatOrNull({ mode: "factbomb", system, prompt });
+  const content = chat?.content?.trim();
+  if (content && content.length >= 12 && content.length <= 480) {
+    return { summary: content, tone: "factbomb", source: "ai+rag" };
   }
 
   return { ...local, source: "template" };

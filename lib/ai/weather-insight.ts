@@ -1,31 +1,11 @@
 import { getMonthDealTip } from "@/lib/rag/monthDeals";
 import type { TripWeatherDay } from "@/lib/weather/open-meteo";
+import { parseWeatherOut, type WeatherOut } from "@/lib/ai/contracts";
 
-export interface WeatherInsightResult {
-  summary: string;
-  preparation: string[];
-}
+export type WeatherInsightResult = WeatherOut;
 
 export function parseWeatherInsightJson(text: string): WeatherInsightResult | null {
-  try {
-    const parsed = JSON.parse(text) as {
-      summary?: unknown;
-      preparation?: unknown;
-    };
-    if (typeof parsed.summary !== "string" || !Array.isArray(parsed.preparation)) {
-      return null;
-    }
-    const preparation = parsed.preparation
-      .filter((item): item is string => typeof item === "string")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .slice(0, 8);
-    const summary = parsed.summary.trim();
-    if (!summary || preparation.length === 0) return null;
-    return { summary, preparation };
-  } catch {
-    return null;
-  }
+  return parseWeatherOut(text);
 }
 
 export function buildLocalWeatherInsight(params: {

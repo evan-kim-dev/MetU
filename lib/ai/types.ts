@@ -62,6 +62,8 @@ export interface TripRecommendation {
     totalKmBefore: number;
     totalKmAfter: number;
   };
+  /** enrich-plan 시 일정/항공/숙소 AI 생성 여부 */
+  aiScheduleSource?: "ai" | "fallback";
 }
 
 export interface RagSource {

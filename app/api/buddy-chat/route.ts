@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import {
   BackendUnavailableError,
   backendFetch,
@@ -38,7 +37,10 @@ export async function POST(request: Request) {
     };
     const message = body.message?.trim();
     if (!message) {
-      return NextResponse.json({ error: "empty-message" }, { status: 400 });
+      return new Response(JSON.stringify({ error: "empty-message" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
@@ -60,7 +62,7 @@ ${message}
 
 출력: 답변 본문만.`;
 
-    const res = await backendFetch("/ai/chat", {
+    const res = await backendFetch("/ai/chat/stream", {
       method: "POST",
       body: JSON.stringify({
         system: BUDDY_SYSTEM,
@@ -69,25 +71,34 @@ ${message}
       }),
     });
 
-    if (!res.ok) {
-      return NextResponse.json({ error: "backend-failed" }, { status: 502 });
+    if (!res.ok || !res.body) {
+      return new Response(JSON.stringify({ error: "backend-failed" }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    const data = (await res.json()) as {
-      content?: string | null;
-      source?: string;
-    };
-    const content = data.content?.trim();
-    if (!content || data.source !== "ai") {
-      return NextResponse.json({ error: "empty-ai" }, { status: 502 });
-    }
-
-    return NextResponse.json({ reply: content, source: "ai" });
+    // Proxy SSE to the browser for progressive buddy replies
+    return new Response(res.body, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
   } catch (error) {
     if (error instanceof BackendUnavailableError) {
-      return NextResponse.json({ error: "backend-unavailable" }, { status: 503 });
+      return new Response(JSON.stringify({ error: "backend-unavailable" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      });
     }
     console.error("[buddy-chat]", error);
-    return NextResponse.json({ error: "buddy-chat-failed" }, { status: 500 });
+    return new Response(JSON.stringify({ error: "buddy-chat-failed" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

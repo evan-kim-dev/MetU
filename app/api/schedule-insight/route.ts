@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { backendFetch } from "@/lib/backend/client";
+import { aiChatOrNull } from "@/lib/ai/chat-client";
 import {
   buildScheduleInsightPrompt,
   getScheduleSystemPrompt,
@@ -95,29 +95,16 @@ export async function POST(request: Request) {
       ragContexts,
     });
 
-    const res = await backendFetch("/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({
-        system: getScheduleSystemPrompt(),
-        prompt,
-        mode: "schedule",
-      }),
+    const chat = await aiChatOrNull({
+      mode: "schedule",
+      system: getScheduleSystemPrompt(),
+      prompt,
     });
-
-    if (!res.ok) {
+    if (!chat) {
       return NextResponse.json({ insight: fallback, source: "fallback" });
     }
 
-    const data = (await res.json()) as {
-      content?: string | null;
-      source?: string;
-    };
-    const content = data.content?.trim();
-    if (!content || data.source !== "ai") {
-      return NextResponse.json({ insight: fallback, source: "fallback" });
-    }
-
-    return NextResponse.json({ insight: content, source: "ai+rag" });
+    return NextResponse.json({ insight: chat.content, source: "ai+rag" });
   } catch {
     return NextResponse.json(
       {

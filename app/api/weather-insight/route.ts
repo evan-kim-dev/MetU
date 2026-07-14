@@ -3,10 +3,7 @@ import {
   buildLocalWeatherInsight,
   parseWeatherInsightJson,
 } from "@/lib/ai/weather-insight";
-import {
-  BackendUnavailableError,
-  backendFetch,
-} from "@/lib/backend/client";
+import { aiChatOrNull } from "@/lib/ai/chat-client";
 import {
   buildWeatherPrompt,
   getWeatherSystemPrompt,
@@ -60,23 +57,8 @@ export async function POST(request: Request) {
   const system = getWeatherSystemPrompt();
 
   try {
-    const res = await backendFetch("/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({ system, prompt, mode: "weather" }),
-    });
-
-    if (!res.ok) {
-      return NextResponse.json({
-        ...fallback,
-        source: "fallback",
-      });
-    }
-
-    const data = (await res.json()) as {
-      content?: string | null;
-      source?: string;
-    };
-    const parsed = data.content ? parseWeatherInsightJson(data.content) : null;
+    const chat = await aiChatOrNull({ mode: "weather", system, prompt });
+    const parsed = chat ? parseWeatherInsightJson(chat.content) : null;
 
     if (!parsed) {
       return NextResponse.json({
@@ -87,12 +69,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ...parsed,
-      source: data.source === "ai" ? "ai" : "fallback",
+      source: "ai",
     });
-  } catch (error) {
-    if (!(error instanceof BackendUnavailableError)) {
-      /* ignore */
-    }
+  } catch {
     return NextResponse.json({
       ...fallback,
       source: "fallback",

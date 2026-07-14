@@ -7,7 +7,8 @@ import {
   buildTripTipsPrompt,
   getTipsSystemPrompt,
 } from "@/lib/ai/prompts/insight-prompts";
-import { backendFetch } from "@/lib/backend/client";
+import { aiChatOrNull } from "@/lib/ai/chat-client";
+import { parseTipsOut } from "@/lib/ai/contracts";
 
 function collectRagContexts(trip: Trip | null): string[] {
   if (!trip) {
@@ -35,25 +36,17 @@ function collectRagContexts(trip: Trip | null): string[] {
   ];
 }
 
-function parseAiTips(
-  content: string,
+function tipsToSmartTips(
+  tips: ReturnType<typeof parseTipsOut>,
   tripId: string
 ): SmartTip[] | null {
-  try {
-    const parsed = JSON.parse(content) as {
-      tips?: Array<{ emoji?: string; title?: string; description?: string }>;
-    };
-    if (!Array.isArray(parsed.tips) || parsed.tips.length === 0) return null;
-
-    return parsed.tips.slice(0, 10).map((tip, index) => ({
-      id: `tip-ai-${tripId}-${index}`,
-      emoji: tip.emoji?.trim() || "💡",
-      title: tip.title?.trim() || `팁 ${index + 1}`,
-      description: tip.description?.trim() || "",
-    })).filter((tip) => tip.description.length > 0);
-  } catch {
-    return null;
-  }
+  if (!tips) return null;
+  return tips.tips.map((tip, index) => ({
+    id: `tip-ai-${tripId}-${index}`,
+    emoji: tip.emoji,
+    title: tip.title,
+    description: tip.description,
+  }));
 }
 
 export async function resolveTripTipsWithAi(
@@ -74,32 +67,20 @@ export async function resolveTripTipsWithAi(
     ragContexts,
   });
 
-  try {
-    const res = await backendFetch("/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({
-        system: getTipsSystemPrompt(),
-        prompt,
-        mode: "tips",
-      }),
-    });
-    if (!res.ok) return { tips: fallback, source: "local" };
+  const chat = await aiChatOrNull({
+    mode: "tips",
+    system: getTipsSystemPrompt(),
+    prompt,
+  });
+  if (!chat) return { tips: fallback, source: "local" };
 
-    const data = (await res.json()) as {
-      content?: string | null;
-      source?: string;
-    };
-    if (!data.content || data.source !== "ai") {
-      return { tips: fallback, source: "local" };
-    }
-
-    const aiTips = parseAiTips(data.content, trip?.id ?? "empty");
-    if (!aiTips || aiTips.length === 0) {
-      return { tips: fallback, source: "local" };
-    }
-
-    return { tips: aiTips, source: "ai+rag" };
-  } catch {
+  const aiTips = tipsToSmartTips(
+    parseTipsOut(chat.content),
+    trip?.id ?? "empty"
+  );
+  if (!aiTips || aiTips.length === 0) {
     return { tips: fallback, source: "local" };
   }
+
+  return { tips: aiTips, source: "ai+rag" };
 }

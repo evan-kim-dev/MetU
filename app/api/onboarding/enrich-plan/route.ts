@@ -5,7 +5,7 @@ import {
   normalizeFlexibleYear,
 } from "@/components/onboarding/types";
 import {
-  buildFallbackTripPlan,
+  buildFallbackTripPlanAsync,
   enrichTripPlanWithAi,
 } from "@/lib/ai/generate-plan";
 import type { TripRecommendation } from "@/lib/ai/types";
@@ -56,14 +56,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid-form" }, { status: 400 });
     }
 
-    const fallback =
+    // 웹 지식 → knowledge-aware fallback → AI enrich
+    const { plan: knowledgeFallback, knowledge } =
+      await buildFallbackTripPlanAsync(form);
+
+    const seed =
       body.plan && body.plan.form
-        ? { ...body.plan, form }
-        : buildFallbackTripPlan(form);
+        ? {
+            ...knowledgeFallback,
+            // 클라이언트 폴백 id/이미지 등 유지하되 일정·박수는 지식 기반으로
+            id: body.plan.id || knowledgeFallback.id,
+            imageUrl: body.plan.imageUrl || knowledgeFallback.imageUrl,
+          }
+        : knowledgeFallback;
 
-    const plan = await enrichTripPlanWithAi(fallback);
+    const plan = await enrichTripPlanWithAi(seed, knowledge);
 
-    return NextResponse.json({ plan });
+    return NextResponse.json({
+      plan,
+      scheduleSource: plan.aiScheduleSource ?? "fallback",
+    });
   } catch {
     return NextResponse.json({ error: "enrich-failed" }, { status: 500 });
   }

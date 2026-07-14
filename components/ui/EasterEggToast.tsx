@@ -204,6 +204,12 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
       setMessages((prev) => [...prev, userMsg]);
       setSending(true);
 
+      const buddyId = `b-${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        { id: buddyId, role: "buddy", text: "" },
+      ]);
+
       try {
         const res = await fetch("/api/buddy-chat", {
           method: "POST",
@@ -214,20 +220,37 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
           }),
         });
         if (!res.ok) throw new Error(`buddy-failed:${res.status}`);
-        const data = (await res.json()) as { reply?: string };
-        const reply = data.reply?.trim();
+
+        const { collectStreamedContent } = await import("@/lib/ai/stream-chat");
+        const result = await collectStreamedContent(res, (token) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === buddyId ? { ...m, text: m.text + token } : m
+            )
+          );
+        });
+        const reply = result?.content?.trim();
         if (!reply) throw new Error("empty-reply");
-        pushBuddy(reply);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === buddyId ? { ...m, text: reply } : m))
+        );
       } catch {
         // 배포에서 OpenRouter/BACKEND 미연결이면 여기로 떨어짐 (가드레일 아님)
-        pushBuddy(
-          "지금 진짜 AI랑 연결이 안 됐어. 로컬 복붙 멘트만 나오는 중이야. 배포면 Vercel의 BACKEND_URL이랑 Render의 OPENROUTER_API_KEY부터 확인해봐."
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === buddyId
+              ? {
+                  ...m,
+                  text: "지금 진짜 AI랑 연결이 안 됐어. 로컬 복붙 멘트만 나오는 중이야. 배포면 Vercel의 BACKEND_URL이랑 Render의 OPENROUTER_API_KEY부터 확인해봐.",
+                }
+              : m
+          )
         );
       } finally {
         setSending(false);
       }
     },
-    [pushBuddy, sending]
+    [sending]
   );
 
   useEffect(() => {

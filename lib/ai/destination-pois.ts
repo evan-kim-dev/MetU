@@ -1,5 +1,6 @@
 import type { DaySchedule } from "@/lib/ai/types";
 import type { TravelStyle } from "@/components/onboarding/types";
+import type { DestinationAttraction } from "@/lib/ai/destination-knowledge";
 
 type PoiItem = {
   time: string;
@@ -469,8 +470,43 @@ function pickStyleDays(days: PoiDay[], styles: TravelStyle[]): PoiDay[] {
   return days;
 }
 
+function mapPoiDaysToSchedule(
+  assembled: PoiDay[],
+  budgets: { food: number; activity: number; transport: number }
+): DaySchedule[] {
+  return assembled.map((day, index) => {
+    const items = day.items.map((item) => ({
+      time: item.time,
+      title: item.title,
+      detail:
+        item.detail?.trim() ||
+        `${item.title}에서 현지 분위기를 느껴 보세요. 이동·대기 시간까지 여유 있게 잡아 두면 좋아요해요.`,
+      cost: costFor(item.kind, budgets),
+    }));
+    return {
+      day: index + 1,
+      label: day.label,
+      items,
+      dayTotal: items.reduce((sum, item) => sum + item.cost, 0),
+    };
+  });
+}
+
+function assembleTemplateDays(styled: PoiDay[], daysNeeded: number): PoiDay[] {
+  const middle = styled.slice(1, Math.max(1, styled.length - 1));
+  const assembled: PoiDay[] = [];
+  assembled.push(styled[0]);
+  for (let i = 1; i < daysNeeded - 1; i++) {
+    assembled.push(middle[(i - 1) % Math.max(1, middle.length)] ?? styled[0]);
+  }
+  if (daysNeeded > 1) {
+    assembled.push(styled[styled.length - 1]);
+  }
+  return assembled.slice(0, daysNeeded);
+}
+
 /**
- * 도시별 실명 POI 일정이 있으면 반환. 없으면 null → 기존 추상 템플릿 사용.
+ * 하드코딩 도시 POI가 있으면 반환. 없으면 null.
  */
 export function buildDestinationPoiSchedule(
   city: string,
@@ -484,30 +520,172 @@ export function buildDestinationPoiSchedule(
 
   const daysNeeded = Math.max(1, nights + 1);
   const styled = pickStyleDays(template, styles);
+  return mapPoiDaysToSchedule(assembleTemplateDays(styled, daysNeeded), budgets);
+}
 
-  // 템플릿이 짧으면 중간 날을 순환 보강 (도착/출발 제외)
-  const middle = styled.slice(1, Math.max(1, styled.length - 1));
-  const assembled: PoiDay[] = [];
-  assembled.push(styled[0]);
-  for (let i = 1; i < daysNeeded - 1; i++) {
-    assembled.push(middle[(i - 1) % Math.max(1, middle.length)] ?? styled[0]);
+export function hasHardcodedCityPois(city: string): boolean {
+  const key = normalizeCityKey(city);
+  return Boolean(CITY_POI_DAYS[key]?.length);
+}
+
+/**
+ * 웹에서 가져온 attractions로 실명·상세 일정을 만든다.
+ */
+export function buildDynamicPoiSchedule(
+  city: string,
+  origin: string,
+  nights: number,
+  styles: TravelStyle[],
+  budgets: { food: number; activity: number; transport: number },
+  attractions: DestinationAttraction[]
+): DaySchedule[] | null {
+  if (!attractions.length) return null;
+
+  const daysNeeded = Math.max(1, nights + 1);
+  const styleSet = new Set(styles);
+  const pool = attractions.filter((a) => a.name.trim().length >= 2);
+  if (pool.length === 0) return null;
+
+  let cursor = 0;
+  const nextAttraction = () => {
+    const a = pool[cursor % pool.length];
+    cursor += 1;
+    return a;
+  };
+
+  const days: PoiDay[] = [];
+
+  // Day 1 — arrival
+  {
+    const first = nextAttraction();
+    days.push({
+      label: "도착 · 시내 적응",
+      items: [
+        {
+          time: "14:00",
+          title: `${city} 공항 도착 · 시내 이동`,
+          detail: `${origin}에서 도착한 뒤 전철·버스·택시로 시내로 이동해요. 짐이 많으면 공항 리무진도 편해요.`,
+          kind: "transport",
+        },
+        {
+          time: "16:00",
+          title: "숙소 체크인 & 휴식",
+          detail: "시내 중심·주요 역 근처 숙소에 짐을 내려놓고 가볍게 쉬어요.",
+          kind: "free",
+        },
+        {
+          time: "17:30",
+          title: first.name,
+          detail:
+            first.detail ||
+            `${first.name}을(를) 가볍게 둘러보며 동네 분위기를 익혀요.`,
+          kind: "activity",
+        },
+        {
+          time: "19:30",
+          title: `${city} 시내 저녁`,
+          detail: styleSet.has("food")
+            ? "현지인이 많이 찾는 맛집·야시장 쪽에서 첫 저녁을 먹어요."
+            : "숙소 근처 식당에서 부담 없이 저녁을 해결해요.",
+          kind: "food",
+        },
+      ],
+    });
   }
+
+  // Middle days
+  for (let d = 1; d < daysNeeded - 1; d++) {
+    const a1 = nextAttraction();
+    const a2 = nextAttraction();
+    const a3 = nextAttraction();
+    const label = styleSet.has("healing")
+      ? "여유로운 탐방"
+      : styleSet.has("culture")
+        ? "문화 · 거리 산책"
+        : styleSet.has("shopping")
+          ? "시티 워킹 · 쇼핑"
+          : "핵심 관광";
+
+    days.push({
+      label,
+      items: [
+        {
+          time: "09:30",
+          title: a1.name,
+          detail:
+            a1.detail ||
+            `${a1.name}에서 오전을 보내요. 개장 직후가 사람이 덜해서 사진 찍기 좋아요해요.`,
+          kind: "activity",
+        },
+        {
+          time: "12:30",
+          title: `${city} 로컬 점심`,
+          detail: "명소 근처 식당·카페에서 현지 메뉴로 점심을 먹어요.",
+          kind: "food",
+        },
+        {
+          time: "14:30",
+          title: a2.name,
+          detail:
+            a2.detail ||
+            `${a2.name}으로 이동해 오후 일정을 이어가요. 걷는 구간이 길면 편한 신발을 신어요.`,
+          kind: "activity",
+        },
+        {
+          time: "17:00",
+          title: a3.name,
+          detail:
+            a3.detail ||
+            `${a3.name}에서 해 지기 전까지 둘러보고, 근처 카페에서 짧게 쉬어도 좋아요아요.`,
+          kind: "activity",
+        },
+        {
+          time: "19:00",
+          title: `${city} 저녁 · 야경`,
+          detail: styleSet.has("hotplace")
+            ? "핫플·야경 스팟 근처에서 저녁을 먹고 사진도 남겨 보세요."
+            : "시내 추천 구역에서 저녁을 먹고 주변을 산책해요.",
+          kind: "food",
+        },
+      ],
+    });
+  }
+
+  // Last day — departure
   if (daysNeeded > 1) {
-    assembled.push(styled[styled.length - 1]);
+    const last = nextAttraction();
+    days.push({
+      label: "출발",
+      items: [
+        {
+          time: "09:30",
+          title: "체크아웃 & 짐 보관",
+          detail: "체크아웃 후 숙소나 역에 짐을 맡겨 두고 가볍게 다녀와요.",
+          kind: "free",
+        },
+        {
+          time: "11:00",
+          title: last.name,
+          detail:
+            last.detail ||
+            `${last.name}을(를) 마지막으로 둘러보고 기념품을 사도 좋아요.`,
+          kind: "activity",
+        },
+        {
+          time: "13:30",
+          title: "공항 · 역 이동",
+          detail: `${city}에서 ${origin}행 교통편에 맞춰 여유 있게 이동해요. 국제선은 최소 2시간 전 도착을 권장해요.`,
+          kind: "transport",
+        },
+        {
+          time: "16:00",
+          title: `${origin} 행 출발`,
+          detail: "탑승 수속·보안 검색을 마치고 귀가 일정으로 이어가요.",
+          kind: "free",
+        },
+      ],
+    });
   }
 
-  return assembled.slice(0, daysNeeded).map((day, index) => {
-    const items = day.items.map((item) => ({
-      time: item.time,
-      title: item.title,
-      detail: item.detail,
-      cost: costFor(item.kind, budgets),
-    }));
-    return {
-      day: index + 1,
-      label: day.label,
-      items,
-      dayTotal: items.reduce((sum, item) => sum + item.cost, 0),
-    };
-  });
+  return mapPoiDaysToSchedule(days.slice(0, daysNeeded), budgets);
 }

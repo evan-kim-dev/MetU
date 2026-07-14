@@ -331,7 +331,7 @@ ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 - ${AI_VOICE}`;
 }
 
-const PLAN_SYSTEM_PROMPT = `${AI_VOICE} ${AI_QUALITY_FIRST} 여행 RAG만 근거로 매우 풍부한 일정·항공·숙소 안내를 JSON으로 작성해요. 구체적 장소명을 쓰고 허위 시세 금액 단정은 금지.`;
+const PLAN_SYSTEM_PROMPT = `${AI_VOICE} ${AI_QUALITY_FIRST} 목적지 웹 지식(CITY_SUMMARY·DESTINATION_ATTRACTIONS)과 RAG만 근거로 매우 풍부한 일정·항공·숙소 안내를 JSON으로 작성해요. 목록에 있는 실명 장소를 우선하고, 허위 시세 금액 단정은 금지. 모든 일정 item에 detail을 꼭 채워요.`;
 
 export function getPlanSystemPrompt(): string {
   return PLAN_SYSTEM_PROMPT;
@@ -350,11 +350,20 @@ export function buildPlanItineraryPrompt(params: {
   flightBudget: number;
   hotelBudget: number;
   ragContexts: string[];
+  destinationSummary?: string;
+  attractions?: Array<{ name: string; detail: string }>;
 }): string {
   const days = params.nights + 1;
-  return `당신은 Met U 여행 플래너입니다. 입력과 RAG만 근거로 매우 풍부하고 구체적인 맞춤 일정을 JSON으로 만드세요.
+  const attractionBlock =
+    params.attractions && params.attractions.length > 0
+      ? params.attractions
+          .map((a, i) => `${i + 1}. ${a.name} — ${a.detail}`)
+          .join("\n")
+      : "(없음 — 위키/지도 기반 명소를 최대한 실명으로 작성)";
+
+  return `당신은 Met U 여행 플래너입니다. 입력·CITY_SUMMARY·DESTINATION_ATTRACTIONS·RAG만 근거로 매우 풍부하고 구체적인 맞춤 일정을 JSON으로 만드세요.
 ${AI_QUALITY_FIRST}
-현지 장소·동선·식사·휴식·이동 시간까지 디테일하게 채워 주세요.
+현지 장소·동선·식사·휴식·이동 시간·소요 팁까지 디테일하게 채워 주세요.
 
 [입력]
 - 출발: ${params.origin || "미입력"}
@@ -366,29 +375,34 @@ ${AI_QUALITY_FIRST}
 - 항공 배정 예산(참고): ${params.flightBudget.toLocaleString("ko-KR")}원
 - 숙소 배정 예산(참고): ${params.hotelBudget.toLocaleString("ko-KR")}원
 
+[CITY_SUMMARY]
+${params.destinationSummary?.trim() || "(요약 없음)"}
+
+[DESTINATION_ATTRACTIONS]
+${attractionBlock}
+
 [RAG]
 ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
 출력(JSON만):
 {
-  "summary": "4~6문장 일정 요약 (분위기·하이라이트·동선·식사·휴식 포인트)",
+  "summary": "4~6문장 일정 요약 (분위기·하이라이트·동선·식사·휴식 포인트). ${params.nights}박 ${days}일을 정확히 반영",
   "flight": {"airline":"항공사 또는 저비용 항공 추천","schedule":"가는 편 HH:MM · 오는 편 HH:MM","note":"예약·환승·수하물·좌석 팁 2~3문장"},
   "hotel": {"name":"숙소 유형명","area":"추천 지역","note":"위치·조식·체크인·주변 동선 팁 2~3문장"},
   "dailySchedule":[
-    {"day":1,"label":"데이 제목","items":[{"time":"14:00","title":"소제목 (이동·장소 한 줄)","detail":"구체적인 행동·팁 한두 문장"}]}
+    {"day":1,"label":"데이 제목","items":[{"time":"14:00","title":"소제목 (이동·장소 한 줄)","detail":"구체적인 행동·소요·팁 한두 문장"}]}
   ],
   "tips":["팁1","팁2","팁3","팁4","팁5","팁6","팁7","팁8"]
 }
 
 규칙:
-- dailySchedule은 정확히 ${days}일
+- dailySchedule은 정확히 ${days}일 (박수 ${params.nights} 반영)
 - 각 day items 6~8개, time은 HH:MM
-- title은 **짧은 소제목** (예: "지하철 → 오테마치역", "경복궁", "해운대해수욕장"). 실제로 존재하는 장소·이동수단 포함. "대표 명소 투어", "현지 맛집 탐방", "자유 시간" 같은 막연한 표현 금지
-- 국내(서울·부산·제주·강릉·전주 등)면 한국어 고유 장소명을, 해외면 현지에서 통하는 고유 장소명을 우선
-- detail은 title 아래 나오는 **본문** (예: "역에서 황거동 어원 입구로 이동해요."). 해요체 1~2문장
+- title은 **짧은 소제목** (예: "지하철 → 하카타역", "오호리공원"). DESTINATION_ATTRACTIONS에 있는 실명을 우선 사용. 목록에 없는 유명 명소도 실제로 존재하는 이름만 허용
+- "대표 명소", "로컬 레스토랑", "자유 시간", "시내 투어"처럼 장소가 특정되지 않은 막연한 title 금지
+- **모든 item에 detail 필수**: 소요시간·가는 법·팁을 해요체 1~2문장
 - 같은 날 장소는 지리적으로 가까운 순으로 배치 (불필요한 시내 왕복 최소화)
 - 아침·점심·저녁·카페·이동·핵심 관광·야경/야시장을 균형 있게
-- 목적지·스타일·시즌을 반영한 구체적 장소/활동
 - tips는 8개, 각각 실용적인 1~2문장 (해요체)
 - 항공·숙소 임의 견적 금액(원/%) 금지
 - summary·note·tips·detail 모두 해요체

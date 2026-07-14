@@ -19,6 +19,7 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { DestinationImage } from "@/components/ui/DestinationImage";
 import { AIInsightBadge } from "@/components/ui/AIInsightBadge";
+import { AILoadingPanel } from "@/components/ui/AILoadingPanel";
 import { EasterEggCelebration } from "@/components/ui/EasterEggCelebration";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
 import { usePlanQuotes } from "@/components/recommend/usePlanQuotes";
@@ -103,6 +104,9 @@ export function RecommendResult({
   const { addTrip } = useTrips();
   const [plan, setPlan] = useState(initialPlan);
   const [enriching, setEnriching] = useState(enrich);
+  const [enrichNotice, setEnrichNotice] = useState<"fallback" | "error" | null>(
+    null
+  );
   const [routeOptimizing, setRouteOptimizing] = useState(false);
   const routeOptimizeAttemptedRef = useRef<Set<string>>(new Set());
   const {
@@ -135,6 +139,7 @@ export function RecommendResult({
   useEffect(() => {
     setPlan(initialPlan);
     setEnriching(enrich && initialPlan.summaryTone !== "factbomb");
+    setEnrichNotice(null);
     routeOptimizeAttemptedRef.current.clear();
     setFlightOverride(null);
     setHotelOverride(null);
@@ -163,6 +168,7 @@ export function RecommendResult({
 
     let cancelled = false;
     setEnriching(true);
+    setEnrichNotice(null);
 
     void fetch("/api/onboarding/enrich-plan", {
       method: "POST",
@@ -171,14 +177,20 @@ export function RecommendResult({
     })
       .then(async (res) => {
         if (!res.ok) throw new Error("enrich-failed");
-        return (await res.json()) as { plan?: TripRecommendation };
+        return (await res.json()) as {
+          plan?: TripRecommendation;
+          scheduleSource?: "ai" | "fallback";
+        };
       })
       .then((data) => {
         if (cancelled || !data.plan) return;
         setPlan(data.plan);
+        if (data.scheduleSource === "fallback" || data.plan.aiScheduleSource === "fallback") {
+          setEnrichNotice("fallback");
+        }
       })
       .catch(() => {
-        // 폴백 일정 유지
+        if (!cancelled) setEnrichNotice("error");
       })
       .finally(() => {
         if (!cancelled) setEnriching(false);
@@ -384,17 +396,23 @@ export function RecommendResult({
       />
       <div className="flex flex-col gap-6 px-4 pb-8 pt-5">
         {enriching ? (
+          <AILoadingPanel
+            title="AI가 맞춤 일정을 다듬는 중"
+            description="웹 지식·예산 RAG로 일정·항공·숙소를 맞추고 있어요"
+          />
+        ) : null}
+
+        {enrichNotice && !enriching ? (
           <div
             role="status"
-            aria-live="polite"
-            className="flex items-center gap-2 rounded-xl2 border border-brand/15 bg-brand/5 px-3.5 py-2.5 text-sm text-brand-strong"
+            className="flex items-start gap-2 rounded-xl2 border border-amber-200/80 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-950"
           >
-            <Sparkles
-              className="h-4 w-4 shrink-0 motion-safe:animate-pulse"
-              strokeWidth={2.2}
-              aria-hidden
-            />
-            <span className="font-semibold">AI가 맞춤 일정을 다듬고 있어요…</span>
+            <Sparkles className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <p>
+              {enrichNotice === "error"
+                ? "AI 보강에 잠시 실패했어요. 지금은 기본 일정을 보여주고 있어요."
+                : "AI 일정 생성은 생략되고, 지식 기반 기본 일정으로 보여드려요."}
+            </p>
           </div>
         ) : null}
 

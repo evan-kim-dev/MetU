@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildLocalBudgetInsight } from "@/lib/ai/budget-insight";
 import type { BudgetInsightRecord, BudgetInsightSource } from "@/lib/ai/budget-insight-record";
-import { backendFetch } from "@/lib/backend/client";
+import { aiChatOrNull } from "@/lib/ai/chat-client";
 import {
   buildBudgetPrompt,
   getBudgetSystemPrompt,
@@ -58,22 +58,8 @@ async function buildBudgetInsight(budget: number): Promise<BuildResult> {
   const system = getBudgetSystemPrompt();
 
   try {
-    const res = await backendFetch("/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({ system, prompt, mode: "budget" }),
-    });
-
-    if (!res.ok) {
-      return {
-        record: buildRecord(budget, fallback, "fallback", fallback, month),
-      };
-    }
-
-    const data = (await res.json()) as {
-      content?: string | null;
-      source?: string;
-    };
-    const content = data.content?.trim();
+    const chat = await aiChatOrNull({ mode: "budget", system, prompt });
+    const content = chat?.content?.trim();
     if (
       !content ||
       looksLikeFakeQuote(content) ||
@@ -85,7 +71,7 @@ async function buildBudgetInsight(budget: number): Promise<BuildResult> {
     }
 
     const source: BudgetInsightSource =
-      data.source === "ai" ? "ai+rag" : "fallback";
+      chat?.source === "ai" ? "ai+rag" : "fallback";
     return {
       record: buildRecord(budget, content, source, fallback, month),
     };
