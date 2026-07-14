@@ -854,7 +854,7 @@ export function RecommendResult({
               >
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-sm font-extrabold text-brand">
-                    Day {day.day}
+                    {day.day}일차
                     {day.label ? ` · ${day.label}` : ""}
                   </span>
                 </div>

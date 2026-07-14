@@ -284,7 +284,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                       <>
                         <div className="mb-3">
                           <span className="text-sm font-extrabold text-brand">
-                            Day {draftDay.day}
+                            {draftDay.day}일차
                           </span>
                         </div>
 
@@ -385,10 +385,10 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                       <>
                         <div className="mb-3 flex items-center justify-between gap-2">
                           <span className="text-sm font-extrabold text-brand">
-                            Day {day.day}
+                            {day.day}일차
                           </span>
                           <TripIconButton
-                            label={`Day ${day.day} 일정 수정`}
+                            label={`${day.day}일차 일정 수정`}
                             onClick={() => openDayEdit(dayIndex)}
                           >
                             <Pencil className="h-4 w-4" strokeWidth={2.2} />

@@ -47,6 +47,25 @@ def _parse_price_value(price_text: str) -> float:
         return float("inf")
 
 
+def _normalize_price_to_krw(value: float) -> int:
+    """Foreign amounts (USD etc.) often come back under 10_000 — convert ≈ KRW."""
+    if value == float("inf") or value <= 0:
+        return 0
+    rounded = int(round(value))
+    if rounded < 10_000:
+        return rounded * 1500
+    return rounded
+
+
+def _format_price_krw(price_text: str) -> str:
+    raw = (price_text or "").strip()
+    value = _parse_price_value(raw)
+    krw = _normalize_price_to_krw(value)
+    if krw <= 0:
+        return raw or "-"
+    return f"₩{krw:,}"
+
+
 def _parse_duration_minutes(duration_text: str) -> int:
     if not duration_text:
         return 0
@@ -171,14 +190,19 @@ def _search_sync(
     if sort_by == "fastest":
         flights.sort(key=lambda item: _parse_duration_minutes(item.duration))
     elif sort_by == "price_high":
-        flights.sort(key=lambda item: _parse_price_value(item.price), reverse=True)
+        flights.sort(
+            key=lambda item: _normalize_price_to_krw(_parse_price_value(item.price)),
+            reverse=True,
+        )
     elif sort_by == "price":
-        flights.sort(key=lambda item: _parse_price_value(item.price))
+        flights.sort(
+            key=lambda item: _normalize_price_to_krw(_parse_price_value(item.price))
+        )
     else:
         flights.sort(
             key=lambda item: (
                 0 if getattr(item, "is_best", False) else 1,
-                _parse_price_value(item.price),
+                _normalize_price_to_krw(_parse_price_value(item.price)),
             )
         )
 
@@ -191,15 +215,15 @@ def _search_sync(
         seat=seat,
     )
 
-    prices = [_parse_price_value(item.price) for item in flights if item.price]
-    finite_prices = [price for price in prices if price != float("inf")]
+    prices = [_normalize_price_to_krw(_parse_price_value(item.price)) for item in flights if item.price]
+    finite_prices = [price for price in prices if price > 0]
 
     normalized = []
     for index, item in enumerate(flights[:limit]):
         normalized.append(
             {
                 "id": f"gf-{index}",
-                "price": item.price or "-",
+                "price": _format_price_krw(item.price or "-"),
                 "carrier": item.name or "항공사 정보 없음",
                 "outbound": item.departure or "",
                 "inbound": item.arrival or "",

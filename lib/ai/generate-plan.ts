@@ -180,110 +180,112 @@ function buildDailySchedule(
 
   const dayTemplates = [
     {
-      label: "도착 & 시내 적응",
+      label: `${city} 도착 · 적응`,
       items: [
         {
           time: "14:00",
           title: `${city} 공항 도착 · 시내 이동`,
-          detail: `${form.origin}에서 도착한 뒤 대중교통·택시로 시내로 이동해요.`,
+          detail: `${form.origin}에서 도착한 뒤 대중교통·택시로 ${city} 시내로 이동해요.`,
           cost: transportPerDay,
         },
         {
           time: "16:00",
           title: "숙소 체크인 & 휴식",
-          detail: "시내 숙소에 짐을 내려놓고 가볍게 쉬어요.",
+          detail: `${city} 시내 숙소에 짐을 내려놓고 가볍게 쉬어요.`,
           cost: 0,
         },
         {
           time: "18:30",
-          title: `${city} 시내 저녁`,
-          detail: "숙소 근처 식당에서 첫 저녁을 먹으며 동네를 익혀요.",
+          title: `${city} 현지 저녁`,
+          detail: `${city} 숙소 근처 식당에서 첫 저녁을 먹으며 동네를 익혀요.`,
           cost: foodPerDay,
         },
       ],
     },
     {
-      label: styleSet.has("sightseeing") ? "핵심 관광" : "여유로운 탐방",
+      label: `${city} 대표 구역 산책`,
       items: [
         {
           time: "09:30",
-          title: `${city} 시내 핵심 스팟`,
-          detail: "시내 중심의 대표 구역을 걸으며 오전을 보내요.",
+          title: `${city} 대표 관광 구역`,
+          detail: `${city}에서 가장 잘 알려진 중심가를 걸으며 오전을 보내요.`,
           cost: activityPerDay,
         },
         {
           time: "13:00",
-          title: `${city} 로컬 레스토랑`,
-          detail: "현지 메뉴로 점심을 먹고 잠깐 쉬어요.",
+          title: `${city} 현지 점심`,
+          detail: `${city} 로컬 메뉴로 점심을 먹고 잠깐 쉬어요.`,
           cost: foodPerDay,
         },
         {
           time: "15:30",
-          title: `${city} 카페·거리 산책`,
-          detail: "카페거리에서 여유를 즐기고 사진을 남겨요.",
+          title: `${city} 카페·골목 산책`,
+          detail: `${city}의 분위기 좋은 골목·카페에서 여유를 즐기고 사진을 남겨요.`,
           cost: Math.round(activityPerDay * 0.3),
         },
       ],
     },
     {
-      label: styleSet.has("culture") ? "문화·예술" : "로컬 체험",
+      label: `${city} 문화 · 로컬 체험`,
       items: [
         {
           time: "10:00",
           title: `${city} 박물관·전시`,
-          detail: "현지 역사·문화를 알 수 있는 전시 공간을 찾아가요.",
+          detail: `${city}의 역사·문화를 알 수 있는 전시 공간을 찾아가요.`,
           cost: activityPerDay,
         },
         {
           time: "14:00",
           title: `${city} 시장·상점가`,
-          detail: "로컬 마켓을 돌며 간식과 기념품을 구경해요.",
+          detail: `${city} 로컬 마켓을 돌며 간식과 기념품을 구경해요.`,
           cost: Math.round(foodPerDay * 0.8),
         },
         {
           time: "19:00",
           title: `${city} 야경 스팟`,
-          detail: "해 질 녘 전망 좋은 곳에서 야경을 감상해요.",
+          detail: `${city}에서 해 질 녘 전망 좋은 곳에서 야경을 감상해요.`,
           cost: transportPerDay,
         },
       ],
     },
     {
-      label: styleSet.has("healing") ? "힐링 데이" : "자유 일정",
+      label: styleSet.has("healing")
+        ? `${city} 힐링 데이`
+        : `${city} 여유 · 쇼핑`,
       items: [
         {
           time: "11:00",
-          title: `${city} 공원·해변`,
-          detail: "초록 공간이나 물가에서 여유롭게 시간을 보내요.",
+          title: `${city} 공원·물가`,
+          detail: `${city}의 초록 공간이나 물가에서 여유롭게 시간을 보내요.`,
           cost: activityPerDay,
         },
         {
           time: "15:00",
           title: `${city} 브런치 카페`,
-          detail: "분위기 좋은 카페에서 늦은 브런치를 즐겨요.",
+          detail: `${city} 분위기 좋은 카페에서 늦은 브런치를 즐겨요.`,
           cost: foodPerDay,
         },
         {
           time: "17:00",
           title: `${city} 기념품 거리`,
-          detail: "귀국 전에 기념품을 고르며 산책해요.",
+          detail: `귀국 전에 ${city} 기념품을 고르며 산책해요.`,
           cost: Math.round(activityPerDay * 0.4),
         },
       ],
     },
     {
-      label: "출발",
+      label: `${city} 출발 · 귀국`,
       items: [
         {
           time: "10:00",
           title: "체크아웃 & 마지막 산책",
-          detail: "체크아웃 후 남는 시간에 근처를 한 바퀴 돌아요.",
+          detail: `${city} 숙소 체크아웃 후 남는 시간에 근처를 한 바퀴 돌아요.`,
           cost: 0,
         },
         {
           time: "12:00",
-          title: "공항 이동",
-          detail: `${form.origin}행에 맞춰 여유 있게 공항으로 이동해요.`,
+          title: `${city} → 공항 이동`,
+          detail: `${form.origin}행에 맞춰 ${city}에서 여유 있게 공항으로 이동해요.`,
           cost: transportPerDay,
         },
         {
@@ -354,6 +356,11 @@ function mergeAiSchedule(
     (knowledge?.attractions ?? []).map((a) => [a.name.toLowerCase(), a.detail])
   );
 
+  const vagueTitle =
+    /^(대표\s*명소|로컬\s*(레스토랑|점심|저녁|카페)|자유\s*시간|시내\s*(투어|핵심\s*스팟|저녁|산책)|핵심\s*관광|문화\s*[·.]?\s*거리|박물관\s*[·.]?\s*전시|카페\s*[·.]?\s*거리)/i;
+  const vagueLabel =
+    /^(핵심\s*관광|여유로운\s*탐방|자유\s*일정|로컬\s*체험|문화\s*[·.]?\s*예술|데이\s*제목|\d+일차)$/i;
+
   const expectedDays = nights + 1;
   const sliced = aiDays.slice(0, expectedDays);
 
@@ -364,16 +371,19 @@ function mergeAiSchedule(
       rawItems.length > 0
         ? rawItems
             .map((item, itemIndex) => {
-              const title = item.title?.trim() || "자유 시간";
-              const fallbackDetail = fallbackDay.items[itemIndex]?.detail;
+              const fallbackItem = fallbackDay.items[itemIndex];
+              let title = item.title?.trim() || "";
+              if (!title || vagueTitle.test(title)) {
+                title = fallbackItem?.title || "현지 일정";
+              }
               const matchedDetail = attractionByName.get(title.toLowerCase());
               const detail =
                 item.detail?.trim() ||
                 matchedDetail ||
-                fallbackDetail ||
+                fallbackItem?.detail ||
                 `${title}에서 현지 분위기를 느껴 보세요. 이동 시간까지 여유를 두고 둘러봐요.`;
               return {
-                time: item.time?.trim() || "10:00",
+                time: item.time?.trim() || fallbackItem?.time || "10:00",
                 title,
                 detail,
                 cost: estimateItemCost(`${title} ${detail}`, budgets),
@@ -382,9 +392,13 @@ function mergeAiSchedule(
             .slice(0, 12)
         : fallbackDay.items;
 
+    const rawLabel = day.label?.trim() || "";
+    const label =
+      rawLabel && !vagueLabel.test(rawLabel) ? rawLabel : fallbackDay.label;
+
     return {
       day: index + 1,
-      label: day.label?.trim() || fallbackDay.label,
+      label,
       items,
       dayTotal: items.reduce((sum, item) => sum + item.cost, 0),
     };

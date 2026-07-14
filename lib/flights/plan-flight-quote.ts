@@ -11,6 +11,7 @@ import {
   buildGoogleFlightsSearchUrl,
   buildGoogleFlightsUrlFromPlan,
 } from "@/lib/flights/google-flights-url";
+import { normalizePriceToKrw, parseAndNormalizeKrw } from "@/lib/shared/format";
 
 export interface PlanFlightQuote {
   priceKrw: number;
@@ -34,10 +35,6 @@ type FlightSearchItem = {
   route: string;
   bookingUrl?: string;
 };
-
-function parsePriceKrw(value: string): number {
-  return Number(value.replace(/[^0-9]/g, "")) || 0;
-}
 
 function extractTimeLabel(datetime: string): string {
   const match = datetime.match(/(\d{1,2}:\d{2})/);
@@ -64,9 +61,10 @@ function buildEstimateQuote(plan: TripRecommendation): PlanFlightQuote | null {
       adults: plan.people,
     });
 
+  const priceKrw = normalizePriceToKrw(plan.flight.price);
   return {
-    priceKrw: plan.flight.price,
-    priceLabel: plan.flight.price.toLocaleString("ko-KR"),
+    priceKrw,
+    priceLabel: priceKrw.toLocaleString("ko-KR"),
     airline: plan.flight.airline,
     route: plan.flight.route,
     schedule: plan.flight.schedule,
@@ -135,7 +133,7 @@ export async function fetchPlanFlightQuote(
 
     const picked = pickCheapestInBand(
       data.flights,
-      (f) => parsePriceKrw(f.price),
+      (f) => parseAndNormalizeKrw(f.price),
       Number.POSITIVE_INFINITY
     );
     if (!picked || picked.price <= 0) return estimate;
@@ -147,7 +145,7 @@ export async function fetchPlanFlightQuote(
 
     return {
       priceKrw: picked.price,
-      priceLabel: picked.item.price,
+      priceLabel: picked.price.toLocaleString("ko-KR"),
       airline: picked.item.carrier,
       route: picked.item.route,
       schedule: formatSchedule(picked.item.outbound, picked.item.inbound),

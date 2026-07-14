@@ -553,13 +553,29 @@ export function buildDynamicPoiSchedule(
     return a;
   };
 
+  const shortName = (name: string, max = 12) => {
+    const t = name.trim();
+    return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+  };
+
+  const themeLabel = (
+    dayIndex: number,
+    a: { name: string },
+    b?: { name: string }
+  ) => {
+    if (dayIndex === 0) return `${city} 도착 · 적응`;
+    if (dayIndex === daysNeeded - 1) return `${city} 출발 · 귀국`;
+    if (b) return `${shortName(a.name)} · ${shortName(b.name)}`;
+    return `${shortName(a.name)} 탐방`;
+  };
+
   const days: PoiDay[] = [];
 
   // Day 1 — arrival
   {
     const first = nextAttraction();
     days.push({
-      label: "도착 · 시내 적응",
+      label: themeLabel(0, first),
       items: [
         {
           time: "14:00",
@@ -578,49 +594,42 @@ export function buildDynamicPoiSchedule(
           title: first.name,
           detail:
             first.detail ||
-            `${first.name}을(를) 가볍게 둘러보며 동네 분위기를 익혀요.`,
+            `${first.name}을(를) 가볍게 둘러보며 ${city} 분위기를 익혀요.`,
           kind: "activity",
         },
         {
           time: "19:30",
-          title: `${city} 시내 저녁`,
+          title: `${city} 현지 저녁`,
           detail: styleSet.has("food")
-            ? "현지인이 많이 찾는 맛집·야시장 쪽에서 첫 저녁을 먹어요."
-            : "숙소 근처 식당에서 부담 없이 저녁을 해결해요.",
+            ? `${city}에서 현지인이 많이 찾는 맛집·야시장 쪽 첫 저녁을 먹어요.`
+            : `${city} 숙소 근처 식당에서 부담 없이 저녁을 해결해요.`,
           kind: "food",
         },
       ],
     });
   }
 
-  // Middle days
+  // Middle days — unique labels from real attractions
   for (let d = 1; d < daysNeeded - 1; d++) {
     const a1 = nextAttraction();
     const a2 = nextAttraction();
     const a3 = nextAttraction();
-    const label = styleSet.has("healing")
-      ? "여유로운 탐방"
-      : styleSet.has("culture")
-        ? "문화 · 거리 산책"
-        : styleSet.has("shopping")
-          ? "시티 워킹 · 쇼핑"
-          : "핵심 관광";
 
     days.push({
-      label,
+      label: themeLabel(d, a1, a2),
       items: [
         {
           time: "09:30",
           title: a1.name,
           detail:
             a1.detail ||
-            `${a1.name}에서 오전을 보내요. 개장 직후가 사람이 덜해서 사진 찍기 좋아요해요.`,
+            `${a1.name}에서 오전을 보내요. 개장 직후가 사람이 덜해서 둘러보기 좋아요.`,
           kind: "activity",
         },
         {
           time: "12:30",
-          title: `${city} 로컬 점심`,
-          detail: "명소 근처 식당·카페에서 현지 메뉴로 점심을 먹어요.",
+          title: `${shortName(a1.name, 10)} 근처 점심`,
+          detail: `${a1.name} 인근 식당·카페에서 ${city} 현지 메뉴로 점심을 먹어요.`,
           kind: "food",
         },
         {
@@ -636,15 +645,15 @@ export function buildDynamicPoiSchedule(
           title: a3.name,
           detail:
             a3.detail ||
-            `${a3.name}에서 해 지기 전까지 둘러보고, 근처 카페에서 짧게 쉬어도 좋아요아요.`,
+            `${a3.name}에서 해 지기 전까지 둘러보고, 근처에서 짧게 쉬어도 좋아요아요.`,
           kind: "activity",
         },
         {
           time: "19:00",
-          title: `${city} 저녁 · 야경`,
+          title: `${city} 저녁 · ${shortName(a3.name, 8)} 인근`,
           detail: styleSet.has("hotplace")
-            ? "핫플·야경 스팟 근처에서 저녁을 먹고 사진도 남겨 보세요."
-            : "시내 추천 구역에서 저녁을 먹고 주변을 산책해요.",
+            ? `${a3.name} 근처 핫플·야경 스팟에서 저녁을 먹고 사진도 남겨 보세요.`
+            : `${a3.name} 인근에서 저녁을 먹고 ${city} 밤거리를 산책해요.`,
           kind: "food",
         },
       ],
@@ -655,7 +664,7 @@ export function buildDynamicPoiSchedule(
   if (daysNeeded > 1) {
     const last = nextAttraction();
     days.push({
-      label: "출발",
+      label: themeLabel(daysNeeded - 1, last),
       items: [
         {
           time: "09:30",
@@ -673,7 +682,7 @@ export function buildDynamicPoiSchedule(
         },
         {
           time: "13:30",
-          title: "공항 · 역 이동",
+          title: `${city} → 공항 · 역 이동`,
           detail: `${city}에서 ${origin}행 교통편에 맞춰 여유 있게 이동해요. 국제선은 최소 2시간 전 도착을 권장해요.`,
           kind: "transport",
         },

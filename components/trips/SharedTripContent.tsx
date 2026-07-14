@@ -178,7 +178,8 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
               >
                 <div className="mb-3">
                   <span className="text-sm font-extrabold text-brand">
-                    Day {day.day}
+                    {day.day}일차
+                    {day.label ? ` · ${day.label}` : ""}
                   </span>
                 </div>
                 <div className="flex flex-col gap-2">
