@@ -2,7 +2,11 @@
 
 ## Vercel Cron
 
-`vercel.json` schedules a daily hit on `/api/agent/cron/daily` (UTC `0 11 * * *`).
+`vercel.json` schedules **one** daily hit on `/api/agent/cron/daily` (UTC `0 11 * * *`).
+Vercel Cron uses **GET**. The route also accepts POST for manual/pg_net callers.
+
+Hobby plan allows a single cron job per day, so the daily handler also runs an
+`agent_sweep_candidates` pass. `/api/agent/sweep` remains for manual drains.
 
 Set **`CRON_SECRET`** on Vercel. Cron sends:
 
@@ -10,7 +14,13 @@ Set **`CRON_SECRET`** on Vercel. Cron sends:
 Authorization: Bearer <CRON_SECRET>
 ```
 
-Implementations use `requireCronSecret()` in `lib/security/guard.ts` — same pattern as `/api/agent/sweep`.
+```bash
+curl -sS -H "Authorization: Bearer $CRON_SECRET" \
+  "https://met-u.vercel.app/api/agent/cron/daily"
+```
+
+Auth uses `requireCronSecret()` in `lib/security/guard.ts` (timing-safe compare).
+Missing `CRON_SECRET` → 503 in production-style configs; wrong bearer → 401.
 
 ## Optional: Supabase pg_cron + pg_net
 
@@ -25,13 +35,11 @@ select cron.schedule(
   'metu_agent_daily',
   '0 11 * * *',
   $$
-  select net.http_post(
+  select net.http_get(
     url := 'https://YOUR_PRODUCTION_HOST/api/agent/cron/daily',
     headers := jsonb_build_object(
-      'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || current_setting('app.cron_secret', true)
-    ),
-    body := '{}'::jsonb
+    )
   ) as request_id;
   $$
 );
@@ -41,24 +49,11 @@ select cron.schedule(
 -- alter database postgres set app.cron_secret = 'generate-a-long-random-string';
 ```
 
-Sweep backlog separately if needed:
+Manual sweep (optional; daily already sweeps on Hobby):
 
-```sql
-/*
-select cron.schedule(
-  'metu_agent_sweep',
-  '*/5 * * * *',
-  $$
-  select net.http_post(
-    url := 'https://YOUR_PRODUCTION_HOST/api/agent/sweep',
-    headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || current_setting('app.cron_secret', true)
-    ),
-    body := '{}'::jsonb
-  );
-  $$
-);
-*/
+```bash
+curl -sS -H "Authorization: Bearer $CRON_SECRET" \
+  "https://YOUR_PRODUCTION_HOST/api/agent/sweep"
 ```
 
 ## `api_cache` cleanup tip

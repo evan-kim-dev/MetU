@@ -7,10 +7,7 @@ import { requireCronSecret } from "@/lib/security/guard";
 
 export const maxDuration = 60;
 
-export async function POST(request: Request) {
-  const auth = requireCronSecret(request);
-  if (auth instanceof NextResponse) return auth;
-
+async function runSweep(): Promise<NextResponse> {
   const admin = getAgentAdmin();
   if (!admin) {
     return NextResponse.json({ error: "server-misconfigured" }, { status: 503 });
@@ -34,8 +31,18 @@ export async function POST(request: Request) {
     }
   });
 
-  return NextResponse.json(
-    { accepted: ids.length, ids },
-    { status: 202 }
-  );
+  return NextResponse.json({ accepted: ids.length, ids }, { status: 202 });
+}
+
+/** Manual / after-ingest backlog drain. Prefer daily cron on Hobby. */
+export async function GET(request: Request) {
+  const auth = requireCronSecret(request);
+  if (auth instanceof NextResponse) return auth;
+  return runSweep();
+}
+
+export async function POST(request: Request) {
+  const auth = requireCronSecret(request);
+  if (auth instanceof NextResponse) return auth;
+  return runSweep();
 }

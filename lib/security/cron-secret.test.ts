@@ -38,4 +38,16 @@ describe("requireCronSecret", () => {
     );
     expect(res).toEqual({ ok: true });
   });
+
+  it("works the same for GET daily cron URLs", () => {
+    process.env.CRON_SECRET = "expected-secret";
+    const res = requireCronSecret(
+      new Request("http://localhost/api/agent/cron/daily", {
+        method: "GET",
+        headers: { authorization: "Bearer expected-secret" },
+      })
+    );
+    expect(res).toEqual({ ok: true });
+  });
 });
+
