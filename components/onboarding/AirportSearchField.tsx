@@ -10,10 +10,6 @@ import {
   searchCityPlaces,
   type AirportPlace,
 } from "@/lib/airports/data";
-import {
-  mergeAirportPlaces,
-  searchAirportsFromApi,
-} from "@/lib/airports/kac";
 
 interface AirportSearchFieldProps {
   label: string;
@@ -46,7 +42,6 @@ export function AirportSearchField({
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
-  const [apiResults, setApiResults] = useState<AirportPlace[]>([]);
 
   useEffect(() => {
     setQuery(value);
@@ -69,42 +64,12 @@ export function AirportSearchField({
     return query;
   }, [open, query, value]);
 
-  const staticResults = useMemo(() => {
+  const results = useMemo(() => {
     if (placesMode === "cities") {
       return searchCityPlaces(searchText, 40);
     }
     return searchAirportPlaces(searchText, 40);
   }, [placesMode, searchText]);
-
-  useEffect(() => {
-    if (!open || placesMode === "cities") {
-      setApiResults([]);
-      return;
-    }
-
-    const activeQuery = searchText.trim();
-    if (!activeQuery) {
-      setApiResults([]);
-      return;
-    }
-
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      void searchAirportsFromApi(activeQuery, 40).then((places) => {
-        if (!cancelled) setApiResults(places);
-      });
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [open, placesMode, searchText]);
-
-  const results = useMemo(() => {
-    if (placesMode === "cities") return staticResults;
-    return mergeAirportPlaces(staticResults, apiResults, 40);
-  }, [placesMode, staticResults, apiResults]);
 
   const groupedResults = useMemo(
     () => groupPlacesByContinent(results),

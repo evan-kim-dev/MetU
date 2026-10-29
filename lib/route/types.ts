@@ -19,6 +19,8 @@ export type GeneticOptimizeOptions = {
   mutationRate?: number;
   eliteCount?: number;
   seed?: number;
+  /** 지정 시 pathLengthKm 대신 이 비용으로 최적화 */
+  costFn?: (order: number[]) => number;
 };
 
 export type DayRouteOptimizeResult = {

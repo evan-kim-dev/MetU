@@ -25,16 +25,19 @@ function orderKey(order: number[]): string {
 /** Exhaustive best path for tiny sets (n ≤ 7). */
 function bruteForceBest(
   indices: number[],
-  matrix: number[][]
-): { order: number[]; length: number } {
+  matrix: number[][],
+  costFn?: (order: number[]) => number
+): { order: number[]; length: number; cost: number } {
   let best = [...indices];
-  let bestLen = pathLengthKm(best, matrix);
+  const score = (order: number[]) =>
+    costFn ? costFn(order) : pathLengthKm(order, matrix);
+  let bestCost = score(best);
 
   const permute = (start: number) => {
     if (start === indices.length) {
-      const len = pathLengthKm(indices, matrix);
-      if (len < bestLen) {
-        bestLen = len;
+      const c = score(indices);
+      if (c < bestCost) {
+        bestCost = c;
         best = [...indices];
       }
       return;
@@ -47,7 +50,11 @@ function bruteForceBest(
   };
 
   permute(0);
-  return { order: best, length: bestLen };
+  return {
+    order: best,
+    length: pathLengthKm(best, matrix),
+    cost: bestCost,
+  };
 }
 
 /**
@@ -58,14 +65,18 @@ export function optimizeRouteGenetic(
   pointCount: number,
   matrix: number[][],
   options: GeneticOptimizeOptions = {}
-): { order: number[]; lengthKm: number } {
+): { order: number[]; lengthKm: number; cost: number } {
   const indices = Array.from({ length: pointCount }, (_, i) => i);
+  const costFn = options.costFn;
+  const pathCost = (order: number[]) =>
+    costFn ? costFn(order) : pathLengthKm(order, matrix);
+
   if (pointCount <= 1) {
-    return { order: indices, lengthKm: 0 };
+    return { order: indices, lengthKm: 0, cost: 0 };
   }
   if (pointCount <= 7) {
-    const exact = bruteForceBest([...indices], matrix);
-    return { order: exact.order, lengthKm: exact.length };
+    const exact = bruteForceBest([...indices], matrix, costFn);
+    return { order: exact.order, lengthKm: exact.length, cost: exact.cost };
   }
 
   const populationSize = options.populationSize ?? 60;
@@ -78,7 +89,7 @@ export function optimizeRouteGenetic(
     shuffle(indices, rand)
   );
 
-  const fitness = (order: number[]) => 1 / (1 + pathLengthKm(order, matrix));
+  const fitness = (order: number[]) => 1 / (1 + pathCost(order));
 
   const tournament = (pool: number[][]): number[] => {
     const a = pool[Math.floor(rand() * pool.length)];
@@ -145,5 +156,9 @@ export function optimizeRouteGenetic(
     population = nextPop;
   }
 
-  return { order: best, lengthKm: pathLengthKm(best, matrix) };
+  return {
+    order: best,
+    lengthKm: pathLengthKm(best, matrix),
+    cost: pathCost(best),
+  };
 }
