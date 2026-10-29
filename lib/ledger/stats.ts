@@ -1,0 +1,223 @@
+import type { LedgerExpenseRow } from "@/lib/ledger/types";
+
+export type LedgerStatsInput = {
+  expenses: LedgerExpenseRow[];
+  budget: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  today?: string;
+};
+
+const CAT_TO_BUDGET: Record<string, string> = {
+  식비: "food",
+  교통: "transport",
+  숙소: "hotel",
+  관광: "activity",
+};
+
+export function totalKrw(expenses: LedgerExpenseRow[]): number {
+  return expenses.reduce((s, e) => s + e.krwAmount, 0);
+}
+
+export function byDay(expenses: LedgerExpenseRow[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of expenses) {
+    const d = e.spentOn ?? "unknown";
+    out[d] = (out[d] ?? 0) + e.krwAmount;
+  }
+  return out;
+}
+
+export function byCategory(expenses: LedgerExpenseRow[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of expenses) {
+    const c = e.category || "기타";
+    out[c] = (out[c] ?? 0) + e.krwAmount;
+  }
+  return out;
+}
+
+export function byPayer(expenses: LedgerExpenseRow[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of expenses) {
+    out[e.paidBy] = (out[e.paidBy] ?? 0) + e.krwAmount;
+  }
+  return out;
+}
+
+export function owedByMember(
+  expenses: LedgerExpenseRow[]
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of expenses) {
+    for (const [mid, share] of Object.entries(e.shares)) {
+      out[mid] = (out[mid] ?? 0) + share;
+    }
+  }
+  return out;
+}
+
+export function remainingBudget(budget: number, spent: number): number {
+  return budget - spent;
+}
+
+export function dailyRecommended(p: {
+  remaining: number;
+  today: string;
+  endDate?: string | null;
+}): number | null {
+  if (!p.endDate) return null;
+  if (p.today > p.endDate) return null;
+  const t0 = Date.parse(`${p.today}T12:00:00`);
+  const t1 = Date.parse(`${p.endDate}T12:00:00`);
+  if (Number.isNaN(t0) || Number.isNaN(t1)) return null;
+  const daysLeft = Math.max(1, Math.round((t1 - t0) / 86_400_000) + 1);
+  if (p.remaining <= 0) return 0;
+  return Math.floor(p.remaining / daysLeft);
+}
+
+export function pace(p: {
+  spent: number;
+  budget: number;
+  today: string;
+  startDate?: string | null;
+  endDate?: string | null;
+}): number | null {
+  if (!p.startDate || !p.endDate || !(p.budget > 0)) return null;
+  const start = Date.parse(`${p.startDate}T12:00:00`);
+  const end = Date.parse(`${p.endDate}T12:00:00`);
+  const today = Date.parse(`${p.today}T12:00:00`);
+  if ([start, end, today].some(Number.isNaN)) return null;
+  const totalDays = Math.max(1, Math.round((end - start) / 86_400_000) + 1);
+  const elapsed = Math.min(
+    totalDays,
+    Math.max(1, Math.round((today - start) / 86_400_000) + 1)
+  );
+  const expected = p.budget * (elapsed / totalDays);
+  return expected > 0 ? p.spent / expected : null;
+}
+
+export function categoryVsBudget(
+  expenses: LedgerExpenseRow[],
+  budgetAllocation: Record<string, number> | null | undefined,
+  totalBudget: number
+): Array<{ id: string; label: string; spent: number; budget: number; ratio: number }> {
+  const spent = byCategory(expenses);
+  const rows: Array<{
+    id: string;
+    label: string;
+    spent: number;
+    budget: number;
+    ratio: number;
+  }> = [];
+
+  const mapped = new Set<string>();
+  for (const [cat, bid] of Object.entries(CAT_TO_BUDGET)) {
+    mapped.add(cat);
+    const b = Number(budgetAllocation?.[bid] ?? 0);
+    const s = spent[cat] ?? 0;
+    rows.push({
+      id: bid,
+      label: cat,
+      spent: s,
+      budget: b,
+      ratio: b > 0 ? s / b : s > 0 ? Infinity : 0,
+    });
+  }
+
+  let otherSpent = 0;
+  for (const [cat, v] of Object.entries(spent)) {
+    if (!mapped.has(cat)) otherSpent += v;
+  }
+  rows.push({
+    id: "other",
+    label: "기타(예산 항목 없음)",
+    spent: otherSpent,
+    budget: 0,
+    ratio: otherSpent > 0 ? Infinity : 0,
+  });
+
+  void totalBudget;
+  return rows;
+}
+
+/** 남은 예산을 food/transport/activity 에 균등 재배분 제안 */
+export function rebalanceRemainingBudget(
+  remaining: number,
+  budgetAllocation: Record<string, number> | null | undefined
+): Record<string, number> {
+  const flexible = ["food", "transport", "activity"] as const;
+  const out: Record<string, number> = {};
+  if (!(remaining > 0)) {
+    for (const id of flexible) out[id] = 0;
+    return out;
+  }
+  const base = Math.floor(remaining / flexible.length);
+  let rem = remaining - base * flexible.length;
+  for (const id of flexible) {
+    const current = Number(budgetAllocation?.[id] ?? 0);
+    out[id] = current + base + (rem > 0 ? 1 : 0);
+    if (rem > 0) rem -= 1;
+  }
+  return out;
+}
+
+export function computeLedgerStats(input: LedgerStatsInput) {
+  const today = input.today ?? new Date().toISOString().slice(0, 10);
+  const spent = totalKrw(input.expenses);
+  const remaining = remainingBudget(input.budget, spent);
+  return {
+    totalKrw: spent,
+    byDay: byDay(input.expenses),
+    byCategory: byCategory(input.expenses),
+    byPayer: byPayer(input.expenses),
+    owedByMember: owedByMember(input.expenses),
+    remainingBudget: remaining,
+    dailyRecommended: dailyRecommended({
+      remaining,
+      today,
+      endDate: input.endDate,
+    }),
+    pace: pace({
+      spent,
+      budget: input.budget,
+      today,
+      startDate: input.startDate,
+      endDate: input.endDate,
+    }),
+  };
+}
+
+export function buildLocalInsight(stats: ReturnType<typeof computeLedgerStats>): {
+  headline: string;
+  bullets: string[];
+  saving_tips: string[];
+  warnings: string[];
+} {
+  const warnings: string[] = [];
+  if (stats.remainingBudget < 0) {
+    warnings.push(`예산을 ${Math.abs(stats.remainingBudget).toLocaleString("ko-KR")}원 초과했어요.`);
+  }
+  const topCat = Object.entries(stats.byCategory).sort((a, b) => b[1] - a[1])[0];
+  return {
+    headline:
+      stats.remainingBudget >= 0
+        ? `남은 예산은 ${stats.remainingBudget.toLocaleString("ko-KR")}원이에요.`
+        : "예산이 조금 빠듯해 보여요.",
+    bullets: [
+      `총 지출 ${stats.totalKrw.toLocaleString("ko-KR")}원`,
+      topCat
+        ? `${topCat[0]}이(가) ${topCat[1].toLocaleString("ko-KR")}원으로 가장 커요`
+        : "아직 지출이 없어요",
+      stats.dailyRecommended != null
+        ? `하루 권장 약 ${stats.dailyRecommended.toLocaleString("ko-KR")}원`
+        : "여행 종료일 기준 하루 권장은 없어요",
+    ],
+    saving_tips: [
+      "현금은 환전 단가를 맞춰 두면 예측이 쉬워져요.",
+      "점심은 현지 체인으로 바꿔도 분위기는 살릴 수 있어요.",
+      "이동은 하루 동선으로 묶으면 교통비가 줄어요.",
+    ],
+    warnings,
+  };
+}

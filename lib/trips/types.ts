@@ -1,3 +1,5 @@
+import type { ScheduleItemPlaceFields } from "@/lib/places/types";
+
 export type TripStatus = "upcoming" | "ongoing" | "completed";
 
 export interface TripExpense {
@@ -16,7 +18,7 @@ export interface TripBudgetAllocation {
   color: string;
 }
 
-export interface TripScheduleItem {
+export interface TripScheduleItem extends ScheduleItemPlaceFields {
   time: string;
   /** 소제목 (예: 지하철 → 오테마치역) */
   title: string;

@@ -170,6 +170,12 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
           const saved = await insertTripToSupabase(supabase, userId, trip);
           if (saved) {
             setTrips((prev) => [saved, ...prev]);
+            // 알림 연동을 여행보다 먼저 한 경우, 미연결 토큰/이벤트를 이 여행에 붙인다.
+            void fetch("/api/agent/bind-trip", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ tripId: saved.id }),
+            }).catch(() => undefined);
             return saved;
           }
         }
