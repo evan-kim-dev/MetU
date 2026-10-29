@@ -5,6 +5,7 @@ import {
   MTU_ONB_COOKIE,
   MTU_ONB_SKIP_STATUSES,
 } from "@/lib/onboarding/constants";
+import { isPublicApiPath } from "@/lib/security/public-api";
 import { safeNextPath } from "@/lib/security/safe-next";
 import { getPublicSupabaseKey } from "@/lib/supabase/env";
 
@@ -34,26 +35,12 @@ function isAutomationOnboardingExcluded(pathname: string) {
   );
 }
 
-/**
- * Keep auth cookies fresh on every request.
- * Uses a short timeout so local/dev does not hang when auth network is slow.
- */
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // API는 JSON을 반환해야 함 — 로그인 HTML로 리다이렉트하면 시세 연동이 깨짐
-  if (pathname.startsWith("/api/")) {
-    return NextResponse.next({
-      request: { headers: request.headers },
-    });
-  }
-
-  if (pathname === "/login" || pathname === "/auth/logout") {
-    return NextResponse.next({
-      request: { headers: request.headers },
-    });
-  }
-
+async function resolveAuth(request: NextRequest): Promise<{
+  response: NextResponse;
+  hasUser: boolean;
+  userId: string | null;
+  hasGuestSession: boolean;
+}> {
   let response = NextResponse.next({
     request: { headers: request.headers },
   });
@@ -109,19 +96,49 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  return { response, hasUser, userId, hasGuestSession };
+}
+
+/**
+ * Page auth + API whitelist.
+ * Non-public /api/* requires a signed-in user or signed guest cookie.
+ */
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (pathname === "/login" || pathname === "/auth/logout") {
+    return NextResponse.next({
+      request: { headers: request.headers },
+    });
+  }
+
+  const { response, hasUser, userId, hasGuestSession } =
+    await resolveAuth(request);
+
+  if (pathname.startsWith("/api/")) {
+    if (isPublicApiPath(pathname)) {
+      return response;
+    }
+    if (!hasUser && !hasGuestSession) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    return response;
+  }
+
   if (
     hasUser &&
     userId &&
     !hasGuestSession &&
-    !isAutomationOnboardingExcluded(pathname) &&
-    url &&
-    anonKey
+    !isAutomationOnboardingExcluded(pathname)
   ) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = getPublicSupabaseKey();
     const onbHint = request.cookies.get(MTU_ONB_COOKIE)?.value;
     const skipDb =
-      onbHint != null && MTU_ONB_SKIP_STATUSES.has(onbHint as "done" | "partial" | "skipped");
+      onbHint != null &&
+      MTU_ONB_SKIP_STATUSES.has(onbHint as "done" | "partial" | "skipped");
 
-    if (!skipDb) {
+    if (!skipDb && url && anonKey) {
       try {
         const supabaseOnb = createServerClient(url, anonKey, {
           cookies: {
@@ -169,6 +186,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

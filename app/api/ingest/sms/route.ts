@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const auth = await requireIngestToken(request);
   if (auth instanceof NextResponse) return auth;
 
-  const body = await readJsonLimited(request, 16_384);
+  const body = await readJsonLimited(request, 8_192);
   if (!body.ok) return body.response;
 
   const parsed = BodySchema.safeParse(body.json);

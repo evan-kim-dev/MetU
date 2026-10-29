@@ -61,17 +61,12 @@ export async function verifyGuestCookie(
 
   const trimmedSecret = secret.trim();
   if (!trimmedSecret) {
-    if (process.env.NODE_ENV === "production") {
-      return { ok: false };
-    }
-    if (value === "1") {
-      return { ok: true, nonce: "legacy" };
-    }
     return { ok: false };
   }
 
-  if (process.env.NODE_ENV !== "production" && value === "1") {
-    return { ok: true, nonce: "legacy" };
+  // Reject legacy fixed cookie values — only HMAC-signed tokens are valid.
+  if (value === "1") {
+    return { ok: false };
   }
 
   const parts = value.split(".");
