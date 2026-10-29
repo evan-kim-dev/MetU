@@ -43,15 +43,12 @@ export function computeAutomationState(args: {
     return "unverified";
   }
 
-  // status === 'done'
-  if (args.activeTrip) {
-    const last = args.lastNotificationAt
-      ? Date.parse(args.lastNotificationAt)
-      : NaN;
-    if (!Number.isFinite(last)) return "silent";
-    const ageH = (now - last) / (1000 * 60 * 60);
-    if (ageH >= silenceHours) return "silent";
-  }
+  // status === 'done' — silence follows last notification (trip optional).
+  const lastRaw = args.lastNotificationAt ?? args.lastDeviceTestAt ?? null;
+  const last = lastRaw ? Date.parse(lastRaw) : NaN;
+  if (!Number.isFinite(last)) return "silent";
+  const ageH = (now - last) / (1000 * 60 * 60);
+  if (ageH >= silenceHours) return "silent";
 
   return "ok";
 }

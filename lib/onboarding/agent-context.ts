@@ -234,3 +234,26 @@ export async function touchServerTestAt(userId: string): Promise<void> {
     { onConflict: "user_id" }
   );
 }
+
+/** Record that a phone notification (or device test) arrived. */
+export async function touchNotificationAt(
+  userId: string,
+  app: string,
+  opts?: { deviceTest?: boolean }
+): Promise<void> {
+  const admin = getAgentAdmin();
+  if (!admin) return;
+
+  const now = new Date().toISOString();
+  const dropped = app.trim().slice(0, 80) || null;
+  const row: Record<string, unknown> = {
+    user_id: userId,
+    last_notification_at: now,
+    last_dropped_app: dropped,
+    updated_at: now,
+  };
+  if (opts?.deviceTest) {
+    row.last_device_test_at = now;
+  }
+  await admin.from("agent_user_state").upsert(row, { onConflict: "user_id" });
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -11,6 +12,11 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 
 const TOTAL_STEPS = 4;
 const IOS_SHORTCUT_URL = process.env.NEXT_PUBLIC_IOS_SHORTCUT_URL?.trim() ?? "";
+
+const SAMPLE_NOTIF_JSON =
+  '{"app":"KB Pay","title":"결제 알림","body":"승인 12,000원","received_at":"2026-10-30T12:00:00+09:00"}';
+const SAMPLE_TEST_JSON =
+  '{"app":"KB Pay","title":"결제","body":"MTU-TEST","received_at":"2026-10-30T12:00:00+09:00"}';
 
 type AutomationStatusResponse = {
   lastServerTestAt: string | null;
@@ -266,15 +272,37 @@ export default function AutomationOnboardingPage() {
               </div>
             ) : null}
             {unsupportedEnv ? (
-              <div className="rounded-2xl bg-surface-soft p-3 text-sm text-ink-body">
+              <div className="space-y-3 rounded-2xl bg-surface-soft p-3 text-sm text-ink-body">
                 <p>
-                  알림 자동 기록은 iOS 27 이상 iPhone이나 안드로이드에서 쓸 수 있어요. 지금은
-                  영수증·붙여넣기·직접 입력으로 기록할 수 있어요.
+                  이 기기는 데스크톱(또는 미지원)이에요. 아래에서 골라 주세요.
                 </p>
+                <div className="flex flex-col gap-2">
+                  <PrimaryButton
+                    fullWidth
+                    variant="secondary"
+                    onClick={() => setStep(1)}
+                  >
+                    휴대폰 설정 안내 보기
+                  </PrimaryButton>
+                  <PrimaryButton
+                    fullWidth
+                    variant="secondary"
+                    onClick={() => setStep(1)}
+                  >
+                    curl 로 테스트하기 (연결 코드 발급)
+                  </PrimaryButton>
+                  <PrimaryButton
+                    fullWidth
+                    disabled={busy}
+                    onClick={() => void skip()}
+                  >
+                    건너뛰기
+                  </PrimaryButton>
+                </div>
                 {platform === "desktop" ? (
                   <button
                     type="button"
-                    className="mt-2 text-xs font-bold text-brand underline"
+                    className="min-h-11 text-xs font-bold text-brand underline"
                     onClick={() =>
                       void navigator.clipboard.writeText(window.location.href)
                     }
@@ -283,10 +311,11 @@ export default function AutomationOnboardingPage() {
                   </button>
                 ) : null}
               </div>
-            ) : null}
-            <PrimaryButton fullWidth disabled={busy} onClick={() => void goNextFromStep0()}>
-              {unsupportedEnv ? "건너뛰고 들어가기" : "다음"}
-            </PrimaryButton>
+            ) : (
+              <PrimaryButton fullWidth disabled={busy} onClick={() => void goNextFromStep0()}>
+                다음
+              </PrimaryButton>
+            )}
           </section>
         ) : null}
 
@@ -317,15 +346,22 @@ export default function AutomationOnboardingPage() {
                     </PrimaryButton>
                   </a>
                 ) : (
-                  <p className="text-xs text-ink-muted">
-                    iCloud 단축어 링크가 아직 없어요. docs/ios-shortcut-build.md 를 참고해
-                    직접 만들 수 있어요.
-                  </p>
+                  <Link
+                    href="/onboarding/shortcut-guide"
+                    className="block text-center text-sm font-bold text-brand underline"
+                  >
+                    iOS 단축어 직접 만들기 안내
+                  </Link>
                 )}
                 <p className="text-sm text-ink-body">
                   단축어를 추가하면 &apos;연결 코드&apos;를 물어봐요. 방금 복사한 코드를
                   붙여 넣어 주세요.
                 </p>
+                <pre className="overflow-x-auto rounded-xl bg-surface-soft p-3 text-[11px] leading-5 text-ink-heading">
+                  {`POST ${typeof window !== "undefined" ? window.location.origin : ""}/api/ingest/notification
+Authorization: Bearer <연결코드>
+${SAMPLE_TEST_JSON}`}
+                </pre>
               </>
             ) : (
               <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-body">
@@ -335,12 +371,23 @@ export default function AutomationOnboardingPage() {
                   동작: HTTP POST{" "}
                   <code className="rounded bg-surface-soft px-1 text-xs">
                     {typeof window !== "undefined"
-                      ? `${window.location.origin}/api/ingest/sms`
-                      : "/api/ingest/sms"}
+                      ? `${window.location.origin}/api/ingest/notification`
+                      : "/api/ingest/notification"}
                   </code>
                 </li>
                 <li>Authorization: Bearer 연결 코드</li>
-                <li>본문 JSON: app, title, body, received_at (앱 변수 사용)</li>
+                <li>
+                  본문 JSON 예시 (그대로 복사해 변수만 바꾸면 돼요)
+                  <pre className="mt-1 overflow-x-auto rounded-lg bg-surface-soft p-2 text-[11px] leading-5 text-ink-heading">
+                    {SAMPLE_NOTIF_JSON}
+                  </pre>
+                </li>
+                <li>
+                  curl 테스트:{" "}
+                  <code className="break-all rounded bg-surface-soft px-1 text-[10px]">
+                    {`curl -X POST "${typeof window !== "undefined" ? window.location.origin : ""}/api/ingest/notification" -H "Authorization: Bearer <토큰>" -H "content-type: application/json" -d "{\\"app\\":\\"Test\\",\\"title\\":\\"ping\\",\\"body\\":\\"MTU-TEST\\",\\"received_at\\":\\"2026-10-30T12:00:00+09:00\\"}"`}
+                  </code>
+                </li>
               </ol>
             )}
             <PrimaryButton

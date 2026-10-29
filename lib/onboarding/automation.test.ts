@@ -91,16 +91,30 @@ describe("computeAutomationState", () => {
     ).toBe("silent");
   });
 
-  it("done + no active trip -> ok (not silent)", () => {
+  it("done + no trip + fresh device test -> ok", () => {
     expect(
       computeAutomationState({
         status: "done",
         hasActiveToken: true,
         activeTrip: false,
         lastNotificationAt: null,
+        lastDeviceTestAt: new Date(NOW - H).toISOString(),
         now: NOW,
       })
     ).toBe("ok");
+  });
+
+  it("done + no notification ever -> silent", () => {
+    expect(
+      computeAutomationState({
+        status: "done",
+        hasActiveToken: true,
+        activeTrip: false,
+        lastNotificationAt: null,
+        lastDeviceTestAt: null,
+        now: NOW,
+      })
+    ).toBe("silent");
   });
 
   it("done + active trip + fresh notification -> ok", () => {

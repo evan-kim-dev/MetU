@@ -39,6 +39,22 @@ export function defaultSmsIdempotencyKey(
     .digest("hex");
 }
 
+export function defaultNotificationIdempotencyKey(args: {
+  userId: string;
+  app: string;
+  title: string;
+  body: string;
+  receivedAt: string;
+}): string {
+  const bucket = minuteBucketIso(args.receivedAt);
+  return createHash("sha256")
+    .update(
+      `${args.userId}|${args.app}|${args.title}|${args.body}|${bucket}`,
+      "utf8"
+    )
+    .digest("hex");
+}
+
 export type AgentEventStatus =
   | "received"
   | "processing"
