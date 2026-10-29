@@ -377,7 +377,7 @@ export function resolvePlanSummaryLocal(
 }
 
 /**
- * RAG 컨텍스트 + OpenRouter AI로 일정 요약/팩트폭격 생성.
+ * RAG 컨텍스트 + Gemini로 일정 요약/팩트폭격 생성.
  * AI 실패 시 템플릿 폴백.
  */
 export async function resolvePlanSummaryWithRag(

@@ -11,6 +11,7 @@ import { buildAgodaFlightSearchUrl, resolveIataCode } from "@/lib/flights/agoda-
 import { buildGoogleFlightsSearchUrl } from "@/lib/flights/google-flights-url";
 import { buildNaverFlightsUrl } from "@/lib/flights/naver-flights-url";
 import { todayIsoDate } from "@/lib/shared/dates";
+import { travelLinksEnabled } from "@/lib/travel/links-enabled";
 
 const FLIGHT_CHECK_ITEMS = [
   "여권 영문 이름과 항공권 이름 철자 일치",
@@ -26,10 +27,6 @@ function defaultDate(offsetDays: number): string {
 
 function formatFlightSearchValue(place: AirportPlace): string {
   return formatAirportInputLabel(place);
-}
-
-function travelLinksEnabled(): boolean {
-  return (process.env.NEXT_PUBLIC_TRAVEL_LINKS ?? "1").trim() !== "0";
 }
 
 export function FlightChecklistContent() {

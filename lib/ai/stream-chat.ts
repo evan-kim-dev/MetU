@@ -1,6 +1,5 @@
 /**
- * Consume FastAPI / Next SSE (`data: {json}\n\n`) from /ai/chat/stream
- * or a BFF that proxies it.
+ * Consume Next SSE (`data: {json}\n\n`) from AI chat stream routes.
  */
 
 export type AiStreamEvent =

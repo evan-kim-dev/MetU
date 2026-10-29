@@ -1019,7 +1019,7 @@ export async function enrichTripPlanWithAi(
       category: "일정",
       title: "AI 일정·항공·숙소 생성",
       content:
-        "OpenRouter LLM이 목적지 웹 지식·RAG를 근거로 일정·항공·숙소 안내를 생성했어요.",
+        "Gemini가 목적지 웹 지식·RAG를 근거로 일정·항공·숙소 안내를 생성했어요.",
     });
   }
 

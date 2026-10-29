@@ -12,6 +12,7 @@ import { resolveAgodaCityId } from "@/lib/hotels/agoda-cities";
 import { HOTEL_DESTINATION_SUGGESTIONS } from "@/lib/hotels/destinations";
 import { todayIsoDate } from "@/lib/shared/dates";
 import type { OnboardingForm } from "@/lib/onboarding/types";
+import { travelLinksEnabled } from "@/lib/travel/links-enabled";
 
 const HOTEL_CHECK_ITEMS = [
   "무료 취소 마감일 확인",
@@ -23,10 +24,6 @@ function defaultDate(offsetDays: number): string {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
   return date.toISOString().slice(0, 10);
-}
-
-function travelLinksEnabled(): boolean {
-  return (process.env.NEXT_PUBLIC_TRAVEL_LINKS ?? "1").trim() !== "0";
 }
 
 export function HotelChecklistContent() {

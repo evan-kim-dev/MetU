@@ -228,7 +228,7 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
           prev.map((m) => (m.id === buddyId ? { ...m, text: reply } : m))
         );
       } catch {
-        // 배포에서 OpenRouter/BACKEND 미연결이면 여기로 떨어짐 (가드레일 아님)
+        // Gemini 키가 없거나 호출 실패하면 여기로 떨어짐 (가드레일 아님)
         setMessages((prev) =>
           prev.map((m) =>
             m.id === buddyId
