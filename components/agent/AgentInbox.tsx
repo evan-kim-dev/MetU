@@ -6,6 +6,7 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { useTrips } from "@/lib/trips/TripProvider";
 
 type ResultItem = {
   ref?: number;
@@ -22,7 +23,7 @@ type ResultItem = {
 
 type AgentEventRow = {
   id: string;
-  trip_id: string;
+  trip_id: string | null;
   source: string;
   kind: string;
   status: string;
@@ -32,6 +33,8 @@ type AgentEventRow = {
   created_at: string;
   processed_at: string | null;
 };
+
+type TripOption = { id: string; label: string };
 
 function previewText(event: AgentEventRow): string {
   const text =
@@ -50,12 +53,30 @@ function reviewItems(event: AgentEventRow): ResultItem[] {
   return (event.result?.items ?? []).filter((it) => it.decision === "review");
 }
 
-export function AgentInbox({ tripId }: { tripId: string }) {
+export function AgentInbox({
+  tripId,
+  trips: tripsProp,
+}: {
+  /** When omitted, shows all of the user's events (user-scoped inbox). */
+  tripId?: string | null;
+  trips?: TripOption[];
+}) {
   const { user, provider } = useAuth();
+  const { activeTrips } = useTrips();
+  const trips = useMemo(
+    () =>
+      tripsProp ??
+      activeTrips.map((t) => ({
+        id: t.id,
+        label: `${t.destination} · ${t.dateRange}`,
+      })),
+    [tripsProp, activeTrips]
+  );
   const [events, setEvents] = useState<AgentEventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [ignoredOpen, setIgnoredOpen] = useState(false);
+  const [filterUnassigned, setFilterUnassigned] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -66,15 +87,20 @@ export function AgentInbox({ tripId }: { tripId: string }) {
       return;
     }
     setError("");
-    const { data, error: qErr } = await supabase
+    let q = supabase
       .from("agent_events")
       .select(
         "id, trip_id, source, kind, status, payload, result, error, created_at, processed_at"
       )
-      .eq("trip_id", tripId)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(80);
+
+    if (tripId) {
+      q = q.eq("trip_id", tripId);
+    }
+
+    const { data, error: qErr } = await q;
 
     if (qErr) {
       setError(qErr.message);
@@ -92,15 +118,18 @@ export function AgentInbox({ tripId }: { tripId: string }) {
   useEffect(() => {
     const supabase = getBrowserSupabase();
     if (!supabase || !user) return;
+    const filter = tripId
+      ? `trip_id=eq.${tripId}`
+      : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`agent_inbox:${tripId}`)
+      .channel(`agent_inbox:${tripId ?? "user"}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "agent_events",
-          filter: `trip_id=eq.${tripId}`,
+          filter,
         },
         () => {
           void load();
@@ -113,20 +142,37 @@ export function AgentInbox({ tripId }: { tripId: string }) {
   }, [tripId, user, load]);
 
   const groups = useMemo(() => {
-    const processing = events.filter((e) =>
+    const scoped = filterUnassigned
+      ? events.filter((e) => e.status === "unassigned" || e.trip_id == null)
+      : events;
+    const unassigned = events.filter(
+      (e) => e.status === "unassigned" || (e.trip_id == null && e.status !== "ignored")
+    );
+    const processing = scoped.filter((e) =>
       ["received", "processing"].includes(e.status)
     );
-    const autoDone = events.filter(
+    const autoDone = scoped.filter(
       (e) => e.status === "done" && autoItems(e).length > 0
     );
-    const review = events.filter((e) => e.status === "needs_review");
-    const failed = events.filter((e) => e.status === "failed");
-    const ignored = events.filter((e) => e.status === "ignored");
-    const doneQuiet = events.filter(
+    const review = scoped.filter((e) => e.status === "needs_review");
+    const failed = scoped.filter((e) => e.status === "failed");
+    const ignored = scoped.filter((e) => e.status === "ignored");
+    const doneQuiet = scoped.filter(
       (e) => e.status === "done" && autoItems(e).length === 0
     );
-    return { processing, autoDone, review, failed, ignored, doneQuiet };
-  }, [events]);
+    const unassignedCards = scoped.filter((e) => e.status === "unassigned");
+    return {
+      processing,
+      autoDone,
+      review,
+      failed,
+      ignored,
+      doneQuiet,
+      unassigned,
+      unassignedCards,
+      scoped,
+    };
+  }, [events, filterUnassigned]);
 
   async function post(path: string, body?: unknown) {
     const res = await fetch(path, {
@@ -152,8 +198,56 @@ export function AgentInbox({ tripId }: { tripId: string }) {
     }
   }
 
+  function renderAssign(event: AgentEventRow) {
+    if (event.status !== "unassigned" && event.trip_id != null) return null;
+    if (trips.length === 0) {
+      return (
+        <p className="mt-2 text-xs text-ink-muted">
+          여행이 생기면 기간에 맞춰 자동으로 붙어요.{" "}
+          <Link href="/onboarding" className="font-bold text-brand">
+            여행 만들기
+          </Link>
+        </p>
+      );
+    }
+    return (
+      <label className="mt-2 flex flex-col gap-1 text-xs">
+        <span className="font-bold text-ink-heading">여행에 배정</span>
+        <select
+          className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm"
+          defaultValue=""
+          disabled={busyId === event.id}
+          onChange={(e) => {
+            const next = e.target.value;
+            if (!next) return;
+            void withBusy(event.id, () =>
+              post(`/api/agent/events/${event.id}/assign`, {
+                tripId: next === "__none__" ? null : next,
+              })
+            );
+          }}
+        >
+          <option value="" disabled>
+            여행 선택
+          </option>
+          {trips.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+          {event.trip_id != null ? (
+            <option value="__none__">미할당으로 되돌리기</option>
+          ) : null}
+        </select>
+      </label>
+    );
+  }
+
   function renderActions(event: AgentEventRow) {
     const disabled = busyId === event.id;
+    if (event.status === "unassigned") {
+      return renderAssign(event);
+    }
     if (event.status === "needs_review") {
       return (
         <div className="mt-2 flex flex-wrap gap-2">
@@ -303,18 +397,38 @@ export function AgentInbox({ tripId }: { tripId: string }) {
     );
   }
 
+  const connectHref = tripId
+    ? `/trips/${tripId}/ledger/connect`
+    : "/onboarding/automation";
+  const backHref = tripId ? `/trips/${tripId}/ledger` : "/agent";
+
   return (
     <MobileShell
       title="에이전트 인박스"
       showBack
-      backHref={`/trips/${tripId}/ledger`}
+      backHref={backHref}
       showBottomNav={false}
     >
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-4">
         <p className="text-xs leading-relaxed text-ink-body">
-          문자·공유로 들어온 자동 처리 결과예요. 확인이 필요한 항목만
-          승인하면 가계부에 반영돼요.
+          문자·공유로 들어온 자동 처리 결과예요. 여행이 없어도 먼저 모아 두고,
+          기간이 맞으면 자동으로 붙여요.
         </p>
+
+        {groups.unassigned.length > 0 ? (
+          <button
+            type="button"
+            className={`min-h-11 rounded-xl px-3 py-2 text-left text-sm font-bold ${
+              filterUnassigned
+                ? "bg-brand text-white"
+                : "bg-amber-50 text-amber-900 ring-1 ring-amber-200"
+            }`}
+            onClick={() => setFilterUnassigned((v) => !v)}
+          >
+            미할당 {groups.unassigned.length}건
+            {filterUnassigned ? " · 전체 보기" : " · 필터"}
+          </button>
+        ) : null}
 
         {error ? (
           <p className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">
@@ -326,6 +440,22 @@ export function AgentInbox({ tripId }: { tripId: string }) {
           <div className="h-40 animate-pulse rounded-2xl bg-surface-soft" />
         ) : (
           <>
+            {groups.unassignedCards.length > 0 ? (
+              <section className="flex flex-col gap-2">
+                <h2 className="text-sm font-extrabold text-ink-heading">
+                  미할당
+                </h2>
+                {groups.unassignedCards.map((e) => (
+                  <EventCard
+                    key={e.id}
+                    event={e}
+                    label="미할당"
+                    tone="border-amber-200 bg-amber-50/80"
+                  />
+                ))}
+              </section>
+            ) : null}
+
             {groups.processing.length > 0 ? (
               <section className="flex flex-col gap-2">
                 <h2 className="text-sm font-extrabold text-ink-heading">
@@ -413,13 +543,10 @@ export function AgentInbox({ tripId }: { tripId: string }) {
               </section>
             ) : null}
 
-            {events.length === 0 ? (
+            {groups.scoped.length === 0 ? (
               <div className="rounded-2xl bg-surface-soft p-6 text-center text-sm text-ink-muted">
                 아직 자동 수집 이벤트가 없어요.{" "}
-                <Link
-                  href={`/trips/${tripId}/ledger/connect`}
-                  className="font-bold text-brand"
-                >
+                <Link href={connectHref} className="font-bold text-brand">
                   연결하기
                 </Link>
               </div>
@@ -428,7 +555,7 @@ export function AgentInbox({ tripId }: { tripId: string }) {
         )}
 
         <Link
-          href={`/trips/${tripId}/ledger/connect`}
+          href={connectHref}
           className="text-center text-xs font-bold text-brand"
         >
           자동 수집 연결 설정

@@ -18,7 +18,8 @@ import {
 import { computeKrw } from "@/lib/ledger/money";
 import { getDailyFxQuote } from "@/lib/ledger/fx-server";
 import { onExpenseChanged } from "@/lib/agent/handlers/settlement";
-import { pickTripForAutomationTest } from "@/lib/onboarding/agent-context";
+import { pickTripForReceivedAt } from "@/lib/onboarding/agent-context";
+import { parseReceivedAtMs } from "@/lib/onboarding/trip-window";
 
 type TripMemberRow = {
   id: string;
@@ -43,6 +44,7 @@ type EventRow = {
   source: string;
   payload: Record<string, unknown> | null;
   status: string;
+  created_at: string;
 };
 
 function todayKst(): string {
@@ -330,31 +332,39 @@ export async function processEvent(eventId: string): Promise<void> {
       return;
     }
 
-    // Notification-first: resolve trip later if the event arrived unbound.
+    // Notification-first: attach by received_at window, else leave unassigned.
     if (!event.trip_id) {
-      const resolved = await pickTripForAutomationTest(event.user_id);
+      const receivedMs = parseReceivedAtMs(
+        event.payload as Record<string, unknown> | null,
+        event.created_at
+      );
+      const resolved = await pickTripForReceivedAt(
+        event.user_id,
+        new Date(receivedMs)
+      );
       if (resolved) {
         await admin
           .from("agent_events")
-          .update({ trip_id: resolved })
+          .update({ trip_id: resolved, status: "processing" })
           .eq("id", event.id);
         event.trip_id = resolved;
       } else {
         await admin
           .from("agent_events")
           .update({
-            status: "needs_review",
-            result: { reason: "awaiting_trip" },
+            status: "unassigned",
+            result: { reason: "unassigned" },
             error: null,
-            processed_at: new Date().toISOString(),
+            processed_at: null,
+            locked_at: null,
           })
           .eq("id", event.id);
         await recordStep(
           event.id,
           seq++,
-          "awaiting_trip",
+          "unassigned",
           {},
-          { message: "여행이 생기면 자동으로 이어서 처리해요" },
+          { message: "기간이 맞는 여행이 생기면 자동으로 붙여요" },
           0,
           true
         );

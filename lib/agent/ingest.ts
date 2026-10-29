@@ -39,14 +39,25 @@ export function defaultSmsIdempotencyKey(
     .digest("hex");
 }
 
+export type AgentEventStatus =
+  | "received"
+  | "processing"
+  | "done"
+  | "needs_review"
+  | "ignored"
+  | "failed"
+  | "unassigned";
+
 export type CreateEventInput = {
   userId: string;
-  /** Null until the user creates/links a trip. */
+  /** Null until a matching trip is attached. */
   tripId: string | null;
   source: AgentEventSource;
   kind: AgentEventKind;
   payload: Record<string, unknown>;
   idempotencyKey: string;
+  /** Defaults to received; use unassigned when no trip matches. */
+  status?: AgentEventStatus;
 };
 
 export type CreateEventResult =
@@ -60,6 +71,9 @@ export async function createEvent(
   const admin = getAgentAdmin();
   if (!admin) return { ok: false, error: "server-misconfigured" };
 
+  const status: AgentEventStatus =
+    input.status ?? (input.tripId ? "received" : "unassigned");
+
   const { data, error } = await admin
     .from("agent_events")
     .insert({
@@ -69,7 +83,7 @@ export async function createEvent(
       kind: input.kind,
       payload: input.payload,
       idempotency_key: input.idempotencyKey,
-      status: "received",
+      status,
     })
     .select("id")
     .maybeSingle();

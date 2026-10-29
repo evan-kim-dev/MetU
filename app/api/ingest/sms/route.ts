@@ -10,7 +10,7 @@ import {
 } from "@/lib/agent/ingest";
 import { processEvent } from "@/lib/agent/run";
 import { requireIngestToken } from "@/lib/agent/tokens";
-import { pickTripForAutomationTest } from "@/lib/onboarding/agent-context";
+import { pickTripForReceivedAt } from "@/lib/onboarding/agent-context";
 
 export const maxDuration = 60;
 
@@ -47,10 +47,16 @@ export async function POST(request: Request) {
     parsed.data.idempotencyKey ??
     defaultSmsIdempotencyKey(redacted, parsed.data.receivedAt);
 
-  // Token may be user-scoped; attach an active trip if one exists now.
-  const tripId =
-    auth.tripId ?? (await pickTripForAutomationTest(auth.userId));
-  const scopeKey = tripId ?? auth.userId;
+  const receivedAt =
+    parsed.data.receivedAt ?? new Date().toISOString();
+
+  // User-scoped idempotency (trip-independent). Trip is resolved by date window.
+  let tripId: string | null = null;
+  if (auth.tripId) {
+    tripId = auth.tripId;
+  } else {
+    tripId = await pickTripForReceivedAt(auth.userId, receivedAt);
+  }
 
   const created = await createEvent({
     userId: auth.userId,
@@ -58,7 +64,8 @@ export async function POST(request: Request) {
     source: parsed.data.source ?? "sms_shortcut",
     kind: "sms",
     payload,
-    idempotencyKey: `${scopeKey}:${idempotencyKey}`,
+    idempotencyKey: `${auth.userId}:${idempotencyKey}`,
+    status: tripId ? "received" : "unassigned",
   });
 
   if (!created.ok) {
@@ -72,12 +79,18 @@ export async function POST(request: Request) {
     );
   }
 
-  after(() => {
-    void processEvent(created.id);
-  });
+  if (tripId) {
+    after(() => {
+      void processEvent(created.id);
+    });
+    return NextResponse.json(
+      { eventId: created.id, status: "received", tripId },
+      { status: 202 }
+    );
+  }
 
   return NextResponse.json(
-    { eventId: created.id, status: "received" },
-    { status: 202 }
+    { eventId: created.id, status: "unassigned", tripId: null },
+    { status: 200 }
   );
 }

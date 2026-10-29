@@ -155,6 +155,13 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
           if (supabase) {
             void updateTripInSupabase(supabase, userId, id, update);
           }
+          if (update.dateRange !== undefined) {
+            void fetch("/api/agent/attach-unassigned", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ tripId: id }),
+            }).catch(() => undefined);
+          }
         }
         return next;
       });
@@ -170,8 +177,8 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
           const saved = await insertTripToSupabase(supabase, userId, trip);
           if (saved) {
             setTrips((prev) => [saved, ...prev]);
-            // 알림 연동을 여행보다 먼저 한 경우, 미연결 토큰/이벤트를 이 여행에 붙인다.
-            void fetch("/api/agent/bind-trip", {
+            // 기간이 맞는 미할당 이벤트만 이 여행에 붙인다(토큰은 사용자 단위 유지).
+            void fetch("/api/agent/attach-unassigned", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ tripId: saved.id }),

@@ -42,6 +42,7 @@ Remote history may use `filename.sql` as `schema_migrations.version` (custom `np
 | `20261030140000_api_cache` | `api_cache` RLS on, **no policies** (service_role only) |
 | `20261030150000_agent_user_state` | onboarding state + `agent_set_onboarding` (authenticated) |
 | `20261030160000_agent_trip_optional` | nullable `trip_id` on tokens/events |
+| `20261030170000_agent_unassigned` | `unassigned` status + `agent_attach_unassigned` RPC |
 
 ## Findings
 

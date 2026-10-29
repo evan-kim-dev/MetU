@@ -5,7 +5,6 @@ import { z } from "zod";
 import { getAgentAdmin } from "@/lib/agent/admin";
 import { assertTripMember } from "@/lib/agent/membership";
 import { processEvent } from "@/lib/agent/run";
-import { bindOrphanAgentRowsToTrip } from "@/lib/onboarding/agent-context";
 import { guardApi } from "@/lib/security/guard";
 
 export const maxDuration = 60;
@@ -15,8 +14,8 @@ const BodySchema = z.object({
 });
 
 /**
- * After the user creates a trip, attach previously unbound tokens/events
- * and re-queue parked "awaiting_trip" reviews.
+ * Attach unassigned events whose received_at falls in the trip date window,
+ * then process them. Tokens stay user-scoped (never bound to a trip).
  */
 export async function POST(request: Request) {
   const guard = await guardApi(request, { bucket: "ledger-parse" });
@@ -44,35 +43,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const bound = await bindOrphanAgentRowsToTrip(userId, tripId);
-
   const admin = getAgentAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "server-misconfigured" }, { status: 503 });
+  }
+
+  const { data: attachedCount, error } = await admin.rpc(
+    "agent_attach_unassigned",
+    { p_user_id: userId, p_trip_id: tripId }
+  );
+
+  if (error) {
+    console.error("[attach-unassigned]", error.message);
+    return NextResponse.json({ error: "attach-failed" }, { status: 500 });
+  }
+
+  const count = typeof attachedCount === "number" ? attachedCount : 0;
+
   const requeueIds: string[] = [];
-  if (admin) {
-    const { data: parked } = await admin
+  if (count > 0) {
+    const { data: rows } = await admin
       .from("agent_events")
-      .select("id, result")
+      .select("id")
       .eq("user_id", userId)
       .eq("trip_id", tripId)
-      .eq("status", "needs_review");
+      .eq("status", "received")
+      .order("created_at", { ascending: true })
+      .limit(Math.min(50, Math.max(count, 1)));
 
-    const awaiting = (parked ?? []).filter((row) => {
-      const result = row.result as { reason?: string } | null;
-      return result?.reason === "awaiting_trip";
-    });
-
-    for (const row of awaiting) {
-      if (typeof row.id !== "string") continue;
-      const { error } = await admin
-        .from("agent_events")
-        .update({
-          status: "received",
-          result: null,
-          processed_at: null,
-          locked_at: null,
-        })
-        .eq("id", row.id);
-      if (!error) requeueIds.push(row.id);
+    for (const row of rows ?? []) {
+      if (typeof row.id === "string") requeueIds.push(row.id);
     }
   }
 
@@ -86,8 +86,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    tokensBound: bound.tokens,
-    eventsBound: bound.events,
+    attached: count,
     requeued: requeueIds.length,
   });
 }

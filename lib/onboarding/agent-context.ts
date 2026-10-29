@@ -2,6 +2,11 @@ import "server-only";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
 import type { OnboardingStatus } from "@/lib/onboarding/automation";
+import {
+  pickTripIdForReceivedAt,
+  type TripDateCandidate,
+} from "@/lib/onboarding/trip-window";
+import { suggestTripDates } from "@/lib/ledger/trip-dates";
 
 export type AgentUserStateRow = {
   onboarding_status: OnboardingStatus;
@@ -84,7 +89,99 @@ export async function userHasActiveTrip(userId: string): Promise<boolean> {
   return Boolean(trips && trips.length > 0);
 }
 
-/** Latest non-completed trip for test events (owner or member). */
+type TripDateRow = {
+  id: string;
+  start_date: string | null;
+  end_date: string | null;
+  date_range: string | null;
+};
+
+function toCandidate(row: TripDateRow): TripDateCandidate | null {
+  let start = row.start_date;
+  let end = row.end_date;
+  if (!start && row.date_range) {
+    const suggested = suggestTripDates(row.date_range);
+    if (suggested) {
+      start = suggested.startDate;
+      end = suggested.endDate;
+    }
+  }
+  if (!start) return null;
+  return {
+    id: row.id,
+    startDate: start,
+    endDate: end ?? start,
+  };
+}
+
+async function listMemberTripDateRows(userId: string): Promise<TripDateRow[]> {
+  const admin = getAgentAdmin();
+  if (!admin) return [];
+
+  const byId = new Map<string, TripDateRow>();
+
+  const { data: owned } = await admin
+    .from("trips")
+    .select("id, start_date, end_date, date_range")
+    .eq("user_id", userId)
+    .neq("status", "completed")
+    .limit(50);
+
+  for (const row of owned ?? []) {
+    byId.set(row.id as string, row as TripDateRow);
+  }
+
+  const { data: memberships } = await admin
+    .from("trip_members")
+    .select("trip_id")
+    .eq("user_id", userId)
+    .limit(50);
+
+  const memberIds = (memberships ?? [])
+    .map((m) => m.trip_id as string)
+    .filter((id) => !byId.has(id));
+
+  if (memberIds.length > 0) {
+    const { data: trips } = await admin
+      .from("trips")
+      .select("id, start_date, end_date, date_range")
+      .in("id", memberIds)
+      .neq("status", "completed")
+      .limit(50);
+    for (const row of trips ?? []) {
+      byId.set(row.id as string, row as TripDateRow);
+    }
+  }
+
+  return [...byId.values()];
+}
+
+/**
+ * Pick a member trip whose date window covers receivedAt (±1 day).
+ * Among matches, prefer the start date closest to receivedAt.
+ */
+export async function pickTripForReceivedAt(
+  userId: string,
+  receivedAt: string | Date
+): Promise<string | null> {
+  const ms =
+    typeof receivedAt === "string"
+      ? Date.parse(receivedAt)
+      : receivedAt.getTime();
+  if (Number.isNaN(ms)) return null;
+
+  const rows = await listMemberTripDateRows(userId);
+  const candidates = rows
+    .map(toCandidate)
+    .filter((c): c is TripDateCandidate => c != null);
+
+  return pickTripIdForReceivedAt(candidates, ms, 1);
+}
+
+/**
+ * Onboarding server-test helper: prefer an active trip if any (no date match).
+ * Ingest / processEvent must use pickTripForReceivedAt instead.
+ */
 export async function pickTripForAutomationTest(
   userId: string
 ): Promise<string | null> {
@@ -136,36 +233,4 @@ export async function touchServerTestAt(userId: string): Promise<void> {
     },
     { onConflict: "user_id" }
   );
-}
-
-/**
- * Bind user-scoped tokens/events to a newly available trip.
- * Safe to call repeatedly (only updates null trip_id rows).
- */
-export async function bindOrphanAgentRowsToTrip(
-  userId: string,
-  tripId: string
-): Promise<{ tokens: number; events: number }> {
-  const admin = getAgentAdmin();
-  if (!admin) return { tokens: 0, events: 0 };
-
-  const { data: tokens } = await admin
-    .from("agent_ingest_tokens")
-    .update({ trip_id: tripId })
-    .eq("user_id", userId)
-    .is("trip_id", null)
-    .is("revoked_at", null)
-    .select("id");
-
-  const { data: events } = await admin
-    .from("agent_events")
-    .update({ trip_id: tripId })
-    .eq("user_id", userId)
-    .is("trip_id", null)
-    .select("id");
-
-  return {
-    tokens: tokens?.length ?? 0,
-    events: events?.length ?? 0,
-  };
 }

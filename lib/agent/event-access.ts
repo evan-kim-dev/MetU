@@ -5,7 +5,7 @@ import { getAgentAdmin } from "@/lib/agent/admin";
 export type AgentEventRecord = {
   id: string;
   user_id: string;
-  trip_id: string;
+  trip_id: string | null;
   source: string;
   kind: string;
   payload: Record<string, unknown> | null;

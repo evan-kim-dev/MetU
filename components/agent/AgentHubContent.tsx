@@ -5,6 +5,7 @@ import {
   Camera,
   ClipboardPaste,
   FileText,
+  Inbox,
   Mic,
   Receipt,
   Scale,
@@ -44,6 +45,12 @@ const FEATURES = [
 ] as const;
 
 const GLOBAL_LINKS = [
+  {
+    href: "/agent/inbox",
+    title: "내 수신함",
+    desc: "여행 없이 모인 알림·미할당 이벤트",
+    icon: Inbox,
+  },
   {
     href: "/share-target",
     title: "공유로 받기",

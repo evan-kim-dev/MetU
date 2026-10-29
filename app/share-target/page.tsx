@@ -160,15 +160,19 @@ export default function ShareTargetPage() {
 
   useEffect(() => {
     const share = pending;
-    if (!share || !tripId || !authReady) return;
+    if (!share || !authReady) return;
     if (!user || provider === "guest") return;
-    if (members.length === 0) return;
 
     const shareInboxId = share.inboxId;
     const shareText = share.text;
     const shareFile = share.file;
 
-    const key = `${shareInboxId ?? "text"}:${shareText}:${shareFile?.name ?? ""}:${tripId}`;
+    // Images still need a trip (receipt flow). Text can go unassigned.
+    if (shareFile && !tripId) return;
+    if (shareFile && members.length === 0) return;
+    if (!shareFile && !shareText.trim()) return;
+
+    const key = `${shareInboxId ?? "text"}:${shareText}:${shareFile?.name ?? ""}:${tripId || "none"}`;
     if (processedRef.current === key) return;
     processedRef.current = key;
 
@@ -178,7 +182,7 @@ export default function ShareTargetPage() {
       setProcessing(true);
       setProcessError("");
       try {
-        if (shareFile) {
+        if (shareFile && tripId) {
           let resized: File;
           try {
             resized = await resizeImageToJpeg(shareFile);
@@ -210,7 +214,7 @@ export default function ShareTargetPage() {
           }
           setQueue([mapped.draft]);
           setQueueIndex(0);
-        } else if (shareText.trim()) {
+        } else if (shareText.trim() && tripId) {
           const res = await fetch("/api/ledger/parse-text", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -239,6 +243,27 @@ export default function ShareTargetPage() {
           }
           setQueue(drafts);
           setQueueIndex(0);
+        } else if (shareText.trim()) {
+          const res = await fetch("/api/agent/ingest-text", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text: shareText.trim(),
+              tripId: null,
+            }),
+          });
+          if (cancelled) return;
+          if (!res.ok) {
+            setProcessError(
+              res.status === 401
+                ? "로그인이 필요해요."
+                : "미할당 저장에 실패했어요."
+            );
+            processedRef.current = null;
+            return;
+          }
+          setProcessError("");
+          router.push("/agent/inbox");
         }
         await cleanupPending(shareInboxId);
       } catch {
@@ -263,6 +288,7 @@ export default function ShareTargetPage() {
     provider,
     members.length,
     cleanupPending,
+    router,
   ]);
 
   function openDrafts(drafts: ExpenseDraftInput[]) {
@@ -326,26 +352,27 @@ export default function ShareTargetPage() {
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-xs font-bold text-ink-heading">여행 선택</span>
+        <select
+          className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm"
+          value={tripId}
+          onChange={(e) => setTripId(e.target.value)}
+        >
+          <option value="">여행 없이 미할당으로 받기</option>
+          {activeTrips.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.destination} · {t.dateRange}
+            </option>
+          ))}
+        </select>
         {activeTrips.length === 0 ? (
           <p className="text-xs text-ink-muted">
-            진행 중인 여행이 없어요.{" "}
-            <Link href="/trips" className="font-bold text-brand">
-              여행 만들기
+            여행은 나중에 만들어도 돼요. 텍스트는{" "}
+            <Link href="/agent/inbox" className="font-bold text-brand">
+              수신함
             </Link>
+            에 미할당으로 들어가요.
           </p>
-        ) : (
-          <select
-            className="rounded-lg border border-line px-3 py-2 text-sm"
-            value={tripId}
-            onChange={(e) => setTripId(e.target.value)}
-          >
-            {activeTrips.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.destination} · {t.dateRange}
-              </option>
-            ))}
-          </select>
-        )}
+        ) : null}
       </label>
 
       {(!shareCapable || !pending) && tripId && members.length > 0 ? (
