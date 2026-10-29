@@ -1,15 +1,11 @@
 import { STORAGE_KEYS } from "@/lib/constants";
 
-export const GUEST_COOKIE = "budgettrip-guest";
+export { GUEST_COOKIE } from "@/lib/auth/guest-cookie";
 
 interface GuestSession {
   loggedIn: boolean;
   provider: "guest";
   loggedInAt: string;
-}
-
-export function isGuestCookie(value: string | undefined): boolean {
-  return value === "1";
 }
 
 export function loadGuestSession(): boolean {
@@ -24,7 +20,8 @@ export function loadGuestSession(): boolean {
   }
 }
 
-export function saveGuestSession() {
+/** httpOnly 서명 쿠키 발급 (document.cookie 직접 쓰기 금지) */
+export async function saveGuestSession(): Promise<void> {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(
     STORAGE_KEYS.auth,
@@ -34,14 +31,20 @@ export function saveGuestSession() {
       loggedInAt: new Date().toISOString(),
     } satisfies GuestSession)
   );
-  document.cookie = `${GUEST_COOKIE}=1; path=/; SameSite=Lax`;
+  await fetch("/api/auth/guest", {
+    method: "POST",
+    credentials: "same-origin",
+  });
 }
 
-export function clearGuestSession() {
+export async function clearGuestSession(): Promise<void> {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(STORAGE_KEYS.auth);
   localStorage.removeItem(STORAGE_KEYS.auth);
-  document.cookie = `${GUEST_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+  await fetch("/api/auth/guest", {
+    method: "DELETE",
+    credentials: "same-origin",
+  });
 }
 
 /** 예전 localStorage 게스트 세션 제거 */
@@ -50,26 +53,18 @@ export function clearLegacyGuestSession() {
   localStorage.removeItem(STORAGE_KEYS.auth);
 }
 
-function readGuestCookie(): boolean {
-  if (typeof document === "undefined") return false;
-  return document.cookie.split("; ").some((part) => part === `${GUEST_COOKIE}=1`);
-}
-
-/** sessionStorage ↔ 쿠키 상태를 맞춘다 (탭/브라우저 재진입 시) */
-export function syncGuestSession() {
+/** sessionStorage 게스트면 httpOnly 쿠키 재발급 */
+export async function syncGuestSession(): Promise<boolean> {
   if (typeof window === "undefined") return false;
 
   const guest = loadGuestSession();
-  const hasCookie = readGuestCookie();
-
-  if (guest && !hasCookie) {
-    document.cookie = `${GUEST_COOKIE}=1; path=/; SameSite=Lax`;
+  if (guest) {
+    await fetch("/api/auth/guest", {
+      method: "POST",
+      credentials: "same-origin",
+    });
     return true;
   }
 
-  if (!guest && hasCookie) {
-    document.cookie = `${GUEST_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
-  }
-
-  return guest;
+  return false;
 }

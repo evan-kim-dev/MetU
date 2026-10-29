@@ -1,5 +1,12 @@
 "use client";
 
+import { useCallback, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { LedgerTab } from "@/components/trips/ledger/LedgerTab";
+import type { ExpenseDraft } from "@/components/trips/ledger/ExpenseForm";
+import type { ExpenseParseItemOut } from "@/lib/ai/contracts";
+import { useLedger } from "@/lib/ledger/useLedger";
+import { useTrips } from "@/lib/trips/TripProvider";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -21,7 +28,11 @@ import {
   TripIconButton,
   TripInfoCard,
 } from "@/components/trips/TripDetailParts";
-import { useTripDetailEditor, sortScheduleItemsByTime } from "@/components/trips/useTripDetailEditor";
+import { SortableDayList } from "@/components/trips/SortableDayList";
+import { ItineraryChatBar } from "@/components/trips/ItineraryChatBar";
+import { TripMapPanel } from "@/components/trips/TripMapPanel";
+import { useTripDetailEditor } from "@/components/trips/useTripDetailEditor";
+import type { MapPoint } from "@/lib/map/trip-points";
 import { formatKRW } from "@/lib/shared/format";
 import { computeTripDDay, formatTripDDayLabel } from "@/lib/trips/d-day";
 
@@ -29,8 +40,14 @@ interface TripDetailContentProps {
   tripId: string;
 }
 
+type DetailTab = "schedule" | "ledger";
+
 export function TripDetailContent({ tripId }: TripDetailContentProps) {
   const router = useRouter();
+  const { user, provider } = useAuth();
+  const { updateTrip } = useTrips();
+  const isGuest = !user || provider === "guest";
+  const [detailTab, setDetailTab] = useState<DetailTab>("schedule");
   const {
     trip,
     isReady,
@@ -67,9 +84,34 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
     addDraftItem,
     removeDraftItem,
     saveDayEdit,
+    applyScheduleReorder,
     handleDelete,
     handleShareTrip,
+    updateTripSchedule,
   } = useTripDetailEditor(tripId);
+
+  const ledger = useLedger(tripId, {
+    country: trip?.country,
+    destination: trip?.destination,
+    dailySchedule: trip?.dailySchedule,
+    onTotalKrwChange: (totalKrw) => {
+      if (trip && trip.spent !== totalKrw) {
+        void updateTrip(tripId, { spent: totalKrw });
+      }
+    },
+  });
+
+  const [mapHighlightKey, setMapHighlightKey] = useState<string | undefined>();
+  const [reorderMode, setReorderMode] = useState(false);
+  const [reorderError, setReorderError] = useState("");
+  const scheduleItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const handleSelectMapPoint = useCallback((point: MapPoint) => {
+    setMapHighlightKey(point.key);
+    const el = scheduleItemRefs.current[point.key];
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => setMapHighlightKey(undefined), 1800);
+  }, []);
 
   const shareButton = (
     <button
@@ -263,14 +305,156 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
           )}
         </section>
 
+        {!isGuest ? (
+          <div
+            className="flex rounded-full bg-surface-soft p-1"
+            role="tablist"
+            aria-label="여행 상세 탭"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={detailTab === "schedule"}
+              onClick={() => setDetailTab("schedule")}
+              className={`flex-1 rounded-full py-2 text-sm font-bold transition ${
+                detailTab === "schedule"
+                  ? "bg-surface-white text-brand shadow-sm"
+                  : "text-ink-body"
+              }`}
+            >
+              일정
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={detailTab === "ledger"}
+              onClick={() => setDetailTab("ledger")}
+              className={`flex-1 rounded-full py-2 text-sm font-bold transition ${
+                detailTab === "ledger"
+                  ? "bg-surface-white text-brand shadow-sm"
+                  : "text-ink-body"
+              }`}
+            >
+              가계부
+            </button>
+          </div>
+        ) : null}
+
+        {!isGuest && detailTab === "ledger" ? (
+          <LedgerTab
+            loading={ledger.loading}
+            error={ledger.error}
+            members={ledger.members}
+            expenses={ledger.expenses}
+            totalKrw={ledger.totalKrw}
+            defaultCurrency={ledger.defaultCurrency}
+            placeOptions={ledger.placeOptions}
+            meId={ledger.members.find((m) => m.isOwner)?.id ?? ledger.members[0]?.id}
+            settlement={ledger.settlement}
+            onAddMember={ledger.addMember}
+            onRemoveMember={ledger.removeMember}
+            onDeleteExpense={ledger.removeExpense}
+            onSaveExpense={async (
+              draft: ExpenseDraft,
+              expenseId?: string,
+              parseMeta?: ExpenseParseItemOut
+            ) => {
+              const participantIds =
+                parseMeta?.participantIds && parseMeta.participantIds.length > 0
+                  ? parseMeta.participantIds
+                  : null;
+              const upsert = await ledger.buildUpsertFromAmount({
+                paidBy: draft.paidBy,
+                label: draft.label.trim(),
+                category: draft.category,
+                amount: Number(draft.amount),
+                currency: draft.currency,
+                placeId: draft.placeId || null,
+                spentOn: draft.spentOn || null,
+                dayIndex: draft.dayIndex ? Number(draft.dayIndex) : null,
+                participantIds,
+              });
+              if (!upsert) return false;
+              const row = await ledger.saveExpense(upsert, expenseId);
+              return Boolean(row);
+            }}
+          />
+        ) : null}
+
+        {(isGuest || detailTab === "schedule") &&
+        trip.dailySchedule &&
+        trip.dailySchedule.length > 0 ? (
+          <TripMapPanel
+            days={trip.dailySchedule}
+            country={trip.country}
+            destination={trip.destination}
+            spendByPlaceId={
+              !isGuest ? ledger.spendByPlaceId : undefined
+            }
+            highlightKey={mapHighlightKey}
+            onSelectPoint={handleSelectMapPoint}
+          />
+        ) : null}
+
         {/* AI 일정표 */}
-        {trip.dailySchedule && trip.dailySchedule.length > 0 ? (
+        {(isGuest || detailTab === "schedule") &&
+        trip.dailySchedule &&
+        trip.dailySchedule.length > 0 ? (
           <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-brand" />
-              <h3 className="text-lg font-extrabold text-ink-heading">일정표</h3>
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-brand" />
+                <h3 className="text-lg font-extrabold text-ink-heading">일정표</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setReorderMode((v) => !v);
+                  setReorderError("");
+                  cancelDayEdit();
+                }}
+                className={`rounded-full px-3 py-1 text-xs font-bold ${
+                  reorderMode
+                    ? "bg-brand text-white"
+                    : "bg-surface-soft text-ink-body"
+                }`}
+              >
+                {reorderMode ? "순서 바꾸기 종료" : "순서 바꾸기"}
+              </button>
             </div>
 
+            {reorderError ? (
+              <p className="mb-3 rounded-lg bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">
+                {reorderError}
+              </p>
+            ) : null}
+
+            {!reorderMode && trip.dailySchedule ? (
+              <ItineraryChatBar
+                city={trip.destination}
+                country={trip.country}
+                styles={trip.styles}
+                nights={Math.max(1, trip.dailySchedule.length - 1)}
+                dailySchedule={trip.dailySchedule}
+                onScheduleChange={(next) => updateTripSchedule(next)}
+              />
+            ) : null}
+
+            {reorderMode ? (
+              <SortableDayList
+                days={trip.dailySchedule ?? []}
+                onReorder={(from, to) => {
+                  void (async () => {
+                    const ok = await applyScheduleReorder(from, to);
+                    if (!ok) {
+                      setReorderError("순서를 바꾸지 못했어요.");
+                    } else {
+                      setReorderError("");
+                    }
+                  })();
+                }}
+              />
+            ) : (
             <div className="flex flex-col gap-4">
               {(trip.dailySchedule ?? []).map((day, dayIndex) => {
                 const isEditing = editingDayIndex === dayIndex && draftDay;
@@ -395,31 +579,69 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                           </TripIconButton>
                         </div>
                         <div className="flex flex-col gap-2">
-                          {sortScheduleItemsByTime(day.items).map((item) => (
-                            <div
-                              key={`${day.day}-${item.time}-${item.title}`}
-                              className="flex items-start justify-between gap-3"
-                            >
-                              <div>
-                                <p className="text-xs font-semibold text-ink-caption">
-                                  {item.time}
-                                </p>
-                                <p className="text-sm font-bold text-ink-heading">
-                                  {item.title}
-                                </p>
-                                {item.detail ? (
-                                  <p className="mt-0.5 text-sm leading-snug text-ink-body">
-                                    {item.detail}
+                          {day.items.map((item, itemIndex) => {
+                            const pointKey = `${day.day}-${itemIndex}`;
+                            const highlighted = mapHighlightKey === pointKey;
+                            return (
+                              <div
+                                key={pointKey}
+                                ref={(el) => {
+                                  scheduleItemRefs.current[pointKey] = el;
+                                }}
+                                className={`flex items-start justify-between gap-3 rounded-lg px-1 py-1 transition ${
+                                  highlighted ? "ring-2 ring-brand bg-brand/5" : ""
+                                }`}
+                              >
+                                <div>
+                                  <p className="text-xs font-semibold text-ink-caption">
+                                    {item.time}
                                   </p>
+                                  <p className="text-sm font-bold text-ink-heading">
+                                    {item.title}
+                                  </p>
+                                  {item.detail ? (
+                                    <p className="mt-0.5 text-sm leading-snug text-ink-body">
+                                      {item.detail}
+                                    </p>
+                                  ) : null}
+                                  {typeof item.travelFromPrevMin === "number" &&
+                                  item.travelFromPrevMin > 0 ? (
+                                    <p className="mt-0.5 text-[11px] font-semibold text-brand">
+                                      이동 {item.travelFromPrevMin}분
+                                    </p>
+                                  ) : null}
+                                  {item.hoursKnown === false ? (
+                                    <p className="mt-0.5 text-[11px] text-ink-caption">
+                                      영업시간 확인 필요
+                                      {item.detailUrl ? (
+                                        <>
+                                          {" · "}
+                                          <a
+                                            href={item.detailUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="underline"
+                                          >
+                                            지도에서 보기
+                                          </a>
+                                        </>
+                                      ) : null}
+                                    </p>
+                                  ) : null}
+                                  {item.warnings?.includes("closed") ? (
+                                    <p className="mt-0.5 text-[11px] font-semibold text-danger">
+                                      영업시간 확인 필요
+                                    </p>
+                                  ) : null}
+                                </div>
+                                {item.cost > 0 ? (
+                                  <span className="shrink-0 text-xs font-bold text-ink-heading">
+                                    {formatKRW(item.cost)}
+                                  </span>
                                 ) : null}
                               </div>
-                              {item.cost > 0 ? (
-                                <span className="shrink-0 text-xs font-bold text-ink-heading">
-                                  {formatKRW(item.cost)}
-                                </span>
-                              ) : null}
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                         <p className="mt-3 border-t border-line-soft pt-2 text-right text-xs font-bold text-brand">
                           일일 예상 {formatKRW(day.dayTotal)}
@@ -430,6 +652,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                 );
               })}
             </div>
+            )}
           </section>
         ) : null}
 
@@ -452,11 +675,12 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
           </section>
         )}
 
-        {/* 지출 내역 */}
+        {/* 지출 내역 — 게스트는 JSON 로컬 방식 */}
+        {isGuest ? (
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-extrabold text-ink-heading">
-              지출 내역
+              이전 방식 지출
             </h3>
             <button
               type="button"
@@ -527,6 +751,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
             )}
           </div>
         </section>
+        ) : null}
 
         {/* 메모 */}
         <section className="flex flex-col gap-2">

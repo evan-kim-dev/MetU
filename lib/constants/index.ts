@@ -15,6 +15,16 @@ export const TABLES = {
   friendships: "friendships",
   dmThreads: "dm_threads",
   dmMessages: "dm_messages",
+  places: "places",
+  tripMembers: "trip_members",
+  tripInvites: "trip_invites",
+  ledgerCardProfiles: "ledger_card_profiles",
+  tripExpenses: "trip_expenses",
+  tripExpenseShares: "trip_expense_shares",
+  tripCashRates: "trip_cash_rates",
+  fxRates: "fx_rates",
+  tripSettlements: "trip_settlements",
+  tripSettlementTransfers: "trip_settlement_transfers",
 } as const;
 
 /** localStorage keys (MVP until Auth+DB 연동) */
@@ -25,7 +35,6 @@ export const STORAGE_KEYS = {
   communityPosts: "budgettrip-community-posts",
   partyChatMessages: "budgettrip-party-chat-messages",
   guestAuthorId: "budgettrip-guest-author-id",
-  withactChecklistSession: "budgettrip-withact-checklist-session",
   docsChecklist: "budgettrip-docs-checklist",
   countryMemories: "budgettrip-country-memories",
 } as const;

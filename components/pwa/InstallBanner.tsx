@@ -121,7 +121,9 @@ export function InstallBanner() {
               </p>
             ) : (
               <p className="mt-1 text-xs leading-5 text-ink-body">
-                앱처럼 바로 열고, 더 빠르게 MetU를 이용할 수 있어요.
+                앱처럼 바로 열고, 더 빠르게 MetU를 이용할 수 있어요. 설치 후 갤러리·문자
+                앱에서 <span className="font-bold">공유 → MetU</span>로 영수증·승인
+                문자를 가계부에 바로 넣을 수 있어요.
               </p>
             )}
             <div className="mt-3 flex items-center gap-2">

@@ -1,62 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plane, ShieldCheck } from "lucide-react";
+import { ExternalLink, Plane } from "lucide-react";
 import { AirportSearchField } from "@/components/onboarding/AirportSearchField";
-import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Counter } from "@/components/ui/Counter";
 import { DateField } from "@/components/ui/DateField";
 import type { AirportPlace } from "@/lib/airports/data";
 import { formatAirportInputLabel } from "@/lib/airports/data";
-import {
-  fetchIcnAirlineProfiles,
-  type IcnAirlineProfile,
-} from "@/lib/airlines/icn";
-import { filterValidFlights } from "@/lib/flights/validate";
-import { useWithactChecklist } from "@/lib/checklist/useWithactChecklist";
+import { buildAgodaFlightSearchUrl, resolveIataCode } from "@/lib/flights/agoda-url";
+import { buildGoogleFlightsSearchUrl } from "@/lib/flights/google-flights-url";
+import { buildNaverFlightsUrl } from "@/lib/flights/naver-flights-url";
 import { todayIsoDate } from "@/lib/shared/dates";
-
-type FlightItem = {
-  id: string;
-  price: string;
-  carrier: string;
-  outbound: string;
-  inbound: string;
-  route: string;
-  duration: string;
-  stops: string;
-  bookingUrl?: string;
-};
-
-type SearchResponse = {
-  flights: FlightItem[];
-  warning?: string;
-  source?: "fallback" | "google-flights";
-  bookingUrl?: string;
-  error?: string;
-  info?: "no-valid-flights";
-};
 
 const FLIGHT_CHECK_ITEMS = [
   "여권 영문 이름과 항공권 이름 철자 일치",
   "수하물 규정(기내/위탁)과 추가 요금 확인",
   "출국 24시간 전 온라인 체크인 가능 여부 확인",
 ];
-
-function formatDateLabel(input: string): string {
-  if (!input) return "-";
-  const date = new Date(input);
-  if (!Number.isNaN(date.getTime())) {
-    return date.toLocaleString("ko-KR", {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
-  return input;
-}
 
 function defaultDate(offsetDays: number): string {
   const date = new Date();
@@ -68,6 +28,10 @@ function formatFlightSearchValue(place: AirportPlace): string {
   return formatAirportInputLabel(place);
 }
 
+function travelLinksEnabled(): boolean {
+  return (process.env.NEXT_PUBLIC_TRAVEL_LINKS ?? "1").trim() !== "0";
+}
+
 export function FlightChecklistContent() {
   const todayIso = todayIsoDate();
   const [origin, setOrigin] = useState("");
@@ -75,318 +39,128 @@ export function FlightChecklistContent() {
   const [departDate, setDepartDate] = useState(defaultDate(30));
   const [returnDate, setReturnDate] = useState(defaultDate(37));
   const [adults, setAdults] = useState(1);
-  const [cabinClass, setCabinClass] = useState("economy");
-  const [sortBy, setSortBy] = useState("best");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [warning, setWarning] = useState<string | null>(null);
-  const [source, setSource] = useState<SearchResponse["source"]>();
-  const [bookingUrl, setBookingUrl] = useState<string | null>(null);
-  const [flights, setFlights] = useState<FlightItem[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [airlineProfiles, setAirlineProfiles] = useState<
-    Record<string, IcnAirlineProfile>
-  >({});
-  const { persistItem } = useWithactChecklist();
 
-  const validFlights = useMemo(() => filterValidFlights(flights), [flights]);
-
-  const canSearch = useMemo(() => {
-    return (
-      origin.trim().length > 0 &&
-      destination.trim().length > 0 &&
-      departDate.length > 0 &&
-      returnDate.length > 0
-    );
-  }, [departDate, destination, origin, returnDate]);
-
-  async function onSearch() {
-    if (!canSearch || loading) return;
-    setLoading(true);
-    setError(null);
-    setWarning(null);
-    setSource(undefined);
-    setBookingUrl(null);
-    setAirlineProfiles({});
-    try {
-      const params = new URLSearchParams({
-        origin,
-        destination,
+  const links = useMemo(() => {
+    const o = resolveIataCode(origin);
+    const d = resolveIataCode(destination);
+    if (!o || !d || !departDate || !returnDate) return null;
+    return {
+      google: buildGoogleFlightsSearchUrl({
+        origin: o,
+        destination: d,
         departDate,
         returnDate,
-        adults: String(adults),
-        cabinClass,
-        sortBy,
-      });
-      const res = await fetch(`/api/flights/search?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const data = (await res.json()) as SearchResponse;
-      setHasSearched(true);
-      if (!res.ok) {
-        setFlights([]);
-        setError(data.error ?? "항공권 조회에 실패했어요.");
-        return;
-      }
-      const nextFlights = filterValidFlights(data.flights ?? []);
-      setFlights(nextFlights);
-      setWarning(
-        data.info === "no-valid-flights"
-          ? null
-          : data.warning ?? null
-      );
-      setSource(data.source);
-      setBookingUrl(data.bookingUrl ?? nextFlights[0]?.bookingUrl ?? null);
+        adults,
+      }),
+      naver: buildNaverFlightsUrl({
+        origin: o,
+        destination: d,
+        departDate,
+        returnDate,
+        adults,
+      }),
+      agoda: buildAgodaFlightSearchUrl({
+        departureFrom: o,
+        arrivalTo: d,
+        departDate,
+        returnDate,
+        adults,
+      }),
+    };
+  }, [adults, departDate, destination, origin, returnDate]);
 
-      const carriers = nextFlights.map((flight) => flight.carrier);
-      const profiles = await fetchIcnAirlineProfiles(carriers);
-      setAirlineProfiles(profiles);
-
-      void persistItem({
-        itemType: "FLIGHT",
-        itemStatus: "SEARCHED",
-        itemName: `${origin} → ${destination}`,
-        itemSummary: `${nextFlights.length}건 조회 · ${departDate} ~ ${returnDate}`,
-        externalProvider: data.source,
-      });
-    } catch {
-      setFlights([]);
-      setError("네트워크 오류가 발생했어요. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setLoading(false);
-    }
+  if (!travelLinksEnabled()) {
+    return (
+      <div className="px-5 py-8 text-sm text-ink-body">
+        항공/호텔 검색은 준비 중이에요
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-5 px-5 pb-10 pt-5">
-      <header className="flex flex-col gap-2">
-        <h2 className="text-heading font-bold tracking-tight text-ink-heading">
-          항공 체크리스트
-        </h2>
-        <p className="text-sm leading-6 text-ink-body">
-          출발지/도착지와 날짜를 입력하면 Google Flights 기준으로 항공권을 찾아요.
-        </p>
-      </header>
+    <div className="flex flex-col gap-5 px-5 pb-10 pt-4">
+      <div className="flex items-center gap-2 text-ink-heading">
+        <Plane className="h-5 w-5" aria-hidden />
+        <h2 className="text-lg font-extrabold">항공권 검색</h2>
+      </div>
+      <p className="text-sm text-ink-body">
+        가격은 예약처에서 확인해요. 아래 버튼으로 검색 화면을 열어요.
+      </p>
 
-      <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="col-span-1">
-            <AirportSearchField
-              label="출발지"
-              placeholder="예: 인천국제공항(ICN)"
-              value={origin}
-              onChange={setOrigin}
-              formatValue={formatFlightSearchValue}
-              variant="compact"
-            />
-          </div>
-          <div className="col-span-1">
-            <AirportSearchField
-              label="도착지"
-              placeholder="예: 나리타국제공항(NRT)"
-              value={destination}
-              onChange={setDestination}
-              formatValue={formatFlightSearchValue}
-              variant="compact"
-            />
-          </div>
-          <label className="col-span-1 flex flex-col gap-1">
-            <span className="text-xs font-semibold text-ink-caption">출발일</span>
-            <DateField
-              aria-label="출발일"
-              value={departDate}
-              min={todayIso}
-              onChange={(next) => {
-                setDepartDate(next);
-                if (returnDate && next && returnDate < next) setReturnDate("");
-              }}
-              className="h-10 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
-            />
-          </label>
-          <label className="col-span-1 flex flex-col gap-1">
-            <span className="text-xs font-semibold text-ink-caption">귀국일</span>
-            <DateField
-              aria-label="귀국일"
-              value={returnDate}
-              min={departDate || todayIso}
-              onChange={setReturnDate}
-              className="h-10 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
-            />
-          </label>
-          <label className="col-span-1 flex flex-col gap-1">
-            <span className="text-xs font-semibold text-ink-caption">인원</span>
-            <Counter
-              value={adults}
-              onChange={setAdults}
-              min={1}
-              max={9}
-              unit="명"
-              variant="compact"
-            />
-          </label>
-          <label className="col-span-1 flex flex-col gap-1">
-            <span className="text-xs font-semibold text-ink-caption">좌석 등급</span>
-            <select
-              value={cabinClass}
-              onChange={(e) => setCabinClass(e.target.value)}
-              className="h-10 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
-            >
-              <option value="economy">이코노미</option>
-              <option value="premium_economy">프리미엄 이코노미</option>
-              <option value="business">비즈니스</option>
-              <option value="first">퍼스트</option>
-            </select>
-          </label>
-          <label className="col-span-2 flex flex-col gap-1">
-            <span className="text-xs font-semibold text-ink-caption">정렬</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="h-10 rounded-lg border border-line-soft px-3 text-sm outline-none focus:border-brand"
-            >
-              <option value="best">추천순</option>
-              <option value="fastest">최단시간순</option>
-              <option value="price_high">가격순</option>
-            </select>
-          </label>
-        </div>
+      <AirportSearchField
+        label="출발"
+        placeholder="인천 (ICN)"
+        value={origin}
+        onChange={setOrigin}
+        formatValue={formatFlightSearchValue}
+      />
+      <AirportSearchField
+        label="도착"
+        placeholder="도쿄 나리타 (NRT)"
+        value={destination}
+        onChange={setDestination}
+        formatValue={formatFlightSearchValue}
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1.5 text-sm font-bold text-ink-heading">
+          가는 날
+          <DateField
+            value={departDate}
+            min={todayIso}
+            onChange={setDepartDate}
+            aria-label="가는 날"
+            className="h-touch rounded-2xl border border-line bg-white px-3"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm font-bold text-ink-heading">
+          오는 날
+          <DateField
+            value={returnDate}
+            min={departDate || todayIso}
+            onChange={setReturnDate}
+            aria-label="오는 날"
+            className="h-touch rounded-2xl border border-line bg-white px-3"
+          />
+        </label>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-bold text-ink-heading">인원</span>
+        <Counter value={adults} min={1} max={9} onChange={setAdults} unit="명" />
+      </div>
 
-        <PrimaryButton
-          className="mt-3"
-          disabled={!canSearch}
-          loading={loading}
-          onClick={onSearch}
-        >
-          {loading ? "조회 중..." : "항공권 조회"}
-        </PrimaryButton>
-      </section>
-
-      {error ? (
-        <section className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
-        </section>
-      ) : null}
-      {warning ? (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          {warning}
-        </section>
-      ) : null}
-      {source === "google-flights" && validFlights.length > 0 ? (
-        <section className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          Google Flights 공개 데이터로 조회했어요. 예약은 Google Flights에서 직접 진행해주세요.
-        </section>
-      ) : null}
-
-      <section className="flex flex-col gap-3">
-        {!hasSearched && !loading ? (
-          <article className="rounded-2xl border-0 bg-surface-soft shadow-sm bg-surface-white px-4 py-8 text-center">
-            <p className="text-sm font-semibold text-ink-heading">
-              항공권을 조회하면 추천 결과가 여기에 보여요.
-            </p>
-          </article>
-        ) : null}
-
-        {hasSearched && !loading && validFlights.length === 0 ? (
-          <article className="rounded-2xl border-0 bg-surface-soft shadow-sm bg-surface-white px-4 py-8 text-center">
-            <p className="text-sm font-semibold text-ink-heading">
-              직항/경유 항공편이 없어요!
-            </p>
-            <p className="mt-1 text-xs text-ink-caption">
-              날짜나 공항을 바꿔 다시 검색해 보세요.
-            </p>
-          </article>
-        ) : null}
-
-        {validFlights.map((flight) => {
-          const profile = airlineProfiles[flight.carrier];
-          const displayName = profile?.name || flight.carrier;
-          return (
-          <article
-            key={flight.id}
-            className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm"
+      <div className="flex flex-col gap-2">
+        {(
+          [
+            ["Google 항공권", links?.google],
+            ["네이버 항공권", links?.naver],
+            ["Agoda", links?.agoda],
+          ] as const
+        ).map(([label, href]) => (
+          <a
+            key={label}
+            href={href ?? undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-disabled={!href}
+            className={`flex h-touch items-center justify-center gap-2 rounded-2xl text-sm font-bold transition-opacity ${
+              href
+                ? "bg-ink-heading text-white active:opacity-90"
+                : "pointer-events-none bg-surface-muted text-ink-caption opacity-60"
+            }`}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-start gap-2.5">
-                {profile?.image ? (
-                  <img
-                    src={profile.image}
-                    alt={displayName}
-                    className="mt-0.5 h-9 w-9 shrink-0 rounded-lg border border-line-soft bg-surface-soft object-contain p-1"
-                  />
-                ) : (
-                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
-                    <Plane className="h-4 w-4" />
-                  </span>
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-ink-heading">{displayName}</p>
-                  <p className="mt-0.5 text-xs text-ink-caption">
-                    {profile?.iata ? `${profile.iata} · ` : ""}
-                    {flight.route}
-                  </p>
-                </div>
-              </div>
-              <p className="text-base font-extrabold text-ink-heading">{flight.price}</p>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-ink-body">
-              <div className="rounded-lg bg-surface-soft px-3 py-2">
-                <p className="font-semibold">출발</p>
-                <p>{formatDateLabel(flight.outbound)}</p>
-              </div>
-              <div className="rounded-lg bg-surface-soft px-3 py-2">
-                <p className="font-semibold">귀국</p>
-                <p>{formatDateLabel(flight.inbound)}</p>
-              </div>
-            </div>
-            <div className="mt-2 flex items-center gap-2 text-xs text-ink-caption">
-              <Plane className="h-3.5 w-3.5 text-brand" />
-              <span>{flight.duration}</span>
-              <span>·</span>
-              <span>{flight.stops}</span>
-            </div>
-            {flight.bookingUrl || bookingUrl ? (
-              <a
-                href={flight.bookingUrl ?? bookingUrl ?? "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => {
-                  void persistItem({
-                    itemType: "FLIGHT",
-                    itemStatus: "SELECTED",
-                    itemName: displayName,
-                    itemSummary: `${flight.route} · ${flight.price}`,
-                    externalProvider: source,
-                    externalItemId: flight.id,
-                    externalUrl: flight.bookingUrl ?? bookingUrl ?? undefined,
-                    selected: true,
-                  });
-                }}
-                className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-brand/20 bg-brand/5 text-sm font-semibold text-brand"
-              >
-                Google Flights에서 보기
-              </a>
-            ) : null}
-          </article>
-        );
-        })}
-      </section>
+            {label}
+            <ExternalLink className="h-4 w-4" aria-hidden />
+          </a>
+        ))}
+      </div>
 
-      <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
-        <div className="mb-3 flex items-center gap-2">
-          <ShieldCheck className="h-4.5 w-4.5 text-brand" />
-          <h3 className="text-sm font-bold text-ink-heading">예약 전 체크리스트</h3>
-        </div>
-        <ul className="flex flex-col gap-2">
-          {FLIGHT_CHECK_ITEMS.map((item) => (
-            <li
-              key={item}
-              className="rounded-lg border border-line-soft bg-surface-base px-3 py-2.5 text-sm text-ink-body"
-            >
-              {item}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ul className="mt-2 space-y-2 rounded-2xl bg-surface-muted px-4 py-3 text-sm text-ink-body">
+        {FLIGHT_CHECK_ITEMS.map((item) => (
+          <li key={item} className="list-disc pl-1">
+            {item}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -16,7 +16,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const migrationsDir = join(root, "supabase", "migrations");
 const envPath = join(root, "backend", ".env");
 
-const PROJECT_REF = "yfpvgxbmxgpjuzmpnbia";
+const PROJECT_REF = "jlcdewbwbtfwasnpqfcj";
 
 function loadEnv(path) {
   const vars = {};
@@ -47,15 +47,16 @@ if (!dbPassword) {
   process.exit(1);
 }
 
-const dbHost = env.DB_HOST || "aws-1-ap-southeast-1.pooler.supabase.com";
+const dbHost = env.DB_HOST || "aws-1-ap-northeast-2.pooler.supabase.com";
 const dbPort = env.DB_PORT || "5432";
 const dbName = env.DB_NAME || "postgres";
 const dbUser = env.DB_USER || `postgres.${PROJECT_REF}`;
 
 const connectionUrls = [
   `postgresql://${dbUser}:${encodeURIComponent(dbPassword)}@${dbHost}:${dbPort}/${dbName}`,
-  `postgresql://postgres.${PROJECT_REF}:${encodeURIComponent(dbPassword)}@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres`,
-  `postgresql://postgres.${PROJECT_REF}:${encodeURIComponent(dbPassword)}@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
+  `postgresql://postgres.${PROJECT_REF}:${encodeURIComponent(dbPassword)}@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres`,
+  `postgresql://postgres.${PROJECT_REF}:${encodeURIComponent(dbPassword)}@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres`,
+  `postgresql://postgres.${PROJECT_REF}:${encodeURIComponent(dbPassword)}@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres`,
 ];
 
 const files = readdirSync(migrationsDir)

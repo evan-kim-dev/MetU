@@ -19,7 +19,7 @@ import {
   resolveDocsCountryFromTrip,
   type DocsCountryId,
 } from "@/lib/checklist/resolve-docs-country";
-import { useWithactChecklist } from "@/lib/checklist/useWithactChecklist";
+import { useChecklistItems } from "@/lib/checklist/useChecklistItems";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 type CountryId = DocsCountryId;
@@ -184,7 +184,7 @@ export function DocsChecklistContent() {
   const [uploadError, setUploadError] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const { persistItem } = useWithactChecklist(primaryTrip?.budget ?? 0);
+  const { persistItem } = useChecklistItems(primaryTrip?.id);
 
   const scopeKey = useMemo(
     () => getDocsChecklistScopeKey(country, primaryTrip?.id),

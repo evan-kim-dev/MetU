@@ -1,5 +1,5 @@
 # Met U AI — Supabase project (remote)
-project_id = "yfpvgxbmxgpjuzmpnbia"
+project_id = "jlcdewbwbtfwasnpqfcj"
 
 [api]
 enabled = true
@@ -8,7 +8,41 @@ extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
-major_version = 15
+major_version = 17
+
+[db.pooler]
+default_pool_size = 15
+max_client_conn = 200
 
 [studio]
 enabled = true
+
+[auth]
+site_url = "https://met-u.vercel.app"
+additional_redirect_urls = [
+  "https://met-u.vercel.app/**",
+  "https://met-u.vercel.app/auth/callback",
+  "http://localhost:3000/**",
+  "http://localhost:3000/auth/callback",
+  "http://127.0.0.1:3000/**",
+  "http://127.0.0.1:3000/auth/callback",
+]
+
+[auth.email]
+enable_confirmations = true
+max_frequency = "1m0s"
+otp_length = 8
+
+[auth.external.kakao]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_KAKAO_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_KAKAO_SECRET)"
+# Redirect URI (Kakao Developers에도 등록):
+# https://jlcdewbwbtfwasnpqfcj.supabase.co/auth/v1/callback
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[storage.vector]
+enabled = false

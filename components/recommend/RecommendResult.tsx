@@ -24,7 +24,7 @@ import { EasterEggCelebration } from "@/components/ui/EasterEggCelebration";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
 import { usePlanQuotes } from "@/components/recommend/usePlanQuotes";
 import { formatKRW } from "@/lib/shared/format";
-import { planHasEasterEgg } from "@/lib/ai/budget-reality-check";
+import { planHasEasterEgg } from "@/lib/ai/plan-easter-egg";
 import { reallocateBudgetWithLiveQuotes } from "@/lib/ai/realloc-budget";
 import type { TripRecommendation } from "@/lib/ai/types";
 import { buildGoogleFlightsUrlFromPlan } from "@/lib/flights/google-flights-url";
@@ -56,16 +56,12 @@ function priceCaption(params: {
         withinBand === false ? " · 예산 밴드(45%) 초과" : "";
       return `Google Flights 실시간 최저가${band} · ${people}인 합계`;
     }
-    return "예상가 · 시세 조회 실패 · Google Flights에서 확인";
+    return "예상가 · Google Flights에서 확인";
   }
-  if (source === "live") {
-    const band = withinBand === false ? " · 예산 밴드(40%) 초과" : "";
-    return `Hotelbeds 실시간 최저가${band} · ${people}인 기준`;
+  if (source === "live" || source === "city-estimate") {
+    return "예상가 · Agoda에서 확인";
   }
-  if (source === "city-estimate") {
-    return "도시 시세 추정가 · Hotelbeds 테스트에 해당 지역 재고 없음 · Google Hotels 확인";
-  }
-  return "예상가 · 시세 조회 실패 · Agoda에서 확인";
+  return "예상가 · Agoda에서 확인";
 }
 
 const EASTER_CELEB_PREFIX = "metu:easter-celeb:v2:";

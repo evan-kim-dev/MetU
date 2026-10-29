@@ -4,9 +4,9 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bot,
   CircleUserRound,
   Home,
-  LayoutGrid,
   MessageSquareText,
   Route,
   type LucideIcon,
@@ -25,7 +25,7 @@ interface NavItem {
 
 const LEFT_ITEMS: NavItem[] = [
   { href: "/trips", label: "내 여행", icon: Route },
-  { href: "/board", label: "게시판", icon: LayoutGrid },
+  { href: "/agent", label: "Agent", icon: Bot },
 ];
 
 const RIGHT_ITEMS: NavItem[] = [

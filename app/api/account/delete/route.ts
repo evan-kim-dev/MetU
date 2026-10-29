@@ -37,7 +37,7 @@ export async function POST() {
   const admin = getServiceSupabase();
   if (!admin) {
     console.error(
-      "[account/delete] SUPABASE_SERVICE_ROLE_KEY is missing on the server"
+      "[account/delete] service role key is missing on the server"
     );
     return NextResponse.json(
       {

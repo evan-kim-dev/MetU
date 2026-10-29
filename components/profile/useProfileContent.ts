@@ -230,7 +230,7 @@ export function useProfileContent() {
         return;
       }
 
-      clearGuestSession();
+      await clearGuestSession();
       clearSupabaseAuthStorage();
       clearSupabaseAuthCookies();
       resetBrowserSupabase();

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/security/safe-next";
 import { resolveSiteOrigin } from "@/lib/site-url";
 
 function htmlEscape(value: string) {
@@ -57,8 +58,7 @@ function completeLoginResponse(targetUrl: string) {
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const nextParam = searchParams.get("next") ?? "/";
-  const next = nextParam.startsWith("/") ? nextParam : "/";
+  const next = safeNextPath(searchParams.get("next"), "/");
   const errorDescription = searchParams.get("error_description");
   const siteOrigin = resolveSiteOrigin(origin);
 

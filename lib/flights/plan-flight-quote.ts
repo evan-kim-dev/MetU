@@ -1,8 +1,5 @@
 import type { TripRecommendation } from "@/lib/ai/types";
-import {
-  flightBudgetCap,
-  pickCheapestInBand,
-} from "@/lib/ai/realloc-budget";
+import { flightBudgetCap } from "@/lib/ai/realloc-budget";
 import {
   resolveIataCode,
   resolveTripFlightDates,
@@ -11,7 +8,7 @@ import {
   buildGoogleFlightsSearchUrl,
   buildGoogleFlightsUrlFromPlan,
 } from "@/lib/flights/google-flights-url";
-import { normalizePriceToKrw, parseAndNormalizeKrw } from "@/lib/shared/format";
+import { normalizePriceToKrw } from "@/lib/shared/format";
 
 export interface PlanFlightQuote {
   priceKrw: number;
@@ -25,24 +22,6 @@ export interface PlanFlightQuote {
   /** live일 때 총예산 밴드(45%) 이내 여부 */
   withinBand?: boolean;
   budgetCap?: number;
-}
-
-type FlightSearchItem = {
-  price: string;
-  carrier: string;
-  outbound: string;
-  inbound: string;
-  route: string;
-  bookingUrl?: string;
-};
-
-function extractTimeLabel(datetime: string): string {
-  const match = datetime.match(/(\d{1,2}:\d{2})/);
-  return match?.[1] ?? datetime;
-}
-
-function formatSchedule(outbound: string, inbound: string): string {
-  return `가는 편 ${extractTimeLabel(outbound)} · 오는 편 ${extractTimeLabel(inbound)}`;
 }
 
 function buildEstimateQuote(plan: TripRecommendation): PlanFlightQuote | null {
@@ -74,87 +53,9 @@ function buildEstimateQuote(plan: TripRecommendation): PlanFlightQuote | null {
   };
 }
 
-async function parseFlightSearchJson(
-  res: Response
-): Promise<{ flights: FlightSearchItem[]; bookingUrl?: string } | null> {
-  const contentType = res.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) {
-    return null;
-  }
-  try {
-    const data = (await res.json()) as {
-      flights?: FlightSearchItem[];
-      bookingUrl?: string;
-      error?: string;
-    };
-    if (data.error) return null;
-    return {
-      flights: data.flights ?? [],
-      bookingUrl: data.bookingUrl,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** Google Flights 실시간 최저가. 실패 시에만 예산 배분 예상가. */
+/** Estimate-only quote (live flight search removed in P1-A). */
 export async function fetchPlanFlightQuote(
   plan: TripRecommendation
 ): Promise<PlanFlightQuote | null> {
-  const estimate = buildEstimateQuote(plan);
-  if (!estimate) return null;
-
-  const originCode = resolveIataCode(plan.form.origin || plan.origin);
-  const destCode = resolveIataCode(plan.form.destination || plan.destination);
-  if (!originCode || !destCode) return estimate;
-
-  const { departDate, returnDate } = resolveTripFlightDates(plan.form, plan.nights);
-  const cap = flightBudgetCap(plan.totalBudget);
-  const qs = new URLSearchParams({
-    origin: originCode,
-    destination: destCode,
-    departDate,
-    returnDate,
-    adults: String(plan.people),
-    cabinClass: "economy",
-    sortBy: "price",
-  });
-
-  try {
-    const res = await fetch(`/api/flights/search?${qs.toString()}`, {
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-    if (!res.ok) return estimate;
-
-    const data = await parseFlightSearchJson(res);
-    if (!data || data.flights.length === 0) return estimate;
-
-    const picked = pickCheapestInBand(
-      data.flights,
-      (f) => parseAndNormalizeKrw(f.price),
-      Number.POSITIVE_INFINITY
-    );
-    if (!picked || picked.price <= 0) return estimate;
-
-    const googleFlightsUrl =
-      data.bookingUrl ||
-      picked.item.bookingUrl ||
-      estimate.googleFlightsUrl;
-
-    return {
-      priceKrw: picked.price,
-      priceLabel: picked.price.toLocaleString("ko-KR"),
-      airline: picked.item.carrier,
-      route: picked.item.route,
-      schedule: formatSchedule(picked.item.outbound, picked.item.inbound),
-      googleFlightsUrl,
-      source: "live",
-      withinBand: picked.price <= cap,
-      budgetCap: cap,
-    };
-  } catch {
-    return estimate;
-  }
+  return buildEstimateQuote(plan);
 }

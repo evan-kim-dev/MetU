@@ -1,4 +1,3 @@
-import { BackendUnavailableError } from "@/lib/backend/client";
 import { aiChatOrNull } from "@/lib/ai/chat-client";
 import { parseDealsOut } from "@/lib/ai/contracts";
 import {
@@ -120,9 +119,6 @@ export async function curateRecommendedDeals(): Promise<{
 
     return { places: ordered, source: "ai+rag" };
   } catch (error) {
-    if (error instanceof BackendUnavailableError) {
-      return { places: fallback, source: "fallback" };
-    }
     console.error("[recommended-deals]", error);
     return { places: fallback, source: "fallback" };
   }

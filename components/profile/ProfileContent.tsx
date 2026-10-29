@@ -29,6 +29,7 @@ import {
   detectCursorPetsFromBio,
   hasDogBuddyInBio,
 } from "@/lib/easter/pet-buddy";
+import { enablePush, getPushSupport } from "@/lib/push/client";
 
 function isDataUrl(src: string): boolean {
   return src.startsWith("data:");
@@ -115,6 +116,9 @@ export function ProfileContent() {
   } = useProfileContent();
 
   const profilePageRef = useRef<HTMLDivElement | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMsg, setPushMsg] = useState<string | null>(null);
+  const pushSupport = getPushSupport();
   const bioText = isEditing ? draftBio : profile.bio;
   const dogBuddyActive = hasDogBuddyInBio(bioText);
   const catBuddyActive = detectCursorPetsFromBio(bioText).includes("cat");
@@ -389,6 +393,31 @@ export function ProfileContent() {
                   label="알림 설정"
                 />
               </div>
+              {pushSupport.supported ? (
+                <div className="flex flex-col gap-2 border-t border-membership pt-3">
+                  <button
+                    type="button"
+                    disabled={pushBusy}
+                    className="self-start rounded-full bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand active:opacity-80 disabled:opacity-50"
+                    onClick={async () => {
+                      setPushBusy(true);
+                      setPushMsg(null);
+                      const result = await enablePush();
+                      setPushBusy(false);
+                      setPushMsg(
+                        result.ok
+                          ? "브라우저 푸시가 켜졌어요."
+                          : "푸시를 켜지 못했어요."
+                      );
+                    }}
+                  >
+                    {pushBusy ? "연결 중…" : "알림 켜기"}
+                  </button>
+                  {pushMsg ? (
+                    <p className="text-xs text-ink-muted">{pushMsg}</p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </section>
 

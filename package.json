@@ -5,22 +5,32 @@
   "scripts": {
     "dev": "next dev",
     "dev:clean": "node scripts/clean-next.cjs && next dev",
-    "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --port 8000",
     "db:push": "node scripts/apply-supabase-migrations.mjs",
     "db:verify": "node scripts/verify-supabase.mjs",
     "build": "node scripts/clean-next.cjs && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@google/genai": "^2.32.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.48.1",
+    "@vis.gl/react-google-maps": "^1.10.1",
     "d3-geo": "^3.1.1",
     "lucide-react": "^0.474.0",
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "topojson-client": "^3.1.0"
+    "react-kakao-maps-sdk": "^1.2.2",
+    "server-only": "^0.0.1",
+    "topojson-client": "^3.1.0",
+    "web-push": "^3.6.7",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/d3-geo": "^3.1.0",
@@ -29,10 +39,13 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@types/topojson-client": "^3.1.5",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.20",
     "pg": "^8.22.0",
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.3"
+    "tsx": "^4.23.15",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.7"
   }
 }

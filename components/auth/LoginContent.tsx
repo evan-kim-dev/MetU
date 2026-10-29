@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Mail } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { MetULogo } from "@/components/ui/MetULogo";
+import { safeNextPath } from "@/lib/security/safe-next";
 
 const TAGLINES = [
   "Nice to Met U!",
@@ -48,8 +49,7 @@ export function LoginContent() {
   }, []);
 
   const goNext = () => {
-    const next = searchParams.get("next");
-    router.replace(next?.startsWith("/") ? next : "/");
+    router.replace(safeNextPath(searchParams.get("next"), "/"));
   };
 
   const handleKakaoLogin = async () => {
@@ -65,8 +65,8 @@ export function LoginContent() {
     }
   };
 
-  const handleGuest = () => {
-    loginAsGuest();
+  const handleGuest = async () => {
+    await loginAsGuest();
     goNext();
   };
 

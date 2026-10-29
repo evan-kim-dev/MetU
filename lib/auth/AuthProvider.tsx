@@ -17,6 +17,7 @@ import {
   saveGuestSession,
   syncGuestSession,
 } from "@/lib/auth/guest-session";
+import { clearLegacyWithactKeys } from "@/lib/checklist/legacy-cleanup";
 import {
   clearSupabaseAuthCookies,
   clearSupabaseAuthStorage,
@@ -48,17 +49,11 @@ interface AuthContextValue {
     | { status: "confirm_email"; message: string }
     | { status: "error"; message: string }
   >;
-  loginAsGuest: () => void;
+  loginAsGuest: () => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const LEGACY_WITHACT_KEY = "budgettrip-auth:withact";
-
-function clearLegacyWithactSession() {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(LEGACY_WITHACT_KEY);
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
@@ -67,11 +62,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    clearLegacyWithactSession();
+    clearLegacyWithactKeys();
     clearLegacyGuestSession();
 
     async function init() {
-      const guest = syncGuestSession();
+      const guest = await syncGuestSession();
       const supabase = getBrowserSupabase();
       if (!supabase) {
         if (mounted) {
@@ -85,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (data.session?.user) {
-        clearGuestSession();
+        await clearGuestSession();
         setUser(data.session.user as AuthUser);
         setIsGuest(false);
       } else {
@@ -107,15 +102,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        clearGuestSession();
-        setUser(session.user as AuthUser);
-        setIsGuest(false);
-      } else {
-        setUser(null);
-        setIsGuest(loadGuestSession());
-      }
-      setIsReady(true);
+      void (async () => {
+        if (session?.user) {
+          await clearGuestSession();
+          setUser(session.user as AuthUser);
+          setIsGuest(false);
+        } else {
+          setUser(null);
+          setIsGuest(loadGuestSession());
+        }
+        setIsReady(true);
+      })();
     });
 
     return () => {
@@ -169,7 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return error.message;
     }
 
-    clearGuestSession();
+    await clearGuestSession();
     return null;
   }, []);
 
@@ -223,13 +220,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    clearGuestSession();
+    await clearGuestSession();
     return { status: "ok" as const };
   }, []);
 
-  const loginAsGuest = useCallback(() => {
-    clearLegacyWithactSession();
-    saveGuestSession();
+  const loginAsGuest = useCallback(async () => {
+    clearLegacyWithactKeys();
+    await saveGuestSession();
     setIsGuest(true);
     setUser(null);
   }, []);
@@ -243,23 +240,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : null;
 
   const logout = useCallback(() => {
-    clearGuestSession();
-    clearLegacyWithactSession();
-    setIsGuest(false);
-    setUser(null);
+    void (async () => {
+      await clearGuestSession();
+      clearLegacyWithactKeys();
+      setIsGuest(false);
+      setUser(null);
 
-    clearSupabaseAuthStorage();
-    clearSupabaseAuthCookies();
-    resetBrowserSupabase();
+      clearSupabaseAuthStorage();
+      clearSupabaseAuthCookies();
+      resetBrowserSupabase();
 
-    const serviceLogoutUrl = `${window.location.origin}/auth/logout`;
-    const kakaoLogoutUrl = buildKakaoLogoutUrl(serviceLogoutUrl);
-    if (kakaoLogoutUrl) {
-      window.location.assign(kakaoLogoutUrl);
-      return;
-    }
+      const serviceLogoutUrl = `${window.location.origin}/auth/logout`;
+      const kakaoLogoutUrl = buildKakaoLogoutUrl(serviceLogoutUrl);
+      if (kakaoLogoutUrl) {
+        window.location.assign(kakaoLogoutUrl);
+        return;
+      }
 
-    window.location.assign("/auth/logout");
+      window.location.assign("/auth/logout");
+    })();
   }, []);
 
   const value = useMemo(

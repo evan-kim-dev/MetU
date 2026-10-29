@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 const PUBLIC_PATHS = ["/login", "/legal", "/auth"];
@@ -19,6 +19,7 @@ function isPublicPath(pathname: string) {
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { isReady, isLoggedIn } = useAuth();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const publicPath = isPublicPath(pathname);
 
@@ -26,7 +27,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (!isReady) return;
 
     if (!isLoggedIn && !publicPath) {
-      const next = pathname === "/" ? "" : `?next=${encodeURIComponent(pathname)}`;
+      const qs = searchParams.toString();
+      const returnPath = qs ? `${pathname}?${qs}` : pathname;
+      const next = returnPath === "/" ? "" : `?next=${encodeURIComponent(returnPath)}`;
       router.replace(`/login${next}`);
       return;
     }
@@ -35,7 +38,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       // Soft nav can keep a stale client bundle after OAuth; force a full load.
       window.location.replace("/");
     }
-  }, [isReady, isLoggedIn, pathname, publicPath, router]);
+  }, [isReady, isLoggedIn, pathname, searchParams, publicPath, router]);
 
   // Public routes: render immediately (no auth spinner waterfall).
   if (publicPath) {

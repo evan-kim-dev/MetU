@@ -10,6 +10,7 @@ import {
 } from "@/lib/trips/share";
 import { useTrips } from "@/lib/trips/TripProvider";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { moveItem, recomputeDay } from "@/lib/route/recompute-day";
 import type { Trip, TripDaySchedule, TripExpense } from "@/lib/trips/types";
 
 export type TripEditSection = "budget" | "expense" | "memo" | null;
@@ -294,6 +295,36 @@ export function useTripDetailEditor(tripId: string) {
     cancelDayEdit();
   };
 
+  /** 드래그로 순서 변경 후 저장. 실패 시 false */
+  const updateTripSchedule = (dailySchedule: TripDaySchedule[]) => {
+    if (!trip) return;
+    updateTrip(trip.id, { dailySchedule });
+  };
+
+  const applyScheduleReorder = async (
+    from: { day: number; index: number },
+    to: { day: number; index: number }
+  ): Promise<boolean> => {
+    if (!trip?.dailySchedule?.length) return false;
+    const previous = trip.dailySchedule;
+    const moved = moveItem(previous, from, to);
+    if (moved === previous) return false;
+
+    try {
+      const touched = new Set([from.day, to.day]);
+      const recomputed = await Promise.all(
+        moved.map(async (day) =>
+          touched.has(day.day) ? recomputeDay(day, { mode: "keep-slots" }) : day
+        )
+      );
+      updateTrip(trip.id, { dailySchedule: recomputed });
+      return true;
+    } catch {
+      updateTrip(trip.id, { dailySchedule: previous });
+      return false;
+    }
+  };
+
   const handleDelete = () => {
     if (!trip || isDeleting) return;
     const ok = window.confirm(
@@ -381,6 +412,8 @@ export function useTripDetailEditor(tripId: string) {
     addDraftItem,
     removeDraftItem,
     saveDayEdit,
+    applyScheduleReorder,
+    updateTripSchedule,
     handleDelete,
     handleShareTrip,
   };

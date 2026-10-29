@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardApi } from "@/lib/security/guard";
 import { aiChatOrNull } from "@/lib/ai/chat-client";
 import { parseDealEnrichOut } from "@/lib/ai/contracts";
 import {
@@ -10,7 +11,10 @@ import { AI_QUALITY_FIRST, AI_VOICE } from "@/lib/ai/prompts/shared";
 
 export const maxDuration = 120;
 
-async function enrichViaBackend(detail: DealDetail): Promise<DealDetail> {
+async function enrichViaBackend(
+  detail: DealDetail,
+  clientKey: string
+): Promise<DealDetail> {
   const prompt = `너는 한국어 예산 여행 큐레이터야. 저가 항공·숙소 시세를 바탕으로 아래 여행지를 풍부하게 설명해. JSON만 반환해.
 ${AI_QUALITY_FIRST}
 
@@ -39,6 +43,7 @@ JSON 스키마:
     mode: "deal",
     system,
     prompt,
+    clientKey,
   });
   if (!chat) return detail;
 
@@ -65,9 +70,13 @@ JSON 스키마:
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const guard = await guardApi(request, { bucket: "ai" });
+  if (guard instanceof NextResponse) return guard;
+  const { clientKey } = guard;
+
   const { id } = await context.params;
   const deal = getDealById(id);
   if (!deal) {
@@ -75,6 +84,6 @@ export async function GET(
   }
 
   const local = buildLocalDealDetail(deal);
-  const detail = await enrichViaBackend(local);
+  const detail = await enrichViaBackend(local, clientKey);
   return NextResponse.json(detail);
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardApi } from "@/lib/security/guard";
 import type { DaySchedule } from "@/lib/ai/types";
 import { optimizeDailyScheduleRoutes } from "@/lib/route/optimize-schedule";
 
@@ -9,6 +10,9 @@ export const maxDuration = 60;
  * Used by recommend UI / trip detail for on-demand re-runs.
  */
 export async function POST(request: Request) {
+  const guard = await guardApi(request, { bucket: "places/route" });
+  if (guard instanceof NextResponse) return guard;
+
   try {
     const body = (await request.json()) as {
       dailySchedule?: DaySchedule[];

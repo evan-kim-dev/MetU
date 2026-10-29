@@ -18,6 +18,16 @@ import {
 import { useTrips } from "@/lib/trips/TripProvider";
 import type { Trip } from "@/lib/trips/types";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { LedgerTab } from "@/components/trips/ledger/LedgerTab";
+import { TripMapPanel } from "@/components/trips/TripMapPanel";
+import {
+  computeBalances,
+  minimizeTransfers,
+  type LedgerExpense,
+} from "@/lib/ledger/settle";
+import { fetchSharedLedger } from "@/lib/ledger/supabase";
+import { spendByPlaceFromLedger } from "@/lib/ledger/spend-by-place";
+import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
 
 interface SharedTripContentProps {
   token: string;
@@ -31,6 +41,8 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
+  const [ledgerMembers, setLedgerMembers] = useState<TripMember[]>([]);
+  const [ledgerExpenses, setLedgerExpenses] = useState<LedgerExpenseRow[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -45,13 +57,20 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
         return;
       }
 
-      const shared = await fetchSharedTrip(supabase, token);
+      const [shared, ledger] = await Promise.all([
+        fetchSharedTrip(supabase, token),
+        fetchSharedLedger(supabase, token),
+      ]);
       if (!mounted) return;
 
       if (!shared) {
         setError("공유 링크가 만료되었거나 존재하지 않아요.");
       } else {
         setTrip(shared);
+      }
+      if (ledger) {
+        setLedgerMembers(ledger.members);
+        setLedgerExpenses(ledger.expenses);
       }
       setLoading(false);
     }
@@ -104,8 +123,27 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
     );
   }
 
-  const remaining = trip.budget - trip.spent;
-  const usedPercent = Math.round((trip.spent / Math.max(trip.budget, 1)) * 100);
+  const ledgerTotal = ledgerExpenses.reduce((s, e) => s + e.krwAmount, 0);
+  const spentRef = ledgerTotal > 0 ? ledgerTotal : trip.spent;
+  const remaining = trip.budget - spentRef;
+  const usedPercent = Math.round((spentRef / Math.max(trip.budget, 1)) * 100);
+
+  const memberIds = ledgerMembers.map((m) => m.id);
+  const settlement = (() => {
+    const ledgerItems: LedgerExpense[] = ledgerExpenses.map((e) => ({
+      id: e.id,
+      paidBy: e.paidBy,
+      krwAmount: e.krwAmount,
+      shares: e.shares,
+    }));
+    const balances = computeBalances(memberIds, ledgerItems);
+    return {
+      balances,
+      transfers: minimizeTransfers(balances),
+    };
+  })();
+
+  const spendByPlaceId = spendByPlaceFromLedger(ledgerExpenses);
 
   return (
     <MobileShell title="공유 여행" showBack backHref="/" showBottomNav={false}>
@@ -167,6 +205,27 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
             </div>
           </div>
         </section>
+
+        {ledgerMembers.length > 0 || ledgerExpenses.length > 0 ? (
+          <LedgerTab
+            readOnly
+            members={ledgerMembers}
+            expenses={ledgerExpenses}
+            totalKrw={ledgerTotal}
+            defaultCurrency="KRW"
+            placeOptions={[]}
+            settlement={settlement}
+          />
+        ) : null}
+
+        {trip.dailySchedule && trip.dailySchedule.length > 0 ? (
+          <TripMapPanel
+            days={trip.dailySchedule}
+            country={trip.country}
+            destination={trip.destination}
+            spendByPlaceId={spendByPlaceId}
+          />
+        ) : null}
 
         {trip.dailySchedule && trip.dailySchedule.length > 0 ? (
           <section className="flex flex-col gap-3">

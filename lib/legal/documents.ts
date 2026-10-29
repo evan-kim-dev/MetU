@@ -241,7 +241,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: "백엔드 (API 서버)",
         body: [
-          "- FastAPI — MIT License",
+          "- Next.js — MIT License",
           "- Uvicorn — BSD License",
           "- Pydantic / pydantic-settings — MIT License",
           "- HTTPX — BSD License",

@@ -1,7 +1,7 @@
 ﻿/**
  * Environment helpers.
  * - Public keys: NEXT_PUBLIC_* (browser-safe)
- * - Secrets: never use NEXT_PUBLIC_ ; keep in FastAPI backend
+ * - Secrets: server-only env (never NEXT_PUBLIC_)
  *
  * NOTE:
  * In Next.js client bundles, dynamic env access (process.env[name]) may not be
@@ -13,7 +13,6 @@ const NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 const NEXT_PUBLIC_SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-const BACKEND_URL = process.env.BACKEND_URL?.trim();
 
 function requirePublic(name: string, value?: string): string {
   if (!value) {
@@ -49,8 +48,4 @@ export function tryGetPublicSupabaseEnv():
   const key = getPublicSupabaseKey();
   if (!url || !key) return null;
   return { url, anonKey: key };
-}
-
-export function getBackendUrl(): string {
-  return BACKEND_URL || "http://127.0.0.1:8000";
 }
