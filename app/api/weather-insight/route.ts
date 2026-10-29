@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardApi } from "@/lib/security/guard";
 import {
   buildLocalWeatherInsight,
   parseWeatherInsightJson,
@@ -22,6 +23,10 @@ interface WeatherInsightRequest {
 }
 
 export async function POST(request: Request) {
+  const guard = await guardApi(request, { bucket: "ai" });
+  if (guard instanceof NextResponse) return guard;
+  const { clientKey } = guard;
+
   let body: WeatherInsightRequest;
   try {
     body = (await request.json()) as WeatherInsightRequest;
@@ -57,7 +62,12 @@ export async function POST(request: Request) {
   const system = getWeatherSystemPrompt();
 
   try {
-    const chat = await aiChatOrNull({ mode: "weather", system, prompt });
+    const chat = await aiChatOrNull({
+      mode: "weather",
+      system,
+      prompt,
+      clientKey,
+    });
     const parsed = chat ? parseWeatherInsightJson(chat.content) : null;
 
     if (!parsed) {

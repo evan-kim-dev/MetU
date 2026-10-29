@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardApi } from "@/lib/security/guard";
 import { aiChatOrNull } from "@/lib/ai/chat-client";
 import {
   buildScheduleInsightPrompt,
@@ -15,6 +16,10 @@ import type { OnboardingForm } from "@/components/onboarding/types";
 export const maxDuration = 90;
 
 export async function POST(request: Request) {
+  const guard = await guardApi(request, { bucket: "ai" });
+  if (guard instanceof NextResponse) return guard;
+  const { clientKey } = guard;
+
   let fallback =
     "시즌 가성비 권역을 불러오는 중이에요. 잠시만 기다려 주세요.";
 
@@ -99,6 +104,7 @@ export async function POST(request: Request) {
       mode: "schedule",
       system: getScheduleSystemPrompt(),
       prompt,
+      clientKey,
     });
     if (!chat) {
       return NextResponse.json({ insight: fallback, source: "fallback" });

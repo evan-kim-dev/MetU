@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardApi } from "@/lib/security/guard";
 import { buildLocalBudgetInsight } from "@/lib/ai/budget-insight";
 import type { BudgetInsightRecord, BudgetInsightSource } from "@/lib/ai/budget-insight-record";
 import { aiChatOrNull } from "@/lib/ai/chat-client";
@@ -43,7 +44,10 @@ function buildRecord(
   };
 }
 
-async function buildBudgetInsight(budget: number): Promise<BuildResult> {
+async function buildBudgetInsight(
+  budget: number,
+  clientKey: string
+): Promise<BuildResult> {
   const fallback = buildLocalBudgetInsight(budget);
   const month = new Date().getMonth() + 1;
   const rag = retrieveBudgetRag(budget, month);
@@ -58,7 +62,12 @@ async function buildBudgetInsight(budget: number): Promise<BuildResult> {
   const system = getBudgetSystemPrompt();
 
   try {
-    const chat = await aiChatOrNull({ mode: "budget", system, prompt });
+    const chat = await aiChatOrNull({
+      mode: "budget",
+      system,
+      prompt,
+      clientKey,
+    });
     const content = chat?.content?.trim();
     if (
       !content ||
@@ -83,6 +92,10 @@ async function buildBudgetInsight(budget: number): Promise<BuildResult> {
 }
 
 export async function GET(request: Request) {
+  const guard = await guardApi(request, { bucket: "ai" });
+  if (guard instanceof NextResponse) return guard;
+  const { clientKey } = guard;
+
   const { searchParams } = new URL(request.url);
   const budget = Number(searchParams.get("budget") ?? "0");
 
@@ -90,7 +103,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "invalid-budget" }, { status: 400 });
   }
 
-  const { record } = await buildBudgetInsight(budget);
+  const { record } = await buildBudgetInsight(budget, clientKey);
 
   return NextResponse.json({
     insight: record.insight,

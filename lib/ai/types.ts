@@ -1,4 +1,5 @@
 import type { OnboardingForm } from "@/components/onboarding/types";
+import type { ScheduleItemPlaceFields } from "@/lib/places/types";
 
 export interface BudgetAllocation {
   id: string;
@@ -25,10 +26,17 @@ export interface HotelPlan {
   note: string;
 }
 
+export interface DayScheduleItem extends ScheduleItemPlaceFields {
+  time: string;
+  title: string;
+  detail?: string;
+  cost: number;
+}
+
 export interface DaySchedule {
   day: number;
   label: string;
-  items: { time: string; title: string; detail?: string; cost: number }[];
+  items: DayScheduleItem[];
   dayTotal: number;
 }
 

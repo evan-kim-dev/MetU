@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardApi } from "@/lib/security/guard";
 import { buildLocalPartyInsight } from "@/lib/ai/party-insight";
 import { aiChatOrNull } from "@/lib/ai/chat-client";
 import {
@@ -14,6 +15,10 @@ import {
 export const maxDuration = 90;
 
 export async function GET(request: Request) {
+  const guard = await guardApi(request, { bucket: "ai" });
+  if (guard instanceof NextResponse) return guard;
+  const { clientKey } = guard;
+
   const { searchParams } = new URL(request.url);
   const budget = Number(searchParams.get("budget") ?? "0");
   const people = Number(searchParams.get("people") ?? "1");
@@ -45,7 +50,12 @@ export async function GET(request: Request) {
   const prompt = buildPartyPrompt(budget, people, month);
   const system = getBudgetSystemPrompt();
 
-  const chat = await aiChatOrNull({ mode: "party", system, prompt });
+  const chat = await aiChatOrNull({
+    mode: "party",
+    system,
+    prompt,
+    clientKey,
+  });
   const content = chat?.content?.trim();
 
   if (

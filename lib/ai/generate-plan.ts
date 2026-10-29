@@ -23,6 +23,8 @@ import {
   knowledgeToRagContexts,
   type DestinationKnowledge,
 } from "@/lib/ai/destination-knowledge";
+import { buildScheduleFromCandidates } from "@/lib/places/candidate-schedule";
+import type { Place } from "@/lib/places/types";
 import type {
   BudgetAllocation,
   DaySchedule,
@@ -31,6 +33,8 @@ import type {
   RagSource,
   TripRecommendation,
 } from "./types";
+
+const MIN_CANDIDATE_POOL = 8;
 
 function parseBudget(raw: string): number {
   return Number(raw.replace(/[^0-9]/g, "")) || 0;
@@ -137,7 +141,8 @@ function buildDailySchedule(
   form: OnboardingForm,
   allocation: BudgetAllocation[],
   nights: number,
-  knowledge?: DestinationKnowledge | null
+  knowledge?: DestinationKnowledge | null,
+  candidatePool?: Place[]
 ): DaySchedule[] {
   const divisor = Math.max(1, nights);
   const foodPerDay = Math.round(
@@ -157,6 +162,22 @@ function buildDailySchedule(
 
   const { city } = parseDestination(form.destination);
   const styleSet = new Set(form.styles);
+
+  if (
+    process.env.PLACE_ITINERARY_ENABLED === "1" &&
+    candidatePool &&
+    candidatePool.length >= MIN_CANDIDATE_POOL
+  ) {
+    const fromPlaces = buildScheduleFromCandidates({
+      places: candidatePool,
+      nights,
+      styles: form.styles,
+      budgets,
+      city,
+      origin: form.origin,
+    });
+    if (fromPlaces.length) return fromPlaces;
+  }
 
   const hardcoded = buildDestinationPoiSchedule(
     city,
@@ -600,7 +621,9 @@ function buildBaseRagSources(params: {
 /** AI 없이 즉시 보여줄 폴백 일정 (동기 — 클라이언트 첫 페인트용) */
 export function buildFallbackTripPlan(
   form: OnboardingForm,
-  knowledge?: DestinationKnowledge | null
+  knowledge?: DestinationKnowledge | null,
+  candidatePool?: Place[],
+  dailyScheduleOverride?: DaySchedule[]
 ): TripRecommendation {
   const totalBudget = parseBudget(form.budget);
   const people = Math.max(1, form.people);
@@ -663,6 +686,18 @@ export function buildFallbackTripPlan(
     });
   }
 
+  if (candidatePool && candidatePool.length > 0) {
+    ragSources.push({
+      id: "places-pool",
+      category: "일정",
+      title: `실존 장소 ${candidatePool.length}곳 (Kakao 또는 Google)`,
+      content: candidatePool
+        .slice(0, 12)
+        .map((p) => p.name)
+        .join(", "),
+    });
+  }
+
   return {
     id: `plan-${Date.now()}`,
     form,
@@ -698,7 +733,15 @@ export function buildFallbackTripPlan(
       total: hotelAmount,
       note: `${people}인 기준 · 조식 포함 옵션`,
     },
-    dailySchedule: buildDailySchedule(form, budgetAllocation, nights, knowledge),
+    dailySchedule:
+      dailyScheduleOverride ??
+      buildDailySchedule(
+        form,
+        budgetAllocation,
+        nights,
+        knowledge,
+        candidatePool
+      ),
     tips,
     ragSources,
   };
@@ -707,7 +750,11 @@ export function buildFallbackTripPlan(
 /** 웹 지식 반영 폴백 (서버/enrich용) */
 export async function buildFallbackTripPlanAsync(
   form: OnboardingForm
-): Promise<{ plan: TripRecommendation; knowledge: DestinationKnowledge }> {
+): Promise<{
+  plan: TripRecommendation;
+  knowledge: DestinationKnowledge;
+  placeItineraryUsed: boolean;
+}> {
   const { city, country } = parseDestination(form.destination);
   let knowledge: DestinationKnowledge = {
     city,
@@ -721,13 +768,94 @@ export async function buildFallbackTripPlanAsync(
   } catch (error) {
     console.error("[destination-knowledge] fetch failed:", error);
   }
-  return { plan: buildFallbackTripPlan(form, knowledge), knowledge };
+
+  const nights = getNights(form);
+  let candidatePool: Place[] | undefined;
+  if (process.env.PLACE_ITINERARY_ENABLED === "1") {
+    try {
+      const { buildCandidatePool } = await import("@/lib/places/candidates");
+      const pool = await buildCandidatePool({
+        city,
+        country: country || undefined,
+        styles: form.styles,
+        nights,
+      });
+      if (pool.places.length) candidatePool = pool.places;
+    } catch (error) {
+      console.warn(
+        "[places] buildCandidatePool failed:",
+        error instanceof Error ? error.message : "unknown"
+      );
+    }
+  }
+
+  let dailyScheduleOverride: DaySchedule[] | undefined;
+  let placeItineraryUsed = false;
+  if (
+    process.env.PLACE_ITINERARY_ENABLED === "1" &&
+    candidatePool &&
+    candidatePool.length >= MIN_CANDIDATE_POOL
+  ) {
+    try {
+      const people = Math.max(1, form.people);
+      const totalBudget = parseBudget(form.budget);
+      const weights = getBudgetWeights(form.styles);
+      const budgetAllocation = buildAllocation(totalBudget, weights);
+      const divisor = Math.max(1, nights);
+      const budgets = {
+        food: Math.round(
+          budgetAllocation.find((a) => a.id === "food")!.amount / divisor
+        ),
+        activity: Math.round(
+          budgetAllocation.find((a) => a.id === "activity")!.amount / divisor
+        ),
+        transport: Math.round(
+          budgetAllocation.find((a) => a.id === "transport")!.amount / divisor
+        ),
+      };
+      const { generatePlaceItinerary } = await import(
+        "@/lib/ai/generate-itinerary"
+      );
+      const result = await generatePlaceItinerary({
+        city,
+        country: country || undefined,
+        origin: form.origin,
+        nights,
+        people,
+        styles: form.styles,
+        budgets,
+        candidates: candidatePool,
+        perPersonDailyBudgetKrw: Math.floor(totalBudget / people),
+      });
+      if (result.source === "ai" && result.schedule.length > 0) {
+        dailyScheduleOverride = result.schedule;
+        placeItineraryUsed = true;
+      }
+    } catch (error) {
+      console.warn(
+        "[generate-itinerary] skipped:",
+        error instanceof Error ? error.message : "unknown"
+      );
+    }
+  }
+
+  return {
+    plan: buildFallbackTripPlan(
+      form,
+      knowledge,
+      candidatePool,
+      dailyScheduleOverride
+    ),
+    knowledge,
+    placeItineraryUsed,
+  };
 }
 
 /** 폴백 일정을 AI로 보강 (요약·일정·항공·숙소) */
 export async function enrichTripPlanWithAi(
   fallback: TripRecommendation,
-  prefetchedKnowledge?: DestinationKnowledge | null
+  prefetchedKnowledge?: DestinationKnowledge | null,
+  options?: { skipRouteOptimize?: boolean }
 ): Promise<TripRecommendation> {
   const form = fallback.form;
   const totalBudget = fallback.totalBudget;
@@ -764,8 +892,12 @@ export async function enrichTripPlanWithAi(
   }
 
   const knowledgeAwareFallback = buildFallbackTripPlan(form, knowledge);
-  const scheduleBase =
-    knowledgeAwareFallback.dailySchedule.length > 0
+  const fallbackHasPlaces = fallback.dailySchedule.some((day) =>
+    day.items.some((item) => Boolean(item.placeId || item.providerPlaceId))
+  );
+  const scheduleBase = fallbackHasPlaces
+    ? fallback.dailySchedule
+    : knowledgeAwareFallback.dailySchedule.length > 0
       ? knowledgeAwareFallback.dailySchedule
       : fallback.dailySchedule;
 
@@ -876,6 +1008,11 @@ export async function enrichTripPlanWithAi(
     });
   }
 
+  const placesRag = fallback.ragSources.find((s) => s.id === "places-pool");
+  if (placesRag) {
+    ragSources.push(placesRag);
+  }
+
   if (enriched.source === "ai") {
     ragSources.push({
       id: "plan-ai",
@@ -891,42 +1028,55 @@ export async function enrichTripPlanWithAi(
       ? baseSummary
       : enriched.summary || baseSummary;
 
-  let dailySchedule = enriched.dailySchedule;
+  let dailySchedule =
+    options?.skipRouteOptimize || fallbackHasPlaces
+      ? scheduleBase
+      : enriched.dailySchedule;
   let tipsOut = tips;
   let routeOptimization: TripRecommendation["routeOptimization"];
 
-  try {
-    const { schedule, meta } = await optimizeDailyScheduleRoutes(
-      enriched.dailySchedule,
-      city,
-      country || ""
-    );
-    dailySchedule = schedule;
-    routeOptimization = {
-      applied: meta.applied,
-      method: meta.method,
-      savedKm: meta.savedKm,
-      totalKmBefore: meta.totalKmBefore,
-      totalKmAfter: meta.totalKmAfter,
-    };
-    if (meta.applied) {
-      const savedLabel =
-        meta.savedKm >= 0.1
-          ? `약 ${meta.savedKm.toFixed(1)}km`
-          : "이동 거리";
-      tipsOut = [
-        `유전 알고리즘으로 하루 동선을 재배치해 ${savedLabel}를 줄였어요.`,
-        ...tipsOut,
-      ].slice(0, 10);
-      ragSources.push({
-        id: "route-ga",
-        category: "동선",
-        title: "유전 알고리즘 경로 최적화",
-        content: `일정 장소 좌표를 기준으로 open-path TSP를 유전 알고리즘으로 풀어, 이동 거리를 ${meta.totalKmBefore.toFixed(1)}km → ${meta.totalKmAfter.toFixed(1)}km로 줄였어요.`,
-      });
+  if (!options?.skipRouteOptimize) {
+    try {
+      const { schedule, meta } = await optimizeDailyScheduleRoutes(
+        dailySchedule,
+        city,
+        country || ""
+      );
+      dailySchedule = schedule;
+      routeOptimization = {
+        applied: meta.applied,
+        method: meta.method,
+        savedKm: meta.savedKm,
+        totalKmBefore: meta.totalKmBefore,
+        totalKmAfter: meta.totalKmAfter,
+      };
+      if (meta.applied) {
+        const savedLabel =
+          meta.savedKm >= 0.1
+            ? `약 ${meta.savedKm.toFixed(1)}km`
+            : "이동 거리";
+        tipsOut = [
+          `유전 알고리즘으로 하루 동선을 재배치해 ${savedLabel}를 줄였어요.`,
+          ...tipsOut,
+        ].slice(0, 10);
+        ragSources.push({
+          id: "route-ga",
+          category: "동선",
+          title: "유전 알고리즘 경로 최적화",
+          content: `일정 장소 좌표를 기준으로 open-path TSP를 유전 알고리즘으로 풀어, 이동 거리를 ${meta.totalKmBefore.toFixed(1)}km → ${meta.totalKmAfter.toFixed(1)}km로 줄였어요.`,
+        });
+      }
+    } catch (error) {
+      console.error("[route-optimize] skipped:", error);
     }
-  } catch (error) {
-    console.error("[route-optimize] skipped:", error);
+  } else if (options?.skipRouteOptimize) {
+    ragSources.push({
+      id: "place-itinerary-ai",
+      category: "일정",
+      title: "AI 장소 일정 (solver 동선)",
+      content:
+        "실존 장소 후보에서 AI가 placeId만 고르고, 이동시간 solver로 하루 동선을 잡았어요.",
+    });
   }
 
   return {
@@ -954,6 +1104,9 @@ export async function enrichTripPlanWithAi(
 export async function generateTripPlan(
   form: OnboardingForm
 ): Promise<TripRecommendation> {
-  const { plan, knowledge } = await buildFallbackTripPlanAsync(form);
-  return enrichTripPlanWithAi(plan, knowledge);
+  const { plan, knowledge, placeItineraryUsed } =
+    await buildFallbackTripPlanAsync(form);
+  return enrichTripPlanWithAi(plan, knowledge, {
+    skipRouteOptimize: placeItineraryUsed,
+  });
 }

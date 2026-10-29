@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardApi } from "@/lib/security/guard";
 import { aiChatOrNull } from "@/lib/ai/chat-client";
 import {
   buildStyleInsightPrompt,
@@ -19,6 +20,10 @@ function buildLocalStyleInsight(styles: TravelStyle[]): string {
 }
 
 export async function POST(request: Request) {
+  const guard = await guardApi(request, { bucket: "ai" });
+  if (guard instanceof NextResponse) return guard;
+  const { clientKey } = guard;
+
   try {
     const body = (await request.json()) as { styles?: TravelStyle[] };
     const styles = Array.isArray(body.styles) ? body.styles : [];
@@ -52,6 +57,7 @@ export async function POST(request: Request) {
       mode: "style",
       system: getStyleSystemPrompt(),
       prompt,
+      clientKey,
     });
     if (!chat) {
       return NextResponse.json({ insight: fallback, source: "fallback" });

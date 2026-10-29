@@ -1,7 +1,6 @@
-import {
-  BackendUnavailableError,
-  backendFetch,
-} from "@/lib/backend/client";
+import { NextResponse } from "next/server";
+import { geminiText } from "@/lib/ai/gemini";
+import { guardApi } from "@/lib/security/guard";
 
 export const maxDuration = 90;
 
@@ -29,7 +28,15 @@ const BUDDY_SYSTEM = `당신은 MetU 앱의 숨은 AI "MetU 버디"다.
 
 type HistoryItem = { role: "buddy" | "user"; text: string };
 
+function sse(data: unknown): string {
+  return `data: ${JSON.stringify(data)}\n\n`;
+}
+
 export async function POST(request: Request) {
+  const guard = await guardApi(request, { bucket: "ai" });
+  if (guard instanceof NextResponse) return guard;
+  const { clientKey } = guard;
+
   try {
     const body = (await request.json()) as {
       message?: string;
@@ -62,25 +69,65 @@ ${message}
 
 출력: 답변 본문만.`;
 
-    const res = await backendFetch("/ai/chat/stream", {
-      method: "POST",
-      body: JSON.stringify({
-        system: BUDDY_SYSTEM,
-        prompt,
-        mode: "buddy",
-      }),
-      timeoutMs: 90_000,
+    const stream = new ReadableStream({
+      async start(controller) {
+        const enc = new TextEncoder();
+        const push = (obj: unknown) =>
+          controller.enqueue(enc.encode(sse(obj)));
+
+        try {
+          if (request.signal.aborted) {
+            push({ type: "error", message: "aborted" });
+            controller.close();
+            return;
+          }
+
+          push({ type: "meta", cached: false });
+
+          const result = await geminiText({
+            model: "fast",
+            system: BUDDY_SYSTEM,
+            input: prompt,
+            purpose: "buddy",
+            userId: clientKey,
+          });
+
+          if (!result.ok || !result.data) {
+            push({
+              type: "error",
+              message: result.ok === false ? result.error : "empty",
+            });
+            controller.close();
+            return;
+          }
+
+          const content = result.data;
+          // Chunk for progressive UX (Gemini interactions is non-stream here).
+          const step = Math.max(8, Math.ceil(content.length / 24));
+          for (let i = 0; i < content.length; i += step) {
+            if (request.signal.aborted) break;
+            push({ type: "token", t: content.slice(i, i + step) });
+          }
+
+          push({
+            type: "done",
+            content,
+            source: "ai",
+            cached: false,
+            validated: true,
+          });
+        } catch (err) {
+          push({
+            type: "error",
+            message: err instanceof Error ? err.message : "buddy-failed",
+          });
+        } finally {
+          controller.close();
+        }
+      },
     });
 
-    if (!res.ok || !res.body) {
-      return new Response(JSON.stringify({ error: "backend-failed" }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    // Proxy SSE to the browser for progressive buddy replies
-    return new Response(res.body, {
+    return new Response(stream, {
       status: 200,
       headers: {
         "Content-Type": "text/event-stream; charset=utf-8",
@@ -90,14 +137,8 @@ ${message}
       },
     });
   } catch (error) {
-    if (error instanceof BackendUnavailableError) {
-      return new Response(JSON.stringify({ error: "backend-unavailable" }), {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
     console.error("[buddy-chat]", error);
-    return new Response(JSON.stringify({ error: "buddy-chat-failed" }), {
+    return new Response(JSON.stringify({ error: "buddy-failed" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

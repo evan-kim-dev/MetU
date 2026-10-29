@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardApi } from "@/lib/security/guard";
 import type { OnboardingForm, TravelStyle } from "@/components/onboarding/types";
 import {
   isFlexibleScheduleValid,
@@ -45,6 +46,9 @@ function normalizeForm(form: OnboardingForm): OnboardingForm {
 }
 
 export async function POST(request: Request) {
+  const guard = await guardApi(request, { bucket: "enrich-plan" });
+  if (guard instanceof NextResponse) return guard;
+
   try {
     const body = (await request.json()) as {
       form?: OnboardingForm;
@@ -57,7 +61,7 @@ export async function POST(request: Request) {
     }
 
     // 웹 지식 → knowledge-aware fallback → AI enrich
-    const { plan: knowledgeFallback, knowledge } =
+    const { plan: knowledgeFallback, knowledge, placeItineraryUsed } =
       await buildFallbackTripPlanAsync(form);
 
     const seed =
@@ -70,7 +74,9 @@ export async function POST(request: Request) {
           }
         : knowledgeFallback;
 
-    const plan = await enrichTripPlanWithAi(seed, knowledge);
+    const plan = await enrichTripPlanWithAi(seed, knowledge, {
+      skipRouteOptimize: placeItineraryUsed,
+    });
 
     return NextResponse.json({
       plan,
