@@ -7,16 +7,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { NOTIF_APP_PRESETS } from "@/lib/ledger/notif/apps";
 import type { DetectedPlatform } from "@/lib/onboarding/automation";
+import { IOS_SHORTCUT_ICLOUD_URL } from "@/lib/onboarding/constants";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 
 const TOTAL_STEPS = 4;
-const IOS_SHORTCUT_URL = process.env.NEXT_PUBLIC_IOS_SHORTCUT_URL?.trim() ?? "";
 
-const SAMPLE_NOTIF_JSON =
-  '{"app":"KB Pay","title":"결제 알림","body":"승인 12,000원","received_at":"2026-10-30T12:00:00+09:00"}';
+const SAMPLE_SMS_JSON =
+  '{"text":"승인 12,000원","receivedAt":"2026-10-30T12:00:00+09:00"}';
 const SAMPLE_TEST_JSON =
-  '{"app":"KB Pay","title":"결제","body":"MTU-TEST","received_at":"2026-10-30T12:00:00+09:00"}';
+  '{"text":"MTU-TEST 연결 확인","receivedAt":"2026-10-30T12:00:00+09:00"}';
 
 type AutomationStatusResponse = {
   lastServerTestAt: string | null;
@@ -48,6 +48,9 @@ export default function AutomationOnboardingPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tokenHint, setTokenHint] = useState<string | null>(null);
+  const [plainTokenFallback, setPlainTokenFallback] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     setPlatform(detectPlatformClient());
@@ -104,25 +107,36 @@ export default function AutomationOnboardingPage() {
     return () => window.clearInterval(id);
   }, [step, refreshChecks]);
 
-  async function copyConnectToken() {
+  async function addIphoneAutomation() {
     setBusy(true);
     setError(null);
+    setPlainTokenFallback(null);
+    setTokenHint(null);
     try {
       const res = await fetch("/api/agent/tokens", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: "자동 기록" }),
+        body: JSON.stringify({ label: "iPhone 단축어" }),
       });
       const json = (await res.json()) as { token?: string; error?: string };
       if (!res.ok || !json.token) {
         throw new Error(json.error ?? "연결 코드를 만들지 못했어요");
       }
-      await navigator.clipboard.writeText(json.token);
-      setTokenHint(
-        "연결 코드를 복사했어요. 단축어/매크로에 붙여 넣어 주세요. 여행은 나중에 만들어도 이어서 기록돼요."
-      );
+      try {
+        await navigator.clipboard.writeText(json.token);
+        setTokenHint(
+          "연결 코드를 복사했어요. 단축어 추가 화면으로 이동해요."
+        );
+        window.location.href = IOS_SHORTCUT_ICLOUD_URL;
+        return;
+      } catch {
+        setPlainTokenFallback(json.token);
+        setTokenHint(
+          "클립보드 복사에 실패했어요. 아래 코드를 복사한 뒤 단축어를 추가해 주세요."
+        );
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "연결 코드 복사 실패");
+      setError(e instanceof Error ? e.message : "자동화 추가에 실패했어요");
     } finally {
       setBusy(false);
     }
@@ -326,70 +340,77 @@ export default function AutomationOnboardingPage() {
               여행은 나중에 만들어도 돼요. 먼저 알림 연결만 해 두면, 여행이 생길 때 자동으로
               이어서 기록해요.
             </p>
-            <PrimaryButton fullWidth disabled={busy} onClick={() => void copyConnectToken()}>
-              연결 코드 복사
+            <PrimaryButton
+              fullWidth
+              disabled={busy}
+              onClick={() => void addIphoneAutomation()}
+            >
+              iPhone 자동화 추가
             </PrimaryButton>
             {tokenHint ? (
               <p className="text-xs font-semibold text-brand">{tokenHint}</p>
             ) : null}
-            {platform === "ios" ? (
-              <>
-                {IOS_SHORTCUT_URL ? (
-                  <a
-                    href={IOS_SHORTCUT_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
+            {plainTokenFallback ? (
+              <div className="space-y-2 rounded-2xl bg-amber-50 p-3 text-amber-950">
+                <p className="text-xs font-bold">연결 코드 (한 번만 보여 드려요)</p>
+                <code className="block break-all text-xs">{plainTokenFallback}</code>
+                <div className="flex flex-col gap-2">
+                  <PrimaryButton
+                    fullWidth
+                    variant="secondary"
+                    onClick={() =>
+                      void navigator.clipboard.writeText(plainTokenFallback)
+                    }
                   >
+                    코드 수동 복사
+                  </PrimaryButton>
+                  <a href={IOS_SHORTCUT_ICLOUD_URL} className="block">
                     <PrimaryButton fullWidth variant="secondary">
-                      MetU 단축어 추가
+                      단축어 추가 열기
                     </PrimaryButton>
                   </a>
-                ) : (
-                  <Link
-                    href="/onboarding/shortcut-guide"
-                    className="block text-center text-sm font-bold text-brand underline"
-                  >
-                    iOS 단축어 직접 만들기 안내
-                  </Link>
-                )}
-                <p className="text-sm text-ink-body">
-                  단축어를 추가하면 &apos;연결 코드&apos;를 물어봐요. 방금 복사한 코드를
-                  붙여 넣어 주세요.
-                </p>
-                <pre className="overflow-x-auto rounded-xl bg-surface-soft p-3 text-[11px] leading-5 text-ink-heading">
-                  {`POST ${typeof window !== "undefined" ? window.location.origin : ""}/api/ingest/notification
+                </div>
+              </div>
+            ) : null}
+            <ol className="list-decimal space-y-2 pl-5 text-sm text-ink-body">
+              <li>
+                &quot;단축어 추가&quot; 누르기 → 연결 코드 묻는 칸에 붙여넣기
+              </li>
+              <li>자동화의 앱을 내 카드앱으로 바꾸기</li>
+              <li>&quot;실행 전에 확인&quot; 끄기</li>
+            </ol>
+            <pre className="overflow-x-auto rounded-xl bg-surface-soft p-3 text-[11px] leading-5 text-ink-heading">
+              {`POST ${typeof window !== "undefined" ? window.location.origin : ""}/api/ingest/sms
 Authorization: Bearer <연결코드>
-${SAMPLE_TEST_JSON}`}
-                </pre>
-              </>
-            ) : (
+${SAMPLE_SMS_JSON}
+
+테스트: ${SAMPLE_TEST_JSON}`}
+            </pre>
+            {platform === "android" ? (
               <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-body">
                 <li>MacroDroid 설치 후 알림 접근 허용</li>
                 <li>트리거: 알림 수신 → 카드 앱 선택</li>
                 <li>
-                  동작: HTTP POST{" "}
+                  HTTP POST{" "}
                   <code className="rounded bg-surface-soft px-1 text-xs">
-                    {typeof window !== "undefined"
-                      ? `${window.location.origin}/api/ingest/notification`
-                      : "/api/ingest/notification"}
+                    /api/ingest/sms
                   </code>
-                </li>
-                <li>Authorization: Bearer 연결 코드</li>
-                <li>
-                  본문 JSON 예시 (그대로 복사해 변수만 바꾸면 돼요)
-                  <pre className="mt-1 overflow-x-auto rounded-lg bg-surface-soft p-2 text-[11px] leading-5 text-ink-heading">
-                    {SAMPLE_NOTIF_JSON}
-                  </pre>
+                  , Authorization: Bearer 연결 코드
                 </li>
                 <li>
-                  curl 테스트:{" "}
-                  <code className="break-all rounded bg-surface-soft px-1 text-[10px]">
-                    {`curl -X POST "${typeof window !== "undefined" ? window.location.origin : ""}/api/ingest/notification" -H "Authorization: Bearer <토큰>" -H "content-type: application/json" -d "{\\"app\\":\\"Test\\",\\"title\\":\\"ping\\",\\"body\\":\\"MTU-TEST\\",\\"received_at\\":\\"2026-10-30T12:00:00+09:00\\"}"`}
+                  본문{" "}
+                  <code className="rounded bg-surface-soft px-1 text-[10px]">
+                    {SAMPLE_SMS_JSON}
                   </code>
                 </li>
               </ol>
-            )}
+            ) : null}
+            <Link
+              href="/onboarding/shortcut-guide"
+              className="block text-center text-xs font-bold text-brand underline"
+            >
+              직접 만들기 안내
+            </Link>
             <PrimaryButton
               fullWidth
               variant="secondary"

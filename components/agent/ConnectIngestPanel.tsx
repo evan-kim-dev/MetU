@@ -129,8 +129,13 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
       <section className="space-y-2">
         <h2 className="font-medium">안내</h2>
         <p className="text-xs text-zinc-500">
-          iPhone은 카드 앱 푸시 알림은 단축어로 가져올 수 없고 SMS/iMessage만
-          돼요.
+          iPhone은 단축어 자동화로 카드 앱 알림을{" "}
+          <code className="rounded bg-zinc-100 px-1">/api/ingest/sms</code> 에
+          보내요. 본문은{" "}
+          <code className="rounded bg-zinc-100 px-1">
+            {`{ "text", "receivedAt" }`}
+          </code>
+          , 헤더는 Authorization: Bearer 연결 코드예요.
         </p>
         <button
           type="button"
@@ -142,15 +147,13 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
         </button>
         {openIos ? (
           <ol className="list-decimal space-y-1 pl-5 text-zinc-600">
-            <li>단축어 → 자동화 → 새 자동화 → 메시지</li>
+            <li>온보딩의 &quot;iPhone 자동화 추가&quot;로 단축어·연결 코드 받기</li>
+            <li>자동화의 앱을 내 카드 앱으로 바꾸기, &quot;실행 전에 확인&quot; 끄기</li>
             <li>
-              &quot;메시지에 다음이 포함&quot; 필터에 공백 한 칸, 즉시 실행
+              POST JSON{" "}
+              {`{ "text": 알림본문, "receivedAt": ISO시각 }`}
             </li>
-            <li>
-              URL 콘텐츠 가져오기 POST, JSON{" "}
-              {`{ "text": 메시지, "sender": 보낸사람, "source": "sms_shortcut" }`}
-            </li>
-            <li>Authorization: Bearer 토큰</li>
+            <li>Authorization: Bearer 연결 코드</li>
           </ol>
         ) : null}
         <button
