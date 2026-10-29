@@ -121,7 +121,6 @@ export function evaluateOrder(
 ): { cost: number; timetable: TimetableEntry[]; violations: number } {
   const timetable: TimetableEntry[] = [];
   let clock = toMin(c.dayStart);
-  let totalTravel = 0;
   let totalViolations = 0;
   let cost = 0;
   let prevIdx: number | null = null;
@@ -145,7 +144,6 @@ export function evaluateOrder(
     }
     if (travelMin > 0) {
       clock += travelMin;
-      totalTravel += travelMin;
       cost += travelMin;
     }
 
@@ -226,7 +224,6 @@ export function evaluateOrder(
         c.end.lng
       ).durationSec / 60
     );
-    totalTravel += returnMin;
     cost += returnMin;
   }
 

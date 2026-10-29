@@ -103,7 +103,7 @@ export function inferYear(
   day: number,
   ctx: SmsContext
 ): number {
-  const [ty, tm, td] = ctx.today.split("-").map(Number);
+  const [ty] = ctx.today.split("-").map(Number);
   const todayY = ty!;
 
   const inRange = (y: number) => {
@@ -354,7 +354,7 @@ function trySamsung(text: string): Extracted | null {
 
 /** VERIFY: 현대 해외/취소 */
 function tryHyundai(text: string): Extracted | null {
-  let m = text.match(
+  const m = text.match(
     /해외승인[^\n]*?(\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2})\s+([A-Z]{3})\s+([\d,.]+)\s+(.+)$/m
   );
   if (m) {

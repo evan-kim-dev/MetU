@@ -179,13 +179,6 @@ export function EasterEggToastProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const pushBuddy = useCallback((text: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: `b-${Date.now()}`, role: "buddy", text },
-    ]);
-  }, []);
-
   const sendUser = useCallback(
     async (text: string) => {
       const trimmed = text.trim();

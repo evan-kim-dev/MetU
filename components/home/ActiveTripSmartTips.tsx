@@ -53,18 +53,7 @@ export function ActiveTripSmartTips() {
       });
 
     return () => controller.abort();
-  }, [
-    isReady,
-    primaryTrip?.id,
-    primaryTrip?.destination,
-    primaryTrip?.country,
-    primaryTrip?.budget,
-    primaryTrip?.spent,
-    primaryTrip?.dDay,
-    primaryTrip?.people,
-    primaryTrip?.dateRange,
-    primaryTrip?.styles?.join(","),
-  ]);
+  }, [isReady, primaryTrip]);
 
   if (!isReady) {
     return (

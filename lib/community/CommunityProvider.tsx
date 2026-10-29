@@ -14,7 +14,6 @@ import {
 import {
   deleteCommunityPostFromSupabase,
   deletePostCommentFromSupabase,
-  fetchCommunityPostsFromSupabase,
   insertCommunityPostToSupabase,
   insertPostCommentToSupabase,
   togglePostLikeInSupabase,
@@ -437,7 +436,15 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       }
       return true;
     },
-    [authorId, profile.name, setPosts, useDb, userId]
+    [
+      authorId,
+      profile.avatarUrl,
+      profile.customAvatarUrl,
+      profile.name,
+      setPosts,
+      useDb,
+      userId,
+    ]
   );
 
   const canManageComment = useCallback(

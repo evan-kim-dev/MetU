@@ -458,6 +458,8 @@ export function DocsChecklistContent() {
                         key={file.id}
                         className="relative overflow-hidden rounded-lg border border-line-soft bg-surface-white"
                       >
+                        {/* Local object URLs from file picker — next/image not suitable */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={file.url}
                           alt={file.name}

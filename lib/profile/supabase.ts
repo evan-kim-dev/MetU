@@ -28,7 +28,7 @@ function rowToProfile(row: ProfileRow): ProfileUser {
   };
 }
 
-function profileToRow(profile: ProfileUser, userId: string): Omit<ProfileRow, "id"> {
+function profileToRow(profile: ProfileUser, _userId: string): Omit<ProfileRow, "id"> {
   return {
     display_name: profile.name,
     email: profile.email,

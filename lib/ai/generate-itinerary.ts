@@ -20,14 +20,6 @@ import { aiChatOrNull } from "@/lib/ai/chat-client";
 const MIN_CANDIDATE_POOL = 8;
 const REFINE_RESOLVE_THRESHOLD = 0.2;
 
-const SLOT_DEFAULT_TIME: Record<ItinerarySlot, string> = {
-  morning: "09:30",
-  lunch: "12:00",
-  afternoon: "14:00",
-  dinner: "18:30",
-  evening: "20:00",
-};
-
 function priceWeight(priceLevel?: string): number {
   if (!priceLevel) return 1;
   if (priceLevel.includes("INEXPENSIVE") || priceLevel.includes("FREE"))

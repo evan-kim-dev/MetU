@@ -53,7 +53,7 @@ export function HomeGreeting() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadFx = useCallback(
-    async (code: typeof fxTarget.code, signal?: AbortSignal) => {
+    async (code: string, signal?: AbortSignal) => {
       try {
         const res = await fetch(`/api/fx?code=${code}&_=${Date.now()}`, {
           cache: "no-store",

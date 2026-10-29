@@ -177,7 +177,6 @@ export function violatesBudgetBand(
   text: string,
   perPerson: number
 ): boolean {
-  const band = getBudgetBand(perPerson);
   const lower = text.toLowerCase();
 
   const europeWords = [

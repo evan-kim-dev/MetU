@@ -1,5 +1,12 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Avoid picking a parent-directory lockfile as the workspace root.
+  outputFileTracingRoot: projectRoot,
   env: {
     NEXT_PUBLIC_BUILD_TAG:
       process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_BUILD_TAG ?? "",
@@ -107,7 +114,7 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { dev }) => {
     if (!dev) {
       config.cache = false;
     }

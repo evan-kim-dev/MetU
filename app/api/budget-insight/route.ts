@@ -50,7 +50,6 @@ async function buildBudgetInsight(
 ): Promise<BuildResult> {
   const fallback = buildLocalBudgetInsight(budget);
   const month = new Date().getMonth() + 1;
-  const rag = retrieveBudgetRag(budget, month);
 
   if (budget <= 0) {
     return {

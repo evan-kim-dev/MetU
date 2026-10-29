@@ -90,9 +90,9 @@ export function postprocessReceiptExtract(
   }));
 
   let total = extract.total;
-  let subtotal = extract.subtotal;
-  let tax = extract.tax;
-  let tip = extract.tip;
+  const subtotal = extract.subtotal;
+  const tax = extract.tax;
+  const tip = extract.tip;
 
   if (total == null) {
     const parts = [subtotal, tax, tip].filter(

@@ -104,7 +104,7 @@ export function PublicProfileContent({ userId }: PublicProfileContentProps) {
     return () => {
       cancelled = true;
     };
-  }, [router, user?.id, userId]);
+  }, [fallbackFromPosts, router, user?.id, userId]);
 
   const display = profile
     ? {

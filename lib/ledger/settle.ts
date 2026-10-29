@@ -54,7 +54,7 @@ function allocateLargestRemainder(
     return { id: w.id, floor, rem: exact - floor };
   });
 
-  let used = rows.reduce((s, r) => s + r.floor, 0);
+  const used = rows.reduce((s, r) => s + r.floor, 0);
   let left = total - used;
   rows.sort((a, b) => {
     if (b.rem !== a.rem) return b.rem - a.rem;

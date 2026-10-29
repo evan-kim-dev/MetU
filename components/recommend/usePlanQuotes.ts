@@ -37,6 +37,7 @@ export function usePlanQuotes(plan: TripRecommendation) {
       cancelled = true;
     };
     // 목적지·일정이 같으면 AI 보강 후에도 재조회하지 않음
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- identity fields only
   }, [plan.id, plan.destination, plan.dateRange, plan.origin]);
 
   return {
