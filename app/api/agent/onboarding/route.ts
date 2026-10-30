@@ -5,6 +5,7 @@ import {
   MTU_ONB_COOKIE,
   ONB_COOKIE_MAX_AGE_SEC,
 } from "@/lib/onboarding/constants";
+import { apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiInternalError(error.message);
   }
 
   return withOnbCookie(

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
+import { apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
 
 export const maxDuration = 60;
@@ -38,7 +39,7 @@ export async function DELETE(
     .maybeSingle();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiInternalError(error.message);
   }
   if (!data) {
     return NextResponse.json({ error: "not-found" }, { status: 404 });

@@ -7,6 +7,7 @@ import {
   hashIngestToken,
   issueTokenPlaintext,
 } from "@/lib/agent/tokens";
+import { apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
 
 export const maxDuration = 60;
@@ -55,7 +56,7 @@ export async function GET(request: Request) {
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiInternalError(error.message);
   }
 
   return NextResponse.json({
@@ -123,10 +124,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (error || !data) {
-    return NextResponse.json(
-      { error: error?.message ?? "insert-failed" },
-      { status: 500 }
-    );
+    return apiInternalError(error?.message ?? "insert-failed");
   }
 
   return NextResponse.json({
