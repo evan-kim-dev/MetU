@@ -1,8 +1,3 @@
-import type { Trip } from "./types";
-
-/** Early-access: 데모 여행 없음 */
-export const INITIAL_TRIPS: Trip[] = [];
-
 export const STYLE_LABELS: Record<string, string> = {
   healing: "힐링",
   sightseeing: "관광",

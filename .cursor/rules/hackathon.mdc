@@ -5,8 +5,8 @@ alwaysApply: true
 
 # 프로젝트 맥락
 - MetU: AI 여행 플래너. Next.js 15 App Router(BFF Route Handlers, app/api/*), React 19, TypeScript 5.7 strict, Tailwind 3.4, PWA.
-- 백엔드: FastAPI 0.115 (backend/app, Render Docker). 프론트: Vercel. DB/Auth: Supabase (Postgres, RLS, Realtime, Storage).
-- LLM: 에이전트 경로는 Next 서버 Gemini(`lib/ai/gemini.ts`). FastAPI OpenRouter 는 레거시 일정/항공 등용.
+- 호스팅: 프론트·BFF는 Vercel. DB/Auth/Realtime/Storage는 Supabase (Postgres, RLS).
+- LLM: Next 서버 Gemini만 (`lib/ai/gemini.ts`). 레거시 FastAPI/Render/OpenRouter 스택은 제거됨.
 - 경로 별칭: "@/*" 는 레포 루트.
 
 # 반드시 지킬 것

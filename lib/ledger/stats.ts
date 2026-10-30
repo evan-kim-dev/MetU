@@ -8,13 +8,6 @@ export type LedgerStatsInput = {
   today?: string;
 };
 
-const CAT_TO_BUDGET: Record<string, string> = {
-  식비: "food",
-  교통: "transport",
-  숙소: "hotel",
-  관광: "activity",
-};
-
 export function totalKrw(expenses: LedgerExpenseRow[]): number {
   return expenses.reduce((s, e) => s + e.krwAmount, 0);
 }
@@ -37,7 +30,7 @@ export function byCategory(expenses: LedgerExpenseRow[]): Record<string, number>
   return out;
 }
 
-export function byPayer(expenses: LedgerExpenseRow[]): Record<string, number> {
+function byPayer(expenses: LedgerExpenseRow[]): Record<string, number> {
   const out: Record<string, number> = {};
   for (const e of expenses) {
     out[e.paidBy] = (out[e.paidBy] ?? 0) + e.krwAmount;
@@ -45,7 +38,7 @@ export function byPayer(expenses: LedgerExpenseRow[]): Record<string, number> {
   return out;
 }
 
-export function owedByMember(
+function owedByMember(
   expenses: LedgerExpenseRow[]
 ): Record<string, number> {
   const out: Record<string, number> = {};
@@ -76,7 +69,7 @@ export function dailyRecommended(p: {
   return Math.floor(p.remaining / daysLeft);
 }
 
-export function pace(p: {
+function pace(p: {
   spent: number;
   budget: number;
   today: string;
@@ -95,71 +88,6 @@ export function pace(p: {
   );
   const expected = p.budget * (elapsed / totalDays);
   return expected > 0 ? p.spent / expected : null;
-}
-
-export function categoryVsBudget(
-  expenses: LedgerExpenseRow[],
-  budgetAllocation: Record<string, number> | null | undefined,
-  totalBudget: number
-): Array<{ id: string; label: string; spent: number; budget: number; ratio: number }> {
-  const spent = byCategory(expenses);
-  const rows: Array<{
-    id: string;
-    label: string;
-    spent: number;
-    budget: number;
-    ratio: number;
-  }> = [];
-
-  const mapped = new Set<string>();
-  for (const [cat, bid] of Object.entries(CAT_TO_BUDGET)) {
-    mapped.add(cat);
-    const b = Number(budgetAllocation?.[bid] ?? 0);
-    const s = spent[cat] ?? 0;
-    rows.push({
-      id: bid,
-      label: cat,
-      spent: s,
-      budget: b,
-      ratio: b > 0 ? s / b : s > 0 ? Infinity : 0,
-    });
-  }
-
-  let otherSpent = 0;
-  for (const [cat, v] of Object.entries(spent)) {
-    if (!mapped.has(cat)) otherSpent += v;
-  }
-  rows.push({
-    id: "other",
-    label: "기타(예산 항목 없음)",
-    spent: otherSpent,
-    budget: 0,
-    ratio: otherSpent > 0 ? Infinity : 0,
-  });
-
-  void totalBudget;
-  return rows;
-}
-
-/** 남은 예산을 food/transport/activity 에 균등 재배분 제안 */
-export function rebalanceRemainingBudget(
-  remaining: number,
-  budgetAllocation: Record<string, number> | null | undefined
-): Record<string, number> {
-  const flexible = ["food", "transport", "activity"] as const;
-  const out: Record<string, number> = {};
-  if (!(remaining > 0)) {
-    for (const id of flexible) out[id] = 0;
-    return out;
-  }
-  const base = Math.floor(remaining / flexible.length);
-  let rem = remaining - base * flexible.length;
-  for (const id of flexible) {
-    const current = Number(budgetAllocation?.[id] ?? 0);
-    out[id] = current + base + (rem > 0 ? 1 : 0);
-    if (rem > 0) rem -= 1;
-  }
-  return out;
 }
 
 export function computeLedgerStats(input: LedgerStatsInput) {

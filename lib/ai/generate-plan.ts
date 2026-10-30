@@ -1100,13 +1100,3 @@ export async function enrichTripPlanWithAi(
     aiScheduleSource: enriched.source,
   };
 }
-
-export async function generateTripPlan(
-  form: OnboardingForm
-): Promise<TripRecommendation> {
-  const { plan, knowledge, placeItineraryUsed } =
-    await buildFallbackTripPlanAsync(form);
-  return enrichTripPlanWithAi(plan, knowledge, {
-    skipRouteOptimize: placeItineraryUsed,
-  });
-}
