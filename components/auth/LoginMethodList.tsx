@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogIn, Mail } from "lucide-react";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { ChevronDown, Loader2, LogIn, Mail } from "lucide-react";
+import { AuthMessage } from "@/components/auth/AuthMessage";
+import { EmailAuthForm } from "@/components/auth/EmailAuthForm";
+import { useAuthActions } from "@/components/auth/useAuthActions";
 import { LOGIN_METHODS } from "@/lib/auth/login-methods";
+import type { UserFacingError } from "@/lib/errors/user-message";
 
 interface LoginMethodListProps {
   /** true면 로그인 박스 탭 시 방법 목록 펼침 */
@@ -28,77 +31,45 @@ export function LoginMethodList({
   className = "",
 }: LoginMethodListProps) {
   const router = useRouter();
-  const { loginWithKakao, loginWithEmail, signUpWithEmail } = useAuth();
+  const { signInWithKakao } = useAuthActions();
   const [isOpen, setIsOpen] = useState(false);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [kakaoLoading, setKakaoLoading] = useState(false);
+  const [error, setError] = useState<UserFacingError | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
-  const [emailMode, setEmailMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    const clear = () => setKakaoLoading(false);
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) clear();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("visibilitychange", clear);
+    return () => {
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("visibilitychange", clear);
+    };
+  }, []);
 
   const handleKakao = async () => {
-    if (loadingId) return;
-    setLoadingId("kakao");
+    if (kakaoLoading) return;
+    setKakaoLoading(true);
     setError(null);
-    setNotice(null);
-    const message = await loginWithKakao();
-    if (message) {
-      setError(message);
-      setLoadingId(null);
+    const result = await signInWithKakao();
+    if (!result.ok) {
+      setError(result.error);
+      setKakaoLoading(false);
     }
-  };
-
-  const handleEmailSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (loadingId) return;
-    setLoadingId("email");
-    setError(null);
-    setNotice(null);
-
-    if (emailMode === "login") {
-      const message = await loginWithEmail(email, password);
-      if (message) {
-        setError(message);
-        setLoadingId(null);
-        return;
-      }
-      router.replace("/");
-      return;
-    }
-
-    const result = await signUpWithEmail(email, password);
-    if (result.status === "error") {
-      setError(result.message);
-      setLoadingId(null);
-      return;
-    }
-    if (result.status === "confirm_email") {
-      setNotice(result.message);
-      setEmailMode("login");
-      setLoadingId(null);
-      return;
-    }
-    router.replace("/");
   };
 
   const methodList = (
     <>
-      {notice ? (
-        <p className="rounded-lg border border-brand/20 bg-brand/5 px-3 py-2 text-center text-xs font-medium text-brand-strong">
-          {notice}
-        </p>
-      ) : null}
       {error ? (
-        <p className="rounded-lg border border-danger-border bg-danger/5 px-3 py-2 text-center text-xs font-medium text-danger">
-          {error}
-        </p>
+        <AuthMessage kind="error">{error.message}</AuthMessage>
       ) : null}
 
       <ul className="flex flex-col gap-2">
         {LOGIN_METHODS.map((method) => {
-          const isLoading = loadingId === method.id;
+          const isLoading = kakaoLoading;
           const isKakao = method.variant === "kakao";
 
           return (
@@ -106,20 +77,22 @@ export function LoginMethodList({
               <button
                 type="button"
                 onClick={() => void handleKakao()}
-                disabled={Boolean(loadingId)}
+                disabled={isLoading}
+                aria-busy={isLoading && isKakao}
                 className={[
-                  "relative flex w-full flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl px-4 py-3 transition-transform active:scale-99 disabled:opacity-80",
+                  "relative flex min-h-touch w-full flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl px-4 py-3 transition-transform active:scale-99 disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
                   isKakao
                     ? "bg-kakao text-kakao-ink shadow-kakao-sm"
                     : "border border-line-soft bg-surface-white text-ink-body",
                 ].join(" ")}
               >
-                {isLoading ? (
-                  <span className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/35 to-transparent" />
-                ) : null}
                 <span className="flex items-center justify-center gap-2 text-sm font-bold">
-                  {isKakao ? <KakaoIcon /> : null}
-                  {isLoading ? method.loadingLabel : method.label}
+                  {isKakao && isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : isKakao ? (
+                    <KakaoIcon />
+                  ) : null}
+                  {isLoading && isKakao ? method.loadingLabel : method.label}
                 </span>
                 {method.description ? (
                   <span
@@ -140,79 +113,22 @@ export function LoginMethodList({
           <button
             type="button"
             onClick={() => setEmailOpen((prev) => !prev)}
-            disabled={Boolean(loadingId)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-line-soft bg-surface-white px-4 py-3 text-sm font-bold text-ink-heading transition-transform active:scale-99 disabled:opacity-80"
+            disabled={kakaoLoading}
+            aria-expanded={emailOpen}
+            className="flex min-h-touch w-full items-center justify-center gap-2 rounded-xl border border-line-soft bg-surface-white px-4 py-3 text-sm font-bold text-ink-heading transition-transform active:scale-99 disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
             <Mail className="h-4 w-4 text-brand" strokeWidth={2.4} />
-            이메일로 로그인
+            이메일로 계속하기
           </button>
         </li>
       </ul>
 
       {emailOpen ? (
-        <form
-          onSubmit={(e) => void handleEmailSubmit(e)}
-          className="mt-1 flex flex-col gap-2 rounded-xl border border-line-soft bg-surface-base/80 p-3"
-        >
-          <div className="flex gap-1 rounded-lg bg-surface-soft p-0.5">
-            <button
-              type="button"
-              onClick={() => setEmailMode("login")}
-              className={[
-                "flex-1 rounded-md py-1.5 text-2xs font-bold",
-                emailMode === "login"
-                  ? "bg-surface-white text-ink-heading shadow-sm"
-                  : "text-ink-caption",
-              ].join(" ")}
-            >
-              로그인
-            </button>
-            <button
-              type="button"
-              onClick={() => setEmailMode("signup")}
-              className={[
-                "flex-1 rounded-md py-1.5 text-2xs font-bold",
-                emailMode === "signup"
-                  ? "bg-surface-white text-ink-heading shadow-sm"
-                  : "text-ink-caption",
-              ].join(" ")}
-            >
-              회원가입
-            </button>
-          </div>
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={Boolean(loadingId)}
-            placeholder="이메일"
-            className="h-10 rounded-lg border border-line-soft bg-surface-white px-3 text-sm outline-none focus:border-brand/40"
-          />
-          <input
-            type="password"
-            required
-            minLength={6}
-            autoComplete={emailMode === "signup" ? "new-password" : "current-password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={Boolean(loadingId)}
-            placeholder="비밀번호 (6자 이상)"
-            className="h-10 rounded-lg border border-line-soft bg-surface-white px-3 text-sm outline-none focus:border-brand/40"
-          />
-          <button
-            type="submit"
-            disabled={Boolean(loadingId) || !email.trim() || password.length < 6}
-            className="h-10 rounded-lg bg-brand text-sm font-bold text-surface-white disabled:opacity-50"
-          >
-            {loadingId === "email"
-              ? "처리 중…"
-              : emailMode === "signup"
-                ? "가입하기"
-                : "로그인"}
-          </button>
-        </form>
+        <EmailAuthForm
+          variant="compact"
+          className="mt-1"
+          onSignedIn={() => router.replace("/")}
+        />
       ) : null}
     </>
   );
@@ -234,7 +150,7 @@ export function LoginMethodList({
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors active:bg-surface-soft"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors active:bg-surface-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
         <span className="flex min-w-0 items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -248,6 +164,7 @@ export function LoginMethodList({
             isOpen ? "rotate-180" : "",
           ].join(" ")}
           strokeWidth={2.2}
+          aria-hidden
         />
       </button>
 

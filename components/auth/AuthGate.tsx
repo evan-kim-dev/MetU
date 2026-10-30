@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { safeNextPath } from "@/lib/security/safe-next";
 
 const PUBLIC_PATHS = ["/login", "/legal", "/auth"];
 
@@ -14,7 +15,7 @@ function isPublicPath(pathname: string) {
 
 /**
  * 미로그인 사용자를 /login 으로 보내고,
- * 이미 로그인한 사용자가 /login 에 있으면 홈으로 돌린다.
+ * 이미 로그인한 사용자가 /login 에 있으면 next 또는 홈으로 돌린다.
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { isReady, isLoggedIn } = useAuth();
@@ -35,8 +36,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     if (isLoggedIn && pathname === "/login") {
+      const target = safeNextPath(searchParams.get("next"), "/");
       // Soft nav can keep a stale client bundle after OAuth; force a full load.
-      window.location.replace("/");
+      window.location.replace(target);
     }
   }, [isReady, isLoggedIn, pathname, searchParams, publicPath, router]);
 
