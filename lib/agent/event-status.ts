@@ -38,6 +38,15 @@ export function agentEventStatusLabel(status: string): string {
   return AGENT_EVENT_STATUS_LABELS[status] ?? status;
 }
 
+/** UI label; test/sim events show as 연결 테스트 (F-33/F-34). */
+export function agentEventStatusLabelForUi(args: {
+  status: string;
+  isTest?: boolean;
+}): string {
+  if (args.isTest) return "연결 테스트";
+  return agentEventStatusLabel(args.status);
+}
+
 /** Relative time in Korean, assuming `iso` is an absolute timestamp. */
 export function formatRelativeKo(
   iso: string,

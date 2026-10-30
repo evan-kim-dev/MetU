@@ -31,6 +31,8 @@ export type ShortcutGuideProps = {
   initialFaqId?: string;
   devToken?: string | null;
   defaultCollapsed?: boolean;
+  /** When set, only these step ids are shown (embedded connect flow). */
+  onlyStepIds?: string[];
 };
 
 function renderIntroText(text: string) {
@@ -54,9 +56,11 @@ export function ShortcutGuide({
   initialFaqId: initialFaqProp,
   devToken,
   defaultCollapsed = false,
+  onlyStepIds,
 }: ShortcutGuideProps) {
   const searchParams = useSearchParams();
   const revokeOnReissue = features?.revokeOnReissue ?? false;
+  const filtered = Boolean(onlyStepIds && onlyStepIds.length > 0);
 
   const [platform, setPlatform] = useState<GuidePlatform>(
     defaultPlatform ?? "ios"
@@ -68,13 +72,13 @@ export function ShortcutGuide({
 
   useEffect(() => {
     setMounted(true);
+    if (defaultPlatform) {
+      setPlatform(defaultPlatform);
+      return;
+    }
     const qp = searchParams.get("platform");
     if (qp === "ios" || qp === "android") {
       setPlatform(qp);
-      return;
-    }
-    if (defaultPlatform) {
-      setPlatform(defaultPlatform);
       return;
     }
     const detected = detectPlatform(navigator.userAgent);
@@ -84,7 +88,15 @@ export function ShortcutGuide({
   }, [defaultPlatform, searchParams]);
 
   const guide = platform === "ios" ? IOS_GUIDE : ANDROID_GUIDE;
-  const stepIds = useMemo(() => guide.steps.map((s) => s.id), [guide.steps]);
+  const visibleSteps = useMemo(() => {
+    if (!onlyStepIds || onlyStepIds.length === 0) return guide.steps;
+    const allow = new Set(onlyStepIds);
+    return guide.steps.filter((s) => allow.has(s.id));
+  }, [guide.steps, onlyStepIds]);
+  const stepIds = useMemo(
+    () => visibleSteps.map((s) => s.id),
+    [visibleSteps]
+  );
   const progress = useGuideProgress(platform, stepIds);
 
   const faqParam = searchParams.get("faq");
@@ -101,47 +113,58 @@ export function ShortcutGuide({
 
   const body = (
     <div className="flex flex-col gap-3">
-      <div className="rounded-2xl border border-line-muted bg-surface-base p-4">
-        <h2 className="text-base font-extrabold text-ink-heading">
-          {GUIDE_OVERVIEW.title}
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-ink-body">
-          {GUIDE_OVERVIEW.description}
-        </p>
-        {platform === "android" ? (
-          <p className="mt-2 text-sm text-ink-body">
-            Android는 MacroDroid 앱이 알림을 읽어서 MetU로 전송해요.
+      {!filtered ? (
+        <div className="rounded-2xl border border-line-muted bg-surface-base p-4">
+          <h2 className="text-base font-extrabold text-ink-heading">
+            {GUIDE_OVERVIEW.title}
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-ink-body">
+            {GUIDE_OVERVIEW.description}
           </p>
-        ) : null}
-        <ul className="mt-3 space-y-2 text-sm text-ink-body">
-          {GUIDE_OVERVIEW.checklist.map((item) => (
-            <li key={item.slice(0, 20)} className="flex gap-2">
-              <span aria-hidden>☐</span>
-              <span>{renderIntroText(item)}</span>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-full bg-surface-soft px-3 py-1 text-xs font-medium text-ink-heading">
-            {GUIDE_OVERVIEW.timeChip}
-          </span>
-          <span className="rounded-full bg-surface-soft px-3 py-1 text-xs font-medium text-ink-heading">
-            {GUIDE_OVERVIEW.difficultyChip}
-          </span>
+          {platform === "android" ? (
+            <p className="mt-2 text-sm text-ink-body">
+              Android는 MacroDroid 앱이 알림을 읽어서 MetU로 전송해요.
+            </p>
+          ) : null}
+          <ul className="mt-3 space-y-2 text-sm text-ink-body">
+            {GUIDE_OVERVIEW.checklist.map((item) => (
+              <li key={item.slice(0, 20)} className="flex gap-2">
+                <span aria-hidden>☐</span>
+                <span>{renderIntroText(item)}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full bg-surface-soft px-3 py-1 text-xs font-medium text-ink-heading">
+              {GUIDE_OVERVIEW.timeChip}
+            </span>
+            <span className="rounded-full bg-surface-soft px-3 py-1 text-xs font-medium text-ink-heading">
+              {GUIDE_OVERVIEW.difficultyChip}
+            </span>
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <GuideProgressBar
-        done={progress.doneCount}
-        total={progress.total}
-        onReset={progress.resetAll}
-      />
+      {!filtered ? (
+        <GuideProgressBar
+          done={progress.doneCount}
+          total={progress.total}
+          onReset={progress.resetAll}
+        />
+      ) : null}
 
-      <PlatformTabs value={platform} onChange={setPlatform} />
+      {!filtered ? (
+        <PlatformTabs value={platform} onChange={setPlatform} />
+      ) : null}
 
       {guide.parts.map((part) => {
-        const partSteps = guide.steps.filter((s) => s.part === part.id);
-        if (partSteps.length === 0 && part.id === "D" && guide.outro) {
+        const partSteps = visibleSteps.filter((s) => s.part === part.id);
+        if (
+          partSteps.length === 0 &&
+          part.id === "D" &&
+          guide.outro &&
+          !filtered
+        ) {
           return (
             <section key={part.id} className="space-y-3">
               <h3 className="text-sm font-bold text-ink-muted">{part.title}</h3>
@@ -154,9 +177,13 @@ export function ShortcutGuide({
         if (partSteps.length === 0) return null;
         return (
           <section key={part.id} className="space-y-3">
-            <h3 className="text-sm font-bold text-ink-muted">{part.title}</h3>
+            {!filtered ? (
+              <h3 className="text-sm font-bold text-ink-muted">{part.title}</h3>
+            ) : null}
             {partSteps.map((step) => {
-              const globalIndex = guide.steps.findIndex((s) => s.id === step.id);
+              const globalIndex = visibleSteps.findIndex(
+                (s) => s.id === step.id
+              );
               return (
                 <GuideStepCard
                   key={step.id}
@@ -173,13 +200,15 @@ export function ShortcutGuide({
         );
       })}
 
-      <GuideFaq
-        items={guide.faq}
-        initialFaqId={resolvedFaqId}
-        revokeOnReissue={revokeOnReissue}
-      />
+      {!filtered ? (
+        <GuideFaq
+          items={guide.faq}
+          initialFaqId={resolvedFaqId}
+          revokeOnReissue={revokeOnReissue}
+        />
+      ) : null}
 
-      <DevSnippet token={devToken} />
+      {!filtered ? <DevSnippet token={devToken} /> : null}
     </div>
   );
 

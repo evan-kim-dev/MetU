@@ -16,6 +16,7 @@ export const maxDuration = 60;
 const CreateSchema = z.object({
   tripId: z.string().uuid().optional().nullable(),
   label: z.string().max(80).default(""),
+  replaceExisting: z.boolean().default(false),
 });
 
 export async function GET(request: Request) {
@@ -109,12 +110,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "server-misconfigured" }, { status: 503 });
   }
 
+  const label = parsed.data.label || "";
+
   const { data, error } = await admin
     .from("agent_ingest_tokens")
     .insert({
       user_id: guard.identity.userId,
       trip_id: tripId,
-      label: parsed.data.label || "",
+      label,
       token_hash: tokenHash,
     })
     .select("id, created_at")
@@ -124,11 +127,28 @@ export async function POST(request: Request) {
     return apiInternalError(error?.message ?? "insert-failed");
   }
 
+  let revokedCount = 0;
+  if (parsed.data.replaceExisting) {
+    const { data: revoked, error: revokeError } = await admin
+      .from("agent_ingest_tokens")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("user_id", guard.identity.userId)
+      .eq("label", label)
+      .is("revoked_at", null)
+      .neq("id", data.id)
+      .select("id");
+
+    if (!revokeError && Array.isArray(revoked)) {
+      revokedCount = revoked.length;
+    }
+  }
+
   return NextResponse.json({
     id: data.id,
     createdAt: data.created_at,
     tripId,
     token: plain,
-    warning: "이 토큰은 다시 볼 수 없어요. 지금 복사해 두세요.",
+    revokedCount,
+    warning: "이 연결 코드는 다시 볼 수 없어요. 지금 복사해 두세요.",
   });
 }

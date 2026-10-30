@@ -131,13 +131,25 @@ describe("computeAutomationState", () => {
     ).toBe("ok");
   });
 
-  it("partial + hasRecentEvent -> ok", () => {
+  it("partial + hasRecentEvent only -> unverified", () => {
     expect(
       computeAutomationState({
         status: "partial",
         hasActiveToken: true,
         activeTrip: false,
         hasRecentEvent: true,
+        now: NOW,
+      })
+    ).toBe("unverified");
+  });
+
+  it("partial + lastDeviceTestAt -> ok", () => {
+    expect(
+      computeAutomationState({
+        status: "partial",
+        hasActiveToken: true,
+        activeTrip: false,
+        lastDeviceTestAt: new Date(NOW - H).toISOString(),
         now: NOW,
       })
     ).toBe("ok");
