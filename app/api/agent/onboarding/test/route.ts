@@ -3,11 +3,12 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
-import { createEvent } from "@/lib/agent/ingest";
+import { runIngest } from "@/lib/agent/ingest-pipeline";
 import {
   pickTripForAutomationTest,
   touchServerTestAt,
 } from "@/lib/onboarding/agent-context";
+import { apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     .update(`onboarding-server-test|${userId}|${bucket}`, "utf8")
     .digest("hex");
 
-  const created = await createEvent({
+  const outcome = await runIngest({
     userId,
     tripId,
     source: "sim",
@@ -57,10 +58,11 @@ export async function POST(request: Request) {
       received_at: new Date().toISOString(),
     },
     idempotencyKey,
+    processIfTrip: false,
   });
 
-  if (!created.ok) {
-    return NextResponse.json({ error: created.error }, { status: 500 });
+  if (!outcome.result.ok) {
+    return apiInternalError(outcome.result.error);
   }
 
   const admin = getAgentAdmin();
@@ -72,7 +74,7 @@ export async function POST(request: Request) {
         result: { test: true, via: "server" },
         processed_at: new Date().toISOString(),
       })
-      .eq("id", created.id)
+      .eq("id", outcome.result.id)
       .eq("user_id", userId);
   }
 
@@ -80,7 +82,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    eventId: created.id,
-    duplicate: created.duplicate,
+    eventId: outcome.result.id,
+    duplicate: outcome.result.duplicate,
   });
 }

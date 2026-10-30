@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readJsonLimited } from "@/lib/agent/body-limit";
 import {
   getTravelMatrix,
   refineLegsForOrder,
@@ -16,7 +17,9 @@ export async function POST(request: Request) {
   if (guard instanceof NextResponse) return guard;
 
   try {
-    const body = (await request.json()) as {
+    const limited = await readJsonLimited(request, 64_000);
+    if (!limited.ok) return limited.response;
+    const body = limited.json as {
       points?: MatrixPoint[];
       mode?: TravelMode;
       region?: "KR" | "GLOBAL";

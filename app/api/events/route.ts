@@ -1,15 +1,14 @@
-import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { readJsonLimited } from "@/lib/agent/body-limit";
 import {
   buildSmsPayload,
-  createEvent,
   defaultSmsIdempotencyKey,
 } from "@/lib/agent/ingest";
+import { runIngest } from "@/lib/agent/ingest-pipeline";
 import { assertTripMember } from "@/lib/agent/membership";
-import { processEvent } from "@/lib/agent/run";
+import { apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
 
 export const maxDuration = 60;
@@ -52,7 +51,7 @@ export async function POST(request: Request) {
   const idempotencyKey =
     parsed.data.idempotencyKey ?? defaultSmsIdempotencyKey(redacted);
 
-  const created = await createEvent({
+  const outcome = await runIngest({
     userId: guard.identity.userId,
     tripId: parsed.data.tripId,
     source: parsed.data.source,
@@ -61,21 +60,19 @@ export async function POST(request: Request) {
     idempotencyKey: `${parsed.data.tripId}:${idempotencyKey}`,
   });
 
-  if (!created.ok) {
-    return NextResponse.json({ error: created.error }, { status: 500 });
+  if (!outcome.result.ok) {
+    return apiInternalError(outcome.result.error);
   }
 
-  if (created.duplicate) {
+  if (outcome.result.duplicate) {
     return NextResponse.json(
-      { eventId: created.id, duplicate: true },
+      { eventId: outcome.result.id, duplicate: true },
       { status: 200 }
     );
   }
 
-  after(() => processEvent(created.id));
-
   return NextResponse.json(
-    { eventId: created.id, status: "received" },
+    { eventId: outcome.result.id, status: "received" },
     { status: 202 }
   );
 }

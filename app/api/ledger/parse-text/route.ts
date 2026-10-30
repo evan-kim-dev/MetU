@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readJsonLimited } from "@/lib/agent/body-limit";
 import { parseExpenseTextOut } from "@/lib/ai/contracts";
 import { aiChatOrNull } from "@/lib/ai/chat-client";
 import { TABLES } from "@/lib/constants";
@@ -74,12 +75,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "login-required" }, { status: 401 });
   }
 
-  let body: Body;
-  try {
-    body = (await request.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400 });
-  }
+  const limited = await readJsonLimited(request, 16_384);
+  if (!limited.ok) return limited.response;
+  const body = limited.json as Body;
 
   const tripId = body.tripId?.trim() ?? "";
   const text = (body.text ?? "").trim();

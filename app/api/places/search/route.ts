@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readJsonLimited } from "@/lib/agent/body-limit";
 import { searchPlaces } from "@/lib/places/index";
 import type { PlaceKind, PlaceSearchParams } from "@/lib/places/types";
 import { guardApi } from "@/lib/security/guard";
@@ -20,7 +21,9 @@ export async function POST(request: Request) {
   if (guard instanceof NextResponse) return guard;
 
   try {
-    const body = (await request.json()) as Partial<PlaceSearchParams>;
+    const limited = await readJsonLimited(request, 8_192);
+    if (!limited.ok) return limited.response;
+    const body = limited.json as Partial<PlaceSearchParams>;
     const city = typeof body.city === "string" ? body.city.trim() : "";
     const query = typeof body.query === "string" ? body.query.trim() : "";
 

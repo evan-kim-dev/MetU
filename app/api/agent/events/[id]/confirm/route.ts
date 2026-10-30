@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { readBodyLimited } from "@/lib/agent/body-limit";
 import { getAgentEventForUser } from "@/lib/agent/event-access";
 import { confirmEventReviews } from "@/lib/agent/run";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
@@ -40,15 +41,20 @@ export async function POST(
   }
 
   let parsed: z.infer<typeof BodySchema> = {};
-  try {
-    const raw = await request.json();
+  const limited = await readBodyLimited(request, 65_536);
+  if (!limited.ok) return limited.response;
+  if (limited.text.trim()) {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(limited.text) as unknown;
+    } catch {
+      return NextResponse.json({ error: "invalid-json" }, { status: 400 });
+    }
     const result = BodySchema.safeParse(raw);
     if (!result.success) {
       return NextResponse.json({ error: "invalid-body" }, { status: 400 });
     }
     parsed = result.data;
-  } catch {
-    /* empty body → confirm all review items */
   }
 
   const items = parsed.items?.map((it) => ({
