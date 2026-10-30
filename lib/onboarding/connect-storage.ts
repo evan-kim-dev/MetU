@@ -7,6 +7,7 @@ import type { DetectedPlatform } from "@/lib/onboarding/automation";
 export const CONNECT_STORAGE_KEY = "metu.connect.v1";
 
 const PHASES = new Set<ConnectPhase>([
+  "hub",
   "device",
   "code",
   "shortcut",

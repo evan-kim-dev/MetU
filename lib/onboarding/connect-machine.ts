@@ -1,6 +1,7 @@
 import type { DetectedPlatform } from "@/lib/onboarding/automation";
 
 export type ConnectPhase =
+  | "hub"
   | "device"
   | "code"
   | "shortcut"
@@ -9,6 +10,8 @@ export type ConnectPhase =
   | "done"
   | "skipped"
   | "unsupported";
+
+export type ConnectIssueMode = "wizard" | "add" | "reissue";
 
 export type ConnectBusy =
   | null
@@ -48,6 +51,8 @@ export type ConnectState = {
   error?: ConnectErrorState;
   needsToken: boolean;
   finishStatus?: "done" | "partial";
+  /** How the user entered the code step (hub add/reissue vs first-time wizard). */
+  issueMode: ConnectIssueMode;
 };
 
 export type ConnectSnapshot = {
@@ -94,7 +99,16 @@ export type ConnectAction =
   | { type: "DISMISS_ERROR" }
   | { type: "SET_SELECTED_APPS"; apps: string[] }
   | { type: "BACK_TO_DEVICE" }
-  | { type: "CODE_NEXT" };
+  | { type: "CODE_NEXT" }
+  | {
+      type: "ENTER_HUB";
+      platform: DetectedPlatform;
+      ios27?: boolean | null;
+    }
+  | { type: "START_ADD_DEVICE" }
+  | { type: "START_REISSUE" }
+  | { type: "RESUME_VERIFY" }
+  | { type: "BACK_TO_HUB" };
 
 export function initialConnectState(): ConnectState {
   return {
@@ -109,7 +123,17 @@ export function initialConnectState(): ConnectState {
     reissueOpen: false,
     busy: null,
     needsToken: false,
+    issueMode: "wizard",
   };
+}
+
+export function showConnectStepper(state: ConnectState): boolean {
+  return (
+    state.phase !== "hub" &&
+    state.phase !== "unsupported" &&
+    state.phase !== "done" &&
+    state.phase !== "skipped"
+  );
 }
 
 export function canFinish(state: ConnectState): boolean {
@@ -130,6 +154,7 @@ export function stepTotal(state: ConnectState): number {
 }
 
 export function stepIndex(state: ConnectState): number {
+  if (state.phase === "hub") return 0;
   const iosOrder: ConnectPhase[] = [
     "device",
     "code",
@@ -405,6 +430,7 @@ export function connectReducer(
         deviceOk: snap.deviceOk,
         needsToken,
         token: { copied: false },
+        issueMode: "wizard",
       };
     }
 
@@ -422,6 +448,114 @@ export function connectReducer(
       return {
         ...state,
         phase: state.platform === "android" ? "automation" : "shortcut",
+      };
+    }
+
+    case "ENTER_HUB": {
+      const platform = action.platform;
+      return {
+        ...initialConnectState(),
+        phase: "hub",
+        platform,
+        ios27:
+          action.ios27 !== undefined
+            ? action.ios27
+            : platform === "ios"
+              ? true
+              : null,
+        issueMode: "wizard",
+      };
+    }
+
+    case "START_ADD_DEVICE": {
+      if (state.phase !== "hub") return state;
+      if (
+        state.platform !== "ios" &&
+        state.platform !== "android"
+      ) {
+        return state;
+      }
+      return {
+        ...state,
+        phase: "code",
+        issueMode: "add",
+        token: { copied: false },
+        needsToken: false,
+        reissueOpen: false,
+        error: undefined,
+        busy: null,
+        serverOk: false,
+        deviceOk: false,
+        shortcutOpened: false,
+      };
+    }
+
+    case "START_REISSUE": {
+      if (state.phase !== "hub") return state;
+      if (
+        state.platform !== "ios" &&
+        state.platform !== "android"
+      ) {
+        return state;
+      }
+      return {
+        ...state,
+        phase: "code",
+        issueMode: "reissue",
+        token: { copied: false },
+        needsToken: true,
+        reissueOpen: true,
+        error: undefined,
+        busy: null,
+        serverOk: false,
+        deviceOk: false,
+        shortcutOpened: false,
+      };
+    }
+
+    case "RESUME_VERIFY": {
+      if (state.phase !== "hub") return state;
+      if (
+        state.platform !== "ios" &&
+        state.platform !== "android"
+      ) {
+        return state;
+      }
+      return {
+        ...state,
+        phase: "verify",
+        issueMode: "wizard",
+        token: { copied: false },
+        needsToken: false,
+        reissueOpen: false,
+        error: undefined,
+        busy: null,
+        // Keep prior ok flags false so user reconfirms from hub.
+        serverOk: false,
+        deviceOk: false,
+      };
+    }
+
+    case "BACK_TO_HUB": {
+      if (
+        state.phase !== "code" &&
+        state.phase !== "shortcut" &&
+        state.phase !== "automation" &&
+        state.phase !== "verify"
+      ) {
+        return state;
+      }
+      if (state.issueMode === "wizard") return state;
+      return {
+        ...state,
+        phase: "hub",
+        token: { copied: false },
+        needsToken: false,
+        reissueOpen: false,
+        error: undefined,
+        busy: null,
+        issueMode: "wizard",
+        shortcutOpened: false,
       };
     }
 

@@ -79,11 +79,6 @@ export function AutomationStatusBanner() {
   }
 
   if (uiState === "silent") {
-    const platform =
-      data.platform === "android" || data.platform === "ios"
-        ? data.platform
-        : "ios";
-    const faq = platform === "android" ? "and-faq-2" : "ios-faq-2";
     return (
       <section
         aria-label="자동 기록 상태"
@@ -99,10 +94,10 @@ export function AutomationStatusBanner() {
           </p>
         </div>
         <Link
-          href={`/onboarding/shortcut-guide?platform=${platform}&faq=${faq}`}
+          href="/onboarding/automation"
           className="inline-flex min-h-11 shrink-0 items-center rounded-xl bg-surface-base px-3 text-sm font-semibold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
-          점검하기
+          관리
         </Link>
       </section>
     );
@@ -122,10 +117,10 @@ export function AutomationStatusBanner() {
         자동 기록 켜짐 · 마지막 수신 {rel}
       </p>
       <Link
-        href="/agent/inbox"
+        href="/onboarding/automation"
         className="inline-flex min-h-11 shrink-0 items-center rounded-xl px-3 text-sm font-semibold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
-        수신함
+        관리
       </Link>
     </section>
   );

@@ -151,4 +151,65 @@ describe("connectReducer", () => {
     s = apply(s, { type: "CONFIRM_AUTOMATION" });
     expect(s.phase).toBe("verify");
   });
+
+  it("ENTER_HUB → START_ADD_DEVICE → code with issueMode add", () => {
+    let s = apply(initialConnectState(), {
+      type: "ENTER_HUB",
+      platform: "ios",
+    });
+    expect(s.phase).toBe("hub");
+    s = apply(s, { type: "START_ADD_DEVICE" });
+    expect(s.phase).toBe("code");
+    expect(s.issueMode).toBe("add");
+    expect(s.token.plain).toBeUndefined();
+    expect(s.reissueOpen).toBe(false);
+  });
+
+  it("ENTER_HUB → START_REISSUE opens reissue dialog on code", () => {
+    let s = apply(initialConnectState(), {
+      type: "ENTER_HUB",
+      platform: "android",
+    });
+    s = apply(s, { type: "START_REISSUE" });
+    expect(s.phase).toBe("code");
+    expect(s.issueMode).toBe("reissue");
+    expect(s.needsToken).toBe(true);
+    expect(s.reissueOpen).toBe(true);
+  });
+
+  it("ENTER_HUB → RESUME_VERIFY", () => {
+    const s = apply(
+      initialConnectState(),
+      { type: "ENTER_HUB", platform: "ios" },
+      { type: "RESUME_VERIFY" }
+    );
+    expect(s.phase).toBe("verify");
+    expect(s.serverOk).toBe(false);
+    expect(s.deviceOk).toBe(false);
+  });
+
+  it("BACK_TO_HUB only from hub-originated flows", () => {
+    const wizard = apply(
+      initialConnectState(),
+      { type: "PLATFORM_DETECTED", platform: "ios" },
+      { type: "SET_IOS27", value: true }
+    );
+    expect(wizard.issueMode).toBe("wizard");
+    expect(connectReducer(wizard, { type: "BACK_TO_HUB" })).toBe(wizard);
+
+    let hub = apply(initialConnectState(), {
+      type: "ENTER_HUB",
+      platform: "ios",
+    });
+    hub = apply(hub, { type: "START_ADD_DEVICE" });
+    hub = apply(hub, { type: "BACK_TO_HUB" });
+    expect(hub.phase).toBe("hub");
+    expect(hub.issueMode).toBe("wizard");
+  });
+
+  it("hub actions ignored outside hub", () => {
+    const s = initialConnectState();
+    expect(connectReducer(s, { type: "START_ADD_DEVICE" })).toBe(s);
+    expect(connectReducer(s, { type: "RESUME_VERIFY" })).toBe(s);
+  });
 });
