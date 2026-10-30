@@ -36,7 +36,11 @@ export function ServiceWorkerRegister() {
           });
         });
       })
-      .catch(() => undefined);
+      .catch((err) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.debug("[sw] register failed", err);
+        }
+      });
   }, []);
 
   return null;

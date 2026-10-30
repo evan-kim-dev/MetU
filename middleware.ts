@@ -2,6 +2,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { GUEST_COOKIE, verifyGuestCookie } from "@/lib/auth/guest-cookie";
 import {
+  buildGateRedirect,
+  isGateExempt,
+  isPublicPath,
+} from "@/lib/auth/route-access";
+import {
   MTU_ONB_COOKIE,
   MTU_ONB_SKIP_STATUSES,
 } from "@/lib/onboarding/constants";
@@ -9,35 +14,6 @@ import { resolveGuestCookieSecret } from "@/lib/security/guest-secret";
 import { isPublicApiPath } from "@/lib/security/public-api";
 import { safeNextPath } from "@/lib/security/safe-next";
 import { getPublicSupabaseKey } from "@/lib/supabase/env";
-
-const PUBLIC_PATHS = ["/login", "/legal"];
-
-function isPublicPath(pathname: string) {
-  return (
-    PUBLIC_PATHS.some(
-      (path) => pathname === path || pathname.startsWith(`${path}/`)
-    ) ||
-    pathname.startsWith("/auth/") ||
-    pathname.startsWith("/trips/share/") ||
-    pathname.startsWith("/s/") ||
-    pathname.startsWith("/share-target")
-  );
-}
-
-function isAutomationOnboardingExcluded(pathname: string) {
-  return (
-    pathname.startsWith("/onboarding/") ||
-    pathname === "/login" ||
-    pathname.startsWith("/auth/") ||
-    pathname.startsWith("/share-target") ||
-    pathname.startsWith("/api/") ||
-    pathname.startsWith("/s/") ||
-    pathname.startsWith("/trips/share/") ||
-    // Allow viewing received unassigned events while onboarding is still pending.
-    pathname === "/agent/inbox" ||
-    pathname.startsWith("/agent/inbox/")
-  );
-}
 
 async function resolveAuth(request: NextRequest): Promise<{
   response: NextResponse;
@@ -106,6 +82,22 @@ async function resolveAuth(request: NextRequest): Promise<{
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Public/static paths: skip getUser (PWA assets must not redirect to /login).
+  if (isPublicPath(pathname) && pathname !== "/login") {
+    if (
+      pathname === "/sw.js" ||
+      pathname === "/site.webmanifest" ||
+      pathname === "/offline.html" ||
+      pathname === "/manifest.webmanifest" ||
+      pathname === "/robots.txt" ||
+      pathname.startsWith("/.well-known/")
+    ) {
+      return NextResponse.next({
+        request: { headers: request.headers },
+      });
+    }
+  }
+
   if (pathname === "/login" || pathname === "/auth/logout") {
     return NextResponse.next({
       request: { headers: request.headers },
@@ -125,12 +117,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (
-    hasUser &&
-    userId &&
-    !hasGuestSession &&
-    !isAutomationOnboardingExcluded(pathname)
-  ) {
+  if (hasUser && userId && !hasGuestSession && !isGateExempt(pathname)) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = getPublicSupabaseKey();
     const onbHint = request.cookies.get(MTU_ONB_COOKIE)?.value;
@@ -157,8 +144,7 @@ export async function middleware(request: NextRequest) {
           .maybeSingle();
         const onboardingStatus = row?.onboarding_status ?? "pending";
         if (onboardingStatus === "pending") {
-          const dest = request.nextUrl.clone();
-          dest.pathname = "/onboarding/automation";
+          const dest = buildGateRedirect(request.nextUrl, request.nextUrl.origin);
           return NextResponse.redirect(dest);
         }
       } catch {
@@ -170,12 +156,15 @@ export async function middleware(request: NextRequest) {
   if (!isPublicPath(pathname) && !hasUser && !hasGuestSession) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
+    loginUrl.search = "";
     if (pathname !== "/") {
       loginUrl.searchParams.set("next", pathname);
     }
     return NextResponse.redirect(loginUrl);
   }
 
+  // Unreachable for /login early-return above; kept for auth callback edge cases
+  // where pathname could still be /login after resolveAuth without early exit.
   if (pathname === "/login" && (hasUser || hasGuestSession)) {
     const next = safeNextPath(request.nextUrl.searchParams.get("next"), "/");
     return NextResponse.redirect(new URL(next, request.url));

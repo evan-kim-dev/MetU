@@ -20,6 +20,15 @@
     -moz-appearance: textfield;
     appearance: textfield;
   }
+
+  /* iOS: avoid auto-zoom on focus (needs ≥16px) after enabling pinch zoom */
+  @media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
 }
 
 @layer utilities {

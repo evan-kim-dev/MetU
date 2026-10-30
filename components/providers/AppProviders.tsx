@@ -7,9 +7,13 @@ import { AuthGate } from "@/components/auth/AuthGate";
 import { BuildRevalidator } from "@/components/ui/BuildRevalidator";
 import { BuildStamp } from "@/components/ui/BuildStamp";
 import { EasterEggToastProvider } from "@/components/ui/EasterEggToast";
+import { OfflineBanner } from "@/components/ui/OfflineBanner";
+import { RouteProgress } from "@/components/ui/RouteProgress";
+import { SessionExpiredDialog } from "@/components/ui/SessionExpiredDialog";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import { SectionErrorBoundary } from "@/components/ui/SectionErrorBoundary";
+import { Suspense } from "react";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -18,6 +22,8 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         <ServiceWorkerRegister />
         <BuildRevalidator />
         <BuildStamp />
+        <RouteProgress />
+        <OfflineBanner />
         <AuthGate>
           <ProfileProvider>
             <FriendsProvider>
@@ -42,6 +48,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
           </ProfileProvider>
         </AuthGate>
         <InstallBanner />
+        <Suspense fallback={null}>
+          <SessionExpiredDialog />
+        </Suspense>
       </AuthProvider>
     </EasterEggToastProvider>
   );
