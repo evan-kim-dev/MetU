@@ -85,8 +85,12 @@ export type WeatherOut = {
 // --- deals ---
 
 export type DealRowOut = {
-  id: string;
+  name: string;
+  country: string;
+  bestMonth: string;
   highlight: string;
+  /** 가성비 / 보통 / 프리미엄 (또는 value/standard/premium) */
+  tier: string;
 };
 
 export type DealsOut = { deals: DealRowOut[] };
@@ -219,13 +223,21 @@ export function parseDealsOut(content: string): DealsOut | null {
   const root = asRecord(parseJsonContent(content));
   if (!root || !Array.isArray(root.deals)) return null;
   const deals: DealRowOut[] = [];
-  for (const row of root.deals.slice(0, 20)) {
+  for (const row of root.deals.slice(0, 12)) {
     const r = asRecord(row);
     if (!r) continue;
-    const id = asString(r.id);
+    const name = asString(r.name);
+    const country = asString(r.country);
     const highlight = asString(r.highlight);
-    if (!id || !highlight) continue;
-    deals.push({ id, highlight });
+    if (!name || !country || !highlight) continue;
+    // Ignore any numeric price fields the model may invent — do not surface them
+    deals.push({
+      name,
+      country,
+      bestMonth: asString(r.bestMonth) || "",
+      highlight,
+      tier: asString(r.tier) || "보통",
+    });
   }
   return deals.length > 0 ? { deals } : null;
 }

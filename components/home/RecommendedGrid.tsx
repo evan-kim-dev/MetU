@@ -10,8 +10,8 @@ interface RecommendedGridProps {
 }
 
 /**
- * AI 예산별 추천 여행지 그리드.
- * 시즌 RAG + LLM으로 정렬·하이라이트를 갱신한다.
+ * AI 시즌 추천 여행지 그리드.
+ * 가짜 가격 없이 등급 라벨(가성비/보통/프리미엄)만 표시한다.
  */
 export function RecommendedGrid({ places }: RecommendedGridProps) {
   const [items, setItems] = useState(places);
@@ -43,6 +43,9 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
         if (Array.isArray(data.places) && data.places.length > 0) {
           setItems(data.places);
           setRefreshFailed(false);
+        } else {
+          setItems([]);
+          setRefreshFailed(true);
         }
       })
       .catch((error) => {
@@ -80,10 +83,10 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
     return (
       <div className="rounded-2xl border border-dashed border-line-soft bg-surface-soft/50 px-4 py-8 text-center">
         <p className="text-sm font-semibold text-ink-heading">
-          추천 여행지를 불러오지 못했어요
+          추천을 불러오지 못했어요 · 다시 시도
         </p>
         <p className="mt-1 text-xs leading-relaxed text-ink-caption">
-          잠시 후 다시 시도하거나, 직접 여행을 계획해 보세요.
+          잠시 후 새로고침하거나, 직접 여행을 계획해 보세요.
         </p>
       </div>
     );
@@ -93,7 +96,7 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
     <>
       {refreshFailed && !loading ? (
         <p className="text-xs text-ink-caption">
-          최신 추천을 갱신하지 못해 기본 목록을 보여드려요.
+          최신 추천을 갱신하지 못했어요. 캐시된 목록을 보여드려요.
         </p>
       ) : null}
       <div
