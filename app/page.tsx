@@ -8,6 +8,7 @@ import { ActiveTripSection } from "@/components/home/ActiveTripSection";
 import { AISmartTipsShortcut } from "@/components/home/AISmartTipsShortcut";
 import { HomeGreeting } from "@/components/home/HomeGreeting";
 import { HomeNotificationBell } from "@/components/home/HomeNotificationBell";
+import { AutomationStatusBanner } from "@/components/home/AutomationStatusBanner";
 import { UnassignedInboxBanner } from "@/components/home/UnassignedInboxBanner";
 import { ActiveTripSmartTips } from "@/components/home/ActiveTripSmartTips";
 import { RecommendedGrid } from "@/components/home/RecommendedGrid";
@@ -33,6 +34,7 @@ export default async function HomePage() {
           </h2>
         </section>
 
+        <AutomationStatusBanner />
         <UnassignedInboxBanner />
 
         {/* 새 여행 계획 CTA */}

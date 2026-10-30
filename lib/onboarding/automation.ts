@@ -1,3 +1,5 @@
+import type { AutomationUiState } from "@/lib/onboarding/automation-ui-state";
+
 export type DetectedPlatform = "ios" | "android" | "desktop" | "other";
 
 export type OnboardingStatus =
@@ -6,7 +8,7 @@ export type OnboardingStatus =
   | "done"
   | "skipped";
 
-export type AutomationUiState = "off" | "unverified" | "ok" | "silent";
+export type { AutomationUiState } from "@/lib/onboarding/automation-ui-state";
 
 export function detectPlatform(userAgent: string): DetectedPlatform {
   const ua = userAgent.toLowerCase();
@@ -42,8 +44,9 @@ export function computeAutomationState(args: {
   }
 
   if (status === "partial") {
-    // Device/server test pending — but inbound events still count as linked.
-    if (args.lastNotificationAt || args.hasRecentEvent) return "ok";
+    // Real device/server timestamps only — hasRecentEvent alone can be a
+    // server sim test and must not look "connected" (F-24/F-25).
+    if (args.lastNotificationAt || args.lastDeviceTestAt) return "ok";
     return "unverified";
   }
 

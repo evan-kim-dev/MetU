@@ -33,6 +33,16 @@ function textPreview(payload: Record<string, unknown> | null): string {
   return trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed;
 }
 
+function eventIsTest(e: EventRow): boolean {
+  const body =
+    (typeof e.payload?.body === "string" && e.payload.body) ||
+    (typeof e.payload?.text === "string" && e.payload.text) ||
+    "";
+  if (body.startsWith("MTU-TEST")) return true;
+  if (e.result?.test === true) return true;
+  return false;
+}
+
 export async function GET(request: Request) {
   const guard = await guardApi(request, { bucket: "ledger-parse" });
   if (guard instanceof NextResponse) return guard;
@@ -42,6 +52,9 @@ export async function GET(request: Request) {
 
   const userId = guard.identity.userId;
   const admin = getAgentAdmin();
+  const lite =
+    new URL(request.url).searchParams.get("lite") === "1" ||
+    new URL(request.url).searchParams.get("lite") === "true";
 
   const [row, hasActiveToken, activeTrip] = await Promise.all([
     loadAgentUserState(userId),
@@ -58,6 +71,7 @@ export async function GET(request: Request) {
     textPreview: string;
     error: string | null;
     reason: string | null;
+    isTest: boolean;
     preview: {
       amount: number | null;
       currency: string | null;
@@ -67,8 +81,17 @@ export async function GET(request: Request) {
     } | null;
   }> = [];
   let unassignedCount = 0;
+  let hasRecentEvent = false;
 
-  if (admin) {
+  if (admin && lite) {
+    const { count } = await admin
+      .from("agent_events")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .neq("source", "sim")
+      .limit(1);
+    hasRecentEvent = (count ?? 0) > 0;
+  } else if (admin) {
     const { data: events } = await admin
       .from("agent_events")
       .select("id, status, created_at, source, trip_id, error, payload, result")
@@ -99,9 +122,12 @@ export async function GET(request: Request) {
         error: e.error,
         reason:
           typeof e.result?.reason === "string" ? e.result.reason : null,
+        isTest: eventIsTest(e),
         preview,
       };
     });
+
+    hasRecentEvent = recentEvents.some((e) => e.source !== "sim");
 
     const { count } = await admin
       .from("agent_events")
@@ -113,7 +139,6 @@ export async function GET(request: Request) {
 
   const status = row?.onboarding_status ?? "pending";
   const silenceHours = Number(process.env.AGENT_SILENCE_HOURS ?? "24");
-  const hasRecentEvent = recentEvents.length > 0;
   const state = computeAutomationState({
     status,
     lastNotificationAt: row?.last_notification_at,
@@ -135,7 +160,8 @@ export async function GET(request: Request) {
     state,
     hasActiveToken,
     activeTrip,
-    recentEvents,
-    unassignedCount,
+    hasRecentEvent,
+    recentEvents: lite ? [] : recentEvents,
+    unassignedCount: lite ? 0 : unassignedCount,
   });
 }
