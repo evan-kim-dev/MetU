@@ -10,7 +10,6 @@ const PUBLIC_API_PREFIXES = [
   "/api/destination-image",
   "/api/places/autocomplete",
   "/api/onboarding/session",
-  "/api/recommended-deals",
   "/api/trip-tips",
   "/api/share-target",
   "/api/agent/sweep",

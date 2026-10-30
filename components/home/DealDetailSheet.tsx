@@ -1,65 +1,63 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import {
-  CalendarDays,
-  Plane,
-  Sparkles,
-  Wallet,
-  X,
-  BedDouble,
-  Lightbulb,
-} from "lucide-react";
+import { BedDouble, CalendarDays, Plane, X } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
-import { formatKRW } from "@/lib/mock/home";
-import type { DealDetail, DealPlace } from "@/lib/deals/data";
+import type { DealPlace } from "@/lib/deals/data";
+import { resolveIataCode } from "@/lib/flights/agoda-url";
+import { buildGoogleFlightsSearchUrl } from "@/lib/flights/google-flights-url";
+import { addDays, todayIsoDate } from "@/lib/shared/dates";
+import { useTrips } from "@/lib/trips/TripProvider";
 
 interface DealDetailSheetProps {
   place: DealPlace;
   onClose: () => void;
 }
 
+function buildGoogleHotelsSearchUrl(city: string): string {
+  const url = new URL("https://www.google.com/travel/search");
+  url.searchParams.set("q", `${city} 호텔`);
+  url.searchParams.set("hl", "ko");
+  return url.toString();
+}
+
+function buildDealFlightsUrl(
+  originQuery: string,
+  destinationName: string
+): string | null {
+  const origin = resolveIataCode(originQuery);
+  const destination = resolveIataCode(destinationName);
+  if (!origin || !destination) return null;
+
+  const departDate = addDays(todayIsoDate(), 14);
+  const returnDate = addDays(departDate, 4);
+  return buildGoogleFlightsSearchUrl({
+    origin,
+    destination,
+    departDate,
+    returnDate,
+  });
+}
+
 export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
   const router = useRouter();
-  const [detail, setDetail] = useState<DealDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { activeTrips, trips } = useTrips();
+  const defaultOrigin =
+    activeTrips[0]?.origin?.trim() || trips[0]?.origin?.trim() || "";
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-
-    fetch(`/api/deals/${place.id}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error("failed");
-        return (await res.json()) as DealDetail;
-      })
-      .then((data) => {
-        if (!cancelled) setDetail(data);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [place.id]);
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
+  const flightsUrl = useMemo(
+    () =>
+      defaultOrigin
+        ? buildDealFlightsUrl(defaultOrigin, place.name)
+        : null,
+    [defaultOrigin, place.name]
+  );
+  const hotelsUrl = useMemo(
+    () => buildGoogleHotelsSearchUrl(place.name),
+    [place.name]
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
@@ -78,6 +76,7 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
             sizes="440px"
             className="object-cover"
             priority
+            unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
           <button
@@ -98,69 +97,49 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
-          {loading && (
-            <div className="flex flex-col items-center gap-3 py-10">
-              <Sparkles className="h-7 w-7 animate-pulse text-brand" />
-              <WaveLoadingText text="AI가 항공·숙소 저가 시세를 정리 중..." />
-            </div>
-          )}
-
-          {!loading && error && (
-            <p className="py-8 text-center text-sm text-ink-caption">
-              정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.
-            </p>
-          )}
-
-          {!loading && detail && (
-            <div className="flex flex-col gap-5">
-              <p className="text-sm leading-relaxed text-ink-body">
-                {detail.summary}
-              </p>
-
-              <div className="rounded-xl border border-line-soft bg-surface-white px-4 py-3">
-                <p className="text-xs font-semibold text-ink-caption">저가 항공 기준</p>
-                <p className="mt-1 text-sm font-bold text-ink-heading">
-                  {detail.airline}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 rounded-xl border border-line-soft bg-surface-white px-4 py-3">
+              <CalendarDays className="h-4 w-4 shrink-0 text-brand" />
+              <div>
+                <p className="text-xs font-semibold text-ink-caption">추천 시기</p>
+                <p className="text-sm font-bold text-ink-heading">
+                  {place.bestMonth}
                 </p>
-                <p className="text-xs text-ink-body">{detail.route}</p>
               </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <InfoChip
-                  icon={<Plane className="h-4 w-4 text-brand" />}
-                  label="항공 최저"
-                  value={formatKRW(detail.flightFrom)}
-                />
-                <InfoChip
-                  icon={<BedDouble className="h-4 w-4 text-brand" />}
-                  label="숙소 최저"
-                  value={formatKRW(detail.hotelFrom)}
-                />
-                <InfoChip
-                  icon={<CalendarDays className="h-4 w-4 text-brand" />}
-                  label="추천 시기"
-                  value={detail.bestMonth}
-                />
-                <InfoChip
-                  icon={<Wallet className="h-4 w-4 text-brand" />}
-                  label={`${detail.nights}박 총예산`}
-                  value={formatKRW(detail.fromPrice)}
-                />
-              </div>
-
-              <DetailBlock title="예산에 맞춘 이유" items={detail.whyCheap} />
-              <DetailBlock
-                title="알뜰 여행 팁"
-                items={detail.budgetTips}
-                icon={<Lightbulb className="h-4 w-4 text-brand" />}
-              />
-              <DetailBlock title="추천 코스" items={detail.mustTry} />
-
-              <p className="rounded-xl border border-line-soft bg-surface-white px-4 py-3 text-xs leading-relaxed text-ink-caption">
-                {detail.caution}
-              </p>
             </div>
-          )}
+
+            <p className="text-sm leading-relaxed text-ink-body">
+              {place.highlight}
+            </p>
+
+            <div className="flex flex-col gap-2">
+              {flightsUrl ? (
+                <a
+                  href={flightsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line-soft bg-surface-white px-4 py-3 text-sm font-bold text-ink-heading transition-colors hover:bg-surface-soft"
+                >
+                  <Plane className="h-4 w-4 text-brand" />
+                  항공권 검색(Google Flights)
+                </a>
+              ) : null}
+              <a
+                href={hotelsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line-soft bg-surface-white px-4 py-3 text-sm font-bold text-ink-heading transition-colors hover:bg-surface-soft"
+              >
+                <BedDouble className="h-4 w-4 text-brand" />
+                호텔 검색(Google 호텔)
+              </a>
+            </div>
+
+            <p className="text-xs leading-relaxed text-ink-caption">
+              가격은 표시하지 않아요. 검색 링크에서 날짜·좌석에 맞는 실제 요금을
+              확인해주세요.
+            </p>
+          </div>
         </div>
 
         <div className="shrink-0 border-t border-line-soft bg-surface-white px-5 py-4">
@@ -175,74 +154,5 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
         </div>
       </div>
     </div>
-  );
-}
-
-function WaveLoadingText({ text }: { text: string }) {
-  return (
-    <p
-      className="flex max-w-[280px] flex-wrap justify-center text-sm font-semibold text-ink-body"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      {text.split("").map((char, index) => (
-        <span
-          key={`${char}-${index}`}
-          className="inline-block motion-safe:animate-text-wave"
-          style={{ animationDelay: `${index * 55}ms` }}
-        >
-          {char === " " ? "\u00A0" : char}
-        </span>
-      ))}
-    </p>
-  );
-}
-
-function InfoChip({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-xl border border-line-soft bg-surface-white px-3 py-3">
-      <div className="mb-1 flex items-center gap-1.5 text-xs text-ink-caption">
-        {icon}
-        {label}
-      </div>
-      <p className="text-sm font-extrabold text-ink-heading">{value}</p>
-    </div>
-  );
-}
-
-function DetailBlock({
-  title,
-  items,
-  icon,
-}: {
-  title: string;
-  items: string[];
-  icon?: ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <div className="flex items-center gap-1.5">
-        {icon}
-        <h4 className="text-sm font-extrabold text-ink-heading">{title}</h4>
-      </div>
-      <ul className="flex flex-col gap-1.5">
-        {items.map((item) => (
-          <li
-            key={item}
-            className="rounded-lg bg-surface-white px-3 py-2.5 text-sm text-ink-body shadow-sm"
-          >
-            {item}
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

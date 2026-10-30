@@ -451,7 +451,7 @@ ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 - ${AI_VOICE}`;
 }
 
-const DEALS_SYSTEM_PROMPT = `${AI_VOICE} ${AI_QUALITY_FIRST} 시즌 RAG와 후보 목록만 근거로 이번 달 가성비 여행지를 JSON으로 큐레이션해요.`;
+const DEALS_SYSTEM_PROMPT = `${AI_VOICE} ${AI_QUALITY_FIRST} 시즌 RAG만 근거로 이번 달 추천 여행지 6곳을 JSON으로 생성해요. 숫자 가격·원/만원 시세를 절대 만들지 마세요.`;
 
 export function getDealsSystemPrompt(): string {
   return DEALS_SYSTEM_PROMPT;
@@ -460,38 +460,23 @@ export function getDealsSystemPrompt(): string {
 export function buildRecommendedDealsPrompt(params: {
   month: number;
   year: number;
-  candidates: Array<{
-    id: string;
-    name: string;
-    country: string;
-    budgetLabel: string;
-    bestMonth: string;
-    highlight: string;
-  }>;
   ragContexts: string[];
 }): string {
-  return `당신은 Met U 홈 화면의 예산 여행 큐레이터입니다.
-지금(${params.year}년 ${params.month}월) 기준으로 후보 중 가성비 좋은 순으로 정렬하고 highlight를 풍부하게 갱신하세요.
+  return `당신은 Met U 홈 화면의 시즌 여행 큐레이터입니다.
+지금(${params.year}년 ${params.month}월, Asia/Seoul) 기준으로 한국 출발 여행자에게 추천할 목적지 6곳을 새로 생성하세요.
 ${AI_QUALITY_FIRST}
 
 [시즌 RAG]
 ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
-[후보]
-${params.candidates
-  .map(
-    (c, i) =>
-      `${i + 1}. id=${c.id} | ${c.name}(${c.country}) | ${c.budgetLabel} | 추천시기 ${c.bestMonth} | 기존: ${c.highlight}`
-  )
-  .join("\n")}
-
 출력(JSON만):
-{"deals":[{"id":"deal-xxx","highlight":"이번 달 기준 구체적 하이라이트 (왜 가성비인지 포함)"}]}
+{"deals":[{"name":"도시명","country":"국가명","bestMonth":"추천 시기","highlight":"시즌 이유 하이라이트","tier":"가성비|보통|프리미엄"}]}
 
 규칙:
-- 후보 id만 사용, 전부 포함
-- 시즌·가성비 좋은 순 정렬
+- 정확히 6곳, 서로 다른 도시
+- tier는 가성비/보통/프리미엄 중 하나 (영문 value/standard/premium 허용)
 - highlight는 한국어 40~80자, 해요체, 시즌 이유·누구에게 맞는지 포함
+- 항공·호텔·총액 등 숫자 가격/시세/원·만원 표현 금지 (fromPrice, flightFrom, hotelFrom 필드 금지)
 - 허위 시세 단정 금지
 - ${AI_VOICE}`;
 }
