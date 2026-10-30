@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
 
+/** Lightweight unassigned count — avoids full automation-status (6 queries). */
 export function UnassignedInboxBanner() {
   const { user, provider, isReady } = useAuth();
   const [count, setCount] = useState(0);
@@ -13,16 +15,22 @@ export function UnassignedInboxBanner() {
       setCount(0);
       return;
     }
+    const supabase = getBrowserSupabase();
+    if (!supabase) {
+      setCount(0);
+      return;
+    }
     try {
-      const res = await fetch("/api/agent/automation-status");
-      if (!res.ok) {
+      const { count: n, error } = await supabase
+        .from("agent_events")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "unassigned");
+      if (error) {
         setCount(0);
         return;
       }
-      const json = (await res.json()) as { unassignedCount?: number };
-      setCount(
-        typeof json.unassignedCount === "number" ? json.unassignedCount : 0
-      );
+      setCount(n ?? 0);
     } catch {
       setCount(0);
     }

@@ -131,6 +131,7 @@ export function AgentInbox({
     const filter = tripId
       ? `trip_id=eq.${tripId}`
       : `user_id=eq.${user.id}`;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
       .channel(`agent_inbox:${tripId ?? "user"}`)
       .on(
@@ -142,11 +143,16 @@ export function AgentInbox({
           filter,
         },
         () => {
-          void load();
+          // received→processing→done can fire 3+ times; coalesce reloads.
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            void load();
+          }, 600);
         }
       )
       .subscribe();
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       void supabase.removeChannel(channel);
     };
   }, [tripId, user, load]);
