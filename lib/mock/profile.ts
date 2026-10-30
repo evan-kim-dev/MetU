@@ -36,4 +36,19 @@ export const PROFILE_STYLE_OPTIONS: {
   { value: "shopping", label: "쇼핑", emoji: "🛍️" },
 ];
 
-export const CURRENCY_OPTIONS = ["KRW", "USD", "JPY", "EUR"] as const;
+/** @deprecated Prefer `useCurrencyOptions` / `POPULAR_CURRENCY_CODES` from `@/lib/fx/currency-list`. */
+export const CURRENCY_OPTIONS = [
+  "KRW",
+  "USD",
+  "JPY",
+  "EUR",
+  "THB",
+  "VND",
+  "TWD",
+  "GBP",
+  "CNY",
+  "HKD",
+  "SGD",
+  "AUD",
+  "CAD",
+] as const;

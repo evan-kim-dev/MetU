@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { FxAttribution } from "@/components/fx/FxAttribution";
+import { useCurrencyOptions } from "@/lib/fx/currency-list";
 import { rateFromCash } from "@/lib/ledger/money";
 import { upsertCashRate } from "@/lib/ledger/supabase";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
@@ -11,6 +13,7 @@ type Props = {
 };
 
 export function CashRateSettings({ tripId, memberId }: Props) {
+  const currencyOptions = useCurrencyOptions();
   const [currency, setCurrency] = useState("JPY");
   const [foreign, setForeign] = useState("10000");
   const [krw, setKrw] = useState("91000");
@@ -48,11 +51,16 @@ export function CashRateSettings({ tripId, memberId }: Props) {
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
         >
-          {["JPY", "USD", "EUR", "THB", "VND", "TWD"].map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
+          {!currencyOptions.some((o) => o.code === currency) ? (
+            <option value={currency}>{currency}</option>
+          ) : null}
+          {currencyOptions
+            .filter((o) => o.code !== "KRW")
+            .map((o) => (
+              <option key={o.code} value={o.code}>
+                {o.label}
+              </option>
+            ))}
         </select>
         <input
           inputMode="decimal"
@@ -77,6 +85,7 @@ export function CashRateSettings({ tripId, memberId }: Props) {
         환율 저장
       </button>
       {msg ? <p className="mt-1 text-xs text-ink-body">{msg}</p> : null}
+      <FxAttribution />
     </div>
   );
 }
