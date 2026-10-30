@@ -9,11 +9,21 @@ import {
   type CreateEventResult,
 } from "@/lib/agent/ingest";
 import { normalizeIngestSource } from "@/lib/agent/ingest-source";
+import { buildSmsParsePreview } from "@/lib/agent/sms-text";
 import { processEvent } from "@/lib/agent/run";
 import {
   pickTripForReceivedAt,
   touchNotificationAt,
 } from "@/lib/onboarding/agent-context";
+
+function todayKst(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 
 export { defaultNotificationIdempotencyKey };
 
@@ -94,22 +104,34 @@ export async function ingestNotificationPayload(
     };
   }
 
+  const payload = {
+    app: input.app,
+    title: input.title,
+    body: input.body,
+    received_at: receivedAt,
+    receivedAt,
+    device: input.device ?? null,
+    text: [input.title, input.body].filter(Boolean).join("\n"),
+  };
+
+  // Unassigned: store rule-parser preview only (no Gemini / no network).
+  let result: Record<string, unknown> | null = null;
+  if (!tripId) {
+    const preview = buildSmsParsePreview(input.body || input.title, {
+      today: todayKst(),
+    });
+    if (preview) result = { preview };
+  }
+
   const created = await createEvent({
     userId: input.userId,
     tripId,
     source,
     kind: "text",
-    payload: {
-      app: input.app,
-      title: input.title,
-      body: input.body,
-      received_at: receivedAt,
-      receivedAt,
-      device: input.device ?? null,
-      text: [input.title, input.body].filter(Boolean).join("\n"),
-    },
+    payload,
     idempotencyKey,
     status: tripId ? "received" : "unassigned",
+    result,
   });
 
   return {

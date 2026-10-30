@@ -6,6 +6,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MobileShell } from "@/components/layout/MobileShell";
 import { NOTIF_APP_PRESETS } from "@/lib/ledger/notif/apps";
+import {
+  agentEventStatusLabel,
+  formatRelativeKo,
+  formatSmsPreviewLabel,
+  type SmsParsePreviewLabel,
+} from "@/lib/agent/event-status";
 import type { DetectedPlatform } from "@/lib/onboarding/automation";
 import { IOS_SHORTCUT_ICLOUD_URL } from "@/lib/onboarding/constants";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
@@ -18,10 +24,25 @@ const SAMPLE_SMS_JSON =
 const SAMPLE_TEST_JSON =
   '{"text":"MTU-TEST 연결 확인","receivedAt":"2026-10-30T12:00:00+09:00"}';
 
+type RecentEventRow = {
+  id: string;
+  status: string;
+  createdAt: string;
+  source: string;
+  tripId: string | null;
+  textPreview: string;
+  error: string | null;
+  reason: string | null;
+  preview?: SmsParsePreviewLabel | null;
+};
+
 type AutomationStatusResponse = {
   lastServerTestAt: string | null;
   lastDeviceTestAt: string | null;
+  lastNotificationAt: string | null;
   lastDroppedApp: string | null;
+  recentEvents?: RecentEventRow[];
+  unassignedCount?: number;
 };
 
 function detectPlatformClient(): DetectedPlatform {
@@ -50,6 +71,12 @@ export default function AutomationOnboardingPage() {
   const [tokenHint, setTokenHint] = useState<string | null>(null);
   /** Plaintext shown once after issue — never re-fetched from server. */
   const [plainToken, setPlainToken] = useState<string | null>(null);
+  const [recentEvents, setRecentEvents] = useState<RecentEventRow[]>([]);
+  const [unassignedCount, setUnassignedCount] = useState(0);
+  const [lastNotificationAt, setLastNotificationAt] = useState<string | null>(
+    null
+  );
+  const [lastDroppedApp, setLastDroppedApp] = useState<string | null>(null);
 
   useEffect(() => {
     setPlatform(detectPlatformClient());
@@ -96,7 +123,14 @@ export default function AutomationOnboardingPage() {
     if (!res.ok) return;
     const json = (await res.json()) as AutomationStatusResponse;
     if (json.lastServerTestAt) setServerOk(true);
-    if (json.lastDeviceTestAt) setDeviceOk(true);
+    // Device path OK when MTU-TEST recorded OR any notification arrived (Prompt 1/2).
+    if (json.lastDeviceTestAt || json.lastNotificationAt) setDeviceOk(true);
+    setLastNotificationAt(json.lastNotificationAt ?? null);
+    setLastDroppedApp(json.lastDroppedApp ?? null);
+    setRecentEvents(Array.isArray(json.recentEvents) ? json.recentEvents : []);
+    setUnassignedCount(
+      typeof json.unassignedCount === "number" ? json.unassignedCount : 0
+    );
   }, []);
 
   useEffect(() => {
@@ -536,6 +570,82 @@ ${SAMPLE_SMS_JSON}
                 테스트 알림 보내기(웹 푸시) — 푸시 설정 후 사용 가능
               </p>
             </div>
+
+            <div className="space-y-3 rounded-2xl border border-line-soft bg-surface-white p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-extrabold text-ink-heading">
+                  최근 수신
+                </h3>
+                {lastNotificationAt ? (
+                  <span className="text-[11px] text-ink-muted">
+                    마지막 {formatRelativeKo(lastNotificationAt)}
+                  </span>
+                ) : null}
+              </div>
+              {lastDroppedApp ? (
+                <p className="text-xs text-ink-muted">
+                  최근 앱: {lastDroppedApp}
+                </p>
+              ) : null}
+              {recentEvents.length === 0 ? (
+                <p className="text-xs leading-relaxed text-ink-muted">
+                  아직 수신된 알림이 없어요 — 단축어 응답에서 에러를 확인하세요.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {recentEvents.map((ev) => (
+                    <li
+                      key={ev.id}
+                      className="rounded-xl bg-surface-soft px-3 py-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-ink-heading">
+                          {agentEventStatusLabel(ev.status)}
+                        </span>
+                        <span className="text-[10px] text-ink-muted">
+                          {formatRelativeKo(ev.createdAt)}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs text-ink-body">
+                        {ev.textPreview || "(내용 없음)"}
+                      </p>
+                      {ev.preview
+                        ? (() => {
+                            const label = formatSmsPreviewLabel(ev.preview!);
+                            return label ? (
+                              <p className="mt-0.5 text-[11px] font-semibold text-brand">
+                                {label}
+                              </p>
+                            ) : null;
+                          })()
+                        : null}
+                      {ev.error || ev.reason ? (
+                        <p className="mt-0.5 text-[10px] text-danger">
+                          {[ev.error, ev.reason].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {unassignedCount > 0 ? (
+                <div className="flex flex-col gap-2 pt-1 sm:flex-row">
+                  <Link
+                    href="/agent/inbox"
+                    className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-amber-50 text-sm font-bold text-amber-950 ring-1 ring-amber-200"
+                  >
+                    수신함 보기
+                  </Link>
+                  <Link
+                    href="/onboarding"
+                    className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-line text-sm font-bold text-ink-heading"
+                  >
+                    여행 만들기
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+
             <PrimaryButton fullWidth disabled={busy || !serverOk} onClick={() => void finish()}>
               시작하기
             </PrimaryButton>

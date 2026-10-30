@@ -58,6 +58,13 @@ export async function GET(request: Request) {
     textPreview: string;
     error: string | null;
     reason: string | null;
+    preview: {
+      amount: number | null;
+      currency: string | null;
+      merchant: string | null;
+      confidence: number;
+      kind: string;
+    } | null;
   }> = [];
   let unassignedCount = 0;
 
@@ -69,19 +76,32 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false })
       .limit(10);
 
-    recentEvents = ((events ?? []) as EventRow[]).map((e) => ({
-      id: e.id,
-      status: e.status,
-      createdAt: e.created_at,
-      source: e.source,
-      tripId: e.trip_id,
-      textPreview: textPreview(e.payload),
-      error: e.error,
-      reason:
-        typeof e.result?.reason === "string"
-          ? e.result.reason
-          : null,
-    }));
+    recentEvents = ((events ?? []) as EventRow[]).map((e) => {
+      const rawPreview = e.result?.preview;
+      let preview: (typeof recentEvents)[number]["preview"] = null;
+      if (rawPreview && typeof rawPreview === "object" && !Array.isArray(rawPreview)) {
+        const p = rawPreview as Record<string, unknown>;
+        preview = {
+          amount: typeof p.amount === "number" ? p.amount : null,
+          currency: typeof p.currency === "string" ? p.currency : null,
+          merchant: typeof p.merchant === "string" ? p.merchant : null,
+          confidence: typeof p.confidence === "number" ? p.confidence : 0,
+          kind: typeof p.kind === "string" ? p.kind : "unknown",
+        };
+      }
+      return {
+        id: e.id,
+        status: e.status,
+        createdAt: e.created_at,
+        source: e.source,
+        tripId: e.trip_id,
+        textPreview: textPreview(e.payload),
+        error: e.error,
+        reason:
+          typeof e.result?.reason === "string" ? e.result.reason : null,
+        preview,
+      };
+    });
 
     const { count } = await admin
       .from("agent_events")

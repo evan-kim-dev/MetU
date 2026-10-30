@@ -7,6 +7,7 @@ import {
   scheduleProcessIfNeeded,
 } from "@/lib/agent/ingest-notification";
 import { ingestStatusMessage } from "@/lib/agent/ingest-source";
+import { migrationHintFromError } from "@/lib/agent/sms-text";
 import { requireIngestToken } from "@/lib/agent/tokens";
 
 export const maxDuration = 60;
@@ -53,7 +54,14 @@ export async function POST(request: Request) {
   });
 
   if (!outcome.result.ok) {
-    return NextResponse.json({ error: outcome.result.error }, { status: 500 });
+    const hint = migrationHintFromError(outcome.result.error);
+    return NextResponse.json(
+      {
+        error: outcome.result.error,
+        ...(hint ? { hint } : {}),
+      },
+      { status: 500 }
+    );
   }
 
   const duplicate = outcome.result.duplicate;

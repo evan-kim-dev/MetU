@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import {
+  agentEventStatusLabel,
+  formatRelativeKo,
+  formatSmsPreviewLabel,
+  type SmsParsePreviewLabel,
+} from "@/lib/agent/event-status";
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { useTrips } from "@/lib/trips/TripProvider";
@@ -28,7 +34,11 @@ type AgentEventRow = {
   kind: string;
   status: string;
   payload: { text?: string } | null;
-  result: { items?: ResultItem[]; reason?: string } | null;
+  result: {
+    items?: ResultItem[];
+    reason?: string;
+    preview?: SmsParsePreviewLabel & { confidence?: number; kind?: string };
+  } | null;
   error: string | null;
   created_at: string;
   processed_at: string | null;
@@ -357,17 +367,27 @@ export function AgentInbox({
     label: string;
   }) {
     const reviews = reviewItems(event);
+    const statusLabel = agentEventStatusLabel(event.status);
     return (
       <article
         key={event.id}
         className={`rounded-2xl border p-3 shadow-sm ${tone}`}
       >
         <div className="flex items-start justify-between gap-2">
-          <span className="rounded-full bg-surface-white/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
-            {label}
+          <span className="rounded-full bg-surface-white/80 px-2 py-0.5 text-[10px] font-bold tracking-wide text-ink-muted">
+            {label || statusLabel}
           </span>
-          <time className="text-[10px] text-ink-muted">
+          <time
+            className="text-[10px] text-ink-muted"
+            dateTime={event.created_at}
+            title={new Date(event.created_at).toLocaleString("ko-KR", {
+              timeZone: "Asia/Seoul",
+            })}
+          >
+            {formatRelativeKo(event.created_at)}
+            {" · "}
             {new Date(event.created_at).toLocaleString("ko-KR", {
+              timeZone: "Asia/Seoul",
               month: "short",
               day: "numeric",
               hour: "2-digit",
@@ -375,9 +395,23 @@ export function AgentInbox({
             })}
           </time>
         </div>
+        {event.status === "unassigned" ? (
+          <p className="mt-2 text-xs leading-relaxed text-amber-900">
+            여행이 없어 보관 중이에요. 기간이 맞는 여행을 만들면 자동으로
+            붙어요.
+          </p>
+        ) : null}
         <p className="mt-2 text-sm font-semibold text-ink-heading">
           {previewText(event)}
         </p>
+        {event.result?.preview
+          ? (() => {
+              const label = formatSmsPreviewLabel(event.result.preview!);
+              return label ? (
+                <p className="mt-1 text-xs font-semibold text-brand">{label}</p>
+              ) : null;
+            })()
+          : null}
         {event.error ? (
           <p className="mt-1 text-xs text-danger">{event.error}</p>
         ) : null}
@@ -544,11 +578,15 @@ export function AgentInbox({
             ) : null}
 
             {groups.scoped.length === 0 ? (
-              <div className="rounded-2xl bg-surface-soft p-6 text-center text-sm text-ink-muted">
-                아직 자동 수집 이벤트가 없어요.{" "}
-                <Link href={connectHref} className="font-bold text-brand">
-                  연결하기
-                </Link>
+              <div className="rounded-2xl bg-surface-soft p-6 text-center text-sm leading-relaxed text-ink-muted">
+                <p>아직 받은 알림이 없어요.</p>
+                <p className="mt-2">
+                  단축어가 연결되면 여기와 온보딩의 &apos;최근 수신&apos;에
+                  나타나요.{" "}
+                  <Link href={connectHref} className="font-bold text-brand">
+                    연결하기
+                  </Link>
+                </p>
               </div>
             ) : null}
           </>

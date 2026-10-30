@@ -322,6 +322,18 @@ function tryShinhan(text: string): Extracted | null {
       domestic: false,
     };
   }
+  // 국내: (날짜 앞/뒤 무관) 승인 N원 일시불|할부 가맹점 누적…
+  m = text.match(
+    /승인[^\d]*([\d,]+)원\s*(?:일시불|할부\d*개월?)?\s*(.+?)(?:\s*누적|$)/
+  );
+  if (m) {
+    return {
+      amount: parseAmountToken(m[1]!),
+      currencyToken: "원",
+      merchant: cleanMerchant(m[2]),
+      domestic: true,
+    };
+  }
   return null;
 }
 
