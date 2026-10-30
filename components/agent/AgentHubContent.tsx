@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   Camera,
   ClipboardPaste,
@@ -15,6 +16,9 @@ import {
   Wallet,
 } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
+import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { useAutomationStatus } from "@/lib/hooks/useAutomationStatus";
 import { useTrips } from "@/lib/trips/TripProvider";
 
 const FEATURES = [
@@ -60,12 +64,49 @@ const GLOBAL_LINKS = [
 ] as const;
 
 export function AgentHubContent() {
+  const { isReady: authReady, isLoggedIn, provider } = useAuth();
+  const isGuest = provider === "guest";
   const { trips, isReady, activeTrips } = useTrips();
   const list = (activeTrips.length ? activeTrips : trips).slice(0, 12);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const { uiState, loading, error } = useAutomationStatus({
+    enabled: authReady && isLoggedIn && !isGuest,
+    lite: true,
+  });
 
   return (
-    <MobileShell title="Agent">
+    <MobileShell title="가계부·자동 기록">
       <div className="flex flex-col gap-5 px-4 py-4">
+        {!isGuest && !loading && !error && uiState ? (
+          <section className="rounded-2xl bg-surface-white p-4 shadow-sm ring-1 ring-line-soft">
+            {uiState === "ok" || uiState === "silent" ? (
+              <>
+                <p className="text-sm font-extrabold text-ink-heading">
+                  카드 알림 자동 기록이 켜져 있어요
+                </p>
+                <Link
+                  href="/agent/inbox"
+                  className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  수신함 보기
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-extrabold text-ink-heading">
+                  카드 알림을 자동으로 기록해 보세요
+                </p>
+                <Link
+                  href="/onboarding/automation"
+                  className="ai-gradient-bg mt-2 inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-surface-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  연결하기
+                </Link>
+              </>
+            )}
+          </section>
+        ) : null}
+
         <section className="rounded-2xl bg-gradient-to-br from-brand/12 via-brand-mid/8 to-transparent p-4">
           <div className="flex items-start gap-2">
             <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
@@ -74,12 +115,12 @@ export function AgentHubContent() {
                 가계부·정산 모아보기
               </h2>
               <p className="mt-1 text-xs leading-relaxed text-ink-body">
-                해커톤에서 추가한 자동 입력·환율·정산 기능을 여기서 고르면 돼요.
-                여행마다 가계부가 따로 있어요.
+                문자·영수증·음성으로 지출을 넣고, 환율과 정산까지 한곳에서
+                해요. 여행마다 가계부가 따로 있어요.
               </p>
             </div>
           </div>
-          <ul className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-ink-muted">
+          <ul className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-ink-body">
             <li className="inline-flex items-center gap-1 rounded-full bg-surface-white/80 px-2 py-1">
               <ClipboardPaste className="h-3 w-3" /> 문자
             </li>
@@ -106,12 +147,21 @@ export function AgentHubContent() {
             <div className="h-24 animate-pulse rounded-2xl bg-surface-soft" />
           ) : list.length === 0 ? (
             <div className="rounded-2xl bg-surface-soft px-4 py-6 text-center">
-              <p className="text-sm text-ink-body">아직 여행이 없어요.</p>
+              <p className="text-sm text-ink-body">
+                아직 여행이 없어요. 여행을 만들면 가계부가 생겨요.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSheetOpen(true)}
+                className="ai-gradient-bg mt-3 inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-bold text-surface-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                빠르게 여행 만들기
+              </button>
               <Link
                 href="/onboarding"
-                className="mt-3 inline-block text-xs font-bold text-brand"
+                className="mt-2 inline-flex min-h-11 items-center text-xs font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
-                여행 만들기
+                AI로 일정까지 계획하기
               </Link>
             </div>
           ) : (
@@ -124,7 +174,7 @@ export function AgentHubContent() {
                   <p className="text-sm font-extrabold text-ink-heading">
                     {trip.destination}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-ink-muted">
+                  <p className="mt-0.5 text-xs text-ink-body">
                     {trip.dateRange}
                   </p>
                   <div className="mt-3 grid grid-cols-3 gap-2">
@@ -134,10 +184,10 @@ export function AgentHubContent() {
                         <Link
                           key={f.hrefSuffix}
                           href={`/trips/${trip.id}${f.hrefSuffix}`}
-                          className="flex flex-col items-center gap-1 rounded-xl bg-surface-soft px-2 py-2.5 text-center transition hover:bg-brand/10 active:scale-[0.98]"
+                          className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl bg-surface-soft px-2 py-2.5 text-center transition hover:bg-brand/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
                           <Icon className="h-4 w-4 text-brand" />
-                          <span className="text-[10px] font-bold text-ink-heading">
+                          <span className="text-xs font-bold text-ink-heading">
                             {f.title}
                           </span>
                         </Link>
@@ -161,7 +211,7 @@ export function AgentHubContent() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 rounded-2xl bg-surface-soft px-3 py-3 transition hover:bg-brand/10"
+                  className="flex min-h-11 items-center gap-3 rounded-2xl bg-surface-soft px-3 py-3 transition hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-white">
                     <Icon className="h-4 w-4 text-brand" />
@@ -170,31 +220,38 @@ export function AgentHubContent() {
                     <span className="block text-sm font-bold text-ink-heading">
                       {item.title}
                     </span>
-                    <span className="block text-[11px] text-ink-muted">
+                    <span className="block text-xs text-ink-body">
                       {item.desc}
                     </span>
                   </span>
                 </Link>
               );
             })}
-            <div className="rounded-2xl bg-surface-soft px-3 py-3 text-[11px] leading-relaxed text-ink-muted">
+            <div className="rounded-2xl bg-surface-soft px-3 py-3 text-xs leading-relaxed text-ink-body">
               <p className="font-bold text-ink-heading">초대 링크</p>
               <p className="mt-1">
-                가계부에서 동행자를 추가한 뒤 초대하면{" "}
-                <code className="rounded bg-white px-1">/join/토큰</code> 으로
-                합류해요. 공개 정산 읽기는{" "}
-                <code className="rounded bg-white px-1">/s/토큰</code> 입니다.
+                동행자를 가계부에 추가하면 초대 링크를 보낼 수 있어요. 받은
+                사람은 링크로 바로 합류해요.
+              </p>
+              <p className="mt-1">
+                공개 정산 보기는 정산 화면의 공유 버튼에서 만들 수 있어요.
               </p>
             </div>
             <Link
               href="/board"
-              className="text-center text-[11px] font-semibold text-ink-muted underline"
+              className="inline-flex min-h-11 items-center justify-center text-center text-xs font-semibold text-ink-body underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
-              게시판은 여기로 (/board)
+              게시판 보기
             </Link>
           </ul>
         </section>
       </div>
+
+      <QuickTripSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        reason="hub"
+      />
     </MobileShell>
   );
 }

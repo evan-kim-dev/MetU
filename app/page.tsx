@@ -8,6 +8,8 @@ import { ActiveTripSection } from "@/components/home/ActiveTripSection";
 import { AISmartTipsShortcut } from "@/components/home/AISmartTipsShortcut";
 import { HomeGreeting } from "@/components/home/HomeGreeting";
 import { HomeNotificationBell } from "@/components/home/HomeNotificationBell";
+import { GuestHomeCard } from "@/components/home/GuestHomeCard";
+import { FirstRunChecklist } from "@/components/home/FirstRunChecklist";
 import { AutomationStatusBanner } from "@/components/home/AutomationStatusBanner";
 import { UnassignedInboxBanner } from "@/components/home/UnassignedInboxBanner";
 import { ActiveTripSmartTips } from "@/components/home/ActiveTripSmartTips";
@@ -34,6 +36,8 @@ export default async function HomePage() {
           </h2>
         </section>
 
+        <GuestHomeCard />
+        <FirstRunChecklist />
         <AutomationStatusBanner />
         <UnassignedInboxBanner />
 
