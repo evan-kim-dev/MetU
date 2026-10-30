@@ -34,8 +34,19 @@ vi.mock("@/lib/hooks/useAutomationStatus", () => ({
   }),
 }));
 
+vi.mock("@/lib/trips/TripProvider", () => ({
+  useTrips: () => ({
+    trips: [],
+    activeTrips: [],
+    isReady: true,
+  }),
+}));
+
 vi.mock("@/lib/api/fetch-json", () => ({
-  apiFetchJson: vi.fn(),
+  apiFetchJson: vi.fn(async () => ({
+    ok: true,
+    data: { tokens: [] },
+  })),
 }));
 
 vi.mock("@/components/onboarding/guide/ShortcutGuide", () => ({

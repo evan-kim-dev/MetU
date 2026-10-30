@@ -84,12 +84,20 @@ export function AgentHubContent() {
                 <p className="text-sm font-extrabold text-ink-heading">
                   카드 알림 자동 기록이 켜져 있어요
                 </p>
-                <Link
-                  href="/agent/inbox"
-                  className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                >
-                  수신함 보기
-                </Link>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <Link
+                    href="/onboarding/automation"
+                    className="inline-flex min-h-11 items-center text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    관리
+                  </Link>
+                  <Link
+                    href="/agent/inbox"
+                    className="inline-flex min-h-11 items-center text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    수신함 보기
+                  </Link>
+                </div>
               </>
             ) : (
               <>

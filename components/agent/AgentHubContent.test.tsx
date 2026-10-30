@@ -109,6 +109,9 @@ describe("AgentHubContent", () => {
     expect(
       screen.getByText("카드 알림 자동 기록이 켜져 있어요")
     ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "관리" }).getAttribute("href")
+    ).toBe("/onboarding/automation");
     expect(screen.getByText("수신함 보기")).toBeTruthy();
   });
 

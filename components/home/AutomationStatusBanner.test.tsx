@@ -91,6 +91,9 @@ describe("AutomationStatusBanner", () => {
         "최근 24시간 동안 받은 알림이 없어요 · 자동화가 켜져 있는지 확인해 보세요"
       )
     ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "관리" }).getAttribute("href")
+    ).toBe("/onboarding/automation");
   });
 
   it("renders ok copy", () => {
@@ -111,6 +114,9 @@ describe("AutomationStatusBanner", () => {
     });
     render(<AutomationStatusBanner />);
     expect(screen.getByText(/자동 기록 켜짐 · 마지막 수신/)).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "관리" }).getAttribute("href")
+    ).toBe("/onboarding/automation");
   });
 
   it("does not render for guest/loading/error", () => {
