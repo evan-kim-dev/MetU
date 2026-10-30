@@ -1,4 +1,5 @@
-export type FxCurrency = "USD" | "JPY" | "EUR" | "GBP" | "THB" | "VND" | "TWD" | "CAD" | "AUD";
+/** Validated ISO 4217 3-letter uppercase currency code (any). */
+export type FxCurrency = string;
 
 export interface FxTarget {
   code: FxCurrency;
@@ -55,18 +56,17 @@ const DEFAULT_FX: FxTarget = {
   label: "달러",
 };
 
-/** 폴백 환율: 1 외화 = ? 원 (대략치) */
-export const FALLBACK_RATES: Record<FxCurrency, number> = {
-  USD: 1380,
-  JPY: 9.35,
-  EUR: 1500,
-  GBP: 1750,
-  THB: 42,
-  VND: 0.054,
-  TWD: 43,
-  CAD: 1000,
-  AUD: 900,
-};
+const CURRENCY_CODE_RE = /^[A-Z]{3}$/;
+
+/** ISO 4217 3자리 대문자 코드인지 검증. */
+export function isCurrencyCode(code: string): boolean {
+  return CURRENCY_CODE_RE.test(code.trim().toUpperCase());
+}
+
+export function normalizeCurrencyCode(code: string): string | null {
+  const upper = code.trim().toUpperCase();
+  return CURRENCY_CODE_RE.test(upper) ? upper : null;
+}
 
 export function resolveFxTarget(
   country?: string | null,

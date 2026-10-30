@@ -77,5 +77,18 @@ export async function GET(request: Request) {
   }
 
   const quote = await getDailyFxQuote({ currency, date });
+  if (!quote) {
+    return NextResponse.json(
+      {
+        error: "fx-unavailable",
+        rate: null,
+        rateDate: null,
+        source: "auto_daily",
+        isFallback: true,
+        warning: "환율을 불러올 수 없어요. 직접 입력해 주세요",
+      },
+      { status: 503 }
+    );
+  }
   return NextResponse.json(quote);
 }

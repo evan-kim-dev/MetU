@@ -16,10 +16,8 @@ import {
 } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
-import {
-  CURRENCY_OPTIONS,
-  PROFILE_STYLE_OPTIONS,
-} from "@/lib/mock/profile";
+import { PROFILE_STYLE_OPTIONS } from "@/lib/mock/profile";
+import { useCurrencyOptions } from "@/lib/fx/currency-list";
 import { LEGAL_LINKS } from "@/lib/legal/documents";
 import { LoginMethodList } from "@/components/auth/LoginMethodList";
 import { useProfileContent } from "@/components/profile/useProfileContent";
@@ -114,6 +112,7 @@ export function ProfileContent() {
     closeDeleteConfirm,
     handleDeleteAccount,
   } = useProfileContent();
+  const currencyOptions = useCurrencyOptions();
 
   const profilePageRef = useRef<HTMLDivElement | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
@@ -344,14 +343,15 @@ export function ProfileContent() {
                 </div>
                 <select
                   value={currency}
-                  onChange={(e) =>
-                    setCurrency(e.target.value as (typeof CURRENCY_OPTIONS)[number])
-                  }
+                  onChange={(e) => setCurrency(e.target.value)}
                   className="rounded-lg border border-line-muted bg-surface-base px-3 py-2 text-sm text-ink-heading focus:border-brand focus:outline-none"
                 >
-                  {CURRENCY_OPTIONS.map((code) => (
-                    <option key={code} value={code}>
-                      {code}
+                  {!currencyOptions.some((o) => o.code === currency) ? (
+                    <option value={currency}>{currency}</option>
+                  ) : null}
+                  {currencyOptions.map((o) => (
+                    <option key={o.code} value={o.code}>
+                      {o.label}
                     </option>
                   ))}
                 </select>

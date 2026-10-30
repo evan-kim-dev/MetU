@@ -201,6 +201,7 @@ export function useLedger(
       participantIds?: string[] | null;
     }): Promise<ExpenseUpsertInput | null> => {
       const fx = await getFxRateToKrw(params.currency);
+      if (!fx || !(fx.krw > 0)) return null;
       const krwAmount = toKrw(params.amount, fx.krw);
       if (krwAmount <= 0) return null;
 

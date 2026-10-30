@@ -1,7 +1,4 @@
-import {
-  FALLBACK_RATES,
-  type FxCurrency,
-} from "@/lib/fx/currencies";
+import { normalizeCurrencyCode } from "@/lib/fx/currencies";
 
 export type FxSource = "auto_daily" | "cash_manual";
 
@@ -14,7 +11,7 @@ export interface FxQuote {
 
 /**
  * L-5 에서 `/api/ledger/fx` 구현. 여기서는 얇은 클라이언트 + 타입만.
- * 실패 시 null (호출측에서 폴백).
+ * 실패 시 null (호출측에서 수동 입력/안내).
  */
 export async function getFxQuote(p: {
   tripId: string;
@@ -23,7 +20,8 @@ export async function getFxQuote(p: {
   paymentMethod: "card" | "cash" | "transfer";
   payerMemberId: string;
 }): Promise<FxQuote | null> {
-  const code = p.currency.trim().toUpperCase();
+  const code = normalizeCurrencyCode(p.currency);
+  if (!code) return null;
   if (code === "KRW") {
     return {
       rate: 1,
@@ -43,7 +41,9 @@ export async function getFxQuote(p: {
     });
     const res = await fetch(`/api/ledger/fx?${qs}`, { cache: "no-store" });
     if (!res.ok) return null;
-    const data = (await res.json()) as Partial<FxQuote>;
+    const data = (await res.json()) as Partial<FxQuote> & {
+      rate?: number | null;
+    };
     if (!(typeof data.rate === "number") || !(data.rate > 0)) return null;
     return {
       rate: data.rate,
@@ -58,40 +58,42 @@ export async function getFxQuote(p: {
 
 export type FxRateResult = {
   krw: number;
-  source: "live" | "fallback";
+  source: "live" | "cached" | "last-known";
+  rateDate?: string;
 };
 
-function normalizeCurrency(code: string): FxCurrency | "KRW" | null {
-  const upper = code.trim().toUpperCase();
-  if (upper === "KRW") return "KRW";
-  if (upper in FALLBACK_RATES) return upper as FxCurrency;
-  return null;
-}
-
-/** 브라우저: `/api/fx` BFF. KRW는 1. (기존 Step 5 호환) */
-export async function getFxRateToKrw(currency: string): Promise<FxRateResult> {
-  const code = normalizeCurrency(currency);
+/** 브라우저: `/api/fx` BFF. KRW는 1. 실패 시 null (상수 폴백 금지). */
+export async function getFxRateToKrw(
+  currency: string
+): Promise<FxRateResult | null> {
+  const code = normalizeCurrencyCode(currency);
+  if (!code) return null;
   if (code === "KRW") return { krw: 1, source: "live" };
-  if (!code) {
-    return { krw: FALLBACK_RATES.USD, source: "fallback" };
-  }
 
   try {
     const res = await fetch(`/api/fx?code=${encodeURIComponent(code)}`, {
       cache: "no-store",
     });
-    if (!res.ok) throw new Error("fx-http");
+    if (!res.ok) return null;
     const data = (await res.json()) as {
       krw?: number;
       source?: string;
+      rateDate?: string;
     };
     const krw = Number(data.krw);
-    if (!Number.isFinite(krw) || krw <= 0) throw new Error("fx-invalid");
+    if (!Number.isFinite(krw) || krw <= 0) return null;
+    const source =
+      data.source === "cached"
+        ? "cached"
+        : data.source === "last-known"
+          ? "last-known"
+          : "live";
     return {
       krw,
-      source: data.source === "live" ? "live" : "fallback",
+      source,
+      rateDate: data.rateDate,
     };
   } catch {
-    return { krw: FALLBACK_RATES[code], source: "fallback" };
+    return null;
   }
 }

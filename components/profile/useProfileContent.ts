@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  CURRENCY_OPTIONS,
-  MOCK_PROFILE,
-} from "@/lib/mock/profile";
+import { MOCK_PROFILE } from "@/lib/mock/profile";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { clearGuestSession } from "@/lib/auth/guest-session";
 import { STORAGE_KEYS } from "@/lib/constants";
@@ -35,8 +32,7 @@ export function useProfileContent() {
     "관심 스타일을 고르면 맞춤 여행지를 추천해 드려요."
   );
   const [styleInsightLoading, setStyleInsightLoading] = useState(false);
-  const [currency, setCurrency] =
-    useState<(typeof CURRENCY_OPTIONS)[number]>("KRW");
+  const [currency, setCurrency] = useState("KRW");
   const [notifications, setNotifications] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [draftName, setDraftName] = useState(profile.name);

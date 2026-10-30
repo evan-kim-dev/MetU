@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { FxAttribution } from "@/components/fx/FxAttribution";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
 import {
   findDuplicateCandidates,
@@ -11,11 +12,11 @@ import { computeKrw } from "@/lib/ledger/money";
 import { computeShares } from "@/lib/ledger/settle";
 import { listExpenses, saveExpense } from "@/lib/ledger/supabase";
 import type { TripMember } from "@/lib/ledger/types";
+import { useCurrencyOptions } from "@/lib/fx/currency-list";
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 const CATEGORIES = ["식비", "교통", "숙소", "관광", "쇼핑", "기타"] as const;
-const CURRENCIES = ["KRW", "JPY", "USD", "EUR", "THB", "VND", "TWD", "GBP"] as const;
 
 type CardProfile = {
   id: string;
@@ -71,12 +72,15 @@ export function ExpenseConfirmSheet({
       : "equal"
   );
   const [cardProfileId, setCardProfileId] = useState<string>("");
+  const currencyOptions = useCurrencyOptions();
   const [fxRate, setFxRate] = useState<number | null>(null);
   const [fxMeta, setFxMeta] = useState<{
     rateDate: string | null;
     source: string;
     isFallback: boolean;
   } | null>(null);
+  const [fxLoadFailed, setFxLoadFailed] = useState(false);
+  const [manualFxDraft, setManualFxDraft] = useState("");
   const [feeUnset, setFeeUnset] = useState(true);
   const [feeRate, setFeeRate] = useState<number | null>(null);
   const [feeFlat, setFeeFlat] = useState(0);
@@ -127,6 +131,7 @@ export function ExpenseConfirmSheet({
     let cancelled = false;
     async function loadFx() {
       if (!spentOn || !currency || !payerId) return;
+      setFxLoadFailed(false);
       const q = await getFxQuote({
         tripId,
         currency,
@@ -142,12 +147,18 @@ export function ExpenseConfirmSheet({
           source: q.source,
           isFallback: q.isFallback,
         });
+        setManualFxDraft(String(q.rate));
+        setFxLoadFailed(false);
       } else if (currency === "KRW") {
         setFxRate(1);
         setFxMeta({ rateDate: spentOn, source: "auto_daily", isFallback: false });
+        setManualFxDraft("1");
+        setFxLoadFailed(false);
       } else {
         setFxRate(null);
         setFxMeta(null);
+        setManualFxDraft("");
+        setFxLoadFailed(true);
       }
     }
     void loadFx();
@@ -411,9 +422,12 @@ export function ExpenseConfirmSheet({
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
               >
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                {!currencyOptions.some((o) => o.code === currency) ? (
+                  <option value={currency}>{currency}</option>
+                ) : null}
+                {currencyOptions.map((o) => (
+                  <option key={o.code} value={o.code}>
+                    {o.label}
                   </option>
                 ))}
               </select>
@@ -531,7 +545,11 @@ export function ExpenseConfirmSheet({
               </p>
               <p className="mt-1 text-ink-muted">
                 환율 {fxRate}
-                {fxMeta?.rateDate ? ` · 기준일 ${fxMeta.rateDate}` : ""}
+                {fxMeta?.rateDate
+                  ? fxMeta.isFallback
+                    ? ` · 마지막 업데이트 ${fxMeta.rateDate}`
+                    : ` · 기준일 ${fxMeta.rateDate}`
+                  : ""}
                 {fxMeta?.source === "cash_manual" ? " · 현금 환율" : " · 일자별"}
                 {fxMeta?.isFallback ? " · 대체값(확인 필요)" : ""}
               </p>
@@ -547,13 +565,45 @@ export function ExpenseConfirmSheet({
                   }}
                 />
               </label>
+              <FxAttribution />
             </div>
           ) : (
-            <p className="text-xs font-semibold text-danger">
-              {paymentMethod === "cash"
-                ? "현금 환율을 입력하거나 설정해 주세요."
-                : "환율을 불러오는 중이거나 실패했어요."}
-            </p>
+            <div className="rounded-xl bg-surface-soft px-3 py-2 text-xs">
+              <p className="font-semibold text-danger">
+                {paymentMethod === "cash"
+                  ? "현금 환율을 입력하거나 설정해 주세요."
+                  : fxLoadFailed
+                    ? "환율을 불러올 수 없어요. 직접 입력해 주세요"
+                    : "환율을 불러오는 중이에요…"}
+              </p>
+              {currency !== "KRW" && paymentMethod !== "cash" ? (
+                <label className="mt-2 flex items-center gap-2">
+                  <span>1 {currency} =</span>
+                  <input
+                    inputMode="decimal"
+                    className="w-28 rounded border border-line px-2 py-1"
+                    value={manualFxDraft}
+                    placeholder="원화"
+                    onChange={(e) => {
+                      setManualFxDraft(e.target.value);
+                      const n = Number(e.target.value);
+                      if (Number.isFinite(n) && n > 0) {
+                        setFxRate(n);
+                        setFxMeta({
+                          rateDate: spentOn,
+                          source: "cash_manual",
+                          isFallback: true,
+                        });
+                      } else {
+                        setFxRate(null);
+                      }
+                    }}
+                  />
+                  <span>원</span>
+                </label>
+              ) : null}
+              <FxAttribution />
+            </div>
           )}
         </div>
 
