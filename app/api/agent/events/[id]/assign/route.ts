@@ -97,9 +97,7 @@ export async function POST(
     return NextResponse.json({ error: "update-failed" }, { status: 500 });
   }
 
-  after(() => {
-    void processEvent(eventId);
-  });
+  after(() => processEvent(eventId));
 
   return NextResponse.json({ ok: true, tripId, status: "received" });
 }

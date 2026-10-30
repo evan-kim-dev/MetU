@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAgentEventForUser } from "@/lib/agent/event-access";
@@ -55,7 +55,7 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  void processEvent(eventId);
+  after(() => processEvent(eventId));
 
   return NextResponse.json({ ok: true, queued: true });
 }
