@@ -1,110 +1,140 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Mail } from "lucide-react";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { Loader2, Mail } from "lucide-react";
+import { AuthMessage } from "@/components/auth/AuthMessage";
+import { EmailAuthForm } from "@/components/auth/EmailAuthForm";
+import { useAuthActions } from "@/components/auth/useAuthActions";
 import { MetULogo } from "@/components/ui/MetULogo";
+import {
+  callbackErrorCode,
+  callbackErrorToUserFacing,
+} from "@/lib/auth/callback-error";
 import { safeNextPath } from "@/lib/security/safe-next";
+import type { UserFacingError } from "@/lib/errors/user-message";
 
-const TAGLINES = [
-  "Nice to Met U!",
-  "AI가 예산에 맞춘 여행 일정을 쉽고 빠르게 추천해 드려요.",
-  "동행 모집부터 체크리스트까지 한번에 준비해요.",
-  "지금 떠날 여행을 바로 계획해 보세요.",
-] as const;
-
-const FEATURES = ["예산 맞춤", "AI 일정", "동행·게시판"] as const;
-
-type EmailMode = "login" | "signup";
+const FEATURES = ["예산 맞춤", "AI 일정", "자동 가계부", "정산"] as const;
 
 export function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { loginWithKakao, loginWithEmail, signUpWithEmail, loginAsGuest } =
-    useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(searchParams.get("error"));
-  const [notice, setNotice] = useState<string | null>(null);
-  const deleted = searchParams.get("deleted") === "1";
-  const [taglineIndex, setTaglineIndex] = useState(0);
-  const [taglineVisible, setTaglineVisible] = useState(true);
+  const { signInWithKakao, continueAsGuest } = useAuthActions();
 
+  const [kakaoLoading, setKakaoLoading] = useState(false);
+  const [kakaoSlowHint, setKakaoSlowHint] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
-  const [emailMode, setEmailMode] = useState<EmailMode>("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [error, setError] = useState<UserFacingError | null>(null);
+  const [guestError, setGuestError] = useState(false);
+  const [postLoginStatus, setPostLoginStatus] = useState<string | null>(null);
+  const deleted = searchParams.get("deleted") === "1";
+  const slowLoginTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const processedQueryError = useRef<string | null>(null);
 
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setTaglineVisible(false);
-      window.setTimeout(() => {
-        setTaglineIndex((prev) => (prev + 1) % TAGLINES.length);
-        setTaglineVisible(true);
-      }, 220);
-    }, 3600);
+  const goNext = useCallback(() => {
+    router.replace(safeNextPath(searchParams.get("next"), "/"));
+  }, [router, searchParams]);
 
-    return () => window.clearInterval(interval);
+  const startPostLoginStatus = useCallback(() => {
+    setPostLoginStatus("로그인했어요. 화면을 불러오는 중이에요…");
+    if (slowLoginTimer.current) clearTimeout(slowLoginTimer.current);
+    slowLoginTimer.current = setTimeout(() => {
+      setPostLoginStatus("조금 오래 걸리고 있어요. 잠시만 기다려 주세요.");
+    }, 5000);
   }, []);
 
-  const goNext = () => {
-    router.replace(safeNextPath(searchParams.get("next"), "/"));
-  };
+  useEffect(() => {
+    return () => {
+      if (slowLoginTimer.current) clearTimeout(slowLoginTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const raw = searchParams.get("error");
+    if (!raw) {
+      processedQueryError.current = null;
+      return;
+    }
+    if (processedQueryError.current === raw) return;
+    processedQueryError.current = raw;
+
+    const code = callbackErrorCode(raw);
+    setError(callbackErrorToUserFacing(code));
+
+    const next = searchParams.get("next");
+    const nextQs = next ? `?next=${encodeURIComponent(next)}` : "";
+    router.replace(`/login${nextQs}`);
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    const clearKakaoLoading = () => {
+      setKakaoLoading(false);
+      setKakaoSlowHint(false);
+    };
+
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) clearKakaoLoading();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") clearKakaoLoading();
+    };
+
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!kakaoLoading) {
+      setKakaoSlowHint(false);
+      return;
+    }
+    const t = window.setTimeout(() => setKakaoSlowHint(true), 3000);
+    return () => window.clearTimeout(t);
+  }, [kakaoLoading]);
 
   const handleKakaoLogin = async () => {
-    if (isLoading) return;
-    setIsLoading(true);
+    if (kakaoLoading || guestLoading) return;
+    setKakaoLoading(true);
     setError(null);
-    setNotice(null);
+    setGuestError(false);
 
-    const message = await loginWithKakao();
-    if (message) {
-      setError(message);
-      setIsLoading(false);
+    const result = await signInWithKakao();
+    if (!result.ok) {
+      setError(result.error);
+      setKakaoLoading(false);
     }
   };
 
   const handleGuest = async () => {
-    await loginAsGuest();
-    goNext();
-  };
-
-  const handleEmailSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (isLoading) return;
-    setIsLoading(true);
+    if (guestLoading || kakaoLoading) return;
+    setGuestLoading(true);
+    setGuestError(false);
     setError(null);
-    setNotice(null);
 
-    if (emailMode === "login") {
-      const message = await loginWithEmail(email, password);
-      if (message) {
-        setError(message);
-        setIsLoading(false);
-        return;
-      }
-      goNext();
-      return;
-    }
-
-    const result = await signUpWithEmail(email, password);
-    if (result.status === "error") {
-      setError(result.message);
-      setIsLoading(false);
-      return;
-    }
-    if (result.status === "confirm_email") {
-      setNotice(result.message);
-      setEmailMode("login");
-      setIsLoading(false);
+    const result = await continueAsGuest();
+    if (!result.ok) {
+      setGuestError(true);
+      setGuestLoading(false);
       return;
     }
     goNext();
   };
+
+  const handleEmailSignedIn = () => {
+    startPostLoginStatus();
+    goNext();
+  };
+
+  const anyLoading = kakaoLoading || guestLoading;
 
   return (
-    <div className="relative flex h-dvh min-h-dvh flex-col overflow-hidden bg-surface-base">
+    <div className="relative flex min-h-dvh flex-col overflow-y-auto overscroll-contain bg-surface-base">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div className="absolute inset-0 bg-gradient-to-b from-surface-base via-canvas to-canvas-deep" />
         <div className="absolute -left-16 top-8 h-48 w-48 rounded-full bg-brand/10 blur-3xl" />
@@ -112,27 +142,27 @@ export function LoginContent() {
         <div className="absolute bottom-48 left-1/2 h-28 w-56 -translate-x-1/2 rounded-full bg-brand/[0.06] blur-2xl" />
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
-        <div className="flex flex-1 flex-col items-center justify-center -translate-y-8">
-          <header className="flex w-full flex-col items-center gap-6 text-center animate-fade-up">
+      <div className="relative z-10 mx-auto flex w-full max-w-mobile flex-1 flex-col px-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="flex flex-1 flex-col items-center justify-center py-6">
+          <header className="flex w-full flex-col items-center gap-5 text-center animate-fade-up">
             <MetULogo variant="hero" showPlannerBadge />
 
-            <div className="flex min-h-touch max-w-prose flex-col items-center justify-center gap-3">
-              <h1
-                className={[
-                  "text-lg font-bold leading-7 tracking-tight text-ink-heading transition-all duration-300",
-                  taglineVisible
-                    ? "translate-y-0 opacity-100"
-                    : "translate-y-1 opacity-0",
-                ].join(" ")}
-              >
-                {TAGLINES[taglineIndex]}
+            <div className="flex max-w-prose flex-col items-center gap-3">
+              <p className="text-xs font-semibold tracking-wide text-brand-strong">
+                Nice to Met U!
+              </p>
+              <h1 className="text-lg font-bold leading-7 tracking-tight text-ink-heading">
+                여행 경비, 같이 쓰고 알아서 정산해요
               </h1>
+              <p className="text-sm leading-6 text-ink-body">
+                카드 알림이 오면 자동으로 가계부에 적고, 동행과 정산까지 한 번에
+                끝내요.
+              </p>
               <div className="flex flex-wrap justify-center gap-2">
                 {FEATURES.map((feature, index) => (
                   <span
                     key={feature}
-                    className="ai-glass-chip animate-fade-up"
+                    className="ai-glass-chip animate-fade-up px-3 py-1.5 text-xs"
                     style={{ animationDelay: `${120 + index * 80}ms` }}
                   >
                     {feature}
@@ -148,150 +178,94 @@ export function LoginContent() {
           style={{ animationDelay: "180ms" }}
         >
           <div className="flex flex-col gap-3">
-            {deleted && !error && !notice ? (
-              <p className="rounded-xl border border-line-soft bg-white/90 px-3 py-2 text-center text-xs font-medium text-ink-body backdrop-blur-sm animate-fade-up">
+            {deleted && !error && !guestError ? (
+              <AuthMessage kind="info">
                 회원 탈퇴가 완료되었어요. 이용해 주셔서 감사합니다.
-              </p>
-            ) : null}
-            {notice ? (
-              <p className="rounded-xl border border-brand/20 bg-brand/5 px-3 py-2 text-center text-xs font-medium text-brand-strong backdrop-blur-sm animate-fade-up">
-                {notice}
-              </p>
+              </AuthMessage>
             ) : null}
             {error ? (
-              <p className="rounded-xl border border-danger-border bg-white/90 px-3 py-2 text-center text-xs font-medium text-danger backdrop-blur-sm animate-fade-up">
-                {error}
+              <AuthMessage kind="error">{error.message}</AuthMessage>
+            ) : null}
+            {guestError ? (
+              <AuthMessage
+                kind="error"
+                action={{
+                  label: "다시 시도",
+                  onClick: () => void handleGuest(),
+                }}
+              >
+                둘러보기를 시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.
+              </AuthMessage>
+            ) : null}
+            {postLoginStatus ? (
+              <p role="status" className="text-center text-xs text-ink-body">
+                {postLoginStatus}
               </p>
             ) : null}
 
             <button
               type="button"
               onClick={() => void handleKakaoLogin()}
-              disabled={isLoading}
-              className="relative flex h-touch w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-kakao text-base font-bold text-kakao-ink shadow-kakao-sm transition-transform active:scale-99 disabled:opacity-80"
+              disabled={anyLoading}
+              aria-busy={kakaoLoading}
+              className="relative flex min-h-touch w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-kakao text-base font-bold text-kakao-ink shadow-kakao-sm transition-transform active:scale-99 disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
             >
-              {isLoading ? (
-                <span className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/35 to-transparent" />
-              ) : null}
-              <KakaoIcon />
-              {isLoading ? "카카오로 이동 중…" : "카카오 간편로그인"}
+              {kakaoLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+              ) : (
+                <KakaoIcon />
+              )}
+              {kakaoLoading ? "카카오로 이동 중…" : "카카오 간편로그인"}
             </button>
+            {kakaoSlowHint ? (
+              <p className="text-center text-xs text-ink-caption">
+                오래 걸리면 다시 눌러 주세요
+              </p>
+            ) : null}
 
             <button
               type="button"
               onClick={() => {
                 setEmailOpen((prev) => !prev);
                 setError(null);
-                setNotice(null);
+                setGuestError(false);
               }}
-              disabled={isLoading}
-              className="flex h-touch w-full items-center justify-center gap-2 rounded-2xl border border-line-soft bg-surface-white text-sm font-bold text-ink-heading shadow-sm transition-all active:scale-99 active:bg-surface-soft disabled:opacity-60"
+              disabled={anyLoading}
+              aria-expanded={emailOpen}
+              className="flex min-h-touch w-full items-center justify-center gap-2 rounded-2xl border border-line-soft bg-surface-white text-sm font-bold text-ink-heading shadow-sm transition-all active:scale-99 active:bg-surface-soft disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
             >
               <Mail className="h-4 w-4 text-brand" strokeWidth={2.4} />
-              이메일로 {emailMode === "signup" ? "가입" : "로그인"}
+              이메일로 계속하기
             </button>
 
             {emailOpen ? (
-              <form
-                onSubmit={(e) => void handleEmailSubmit(e)}
-                className="flex flex-col gap-2.5 rounded-2xl border border-line-soft bg-surface-white/95 p-3.5 shadow-sm backdrop-blur-sm animate-fade-up"
-              >
-                <div className="flex gap-2 rounded-xl bg-surface-soft p-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmailMode("login");
-                      setError(null);
-                      setNotice(null);
-                    }}
-                    className={[
-                      "flex-1 rounded-lg py-2 text-xs font-bold transition-colors",
-                      emailMode === "login"
-                        ? "bg-surface-white text-ink-heading shadow-sm"
-                        : "text-ink-caption",
-                    ].join(" ")}
-                  >
-                    로그인
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmailMode("signup");
-                      setError(null);
-                      setNotice(null);
-                    }}
-                    className={[
-                      "flex-1 rounded-lg py-2 text-xs font-bold transition-colors",
-                      emailMode === "signup"
-                        ? "bg-surface-white text-ink-heading shadow-sm"
-                        : "text-ink-caption",
-                    ].join(" ")}
-                  >
-                    회원가입
-                  </button>
-                </div>
-
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-2xs font-bold text-ink-caption">이메일</span>
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={isLoading}
-                    placeholder="you@example.com"
-                    className="h-11 rounded-xl border border-line-soft bg-surface-base px-3.5 text-sm text-ink-heading outline-none placeholder:text-ink-caption focus:border-brand/40 disabled:opacity-60"
-                  />
-                </label>
-
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-2xs font-bold text-ink-caption">비밀번호</span>
-                  <input
-                    type="password"
-                    autoComplete={
-                      emailMode === "signup" ? "new-password" : "current-password"
-                    }
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                    placeholder="6자 이상"
-                    className="h-11 rounded-xl border border-line-soft bg-surface-base px-3.5 text-sm text-ink-heading outline-none placeholder:text-ink-caption focus:border-brand/40 disabled:opacity-60"
-                  />
-                </label>
-
-                <button
-                  type="submit"
-                  disabled={isLoading || !email.trim() || password.length < 6}
-                  className="relative mt-0.5 flex h-11 w-full items-center justify-center overflow-hidden rounded-xl bg-brand text-sm font-bold text-surface-white transition-transform active:scale-99 disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <span className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-                  ) : null}
-                  {isLoading
-                    ? emailMode === "signup"
-                      ? "가입 중…"
-                      : "로그인 중…"
-                    : emailMode === "signup"
-                      ? "이메일로 가입하기"
-                      : "이메일로 로그인"}
-                </button>
-              </form>
+              <EmailAuthForm variant="full" onSignedIn={handleEmailSignedIn} />
             ) : null}
 
-            <button
-              type="button"
-              onClick={handleGuest}
-              disabled={isLoading}
-              className="h-touch w-full rounded-2xl border-0 bg-surface-white shadow-sm text-sm font-semibold text-ink-body backdrop-blur-sm transition-all active:scale-99 active:bg-surface-soft disabled:opacity-60"
-            >
-              둘러보기
-            </button>
+            <div className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => void handleGuest()}
+                disabled={anyLoading}
+                aria-busy={guestLoading}
+                className="min-h-touch w-full rounded-2xl border-0 bg-surface-white text-sm font-semibold text-ink-body shadow-sm backdrop-blur-sm transition-all active:scale-99 active:bg-surface-soft disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+              >
+                {guestLoading ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    들어가는 중…
+                  </span>
+                ) : (
+                  "로그인 없이 둘러보기"
+                )}
+              </button>
+              <p className="text-center text-xs leading-5 text-ink-body">
+                둘러보기에서는 저장과 자동 기록 연결 같은 일부 기능이 제한돼요.
+              </p>
+            </div>
           </div>
 
-          <p className="text-center text-xs leading-5 text-ink-caption">
+          <p className="text-center text-xs leading-5 text-ink-body">
             계속하면{" "}
             <Link href="/legal/terms" className="underline underline-offset-2">
               이용약관
@@ -300,7 +274,7 @@ export function LoginContent() {
             <Link href="/legal/privacy" className="underline underline-offset-2">
               개인정보처리방침
             </Link>
-            에 동의하게 됩니다.
+            에 동의하게 돼요.
           </p>
         </div>
       </div>

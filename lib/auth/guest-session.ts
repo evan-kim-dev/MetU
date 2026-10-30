@@ -21,8 +21,8 @@ export function loadGuestSession(): boolean {
 }
 
 /** httpOnly 서명 쿠키 발급 (document.cookie 직접 쓰기 금지) */
-export async function saveGuestSession(): Promise<void> {
-  if (typeof window === "undefined") return;
+export async function saveGuestSession(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
   sessionStorage.setItem(
     STORAGE_KEYS.auth,
     JSON.stringify({
@@ -31,10 +31,16 @@ export async function saveGuestSession(): Promise<void> {
       loggedInAt: new Date().toISOString(),
     } satisfies GuestSession)
   );
-  await fetch("/api/auth/guest", {
-    method: "POST",
-    credentials: "same-origin",
-  });
+  try {
+    const res = await fetch("/api/auth/guest", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    return res.ok;
+  } catch {
+    sessionStorage.removeItem(STORAGE_KEYS.auth);
+    return false;
+  }
 }
 
 export async function clearGuestSession(): Promise<void> {
@@ -59,11 +65,15 @@ export async function syncGuestSession(): Promise<boolean> {
 
   const guest = loadGuestSession();
   if (guest) {
-    await fetch("/api/auth/guest", {
-      method: "POST",
-      credentials: "same-origin",
-    });
-    return true;
+    try {
+      const res = await fetch("/api/auth/guest", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
   }
 
   return false;

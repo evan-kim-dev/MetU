@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/security/safe-next";
 import { resolveSiteOrigin } from "@/lib/site-url";
+import { callbackErrorCode } from "@/lib/auth/callback-error";
 
 function htmlEscape(value: string) {
   return value
@@ -55,17 +56,29 @@ function completeLoginResponse(targetUrl: string) {
   });
 }
 
+function loginErrorRedirect(
+  siteOrigin: string,
+  code: ReturnType<typeof callbackErrorCode>,
+  next: string
+) {
+  const nextParam =
+    next && next !== "/" ? `&next=${encodeURIComponent(next)}` : "";
+  return NextResponse.redirect(
+    `${siteOrigin}/login?error=${encodeURIComponent(code)}${nextParam}`
+  );
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = safeNextPath(searchParams.get("next"), "/");
-  const errorDescription = searchParams.get("error_description");
+  const oauthError =
+    searchParams.get("error") ?? searchParams.get("error_description");
   const siteOrigin = resolveSiteOrigin(origin);
 
-  if (errorDescription) {
-    return NextResponse.redirect(
-      `${siteOrigin}/login?error=${encodeURIComponent(errorDescription)}`
-    );
+  if (oauthError) {
+    const errCode = callbackErrorCode(oauthError);
+    return loginErrorRedirect(siteOrigin, errCode, next);
   }
 
   if (code) {
@@ -80,10 +93,8 @@ export async function GET(request: Request) {
         `${siteOrigin}${next}${joiner}_b=${bust}`
       );
     }
-    return NextResponse.redirect(
-      `${siteOrigin}/login?error=${encodeURIComponent(error.message)}`
-    );
+    return loginErrorRedirect(siteOrigin, "exchange_failed", next);
   }
 
-  return NextResponse.redirect(`${siteOrigin}/login?error=missing_code`);
+  return loginErrorRedirect(siteOrigin, "missing_code", next);
 }
