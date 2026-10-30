@@ -1,12 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { TripListCard } from "@/components/trips/TripListCard";
-import { VisitedWorldMap } from "@/components/trips/VisitedWorldMap";
 import { useTrips } from "@/lib/trips/TripProvider";
+
+const VisitedWorldMap = dynamic(
+  () =>
+    import("@/components/trips/VisitedWorldMap").then((m) => m.VisitedWorldMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="h-40 w-full animate-pulse rounded-2xl bg-surface-soft"
+        aria-hidden
+      />
+    ),
+  }
+);
 
 export function TripsPageContent() {
   const { trips, isReady, removeTrip } = useTrips();

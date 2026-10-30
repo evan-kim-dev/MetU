@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import {
@@ -13,6 +13,11 @@ import {
 
 const Schema = z.object({
   answer: z.number(),
+});
+
+beforeEach(() => {
+  __resetMemoryUsageSinkForTests();
+  resetUsageSinkForTests();
 });
 
 afterEach(() => {

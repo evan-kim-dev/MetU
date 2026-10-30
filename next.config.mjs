@@ -115,9 +115,7 @@ const nextConfig = {
     ],
   },
   webpack: (config, { dev }) => {
-    if (!dev) {
-      config.cache = false;
-    }
+    // Keep filesystem watch polling on Windows/OneDrive; prod webpack cache stays on.
     if (dev) {
       config.watchOptions = {
         poll: 1000,
