@@ -3,6 +3,7 @@ import "server-only";
 import { getAgentAdmin } from "@/lib/agent/admin";
 import { createEvent } from "@/lib/agent/ingest";
 import { extractTextDrafts } from "@/lib/agent/extract-text";
+import { preferSmsParseText } from "@/lib/agent/sms-text";
 import { notifyUsers } from "@/lib/agent/notify";
 import {
   decide,
@@ -419,8 +420,7 @@ export async function processEvent(eventId: string): Promise<void> {
       return;
     }
 
-    const text =
-      typeof payload.text === "string" ? payload.text : "";
+    const text = preferSmsParseText(payload);
 
     let drafts: ExpenseDraftInput[] = [];
     if (event.kind === "sms" || event.kind === "text") {

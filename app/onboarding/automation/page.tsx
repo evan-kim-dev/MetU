@@ -6,6 +6,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MobileShell } from "@/components/layout/MobileShell";
 import { NOTIF_APP_PRESETS } from "@/lib/ledger/notif/apps";
+import {
+  agentEventStatusLabel,
+  formatRelativeKo,
+  formatSmsPreviewLabel,
+  type SmsParsePreviewLabel,
+} from "@/lib/agent/event-status";
 import type { DetectedPlatform } from "@/lib/onboarding/automation";
 import { IOS_SHORTCUT_ICLOUD_URL } from "@/lib/onboarding/constants";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
@@ -18,10 +24,25 @@ const SAMPLE_SMS_JSON =
 const SAMPLE_TEST_JSON =
   '{"text":"MTU-TEST 연결 확인","receivedAt":"2026-10-30T12:00:00+09:00"}';
 
+type RecentEventRow = {
+  id: string;
+  status: string;
+  createdAt: string;
+  source: string;
+  tripId: string | null;
+  textPreview: string;
+  error: string | null;
+  reason: string | null;
+  preview?: SmsParsePreviewLabel | null;
+};
+
 type AutomationStatusResponse = {
   lastServerTestAt: string | null;
   lastDeviceTestAt: string | null;
+  lastNotificationAt: string | null;
   lastDroppedApp: string | null;
+  recentEvents?: RecentEventRow[];
+  unassignedCount?: number;
 };
 
 function detectPlatformClient(): DetectedPlatform {
@@ -48,9 +69,14 @@ export default function AutomationOnboardingPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tokenHint, setTokenHint] = useState<string | null>(null);
-  const [plainTokenFallback, setPlainTokenFallback] = useState<string | null>(
+  /** Plaintext shown once after issue — never re-fetched from server. */
+  const [plainToken, setPlainToken] = useState<string | null>(null);
+  const [recentEvents, setRecentEvents] = useState<RecentEventRow[]>([]);
+  const [unassignedCount, setUnassignedCount] = useState(0);
+  const [lastNotificationAt, setLastNotificationAt] = useState<string | null>(
     null
   );
+  const [lastDroppedApp, setLastDroppedApp] = useState<string | null>(null);
 
   useEffect(() => {
     setPlatform(detectPlatformClient());
@@ -97,7 +123,14 @@ export default function AutomationOnboardingPage() {
     if (!res.ok) return;
     const json = (await res.json()) as AutomationStatusResponse;
     if (json.lastServerTestAt) setServerOk(true);
-    if (json.lastDeviceTestAt) setDeviceOk(true);
+    // Device path OK when MTU-TEST recorded OR any notification arrived (Prompt 1/2).
+    if (json.lastDeviceTestAt || json.lastNotificationAt) setDeviceOk(true);
+    setLastNotificationAt(json.lastNotificationAt ?? null);
+    setLastDroppedApp(json.lastDroppedApp ?? null);
+    setRecentEvents(Array.isArray(json.recentEvents) ? json.recentEvents : []);
+    setUnassignedCount(
+      typeof json.unassignedCount === "number" ? json.unassignedCount : 0
+    );
   }, []);
 
   useEffect(() => {
@@ -107,10 +140,9 @@ export default function AutomationOnboardingPage() {
     return () => window.clearInterval(id);
   }, [step, refreshChecks]);
 
-  async function addIphoneAutomation() {
+  async function issueConnectToken() {
     setBusy(true);
     setError(null);
-    setPlainTokenFallback(null);
     setTokenHint(null);
     try {
       const res = await fetch("/api/agent/tokens", {
@@ -122,24 +154,49 @@ export default function AutomationOnboardingPage() {
       if (!res.ok || !json.token) {
         throw new Error(json.error ?? "연결 코드를 만들지 못했어요");
       }
+      setPlainToken(json.token);
       try {
         await navigator.clipboard.writeText(json.token);
         setTokenHint(
-          "연결 코드를 복사했어요. 단축어 추가 화면으로 이동해요."
+          "연결 코드를 만들었고 클립보드에도 복사했어요. 확인한 뒤 아래 자동화 추가를 눌러 주세요."
         );
-        window.location.href = IOS_SHORTCUT_ICLOUD_URL;
-        return;
       } catch {
-        setPlainTokenFallback(json.token);
         setTokenHint(
-          "클립보드 복사에 실패했어요. 아래 코드를 복사한 뒤 단축어를 추가해 주세요."
+          "연결 코드를 만들었어요. 아래 코드를 복사한 뒤 자동화 추가를 눌러 주세요."
         );
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "자동화 추가에 실패했어요");
+      setError(e instanceof Error ? e.message : "연결 코드 발급에 실패했어요");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function copyPlainToken() {
+    if (!plainToken) return;
+    try {
+      await navigator.clipboard.writeText(plainToken);
+      setTokenHint("연결 코드를 복사했어요.");
+    } catch {
+      setError("클립보드 복사에 실패했어요. 코드를 길게 눌러 직접 복사해 주세요.");
+    }
+  }
+
+  async function openIphoneShortcut() {
+    if (!plainToken) {
+      setError("먼저 연결 코드를 만들어 주세요.");
+      return;
+    }
+    setError(null);
+    try {
+      await navigator.clipboard.writeText(plainToken);
+      setTokenHint("연결 코드를 다시 복사했어요. 단축어 추가 화면으로 이동해요.");
+    } catch {
+      setTokenHint(
+        "클립보드 복사에 실패했어요. 위에 보이는 코드를 복사한 뒤 단축어에서 붙여 넣으세요."
+      );
+    }
+    window.location.href = IOS_SHORTCUT_ICLOUD_URL;
   }
 
   async function runServerTest() {
@@ -337,47 +394,53 @@ export default function AutomationOnboardingPage() {
           <section className="space-y-4">
             <h2 className="text-lg font-extrabold text-ink-heading">연결 코드 &amp; 단축어</h2>
             <p className="text-sm text-ink-body">
-              여행은 나중에 만들어도 돼요. 먼저 알림 연결만 해 두면, 여행이 생길 때 자동으로
-              이어서 기록해요.
+              여행은 나중에 만들어도 돼요. 먼저 연결 코드를 만들고 복사한 뒤, 단축어를
+              추가해요.
             </p>
             <PrimaryButton
               fullWidth
               disabled={busy}
-              onClick={() => void addIphoneAutomation()}
+              onClick={() => void issueConnectToken()}
             >
-              iPhone 자동화 추가
+              {plainToken ? "연결 코드 다시 만들기" : "연결 코드 만들기"}
             </PrimaryButton>
             {tokenHint ? (
               <p className="text-xs font-semibold text-brand">{tokenHint}</p>
             ) : null}
-            {plainTokenFallback ? (
+            {plainToken ? (
               <div className="space-y-2 rounded-2xl bg-amber-50 p-3 text-amber-950">
-                <p className="text-xs font-bold">연결 코드 (한 번만 보여 드려요)</p>
-                <code className="block break-all text-xs">{plainTokenFallback}</code>
-                <div className="flex flex-col gap-2">
-                  <PrimaryButton
-                    fullWidth
-                    variant="secondary"
-                    onClick={() =>
-                      void navigator.clipboard.writeText(plainTokenFallback)
-                    }
-                  >
-                    코드 수동 복사
-                  </PrimaryButton>
-                  <a href={IOS_SHORTCUT_ICLOUD_URL} className="block">
-                    <PrimaryButton fullWidth variant="secondary">
-                      단축어 추가 열기
-                    </PrimaryButton>
-                  </a>
-                </div>
+                <p className="text-xs font-bold">
+                  내 연결 코드 (이 화면을 벗어나면 다시 볼 수 없어요)
+                </p>
+                <code className="block break-all select-all text-xs font-semibold">
+                  {plainToken}
+                </code>
+                <PrimaryButton
+                  fullWidth
+                  variant="secondary"
+                  onClick={() => void copyPlainToken()}
+                >
+                  연결 코드 복사
+                </PrimaryButton>
               </div>
-            ) : null}
+            ) : (
+              <p className="text-xs text-ink-muted">
+                코드를 만든 뒤에야 자동화 추가 버튼이 활성화돼요.
+              </p>
+            )}
+            <PrimaryButton
+              fullWidth
+              disabled={busy || !plainToken}
+              onClick={() => void openIphoneShortcut()}
+            >
+              iPhone 자동화 추가
+            </PrimaryButton>
             <ol className="list-decimal space-y-2 pl-5 text-sm text-ink-body">
+              <li>연결 코드를 만들고 복사하기</li>
               <li>
-                &quot;단축어 추가&quot; 누르기 → 연결 코드 묻는 칸에 붙여넣기
+                &quot;iPhone 자동화 추가&quot; → 단축어에서 연결 코드 칸에 붙여넣기
               </li>
-              <li>자동화의 앱을 내 카드앱으로 바꾸기</li>
-              <li>&quot;실행 전에 확인&quot; 끄기</li>
+              <li>자동화의 앱을 내 카드앱으로 바꾸기 · &quot;실행 전에 확인&quot; 끄기</li>
             </ol>
             <pre className="overflow-x-auto rounded-xl bg-surface-soft p-3 text-[11px] leading-5 text-ink-heading">
               {`POST ${typeof window !== "undefined" ? window.location.origin : ""}/api/ingest/sms
@@ -507,6 +570,82 @@ ${SAMPLE_SMS_JSON}
                 테스트 알림 보내기(웹 푸시) — 푸시 설정 후 사용 가능
               </p>
             </div>
+
+            <div className="space-y-3 rounded-2xl border border-line-soft bg-surface-white p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-extrabold text-ink-heading">
+                  최근 수신
+                </h3>
+                {lastNotificationAt ? (
+                  <span className="text-[11px] text-ink-muted">
+                    마지막 {formatRelativeKo(lastNotificationAt)}
+                  </span>
+                ) : null}
+              </div>
+              {lastDroppedApp ? (
+                <p className="text-xs text-ink-muted">
+                  최근 앱: {lastDroppedApp}
+                </p>
+              ) : null}
+              {recentEvents.length === 0 ? (
+                <p className="text-xs leading-relaxed text-ink-muted">
+                  아직 수신된 알림이 없어요 — 단축어 응답에서 에러를 확인하세요.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {recentEvents.map((ev) => (
+                    <li
+                      key={ev.id}
+                      className="rounded-xl bg-surface-soft px-3 py-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-ink-heading">
+                          {agentEventStatusLabel(ev.status)}
+                        </span>
+                        <span className="text-[10px] text-ink-muted">
+                          {formatRelativeKo(ev.createdAt)}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs text-ink-body">
+                        {ev.textPreview || "(내용 없음)"}
+                      </p>
+                      {ev.preview
+                        ? (() => {
+                            const label = formatSmsPreviewLabel(ev.preview!);
+                            return label ? (
+                              <p className="mt-0.5 text-[11px] font-semibold text-brand">
+                                {label}
+                              </p>
+                            ) : null;
+                          })()
+                        : null}
+                      {ev.error || ev.reason ? (
+                        <p className="mt-0.5 text-[10px] text-danger">
+                          {[ev.error, ev.reason].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {unassignedCount > 0 ? (
+                <div className="flex flex-col gap-2 pt-1 sm:flex-row">
+                  <Link
+                    href="/agent/inbox"
+                    className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-amber-50 text-sm font-bold text-amber-950 ring-1 ring-amber-200"
+                  >
+                    수신함 보기
+                  </Link>
+                  <Link
+                    href="/onboarding"
+                    className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-line text-sm font-bold text-ink-heading"
+                  >
+                    여행 만들기
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+
             <PrimaryButton fullWidth disabled={busy || !serverOk} onClick={() => void finish()}>
               시작하기
             </PrimaryButton>

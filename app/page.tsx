@@ -8,6 +8,7 @@ import { ActiveTripSection } from "@/components/home/ActiveTripSection";
 import { AISmartTipsShortcut } from "@/components/home/AISmartTipsShortcut";
 import { HomeGreeting } from "@/components/home/HomeGreeting";
 import { HomeNotificationBell } from "@/components/home/HomeNotificationBell";
+import { UnassignedInboxBanner } from "@/components/home/UnassignedInboxBanner";
 import { ActiveTripSmartTips } from "@/components/home/ActiveTripSmartTips";
 import { RecommendedGrid } from "@/components/home/RecommendedGrid";
 import { SectionErrorBoundary } from "@/components/ui/SectionErrorBoundary";
@@ -31,6 +32,8 @@ export default async function HomePage() {
             <span className="ai-gradient-text">어디로 떠날까요?</span>
           </h2>
         </section>
+
+        <UnassignedInboxBanner />
 
         {/* 새 여행 계획 CTA */}
         <Link

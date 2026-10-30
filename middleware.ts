@@ -31,7 +31,10 @@ function isAutomationOnboardingExcluded(pathname: string) {
     pathname.startsWith("/share-target") ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/s/") ||
-    pathname.startsWith("/trips/share/")
+    pathname.startsWith("/trips/share/") ||
+    // Allow viewing received unassigned events while onboarding is still pending.
+    pathname === "/agent/inbox" ||
+    pathname.startsWith("/agent/inbox/")
   );
 }
 
