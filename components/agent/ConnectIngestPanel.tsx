@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { ShortcutGuide } from "@/components/onboarding/guide/ShortcutGuide";
+import { CopyButton } from "@/components/onboarding/guide/CopyButton";
+import { apiFetchJson } from "@/lib/api/fetch-json";
+import type { UserFacingError } from "@/lib/errors/user-message";
+
 type TokenRow = {
   id: string;
   label: string;
@@ -10,30 +15,47 @@ type TokenRow = {
   revoked: boolean;
 };
 
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60_000);
+  if (min < 1) return "방금 전";
+  if (min < 60) return `${min}분 전`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
+}
+
+function formatCreated(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
 export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
   const [tokens, setTokens] = useState<TokenRow[]>([]);
   const [plainOnce, setPlainOnce] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [openIos, setOpenIos] = useState(false);
-  const [openAndroid, setOpenAndroid] = useState(false);
-
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "https://met-u.vercel.app";
-  const endpoint = `${origin}/api/ingest/sms`;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<UserFacingError | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     const qs =
       tripId != null && tripId.length > 0
         ? `?tripId=${encodeURIComponent(tripId)}`
         : "";
-    const res = await fetch(`/api/agent/tokens${qs}`);
+    const res = await apiFetchJson<{ tokens: TokenRow[] }>(
+      `/api/agent/tokens${qs}`,
+      undefined,
+      { source: "api" }
+    );
+    setLoading(false);
     if (!res.ok) {
-      setError("토큰 목록을 불러오지 못했어요");
+      setError(res.error);
       return;
     }
-    const json = (await res.json()) as { tokens: TokenRow[] };
-    setTokens(json.tokens ?? []);
+    setTokens(res.data.tokens ?? []);
   }, [tripId]);
 
   useEffect(() => {
@@ -47,17 +69,28 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
     try {
       const body: { label: string; tripId?: string } = { label: "자동 수집" };
       if (tripId) body.tripId = tripId;
-      const res = await fetch("/api/agent/tokens", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = (await res.json()) as { token?: string; error?: string };
-      if (!res.ok || !json.token) {
-        setError(json.error ?? "토큰을 만들지 못했어요");
+      const res = await apiFetchJson<{ token?: string; error?: string }>(
+        "/api/agent/tokens",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+        { source: "api" }
+      );
+      if (!res.ok) {
+        setError(res.error);
         return;
       }
-      setPlainOnce(json.token);
+      if (!res.data.token) {
+        setError({
+          code: "unknown",
+          message: "연결 코드를 만들지 못했어요.",
+          retryable: true,
+        });
+        return;
+      }
+      setPlainOnce(res.data.token);
       await load();
     } finally {
       setBusy(false);
@@ -67,147 +100,158 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
   async function revoke(id: string) {
     setBusy(true);
     try {
-      await fetch(`/api/agent/tokens/${id}`, { method: "DELETE" });
+      await apiFetchJson(`/api/agent/tokens/${id}`, { method: "DELETE" });
+      setRevokeTarget(null);
       await load();
     } finally {
       setBusy(false);
     }
   }
 
-  const curl =
-    plainOnce != null
-      ? `curl -X POST "${endpoint}" -H "Authorization: Bearer ${plainOnce}" -H "content-type: application/json" -d "{\\"text\\":\\"테스트 승인 10,000원\\"}"`
-      : `curl -X POST "${endpoint}" -H "Authorization: Bearer <토큰>" -H "content-type: application/json" -d "{\\"text\\":\\"테스트 승인 10,000원\\"}"`;
-
   return (
-    <div className="space-y-6 px-4 py-6 text-sm text-zinc-800">
+    <div className="space-y-6 px-4 py-6 text-sm text-ink-body">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">자동 수집 연결</h1>
-        <p className="text-zinc-600">
+        <h1 className="text-xl font-semibold tracking-tight text-ink-heading">
+          카드 알림 자동 연결
+        </h1>
+        <p className="text-ink-muted">
           {tripId
-            ? "카드 문자를 이 여행 원장으로 보내요. 토큰은 한 번만 보여 드려요."
+            ? "이 여행에 카드 알림을 자동으로 모아요. 연결 코드는 만들 때 한 번만 보여 드려요."
             : "카드 알림을 먼저 연결해요. 여행은 나중에 만들어도 이어서 기록돼요."}
         </p>
       </header>
+
+      {error ? (
+        <div className="rounded-xl bg-red-50 p-3 text-red-800" role="alert">
+          <p>{error.message}</p>
+          {error.retryable ? (
+            <button
+              type="button"
+              className="mt-2 min-h-11 rounded-lg bg-white px-3 py-2 text-sm font-medium"
+              onClick={() => void load()}
+            >
+              다시 시도
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <section className="space-y-2">
         <button
           type="button"
           disabled={busy}
+          aria-busy={busy}
           onClick={() => void createToken()}
-          className="min-h-11 w-full rounded-xl bg-zinc-900 px-4 py-3 text-white disabled:opacity-50"
+          className="min-h-touch w-full rounded-xl bg-brand px-4 py-3 font-semibold text-white disabled:opacity-50"
         >
-          수집 토큰 만들기
+          {busy ? "만드는 중…" : "연결 코드 만들기"}
         </button>
-        {error ? <p className="text-red-600">{error}</p> : null}
         {plainOnce ? (
           <div className="space-y-2 rounded-xl bg-amber-50 p-3 text-amber-950">
-            <p className="font-medium">다시 볼 수 없어요 — 지금 복사하세요</p>
-            <code className="block break-all text-xs">{plainOnce}</code>
-            <button
-              type="button"
-              className="min-h-11 rounded-lg bg-white px-3 py-2"
-              onClick={() => void navigator.clipboard.writeText(plainOnce)}
+            <p className="font-medium">
+              이 화면을 벗어나면 다시 볼 수 없어요
+            </p>
+            <code
+              className="block break-all font-mono text-xs"
+              aria-label="연결 코드"
             >
-              토큰 복사
-            </button>
+              {plainOnce}
+            </code>
+            <CopyButton text={plainOnce} label="연결 코드 복사" />
           </div>
         ) : null}
-        <div className="space-y-1 rounded-xl bg-zinc-50 p-3">
-          <p className="text-xs text-zinc-500">엔드포인트</p>
-          <code className="block break-all text-xs">{endpoint}</code>
-          <button
-            type="button"
-            className="min-h-11 rounded-lg bg-white px-3 py-2"
-            onClick={() => void navigator.clipboard.writeText(curl)}
-          >
-            테스트 curl 복사
-          </button>
-        </div>
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-medium">안내</h2>
-        <p className="text-xs text-zinc-500">
-          iPhone은 단축어 자동화로 카드 앱 알림을{" "}
-          <code className="rounded bg-zinc-100 px-1">/api/ingest/sms</code> 에
-          보내요. 본문은{" "}
-          <code className="rounded bg-zinc-100 px-1">
-            {`{ "text", "receivedAt" }`}
-          </code>
-          , 헤더는 Authorization: Bearer 연결 코드예요.
-        </p>
-        <button
-          type="button"
-          className="flex min-h-11 w-full items-center justify-between rounded-xl border border-zinc-200 px-3"
-          onClick={() => setOpenIos((v) => !v)}
-        >
-          <span>iPhone 단축어</span>
-          <span>{openIos ? "접기" : "펼치기"}</span>
-        </button>
-        {openIos ? (
-          <ol className="list-decimal space-y-1 pl-5 text-zinc-600">
-            <li>온보딩의 &quot;iPhone 자동화 추가&quot;로 단축어·연결 코드 받기</li>
-            <li>자동화의 앱을 내 카드 앱으로 바꾸기, &quot;실행 전에 확인&quot; 끄기</li>
-            <li>
-              POST JSON{" "}
-              {`{ "text": 알림본문, "receivedAt": ISO시각 }`}
-            </li>
-            <li>Authorization: Bearer 연결 코드</li>
-          </ol>
-        ) : null}
-        <button
-          type="button"
-          className="flex min-h-11 w-full items-center justify-between rounded-xl border border-zinc-200 px-3"
-          onClick={() => setOpenAndroid((v) => !v)}
-        >
-          <span>Android (예시)</span>
-          <span>{openAndroid ? "접기" : "펼치기"}</span>
-        </button>
-        {openAndroid ? (
-          <p className="text-zinc-600">
-            MacroDroid 등 자동화 앱의 문자/알림 수신 트리거 → HTTP 요청으로 같은
-            엔드포인트에 POST (실기기 검증 전 예시예요).
-          </p>
-        ) : null}
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="font-medium">토큰 목록</h2>
-        {tokens.length === 0 ? (
-          <p className="text-zinc-500">아직 토큰이 없어요.</p>
+        <h2 className="font-medium text-ink-heading">내 연결 코드</h2>
+        {loading ? (
+          <div className="space-y-2" aria-hidden>
+            <div className="h-12 animate-pulse rounded-xl bg-surface-soft" />
+            <div className="h-12 animate-pulse rounded-xl bg-surface-soft" />
+            <div className="h-12 animate-pulse rounded-xl bg-surface-soft" />
+          </div>
+        ) : tokens.length === 0 ? (
+          <p className="text-ink-muted">아직 만든 연결 코드가 없어요</p>
         ) : (
           <ul className="space-y-2">
             {tokens.map((t) => (
               <li
                 key={t.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-zinc-200 px-3 py-2"
+                className="rounded-xl border border-line-muted px-3 py-2"
               >
-                <div>
-                  <p>{t.label || "이름 없음"}</p>
-                  <p className="text-xs text-zinc-500">
-                    {t.revoked
-                      ? "폐기됨"
-                      : t.lastUsedAt
-                        ? `최근 사용 ${new Date(t.lastUsedAt).toLocaleString("ko-KR")}`
-                        : "미사용"}
-                  </p>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-ink-heading">
+                      {t.label || "이름 없음"}
+                    </p>
+                    <p className="text-xs text-ink-muted">
+                      만든 날짜 {formatCreated(t.createdAt)}
+                    </p>
+                    <p className="text-xs text-ink-muted">
+                      {t.revoked
+                        ? "중지됨"
+                        : t.lastUsedAt
+                          ? `마지막 사용 ${relativeTime(t.lastUsedAt)}`
+                          : "아직 사용 안 함"}
+                    </p>
+                    <span
+                      className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${
+                        t.revoked
+                          ? "bg-surface-soft text-ink-muted"
+                          : "bg-green-50 text-green-900"
+                      }`}
+                    >
+                      {t.revoked ? "중지됨" : "사용 중"}
+                    </span>
+                  </div>
+                  {!t.revoked ? (
+                    revokeTarget === t.id ? (
+                      <div className="max-w-[11rem] space-y-2 text-xs">
+                        <p>
+                          정말 중지할까요? 이 코드를 쓰는 단축어는 더 이상
+                          동작하지 않아요.
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            className="min-h-11 flex-1 rounded-lg bg-red-600 px-2 text-white"
+                            onClick={() => void revoke(t.id)}
+                          >
+                            중지
+                          </button>
+                          <button
+                            type="button"
+                            className="min-h-11 flex-1 rounded-lg border border-line-muted px-2"
+                            onClick={() => setRevokeTarget(null)}
+                          >
+                            취소
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="min-h-11 shrink-0 rounded-lg px-3 text-red-600"
+                        onClick={() => setRevokeTarget(t.id)}
+                      >
+                        사용 중지
+                      </button>
+                    )
+                  ) : null}
                 </div>
-                {!t.revoked ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="min-h-11 rounded-lg px-3 text-red-600"
-                    onClick={() => void revoke(t.id)}
-                  >
-                    폐기
-                  </button>
-                ) : null}
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      <ShortcutGuide
+        variant="embedded"
+        defaultCollapsed
+        devToken={plainOnce}
+      />
     </div>
   );
 }
