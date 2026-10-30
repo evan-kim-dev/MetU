@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LedgerTab } from "@/components/trips/ledger/LedgerTab";
 import type { ExpenseDraft } from "@/components/trips/ledger/ExpenseForm";
@@ -28,13 +29,26 @@ import {
   TripIconButton,
   TripInfoCard,
 } from "@/components/trips/TripDetailParts";
-import { SortableDayList } from "@/components/trips/SortableDayList";
 import { ItineraryChatBar } from "@/components/trips/ItineraryChatBar";
 import { TripMapPanel } from "@/components/trips/TripMapPanel";
 import { useTripDetailEditor } from "@/components/trips/useTripDetailEditor";
 import type { MapPoint } from "@/lib/map/trip-points";
 import { formatKRW } from "@/lib/shared/format";
 import { computeTripDDay, formatTripDDayLabel } from "@/lib/trips/d-day";
+
+const SortableDayList = dynamic(
+  () =>
+    import("@/components/trips/SortableDayList").then((m) => m.SortableDayList),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="h-32 w-full animate-pulse rounded-2xl bg-surface-soft"
+        aria-hidden
+      />
+    ),
+  }
+);
 
 interface TripDetailContentProps {
   tripId: string;
