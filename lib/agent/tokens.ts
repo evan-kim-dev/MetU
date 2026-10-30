@@ -204,10 +204,13 @@ export async function requireIngestToken(
   }
 
   try {
-    await admin
+    const { error: touchErr } = await admin
       .from("agent_ingest_tokens")
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", data.id);
+    if (touchErr) {
+      console.error("[requireIngestToken] last_used_at", touchErr.message);
+    }
   } catch (err) {
     console.error(
       "[requireIngestToken] last_used_at",

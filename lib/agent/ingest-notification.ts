@@ -149,8 +149,6 @@ export function scheduleProcessIfNeeded(
   const result = outcome.result;
   if (outcome.shouldProcess && result.ok && !result.duplicate) {
     const eventId = result.id;
-    after(() => {
-      void processEvent(eventId);
-    });
+    after(() => processEvent(eventId));
   }
 }

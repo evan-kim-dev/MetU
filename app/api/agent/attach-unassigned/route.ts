@@ -77,9 +77,17 @@ export async function POST(request: Request) {
   }
 
   if (requeueIds.length > 0) {
-    after(() => {
+    after(async () => {
       for (const id of requeueIds) {
-        void processEvent(id);
+        try {
+          await processEvent(id);
+        } catch (err) {
+          console.error(
+            "[attach-unassigned] processEvent",
+            id,
+            err instanceof Error ? err.message : err
+          );
+        }
       }
     });
   }

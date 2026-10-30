@@ -72,9 +72,7 @@ export async function POST(request: Request) {
     );
   }
 
-  after(() => {
-    void processEvent(created.id);
-  });
+  after(() => processEvent(created.id));
 
   return NextResponse.json(
     { eventId: created.id, status: "received" },

@@ -86,9 +86,7 @@ export async function POST(request: Request) {
   }
 
   if (tripId) {
-    after(() => {
-      void processEvent(created.id);
-    });
+    after(() => processEvent(created.id));
     return NextResponse.json(
       { eventId: created.id, status: "received", tripId },
       { status: 202 }
