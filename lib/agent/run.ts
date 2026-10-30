@@ -2,6 +2,10 @@ import "server-only";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
 import { createEvent } from "@/lib/agent/ingest";
+import {
+  pushFollowUpEventId,
+  runDomainFollowUps,
+} from "@/lib/agent/domain-followup";
 import { extractTextDrafts } from "@/lib/agent/extract-text";
 import { preferSmsParseText } from "@/lib/agent/sms-text";
 import { notifyUsers } from "@/lib/agent/notify";
@@ -333,6 +337,8 @@ export async function processEvent(eventId: string): Promise<void> {
       return;
     }
 
+    const domainFollowUpIds: string[] = [];
+
     // Notification-first: attach by received_at window, else leave unassigned.
     if (!event.trip_id) {
       const receivedMs = parseReceivedAtMs(
@@ -638,7 +644,7 @@ export async function processEvent(eventId: string): Promise<void> {
           reasons: decision.reasons,
         });
 
-        await createEvent({
+        const domainCreated = await createEvent({
           userId: event.user_id,
           tripId: event.trip_id,
           source: "domain",
@@ -646,6 +652,7 @@ export async function processEvent(eventId: string): Promise<void> {
           payload: { type: "expense_changed", expenseId },
           idempotencyKey: `expense_changed:${event.trip_id}:${expenseId}`,
         });
+        pushFollowUpEventId(domainFollowUpIds, domainCreated);
         await notifyUsers({
           userIds: [event.user_id],
           type: "expense_added",
@@ -700,6 +707,8 @@ export async function processEvent(eventId: string): Promise<void> {
         error: anyFailedCommit ? "commit-failed" : null,
       })
       .eq("id", event.id);
+
+    await runDomainFollowUps(event.kind, domainFollowUpIds, processEvent);
   } catch (err) {
     console.error("[processEvent]", err);
     await admin

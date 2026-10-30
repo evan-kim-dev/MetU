@@ -16,6 +16,8 @@ export async function notifyUsers(args: {
   const admin = getAgentAdmin();
   if (!admin) return;
 
+  const pushes: Array<Promise<unknown>> = [];
+
   for (const userId of args.userIds) {
     try {
       const { data: notificationId, error } = await admin.rpc("agent_notify", {
@@ -42,7 +44,7 @@ export async function notifyUsers(args: {
           },
           notificationId: String(notificationId),
         });
-        void sendPush(userId, pushPayload);
+        pushes.push(sendPush(userId, pushPayload));
       }
     } catch (err) {
       console.error(
@@ -50,5 +52,9 @@ export async function notifyUsers(args: {
         err instanceof Error ? err.message : err
       );
     }
+  }
+
+  if (pushes.length > 0) {
+    await Promise.allSettled(pushes);
   }
 }
