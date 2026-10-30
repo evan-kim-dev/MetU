@@ -18,7 +18,8 @@ const VARIANT_STYLES: Record<Variant, string> = {
 };
 
 const VARIANT_DISABLED_STYLES: Record<Variant, string> = {
-  primary: "disabled:bg-line-muted disabled:text-surface-white/80 disabled:shadow-none",
+  primary:
+    "disabled:bg-none disabled:bg-line-muted disabled:text-ink-caption disabled:shadow-none disabled:hover:brightness-100",
   secondary: "disabled:text-ink-caption disabled:bg-surface-soft",
 };
 

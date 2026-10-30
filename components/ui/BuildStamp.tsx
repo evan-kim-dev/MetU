@@ -1,17 +1,50 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const BUILD_TAG = process.env.NEXT_PUBLIC_BUILD_TAG ?? "";
+const SHOW_KEY = "metu.showBuild";
 
-/** Tiny deploy marker so we can tell which build the browser is actually running. */
-export function BuildStamp() {
+function BuildStampInner() {
+  const searchParams = useSearchParams();
+  const [show, setShow] = useState(false);
+
   useEffect(() => {
-    if (!BUILD_TAG) return;
-    document.documentElement.dataset.build = BUILD_TAG.slice(0, 8);
-  }, []);
+    if (BUILD_TAG) {
+      document.documentElement.dataset.build = BUILD_TAG.slice(0, 8);
+    }
 
-  if (!BUILD_TAG) return null;
+    const flag = searchParams?.get("build");
+    if (flag === "1") {
+      try {
+        localStorage.setItem(SHOW_KEY, "1");
+      } catch {
+        /* ignore */
+      }
+    } else if (flag === "0") {
+      try {
+        localStorage.removeItem(SHOW_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const fromStorage =
+      typeof window !== "undefined" &&
+      (() => {
+        try {
+          return localStorage.getItem(SHOW_KEY) === "1";
+        } catch {
+          return false;
+        }
+      })();
+
+    setShow(process.env.NODE_ENV !== "production" || fromStorage);
+  }, [searchParams]);
+
+  if (!BUILD_TAG || !show) return null;
 
   return (
     <span
@@ -20,5 +53,14 @@ export function BuildStamp() {
     >
       {BUILD_TAG.slice(0, 8)}
     </span>
+  );
+}
+
+/** Tiny deploy marker; visible badge only in non-prod or ?build=1. */
+export function BuildStamp() {
+  return (
+    <Suspense fallback={null}>
+      <BuildStampInner />
+    </Suspense>
   );
 }
