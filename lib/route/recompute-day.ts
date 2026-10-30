@@ -33,8 +33,8 @@ function recomputeDayKeepSlots(day: TripDaySchedule): TripDaySchedule {
 }
 
 /**
- * Client-safe recompute. `mode: "full"` requires server module —
- * call from a Route Handler / server action via `recompute-day.server`.
+ * Client-safe recompute. `mode: "full"` falls back to keep-slots on the client
+ * (matrix/TSP live in Route Handlers).
  */
 export async function recomputeDay(
   day: TripDaySchedule,

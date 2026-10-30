@@ -19,9 +19,6 @@ export const CATEGORY_COLORS: Record<WritablePostCategory, string> = {
   chat: "bg-violet-50 text-violet-700",
 };
 
-/** Early-access: 데모 게시글 없음 */
-export const MOCK_COMMUNITY_POSTS: CommunityPost[] = [];
-
 export function isSeedCommunityPost(post: Pick<CommunityPost, "id" | "authorId">): boolean {
   return (
     post.authorId.startsWith("seed-") ||

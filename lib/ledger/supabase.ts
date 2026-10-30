@@ -163,14 +163,6 @@ export async function ensureOwnerMember(
   return memberFromRow(data as MemberRow);
 }
 
-export async function addVirtualMember(
-  supabase: SupabaseClient,
-  tripId: string,
-  name: string
-): Promise<TripMember | null> {
-  return addTripMember(supabase, tripId, name);
-}
-
 export async function addTripMember(
   supabase: SupabaseClient,
   tripId: string,
@@ -473,13 +465,6 @@ export async function saveExpense(
   return expenses.find((e) => e.id === id) ?? null;
 }
 
-export async function deleteExpense(
-  supabase: SupabaseClient,
-  id: string
-): Promise<boolean> {
-  return deleteLedgerExpense(supabase, id);
-}
-
 export async function deleteLedgerExpense(
   supabase: SupabaseClient,
   expenseId: string
@@ -491,7 +476,7 @@ export async function deleteLedgerExpense(
   return !error;
 }
 
-export async function syncTripSpent(
+async function syncTripSpent(
   supabase: SupabaseClient,
   tripId: string
 ): Promise<void> {

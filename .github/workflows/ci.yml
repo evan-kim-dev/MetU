@@ -15,12 +15,12 @@ jobs:
           cache: npm
       # VERIFY: lockfile optional (@emnapi via sharp-wasm32) can desync across OS; match Vercel installCommand.
       - run: npm install
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test
 
   build:
     runs-on: ubuntu-latest
-    continue-on-error: true
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-ci-build-only

@@ -12,7 +12,6 @@ const eslintConfig = [
     ignores: [
       ".next/**",
       "node_modules/**",
-      "backend/**",
       "coverage/**",
       "public/sw.js",
       "scripts/**",
