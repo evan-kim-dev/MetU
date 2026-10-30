@@ -6,6 +6,7 @@ import {
   ingestNotificationPayload,
   scheduleProcessIfNeeded,
 } from "@/lib/agent/ingest-notification";
+import { ingestStatusMessage } from "@/lib/agent/ingest-source";
 import { requireIngestToken } from "@/lib/agent/tokens";
 
 export const maxDuration = 60;
@@ -18,7 +19,7 @@ const BodySchema = z.object({
   receivedAt: z.string().datetime({ offset: true }).optional(),
   device: z.string().max(80).optional(),
   idempotencyKey: z.string().min(8).max(128).optional(),
-  source: z.enum(["sms_shortcut", "sms_android", "sim"]).optional(),
+  source: z.string().max(40).optional(),
 });
 
 export async function POST(request: Request) {
@@ -48,19 +49,24 @@ export async function POST(request: Request) {
     receivedAt,
     device: parsed.data.device,
     idempotencyKey: parsed.data.idempotencyKey,
-    source: parsed.data.source ?? "sms_android",
+    source: parsed.data.source,
   });
 
   if (!outcome.result.ok) {
     return NextResponse.json({ error: outcome.result.error }, { status: 500 });
   }
 
-  if (outcome.result.duplicate) {
+  const duplicate = outcome.result.duplicate;
+  const message = ingestStatusMessage(outcome.status, duplicate);
+
+  if (duplicate) {
     return NextResponse.json(
       {
         eventId: outcome.result.id,
         duplicate: true,
         status: outcome.status,
+        tripId: outcome.tripId,
+        message,
       },
       { status: 200 }
     );
@@ -68,13 +74,13 @@ export async function POST(request: Request) {
 
   scheduleProcessIfNeeded(outcome);
 
-  const statusCode = outcome.status === "received" ? 202 : 200;
   return NextResponse.json(
     {
       eventId: outcome.result.id,
       status: outcome.status,
       tripId: outcome.tripId,
+      message,
     },
-    { status: statusCode }
+    { status: outcome.status === "received" ? 202 : 200 }
   );
 }

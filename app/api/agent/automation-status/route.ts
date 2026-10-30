@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getAgentAdmin } from "@/lib/agent/admin";
 import { computeAutomationState } from "@/lib/onboarding/automation";
 import {
   loadAgentUserState,
@@ -11,6 +12,27 @@ import { guardApi } from "@/lib/security/guard";
 
 export const maxDuration = 30;
 
+type EventRow = {
+  id: string;
+  status: string;
+  created_at: string;
+  source: string;
+  trip_id: string | null;
+  error: string | null;
+  payload: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
+};
+
+function textPreview(payload: Record<string, unknown> | null): string {
+  if (!payload) return "";
+  const raw =
+    (typeof payload.text === "string" && payload.text) ||
+    (typeof payload.body === "string" && payload.body) ||
+    "";
+  const trimmed = raw.trim().replace(/\s+/g, " ");
+  return trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed;
+}
+
 export async function GET(request: Request) {
   const guard = await guardApi(request, { bucket: "ledger-parse" });
   if (guard instanceof NextResponse) return guard;
@@ -19,20 +41,66 @@ export async function GET(request: Request) {
   }
 
   const userId = guard.identity.userId;
+  const admin = getAgentAdmin();
+
   const [row, hasActiveToken, activeTrip] = await Promise.all([
     loadAgentUserState(userId),
     userHasActiveIngestToken(userId),
     userHasActiveTrip(userId),
   ]);
 
+  let recentEvents: Array<{
+    id: string;
+    status: string;
+    createdAt: string;
+    source: string;
+    tripId: string | null;
+    textPreview: string;
+    error: string | null;
+    reason: string | null;
+  }> = [];
+  let unassignedCount = 0;
+
+  if (admin) {
+    const { data: events } = await admin
+      .from("agent_events")
+      .select("id, status, created_at, source, trip_id, error, payload, result")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    recentEvents = ((events ?? []) as EventRow[]).map((e) => ({
+      id: e.id,
+      status: e.status,
+      createdAt: e.created_at,
+      source: e.source,
+      tripId: e.trip_id,
+      textPreview: textPreview(e.payload),
+      error: e.error,
+      reason:
+        typeof e.result?.reason === "string"
+          ? e.result.reason
+          : null,
+    }));
+
+    const { count } = await admin
+      .from("agent_events")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "unassigned");
+    unassignedCount = count ?? 0;
+  }
+
   const status = row?.onboarding_status ?? "pending";
   const silenceHours = Number(process.env.AGENT_SILENCE_HOURS ?? "24");
+  const hasRecentEvent = recentEvents.length > 0;
   const state = computeAutomationState({
     status,
     lastNotificationAt: row?.last_notification_at,
     lastDeviceTestAt: row?.last_device_test_at,
     hasActiveToken,
     activeTrip,
+    hasRecentEvent,
     silenceHours: Number.isFinite(silenceHours) ? silenceHours : 24,
   });
 
@@ -47,5 +115,7 @@ export async function GET(request: Request) {
     state,
     hasActiveToken,
     activeTrip,
+    recentEvents,
+    unassignedCount,
   });
 }

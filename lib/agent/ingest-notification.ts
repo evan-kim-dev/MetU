@@ -5,8 +5,10 @@ import { after } from "next/server";
 import {
   createEvent,
   defaultNotificationIdempotencyKey,
+  type AgentEventSource,
   type CreateEventResult,
 } from "@/lib/agent/ingest";
+import { normalizeIngestSource } from "@/lib/agent/ingest-source";
 import { processEvent } from "@/lib/agent/run";
 import {
   pickTripForReceivedAt,
@@ -24,7 +26,8 @@ export type NotificationIngestInput = {
   receivedAt: string;
   device?: string | null;
   idempotencyKey?: string;
-  source?: "sms_shortcut" | "sms_android" | "sim";
+  /** Client-provided; unknown values normalize to sms_shortcut. */
+  source?: string | null;
 };
 
 export type NotificationIngestOutcome = {
@@ -32,6 +35,7 @@ export type NotificationIngestOutcome = {
   status: "received" | "unassigned" | "ignored";
   tripId: string | null;
   shouldProcess: boolean;
+  source: AgentEventSource;
 };
 
 export async function ingestNotificationPayload(
@@ -39,7 +43,9 @@ export async function ingestNotificationPayload(
 ): Promise<NotificationIngestOutcome> {
   const receivedAt = input.receivedAt;
   const isDeviceTest = input.body.trimStart().startsWith("MTU-TEST");
+  const source = normalizeIngestSource(input.source);
 
+  // Always touch — including when the event later turns out duplicate.
   await touchNotificationAt(input.userId, input.app, {
     deviceTest: isDeviceTest,
   });
@@ -64,15 +70,17 @@ export async function ingestNotificationPayload(
     const created = await createEvent({
       userId: input.userId,
       tripId: null,
-      source: input.source ?? "sms_android",
+      source,
       kind: "text",
       payload: {
         app: input.app,
         title: input.title,
         body: input.body,
         received_at: receivedAt,
+        receivedAt,
         device: input.device ?? null,
         test: true,
+        text: input.body,
       },
       idempotencyKey,
       status: "ignored",
@@ -82,19 +90,21 @@ export async function ingestNotificationPayload(
       status: "ignored",
       tripId: null,
       shouldProcess: false,
+      source,
     };
   }
 
   const created = await createEvent({
     userId: input.userId,
     tripId,
-    source: input.source ?? "sms_android",
+    source,
     kind: "text",
     payload: {
       app: input.app,
       title: input.title,
       body: input.body,
       received_at: receivedAt,
+      receivedAt,
       device: input.device ?? null,
       text: [input.title, input.body].filter(Boolean).join("\n"),
     },
@@ -107,6 +117,7 @@ export async function ingestNotificationPayload(
     status: tripId ? "received" : "unassigned",
     tripId,
     shouldProcess: Boolean(tripId && created.ok && !created.duplicate),
+    source,
   };
 }
 
@@ -114,11 +125,7 @@ export function scheduleProcessIfNeeded(
   outcome: NotificationIngestOutcome
 ): void {
   const result = outcome.result;
-  if (
-    outcome.shouldProcess &&
-    result.ok &&
-    !result.duplicate
-  ) {
+  if (outcome.shouldProcess && result.ok && !result.duplicate) {
     const eventId = result.id;
     after(() => {
       void processEvent(eventId);

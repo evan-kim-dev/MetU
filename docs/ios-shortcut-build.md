@@ -4,7 +4,7 @@
 
 ## 준비물
 
-1. MetU 웹에서 발급한 **연결 코드** (Bearer 토큰, `mtu_` 로 시작)
+1. MetU 웹에서 발급한 **연결 코드** (Bearer 토큰, `metu-` 로 시작. 예: `metu-K7QF-2MXP-9HCA-R4TD`)
 2. iPhone (알림 자동화는 최신 iOS 권장)
 3. 단축어 앱
 
@@ -51,7 +51,7 @@ curl 예시:
 
 ```bash
 curl -X POST "https://met-u.vercel.app/api/ingest/notification" \
-  -H "Authorization: Bearer mtu_YOUR_TOKEN" \
+  -H "Authorization: Bearer metu-XXXX-XXXX-XXXX-XXXX" \
   -H "content-type: application/json" \
   -d "{\"app\":\"Test\",\"title\":\"ping\",\"body\":\"MTU-TEST\",\"received_at\":\"2026-10-30T12:00:00+09:00\"}"
 ```
