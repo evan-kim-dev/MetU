@@ -17,6 +17,8 @@ const ALLOWLIST: Record<string, string> = {
   "users/[id]/route.ts": "profile read with own getUser check",
   "users/batch/route.ts": "profile batch with own getUser check",
   "share-target/route.ts": "PWA share_target POST redirect; no secrets",
+  "places/autocomplete/route.ts":
+    "public Travelpayouts autocomplete proxy; IP rate-limited, no user data write",
 };
 
 function walk(dir: string, out: string[] = []): string[] {

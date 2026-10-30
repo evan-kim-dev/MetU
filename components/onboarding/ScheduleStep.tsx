@@ -10,7 +10,7 @@ import {
 import { StepCard } from "@/components/ui/StepCard";
 import { AIInsightBadge } from "@/components/ui/AIInsightBadge";
 import { AirportSearchField } from "@/components/onboarding/AirportSearchField";
-import { formatCityCountryLabel } from "@/lib/airports/data";
+import { formatPlaceDestination } from "@/lib/places/autocomplete";
 import { buildLocalScheduleInsight } from "@/lib/ai/schedule-insight";
 import { parseBudgetAmount } from "@/lib/ai/budget-insight";
 import { getFlexibleYearOptions } from "./types";
@@ -276,7 +276,7 @@ export function ScheduleStep({
             value={origin}
             onChange={onOriginChange}
             placesMode="cities"
-            formatValue={formatCityCountryLabel}
+            formatValue={formatPlaceDestination}
           />
           <div className="relative z-10 -my-1 flex justify-center">
             <button
@@ -297,7 +297,7 @@ export function ScheduleStep({
             value={destination}
             onChange={onDestinationChange}
             placesMode="cities"
-            formatValue={formatCityCountryLabel}
+            formatValue={formatPlaceDestination}
           />
         </div>
         <p className="text-xs text-ink-caption">

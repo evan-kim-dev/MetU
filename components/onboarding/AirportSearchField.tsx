@@ -1,14 +1,27 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { MapPin, Plane, Search, X } from "lucide-react";
 import {
-  formatCityCountryLabel,
-  formatPlaceLabel,
-  groupPlacesByContinent,
-  searchAirportPlaces,
-  searchCityPlaces,
-  type AirportPlace,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type Ref,
+} from "react";
+import { Globe, Loader2, MapPin, Plane, Search, X } from "lucide-react";
+import {
+  formatPlaceDestination,
+  formatPlaceFlightLabel,
+  formatPlaceListSubtitle,
+  formatPlaceListTitle,
+  type PlaceItem,
+} from "@/lib/places/autocomplete";
+import { usePlaceAutocomplete } from "@/lib/places/usePlaceAutocomplete";
+import {
+  getContinentId,
+  CONTINENT_LABELS,
+  type ContinentId,
 } from "@/lib/airports/data";
 
 interface AirportSearchFieldProps {
@@ -16,14 +29,59 @@ interface AirportSearchFieldProps {
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
-  /** 선택 시 값 포맷 (기본: place.name) */
-  formatValue?: (place: AirportPlace) => string;
+  /** 목록에서 장소 선택 시 (자유 입력은 호출되지 않음) */
+  onSelectPlace?: (place: PlaceItem) => void;
+  /** 선택 시 값 포맷 (기본: mode별 PlaceItem 포맷) */
+  formatValue?: (place: PlaceItem) => string;
   variant?: "default" | "compact";
   /**
    * all — 도시+공항(코드 포함, 항공권 체크리스트용)
-   * cities — 도시·나라만 (온보딩용, IATA 숨김)
+   * cities — 도시·나라 (온보딩·빠른 여행)
    */
   placesMode?: "all" | "cities";
+  inputRef?: Ref<HTMLInputElement>;
+  inputId?: string;
+  disabled?: boolean;
+  maxLength?: number;
+  "aria-invalid"?: boolean | "true" | "false";
+  "aria-describedby"?: string;
+  onInputKeyDown?: (e: ReactKeyboardEvent<HTMLInputElement>) => void;
+}
+
+function groupLocalByContinent(
+  places: PlaceItem[]
+): Array<{ id: ContinentId | "flat"; label: string; places: PlaceItem[] }> {
+  const buckets = new Map<ContinentId, PlaceItem[]>();
+  for (const place of places) {
+    const fake = {
+      id: place.id,
+      kind: "city" as const,
+      name: place.name,
+      city: place.name,
+      country: place.countryName ?? "",
+      keywords: [] as string[],
+    };
+    const id = getContinentId(fake);
+    const list = buckets.get(id);
+    if (list) list.push(place);
+    else buckets.set(id, [place]);
+  }
+  const order: ContinentId[] = [
+    "east-asia",
+    "southeast-asia",
+    "europe",
+    "americas",
+    "oceania",
+    "middle-east",
+    "other",
+  ];
+  return order
+    .filter((id) => (buckets.get(id)?.length ?? 0) > 0)
+    .map((id) => ({
+      id,
+      label: CONTINENT_LABELS[id],
+      places: buckets.get(id) ?? [],
+    }));
 }
 
 export function AirportSearchField({
@@ -31,17 +89,28 @@ export function AirportSearchField({
   placeholder,
   value,
   onChange,
+  onSelectPlace,
   formatValue,
   variant = "default",
   placesMode = "all",
+  inputRef,
+  inputId,
+  disabled,
+  maxLength,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
+  onInputKeyDown,
 }: AirportSearchFieldProps) {
   const resolvedFormat =
     formatValue ??
-    (placesMode === "cities" ? formatCityCountryLabel : formatPlaceLabel);
+    (placesMode === "cities" ? formatPlaceDestination : formatPlaceFlightLabel);
   const listId = useId();
+  const autoId = useId();
+  const fieldId = inputId ?? autoId;
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   useEffect(() => {
     setQuery(value);
@@ -52,6 +121,7 @@ export function AirportSearchField({
       if (!rootRef.current?.contains(event.target as Node)) {
         setOpen(false);
         setQuery(value);
+        setActiveIndex(-1);
       }
     };
     document.addEventListener("mousedown", onPointerDown);
@@ -64,31 +134,121 @@ export function AirportSearchField({
     return query;
   }, [open, query, value]);
 
-  const results = useMemo(() => {
-    if (placesMode === "cities") {
-      return searchCityPlaces(searchText, 40);
-    }
-    return searchAirportPlaces(searchText, 40);
-  }, [placesMode, searchText]);
-
-  const groupedResults = useMemo(
-    () => groupPlacesByContinent(results),
-    [results]
+  const { items, loading, source } = usePlaceAutocomplete(
+    searchText,
+    placesMode
   );
 
-  const handleSelect = (place: AirportPlace) => {
+  const useGrouped =
+    !searchText.trim() && (source === "local" || source === null);
+
+  const groupedResults = useMemo(() => {
+    if (!useGrouped) {
+      return [{ id: "flat" as const, label: "", places: items }];
+    }
+    return groupLocalByContinent(items);
+  }, [items, useGrouped]);
+
+  const flatPlaces = useMemo(
+    () => groupedResults.flatMap((g) => g.places),
+    [groupedResults]
+  );
+
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [searchText, items]);
+
+  const handleSelect = (place: PlaceItem) => {
     const next = resolvedFormat(place);
+    onChange(next);
+    onSelectPlace?.(place);
+    setQuery(next);
+    setOpen(false);
+    setActiveIndex(-1);
+  };
+
+  const handleFreeText = () => {
+    const next = query.trim();
+    if (!next) return;
     onChange(next);
     setQuery(next);
     setOpen(false);
+    setActiveIndex(-1);
+  };
+
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (!open) {
+      if (e.key === "ArrowDown") {
+        setOpen(true);
+        e.preventDefault();
+        return;
+      }
+      onInputKeyDown?.(e);
+      return;
+    }
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+      setQuery(value);
+      setActiveIndex(-1);
+      return;
+    }
+
+    const freeTextOption =
+      searchText.trim() && flatPlaces.length === 0 && !loading ? 1 : 0;
+    const count = flatPlaces.length + freeTextOption;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (count === 0) return;
+      setActiveIndex((i) => (i + 1) % count);
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (count === 0) return;
+      setActiveIndex((i) => (i <= 0 ? count - 1 : i - 1));
+      return;
+    }
+    if (e.key === "Enter") {
+      if (activeIndex >= 0 && activeIndex < flatPlaces.length) {
+        e.preventDefault();
+        const place = flatPlaces[activeIndex];
+        if (place) handleSelect(place);
+        return;
+      }
+      if (
+        freeTextOption &&
+        (activeIndex === flatPlaces.length || activeIndex < 0) &&
+        searchText.trim()
+      ) {
+        // 결과 0개면 Enter로 자유 입력 확정
+        if (flatPlaces.length === 0) {
+          e.preventDefault();
+          handleFreeText();
+          return;
+        }
+      }
+      onInputKeyDown?.(e);
+      return;
+    }
+
+    onInputKeyDown?.(e);
   };
 
   const isCompact = variant === "compact";
-  const citiesOnly = placesMode === "cities";
+  const activeOptionId =
+    activeIndex >= 0 && activeIndex < flatPlaces.length
+      ? `${listId}-opt-${activeIndex}`
+      : activeIndex === flatPlaces.length && searchText.trim()
+        ? `${listId}-free`
+        : undefined;
 
   return (
     <div ref={rootRef} className="relative flex flex-col gap-1">
-      <span
+      <label
+        htmlFor={fieldId}
         className={
           isCompact
             ? "text-xs font-semibold text-ink-caption"
@@ -96,7 +256,7 @@ export function AirportSearchField({
         }
       >
         {label}
-      </span>
+      </label>
       <div className="flex gap-1.5">
         <div
           className={[
@@ -113,11 +273,18 @@ export function AirportSearchField({
             <Search className="h-4 w-4 shrink-0 text-ink-caption" strokeWidth={2.2} />
           ) : null}
           <input
+            ref={inputRef}
+            id={fieldId}
             role="combobox"
             aria-expanded={open}
             aria-controls={listId}
             aria-autocomplete="list"
+            aria-activedescendant={activeOptionId}
+            aria-invalid={ariaInvalid}
+            aria-describedby={ariaDescribedBy}
             autoComplete="off"
+            disabled={disabled}
+            maxLength={maxLength}
             placeholder={placeholder}
             value={query}
             onFocus={() => setOpen(true)}
@@ -126,8 +293,9 @@ export function AirportSearchField({
               onChange(e.target.value);
               setOpen(true);
             }}
+            onKeyDown={onKeyDown}
             className={[
-              "w-full min-w-0 flex-1 bg-transparent text-ink-heading placeholder:text-ink-caption/70 focus:outline-none",
+              "w-full min-w-0 flex-1 bg-transparent text-ink-heading placeholder:text-ink-caption/70 focus:outline-none disabled:opacity-60",
               isCompact ? "text-sm" : "py-3.5 text-base",
             ].join(" ")}
           />
@@ -140,7 +308,7 @@ export function AirportSearchField({
                 onChange("");
                 setOpen(true);
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-ink-caption transition-colors active:bg-surface-soft"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-ink-caption transition-colors active:bg-surface-soft"
             >
               <X className="h-4 w-4" strokeWidth={2.4} />
             </button>
@@ -159,48 +327,70 @@ export function AirportSearchField({
               : "top-[calc(100%+6px)] rounded-2xl",
           ].join(" ")}
         >
-          {results.length === 0 ? (
-            <li className="px-3 py-2.5 text-sm text-ink-caption">
-              검색 결과가 없어요
-            </li>
+          {flatPlaces.length === 0 && !loading ? (
+            searchText.trim() ? (
+              <li role="option" id={`${listId}-free`} aria-selected={activeIndex === 0}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={handleFreeText}
+                  className={[
+                    "flex min-h-11 w-full items-center px-4 py-2.5 text-left text-sm font-semibold text-brand transition-colors",
+                    activeIndex === 0 ? "bg-brand/8" : "hover:bg-surface-soft",
+                  ].join(" ")}
+                >
+                  ‘{searchText.trim()}’ 그대로 쓰기
+                </button>
+              </li>
+            ) : (
+              <li className="px-3 py-2.5 text-sm text-ink-caption">
+                검색 결과가 없어요
+              </li>
+            )
           ) : (
             groupedResults.map((group) => (
               <li key={group.id} role="presentation">
-                <div
-                  className={[
-                    "sticky top-0 z-[1] border-b border-line-soft/80 bg-surface-soft/95 px-3 py-1.5 text-[11px] font-bold tracking-wide text-ink-caption backdrop-blur-sm",
-                    isCompact ? "px-2.5" : "px-4",
-                  ].join(" ")}
-                >
-                  {group.label}
-                </div>
-                <ul role="group" aria-label={group.label}>
+                {group.label ? (
+                  <div
+                    className={[
+                      "sticky top-0 z-[1] border-b border-line-soft/80 bg-surface-soft/95 py-1.5 text-[11px] font-bold tracking-wide text-ink-caption backdrop-blur-sm",
+                      isCompact ? "px-2.5" : "px-4",
+                    ].join(" ")}
+                  >
+                    {group.label}
+                  </div>
+                ) : null}
+                <ul role="group" aria-label={group.label || "검색 결과"}>
                   {group.places.map((place) => {
-                    const isAirport = place.kind === "airport";
+                    const flatIdx = flatPlaces.indexOf(place);
                     const selected = value === resolvedFormat(place);
-                    const title = citiesOnly
-                      ? place.city
-                      : resolvedFormat(place);
-                    const subtitle = citiesOnly
-                      ? place.country
-                      : place.kind === "city"
-                        ? place.country
-                        : place.country
-                          ? `${place.city} · ${place.country}`
-                          : place.city || place.name;
+                    const active = flatIdx === activeIndex;
+                    const title = formatPlaceListTitle(place, placesMode);
+                    const subtitle = formatPlaceListSubtitle(place);
+                    const Icon =
+                      place.type === "country"
+                        ? Globe
+                        : place.type === "airport"
+                          ? Plane
+                          : MapPin;
                     return (
-                      <li key={place.id} role="option" aria-selected={selected}>
+                      <li
+                        key={place.id}
+                        id={`${listId}-opt-${flatIdx}`}
+                        role="option"
+                        aria-selected={selected || active}
+                      >
                         <button
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => handleSelect(place)}
                           className={[
-                            "flex w-full items-start gap-2.5 text-left transition-colors",
+                            "flex min-h-11 w-full items-start gap-2.5 text-left transition-colors",
                             isCompact ? "px-3 py-2" : "gap-3 px-4 py-2.5",
-                            selected
+                            selected || active
                               ? "bg-brand/8"
                               : "hover:bg-surface-soft active:bg-surface-soft",
-                            isAirport && !citiesOnly
+                            place.type === "airport" && placesMode === "all"
                               ? isCompact
                                 ? "pl-6"
                                 : "pl-8"
@@ -211,22 +401,15 @@ export function AirportSearchField({
                             className={[
                               "mt-0.5 flex shrink-0 items-center justify-center rounded-full",
                               isCompact ? "h-6 w-6" : "h-8 w-8",
-                              isAirport && !citiesOnly
+                              place.type === "airport" && placesMode === "all"
                                 ? "bg-surface-soft text-ink-caption"
                                 : "bg-brand/10 text-brand",
                             ].join(" ")}
                           >
-                            {isAirport && !citiesOnly ? (
-                              <Plane
-                                className={isCompact ? "h-3 w-3" : "h-4 w-4"}
-                                strokeWidth={2.2}
-                              />
-                            ) : (
-                              <MapPin
-                                className={isCompact ? "h-3 w-3" : "h-4 w-4"}
-                                strokeWidth={2.2}
-                              />
-                            )}
+                            <Icon
+                              className={isCompact ? "h-3 w-3" : "h-4 w-4"}
+                              strokeWidth={2.2}
+                            />
                           </span>
                           <span className="min-w-0 flex-1">
                             <span
@@ -237,9 +420,11 @@ export function AirportSearchField({
                             >
                               {title}
                             </span>
-                            <span className="block text-xs text-ink-caption">
-                              {subtitle}
-                            </span>
+                            {subtitle ? (
+                              <span className="block text-xs text-ink-caption">
+                                {subtitle}
+                              </span>
+                            ) : null}
                           </span>
                         </button>
                       </li>
@@ -249,6 +434,15 @@ export function AirportSearchField({
               </li>
             ))
           )}
+          {loading ? (
+            <li
+              role="presentation"
+              className="flex items-center justify-center gap-2 px-3 py-2 text-xs text-ink-caption"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              검색 중…
+            </li>
+          ) : null}
         </ul>
       )}
     </div>

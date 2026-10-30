@@ -16,7 +16,7 @@ import {
 import type { CreatePostInput } from "@/lib/community/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
-import { formatDestinationForPlan } from "@/lib/airports/data";
+import { formatPlaceDestination } from "@/lib/places/autocomplete";
 import { useTrips } from "@/lib/trips/TripProvider";
 import type { Trip } from "@/lib/trips/types";
 import { parseTripDateRange } from "@/lib/weather/parse-trip-dates";
@@ -367,7 +367,7 @@ export function WritePostSheet({
             value={destination}
             onChange={setDestination}
             placesMode="cities"
-            formatValue={formatDestinationForPlan}
+            formatValue={formatPlaceDestination}
             variant="compact"
           />
 
