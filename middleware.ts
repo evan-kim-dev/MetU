@@ -5,6 +5,7 @@ import {
   MTU_ONB_COOKIE,
   MTU_ONB_SKIP_STATUSES,
 } from "@/lib/onboarding/constants";
+import { resolveGuestCookieSecret } from "@/lib/security/guest-secret";
 import { isPublicApiPath } from "@/lib/security/public-api";
 import { safeNextPath } from "@/lib/security/safe-next";
 import { getPublicSupabaseKey } from "@/lib/supabase/env";
@@ -48,11 +49,7 @@ async function resolveAuth(request: NextRequest): Promise<{
     request: { headers: request.headers },
   });
 
-  const guestSecret =
-    process.env.GUEST_COOKIE_SECRET?.trim() ||
-    (process.env.NODE_ENV !== "production"
-      ? "dev-guest-cookie-secret"
-      : "");
+  const guestSecret = resolveGuestCookieSecret();
   const guestVerified = await verifyGuestCookie(
     request.cookies.get(GUEST_COOKIE)?.value,
     guestSecret

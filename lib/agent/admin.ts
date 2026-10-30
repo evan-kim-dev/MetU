@@ -2,6 +2,8 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { getServerEnv } from "@/lib/env";
+
 let adminClient: SupabaseClient | null = null;
 
 /**
@@ -12,8 +14,9 @@ let adminClient: SupabaseClient | null = null;
 export function getAgentAdmin(): SupabaseClient | null {
   if (adminClient) return adminClient;
 
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const env = getServerEnv();
+  const url = env.SUPABASE_URL ?? env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) return null;
 
   adminClient = createClient(url, key, {

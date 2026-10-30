@@ -1,14 +1,14 @@
-import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { readJsonLimited } from "@/lib/agent/body-limit";
 import {
   buildSmsPayload,
-  createEvent,
   defaultSmsIdempotencyKey,
 } from "@/lib/agent/ingest";
-import { processEvent } from "@/lib/agent/run";
+import { runIngest } from "@/lib/agent/ingest-pipeline";
 import { assertTripMember } from "@/lib/agent/membership";
+import { apiInternalError } from "@/lib/api/respond";
 import { pickTripForReceivedAt } from "@/lib/onboarding/agent-context";
 import { guardApi } from "@/lib/security/guard";
 
@@ -29,14 +29,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let json: unknown;
-  try {
-    json = await request.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400 });
-  }
+  const limited = await readJsonLimited(request, 8_192);
+  if (!limited.ok) return limited.response;
 
-  const parsed = BodySchema.safeParse(json);
+  const parsed = BodySchema.safeParse(limited.json);
   if (!parsed.success) {
     return NextResponse.json({ error: "validation-failed" }, { status: 400 });
   }
@@ -64,7 +60,7 @@ export async function POST(request: Request) {
     tripId = await pickTripForReceivedAt(userId, receivedAt);
   }
 
-  const created = await createEvent({
+  const outcome = await runIngest({
     userId,
     tripId,
     source: "share",
@@ -74,27 +70,30 @@ export async function POST(request: Request) {
     status: tripId ? "received" : "unassigned",
   });
 
-  if (!created.ok) {
-    return NextResponse.json({ error: created.error }, { status: 500 });
+  if (!outcome.result.ok) {
+    return apiInternalError(outcome.result.error);
   }
 
-  if (created.duplicate) {
+  if (outcome.result.duplicate) {
     return NextResponse.json(
-      { eventId: created.id, duplicate: true, status: tripId ? "received" : "unassigned" },
+      {
+        eventId: outcome.result.id,
+        duplicate: true,
+        status: tripId ? "received" : "unassigned",
+      },
       { status: 200 }
     );
   }
 
   if (tripId) {
-    after(() => processEvent(created.id));
     return NextResponse.json(
-      { eventId: created.id, status: "received", tripId },
+      { eventId: outcome.result.id, status: "received", tripId },
       { status: 202 }
     );
   }
 
   return NextResponse.json(
-    { eventId: created.id, status: "unassigned", tripId: null },
+    { eventId: outcome.result.id, status: "unassigned", tripId: null },
     { status: 200 }
   );
 }

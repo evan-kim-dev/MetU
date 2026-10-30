@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
+import { readBodyLimited } from "@/lib/agent/body-limit";
 import { assertTripMember } from "@/lib/agent/membership";
 import { apiError, apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
@@ -50,13 +51,17 @@ export async function POST(
   }
 
   let reason = "inbox_undo";
-  try {
-    const body = (await request.json()) as { reason?: string };
-    if (typeof body.reason === "string" && body.reason.trim()) {
-      reason = body.reason.trim().slice(0, 200);
+  const limited = await readBodyLimited(request, 4_096);
+  if (!limited.ok) return limited.response;
+  if (limited.text.trim()) {
+    try {
+      const body = JSON.parse(limited.text) as { reason?: string };
+      if (typeof body.reason === "string" && body.reason.trim()) {
+        reason = body.reason.trim().slice(0, 200);
+      }
+    } catch {
+      return NextResponse.json({ error: "invalid-json" }, { status: 400 });
     }
-  } catch {
-    /* optional body */
   }
 
   const { data, error } = await admin.rpc("agent_void_expense", {

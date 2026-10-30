@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { readJsonLimited } from "@/lib/agent/body-limit";
 import {
   MTU_ONB_COOKIE,
   ONB_COOKIE_MAX_AGE_SEC,
@@ -37,14 +38,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let json: unknown;
-  try {
-    json = await request.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400 });
-  }
+  const limited = await readJsonLimited(request, 4_096);
+  if (!limited.ok) return limited.response;
 
-  const parsed = BodySchema.safeParse(json);
+  const parsed = BodySchema.safeParse(limited.json);
   if (!parsed.success) {
     return NextResponse.json({ error: "validation-failed" }, { status: 400 });
   }

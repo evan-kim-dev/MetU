@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
+import { readJsonLimited } from "@/lib/agent/body-limit";
 import { getAgentEventForUser } from "@/lib/agent/event-access";
 import { assertTripMember } from "@/lib/agent/membership";
 import { processEvent } from "@/lib/agent/run";
@@ -36,14 +37,10 @@ export async function POST(
     return NextResponse.json({ error: owned.error }, { status: owned.status });
   }
 
-  let json: unknown;
-  try {
-    json = await request.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400 });
-  }
+  const limited = await readJsonLimited(request, 4_096);
+  if (!limited.ok) return limited.response;
 
-  const parsed = BodySchema.safeParse(json);
+  const parsed = BodySchema.safeParse(limited.json);
   if (!parsed.success) {
     return NextResponse.json({ error: "validation-failed" }, { status: 400 });
   }

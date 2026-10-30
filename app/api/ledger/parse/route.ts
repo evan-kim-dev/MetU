@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readJsonLimited } from "@/lib/agent/body-limit";
 import { aiChatOrNull } from "@/lib/ai/chat-client";
 import { parseExpenseParseOut } from "@/lib/ai/contracts";
 import { guardApi } from "@/lib/security/guard";
@@ -19,12 +20,9 @@ export async function POST(request: Request) {
   if (guard instanceof NextResponse) return guard;
   const { clientKey } = guard;
 
-  let body: ParseBody;
-  try {
-    body = (await request.json()) as ParseBody;
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400 });
-  }
+  const limited = await readJsonLimited(request, 32_768);
+  if (!limited.ok) return limited.response;
+  const body = limited.json as ParseBody;
 
   const text = body.text?.trim() ?? "";
   const members = body.members ?? [];
