@@ -412,3 +412,6 @@ export function knowledgeToRagContexts(
   }
   return contexts;
 }
+
+/** 동적 POI 일정 빌더 — knowledge 폴백 경로 공개 API */
+export { buildDynamicPoiSchedule } from "@/lib/ai/destination-pois";
