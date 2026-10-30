@@ -1,7 +1,8 @@
 import type { OnboardingForm } from "@/lib/onboarding/types";
 import { normalizeFlexibleYear } from "@/lib/onboarding/types";
 import type { TripRecommendation } from "@/lib/ai/types";
-import { AIRPORT_PLACES, findAirportPlaceByQuery } from "@/lib/airports/data";
+import { AIRPORT_PLACES } from "@/lib/airports/data";
+import { findAirportPlaceByQuery } from "@/lib/airports/search";
 import { addDays, todayIsoDate } from "@/lib/shared/dates";
 
 const AGODA_FLIGHTS_BASE = "https://www.agoda.com/ko-kr/flights/results";

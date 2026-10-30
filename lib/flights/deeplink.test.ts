@@ -3,7 +3,7 @@ import { buildAgodaFlightSearchUrl } from "@/lib/flights/agoda-url";
 import { buildGoogleFlightsSearchUrl } from "@/lib/flights/google-flights-url";
 import { buildNaverFlightsUrl } from "@/lib/flights/naver-flights-url";
 import { buildAgodaHotelSearchUrl } from "@/lib/hotels/agoda-url";
-import { searchAirportPlaces } from "@/lib/airports/data";
+import { searchAirportPlaces } from "@/lib/airports/search";
 import { fetchPlanFlightQuote } from "@/lib/flights/plan-flight-quote";
 import { fetchPlanHotelQuote } from "@/lib/hotels/plan-hotel-quote";
 import type { TripRecommendation } from "@/lib/ai/types";
