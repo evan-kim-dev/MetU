@@ -55,14 +55,20 @@ export async function ingestNotificationPayload(
   const isDeviceTest = input.body.trimStart().startsWith("MTU-TEST");
   const source = normalizeIngestSource(input.source);
 
-  // Always touch — including when the event later turns out duplicate.
-  await touchNotificationAt(input.userId, input.app, {
-    deviceTest: isDeviceTest,
-  });
-
+  // Touch + trip pick are independent — parallelize when both needed.
   let tripId: string | null = input.tokenTripId;
   if (!tripId && !isDeviceTest) {
-    tripId = await pickTripForReceivedAt(input.userId, receivedAt);
+    const [, picked] = await Promise.all([
+      touchNotificationAt(input.userId, input.app, {
+        deviceTest: false,
+      }),
+      pickTripForReceivedAt(input.userId, receivedAt),
+    ]);
+    tripId = picked;
+  } else {
+    await touchNotificationAt(input.userId, input.app, {
+      deviceTest: isDeviceTest,
+    });
   }
 
   const rawKey =

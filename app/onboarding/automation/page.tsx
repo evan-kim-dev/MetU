@@ -118,27 +118,58 @@ export default function AutomationOnboardingPage() {
     }
   }, [platform, router, saveOnboarding]);
 
-  const refreshChecks = useCallback(async () => {
-    const res = await fetch("/api/agent/automation-status");
-    if (!res.ok) return;
-    const json = (await res.json()) as AutomationStatusResponse;
-    if (json.lastServerTestAt) setServerOk(true);
-    // Device path OK when MTU-TEST recorded OR any notification arrived (Prompt 1/2).
-    if (json.lastDeviceTestAt || json.lastNotificationAt) setDeviceOk(true);
-    setLastNotificationAt(json.lastNotificationAt ?? null);
-    setLastDroppedApp(json.lastDroppedApp ?? null);
-    setRecentEvents(Array.isArray(json.recentEvents) ? json.recentEvents : []);
-    setUnassignedCount(
-      typeof json.unassignedCount === "number" ? json.unassignedCount : 0
-    );
+  const refreshChecks = useCallback(async (): Promise<"ok" | "fail" | "rate"> => {
+    try {
+      const res = await fetch("/api/agent/automation-status");
+      if (res.status === 429) return "rate";
+      if (!res.ok) return "fail";
+      const json = (await res.json()) as AutomationStatusResponse;
+      if (json.lastServerTestAt) setServerOk(true);
+      // Device path OK when MTU-TEST recorded OR any notification arrived.
+      if (json.lastDeviceTestAt || json.lastNotificationAt) setDeviceOk(true);
+      setLastNotificationAt(json.lastNotificationAt ?? null);
+      setLastDroppedApp(json.lastDroppedApp ?? null);
+      setRecentEvents(Array.isArray(json.recentEvents) ? json.recentEvents : []);
+      setUnassignedCount(
+        typeof json.unassignedCount === "number" ? json.unassignedCount : 0
+      );
+      return "ok";
+    } catch {
+      return "fail";
+    }
   }, []);
 
   useEffect(() => {
     if (step !== 3) return;
-    void refreshChecks();
-    const id = window.setInterval(() => void refreshChecks(), 3000);
-    return () => window.clearInterval(id);
-  }, [step, refreshChecks]);
+    // Both checks green → no more polling (avoids ledger-parse 20/min bucket).
+    if (serverOk && deviceOk) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let delayMs = 5000;
+
+    const tick = async () => {
+      if (cancelled) return;
+      if (document.visibilityState === "hidden") {
+        timer = setTimeout(() => void tick(), delayMs);
+        return;
+      }
+      const outcome = await refreshChecks();
+      if (cancelled) return;
+      if (outcome === "rate" || outcome === "fail") {
+        delayMs = Math.min(15_000, Math.round(delayMs * 1.5));
+      } else {
+        delayMs = 5000;
+      }
+      timer = setTimeout(() => void tick(), delayMs);
+    };
+
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [step, refreshChecks, serverOk, deviceOk]);
 
   async function issueConnectToken() {
     setBusy(true);

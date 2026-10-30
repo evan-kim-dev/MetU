@@ -74,18 +74,20 @@ export function LedgerShell({ tripId }: Props) {
       );
       m = await listMembers(supabase, tripId);
     }
-    const e = await listExpenses(supabase, tripId);
-    const p = await listCardProfiles(supabase);
-    const { count: pendingInbox } = await supabase
-      .from("agent_events")
-      .select("id", { count: "exact", head: true })
-      .eq("trip_id", tripId)
-      .eq("user_id", user.id)
-      .in("status", ["received", "processing", "needs_review", "failed"]);
+    const [e, p, pendingRes] = await Promise.all([
+      listExpenses(supabase, tripId),
+      listCardProfiles(supabase),
+      supabase
+        .from("agent_events")
+        .select("id", { count: "exact", head: true })
+        .eq("trip_id", tripId)
+        .eq("user_id", user.id)
+        .in("status", ["received", "processing", "needs_review", "failed"]),
+    ]);
     setMembers(m);
     setExpenses(e);
     setProfiles(p as typeof profiles);
-    setInboxCount(pendingInbox ?? 0);
+    setInboxCount(pendingRes.count ?? 0);
     setLoading(false);
   }, [tripId, user, provider]);
 
