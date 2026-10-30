@@ -68,6 +68,24 @@ describe("buildQuickTrip", () => {
     expect(trip.destination).toBe("오사카");
   });
 
+  it("uses country from selection and defaults to empty", () => {
+    expect(
+      buildQuickTrip({
+        destination: "도쿄, 일본",
+        country: "일본",
+        startIso: "2026-10-31",
+        days: 2,
+      }).country
+    ).toBe("일본");
+    expect(
+      buildQuickTrip({
+        destination: "강원대학교",
+        startIso: "2026-10-31",
+        days: 2,
+      }).country
+    ).toBe("");
+  });
+
   it("trip window includes start noon and excludes end+2d", () => {
     const trip = buildQuickTrip({
       destination: "도쿄",

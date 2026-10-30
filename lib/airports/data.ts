@@ -24,6 +24,11 @@ export interface AirportPlace {
   cityId?: string;
   /** 검색용 키워드 */
   keywords: string[];
+  /**
+   * cities 검색에서 공항 키워드로 부모 도시를 찾았을 때 해당 공항 코드.
+   * 정적 데이터에는 두지 않고 검색 결과에서만 채운다.
+   */
+  matchedCode?: string;
 }
 
 export const CONTINENT_LABELS: Record<ContinentId, string> = {
@@ -968,17 +973,54 @@ export function getPopularCities(limit = 24): AirportPlace[] {
   return cities;
 }
 
-/** 도시만 검색 (공항·IATA 목록 제외) */
+/**
+ * 도시만 검색. 공항 키워드(icn·인천·김포 등)가 맞으면 부모 도시를
+ * matchedCode와 함께 반환한다. 나라 항목은 로컬 폴백에 없다.
+ */
 export function searchCityPlaces(query: string, limit = 24): AirportPlace[] {
   const q = normalize(query);
   if (!q) return getPopularCities(limit);
 
-  const cities = AIRPORT_PLACES.filter((place) => place.kind === "city");
-  const matched = cities.filter((place) => {
+  const result: AirportPlace[] = [];
+  const seen = new Set<string>();
+
+  for (const place of AIRPORT_PLACES) {
+    if (place.kind !== "city") continue;
     const hay = [place.name, place.city, place.country, ...place.keywords]
       .join(" ")
       .toLowerCase();
-    return hay.includes(q);
-  });
-  return matched.slice(0, limit);
+    if (!hay.includes(q)) continue;
+    result.push(place);
+    seen.add(place.id);
+    if (result.length >= limit) return result;
+  }
+
+  for (const airport of AIRPORT_PLACES) {
+    if (airport.kind !== "airport" || !airport.cityId) continue;
+    if (seen.has(airport.cityId)) continue;
+    const hay = [
+      airport.name,
+      airport.city,
+      airport.country,
+      airport.code ?? "",
+      formatAirportInputLabel(airport),
+      ...(airport.code ? [AIRPORT_OFFICIAL_NAMES[airport.code] ?? ""] : []),
+      ...airport.keywords,
+    ]
+      .join(" ")
+      .toLowerCase();
+    if (!hay.includes(q)) continue;
+    const parent = AIRPORT_PLACES.find(
+      (p) => p.kind === "city" && p.id === airport.cityId
+    );
+    if (!parent) continue;
+    result.push({
+      ...parent,
+      matchedCode: airport.code,
+    });
+    seen.add(parent.id);
+    if (result.length >= limit) break;
+  }
+
+  return result.slice(0, limit);
 }

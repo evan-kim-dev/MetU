@@ -9,6 +9,9 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { AirportSearchField } from "@/components/onboarding/AirportSearchField";
+import { formatPlaceDestination } from "@/lib/places/autocomplete";
+import type { PlaceItem } from "@/lib/places/autocomplete";
 import { seoulDateIso } from "@/lib/onboarding/trip-window";
 import { addDays } from "@/lib/shared/dates";
 import { buildQuickTrip } from "@/lib/trips/quick-trip";
@@ -60,6 +63,7 @@ export function QuickTripSheet({
   const previousFocus = useRef<HTMLElement | null>(null);
 
   const [destination, setDestination] = useState("");
+  const [country, setCountry] = useState("");
   const [startIso, setStartIso] = useState(() => seoulDateIso(new Date()));
   const [days, setDays] = useState(5);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -88,6 +92,7 @@ export function QuickTripSheet({
         ? document.activeElement
         : null;
     setDestination("");
+    setCountry("");
     setStartIso(seoulDateIso(new Date()));
     setDays(5);
     setPhase("idle");
@@ -169,6 +174,7 @@ export function QuickTripSheet({
     try {
       const trip = buildQuickTrip({
         destination: trimmed,
+        country,
         startIso,
         days,
       });
@@ -255,27 +261,31 @@ export function QuickTripSheet({
 
             <form className="mt-4 flex flex-col gap-4" onSubmit={onFormSubmit}>
               <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor={destId}
-                  className="text-sm font-bold text-ink-heading"
-                >
-                  어디로 가나요?
-                </label>
-                <input
-                  ref={destRef}
-                  id={destId}
-                  type="text"
+                <AirportSearchField
+                  label="어디로 가나요?"
+                  placeholder="예: 도쿄"
                   value={destination}
-                  maxLength={30}
-                  autoComplete="off"
-                  enterKeyHint="next"
+                  inputId={destId}
+                  inputRef={destRef}
+                  placesMode="cities"
+                  maxLength={40}
                   disabled={submitting}
                   aria-invalid={destError ? true : undefined}
                   aria-describedby={destError ? destErrorId : undefined}
-                  placeholder="예: 도쿄"
-                  onChange={(e) => setDestination(e.target.value)}
-                  onKeyDown={onDestKeyDown}
-                  className="h-12 w-full rounded-xl border border-line-soft bg-surface-white px-3 text-base text-ink-heading placeholder:text-ink-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
+                  formatValue={formatPlaceDestination}
+                  onChange={(next) => {
+                    setDestination(next);
+                    setCountry("");
+                    if (next.trim()) setDestError("");
+                  }}
+                  onSelectPlace={(place: PlaceItem) => {
+                    const countryName =
+                      place.type === "country"
+                        ? place.name
+                        : (place.countryName ?? "");
+                    setCountry(countryName);
+                  }}
+                  onInputKeyDown={onDestKeyDown}
                 />
                 {destError ? (
                   <p

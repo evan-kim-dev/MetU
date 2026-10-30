@@ -10,11 +10,14 @@ function clampDays(days: number): number {
 
 export function buildQuickTrip(input: {
   destination: string;
+  /** 선택 장소의 countryName. 자유 입력이면 "" */
+  country?: string;
   startIso: string;
   days: number;
   now?: Date;
 }): Trip {
   const destination = input.destination.trim();
+  const country = (input.country ?? "").trim();
   const days = clampDays(input.days);
   const nights = days - 1;
   const startIso = input.startIso.trim();
@@ -26,7 +29,7 @@ export function buildQuickTrip(input: {
   return {
     id: crypto.randomUUID(),
     destination,
-    country: "",
+    country,
     origin: "서울",
     dateRange,
     dDay: computeTripDDay(dateRange, 0, todaySeoul),
@@ -34,7 +37,7 @@ export function buildQuickTrip(input: {
     spent: 0,
     people: 1,
     styles: [],
-    imageUrl: resolveDestinationImage(destination, ""),
+    imageUrl: resolveDestinationImage(destination, country),
     expenses: [],
     status,
   };
