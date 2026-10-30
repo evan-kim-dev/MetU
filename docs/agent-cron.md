@@ -71,3 +71,10 @@ where fetched_at < now() - interval '30 days';
 ```
 
 Schedule the cleanup with pg_cron or run from the daily cron route after agent work.
+
+## Hobby demo tip (flush / delayed domain events)
+
+Vercel Hobby only runs the daily cron once per day, so coalesce flush / stuck
+`received` events may wait until then. Prefer Supabase **pg_cron + pg_net** to
+`GET/POST /api/agent/sweep` every 1–5 minutes during demos (put `CRON_SECRET` in
+Vault — never commit the secret).
