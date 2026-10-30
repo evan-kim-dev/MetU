@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getAgentEventForUser } from "@/lib/agent/event-access";
 import { getAgentAdmin } from "@/lib/agent/admin";
 import { processEvent } from "@/lib/agent/run";
+import { apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
 
 export const maxDuration = 60;
@@ -52,7 +53,7 @@ export async function POST(
     .eq("id", eventId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiInternalError(error.message);
   }
 
   after(() => processEvent(eventId));

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
 import { assertTripMember } from "@/lib/agent/membership";
+import { apiError, apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
 
 export const maxDuration = 60;
@@ -36,7 +37,7 @@ export async function POST(
     .maybeSingle();
 
   if (loadErr) {
-    return NextResponse.json({ error: loadErr.message }, { status: 500 });
+    return apiInternalError(loadErr.message);
   }
   if (!expense) {
     return NextResponse.json({ error: "not-found" }, { status: 404 });
@@ -66,8 +67,10 @@ export async function POST(
 
   if (error) {
     const msg = error.message ?? "void-failed";
-    const status = /forbidden/i.test(msg) ? 403 : 500;
-    return NextResponse.json({ error: msg }, { status });
+    if (/forbidden/i.test(msg)) {
+      return apiError("forbidden", 403, { log: msg });
+    }
+    return apiInternalError(msg);
   }
 
   return NextResponse.json({ ok: true, result: data });

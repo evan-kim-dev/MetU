@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { readBodyLimited, readJsonLimited } from "@/lib/agent/body-limit";
+import { apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
   );
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiInternalError(error.message);
   }
 
   return NextResponse.json({ ok: true });
@@ -86,7 +87,7 @@ export async function DELETE(request: Request) {
 
   const { error } = await q;
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiInternalError(error.message);
   }
 
   return NextResponse.json({ ok: true });
