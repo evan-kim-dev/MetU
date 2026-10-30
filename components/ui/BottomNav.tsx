@@ -25,7 +25,7 @@ interface NavItem {
 
 const LEFT_ITEMS: NavItem[] = [
   { href: "/trips", label: "내 여행", icon: Route },
-  { href: "/agent", label: "Agent", icon: Bot },
+  { href: "/agent", label: "가계부", icon: Bot },
 ];
 
 const RIGHT_ITEMS: NavItem[] = [
@@ -81,23 +81,29 @@ function SideNavItem({
   active,
   badgeCount,
 }: NavItem & { active: boolean; badgeCount?: number }) {
+  const ariaLabel =
+    badgeCount && badgeCount > 0
+      ? `${label}, 새 메시지 ${badgeCount}개`
+      : undefined;
+
   return (
     <Link
       href={href}
-      className="relative flex w-full flex-col items-center justify-center gap-px px-1.5 transition-colors active:scale-[0.97] hover:opacity-90"
+      aria-label={ariaLabel}
+      className="relative flex min-h-11 w-full flex-col items-center justify-center gap-px px-1.5 transition-colors active:scale-[0.97] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       aria-current={active ? "page" : undefined}
     >
       <NavIcon icon={icon} active={active} />
       <span
         className={[
-          "text-[9px] transition-colors",
+          "whitespace-nowrap text-[11px] transition-colors",
           active ? "font-bold text-brand" : "font-semibold text-ink-caption",
         ].join(" ")}
       >
         {label}
       </span>
       {badgeCount && badgeCount > 0 ? (
-        <span className="absolute right-1.5 top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-gradient-to-r from-[#FAE100] to-[#FDE047] px-1.5 py-0.5 text-[9px] font-extrabold leading-none text-ink-heading shadow-sm">
+        <span className="absolute right-1.5 top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-[#FAE100] to-[#FDE047] px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-ink-heading shadow-sm">
           {badgeCount > 999 ? "999+" : badgeCount}
         </span>
       ) : null}
@@ -129,7 +135,8 @@ export function BottomNav() {
 
   const { unreadCountByPostId } = useChatRoomSummaries(chatRoomPostIds, true);
   const opodUnreadCount = useMemo(
-    () => Object.values(unreadCountByPostId).reduce((sum, count) => sum + count, 0),
+    () =>
+      Object.values(unreadCountByPostId).reduce((sum, count) => sum + count, 0),
     [unreadCountByPostId]
   );
 
@@ -140,7 +147,10 @@ export function BottomNav() {
       <div className="pointer-events-auto w-full max-w-mobile overflow-visible border-t border-line-soft/70 bg-surface-white/95 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-md">
         <ul className="grid h-[56px] grid-cols-5 items-center overflow-visible px-1">
           {LEFT_ITEMS.map((item) => (
-            <li key={item.href} className="flex h-full items-center justify-center">
+            <li
+              key={item.href}
+              className="flex h-full items-center justify-center"
+            >
               <SideNavItem {...item} active={isActive(pathname, item.href)} />
             </li>
           ))}
@@ -152,7 +162,7 @@ export function BottomNav() {
                 aria-current={homeActive ? "page" : undefined}
                 aria-label="홈"
                 className={[
-                  "absolute left-1/2 top-1/2 z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-[calc(50%+12px)] items-center justify-center rounded-full border-[3px] border-surface-white ai-gradient-bg shadow-[0_10px_24px_rgba(37,99,235,0.5)] transition-all active:scale-95",
+                  "absolute left-1/2 top-1/2 z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-[calc(50%+12px)] items-center justify-center rounded-full border-[3px] border-surface-white ai-gradient-bg shadow-[0_10px_24px_rgba(37,99,235,0.5)] transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                   homeActive ? "ring-2 ring-brand/50" : "hover:brightness-105",
                 ].join(" ")}
               >
@@ -164,7 +174,7 @@ export function BottomNav() {
             </span>
             <span
               className={[
-                "text-[9px] font-bold transition-colors",
+                "whitespace-nowrap text-[11px] font-bold transition-colors",
                 homeActive
                   ? "bg-gradient-to-r from-brand to-[#6366F1] bg-clip-text text-transparent"
                   : "text-brand",
@@ -175,10 +185,16 @@ export function BottomNav() {
           </li>
 
           {RIGHT_ITEMS.map((item) => (
-            <li key={item.href} className="flex h-full items-center justify-center">              <SideNavItem
+            <li
+              key={item.href}
+              className="flex h-full items-center justify-center"
+            >
+              <SideNavItem
                 {...item}
                 active={isActive(pathname, item.href)}
-                badgeCount={item.href === "/opod" ? opodUnreadCount : undefined}
+                badgeCount={
+                  item.href === "/opod" ? opodUnreadCount : undefined
+                }
               />
             </li>
           ))}

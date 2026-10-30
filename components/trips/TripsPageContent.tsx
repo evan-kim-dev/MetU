@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
+import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
 import { TripListCard } from "@/components/trips/TripListCard";
 import { useTrips } from "@/lib/trips/TripProvider";
 
@@ -26,6 +27,7 @@ export function TripsPageContent() {
   const { trips, isReady, removeTrip } = useTrips();
   const [editMode, setEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [quickTripOpen, setQuickTripOpen] = useState(false);
 
   useEffect(() => {
     setSelectedIds((prev) =>
@@ -162,17 +164,24 @@ export function TripsPageContent() {
                 아직 여행이 없어요
               </p>
               <p className="text-sm leading-relaxed text-ink-caption">
-                예산만 알려주면 AI가 맞춤 일정을 짜드려요.
-                <br />
-                첫 여행을 만들어 보세요.
+                여행을 만들면 가계부와 알림 자동 기록이 여행별로 모여요.
               </p>
             </div>
-            <Link
-              href="/onboarding"
-              className="mt-1 rounded-2xl ai-gradient-bg px-6 py-3.5 text-sm font-bold text-surface-white shadow-glow transition-transform active:scale-[0.98]"
-            >
-              첫 여행 계획하기
-            </Link>
+            <div className="mt-1 flex w-full max-w-xs flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setQuickTripOpen(true)}
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl ai-gradient-bg px-6 text-sm font-bold text-surface-white shadow-glow transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                빠르게 여행 만들기
+              </button>
+              <Link
+                href="/onboarding"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-surface-white px-6 text-sm font-bold text-brand ring-1 ring-line-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                AI로 일정까지 계획하기
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -209,6 +218,11 @@ export function TripsPageContent() {
           </div>
         )}
       </div>
+      <QuickTripSheet
+        open={quickTripOpen}
+        onClose={() => setQuickTripOpen(false)}
+        reason="first-run"
+      />
     </MobileShell>
   );
 }

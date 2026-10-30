@@ -12,6 +12,9 @@ vi.mock("@/lib/auth/AuthProvider", () => ({
 vi.mock("@/lib/hooks/useAutomationStatus", () => ({
   useAutomationStatus: (...a: unknown[]) => useAutomationStatus(...a),
 }));
+vi.mock("@/lib/onboarding/first-run", () => ({
+  useFirstRunVisible: () => false,
+}));
 
 import { AutomationStatusBanner } from "@/components/home/AutomationStatusBanner";
 

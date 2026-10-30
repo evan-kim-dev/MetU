@@ -28,7 +28,8 @@ export const TripListCard = memo(function TripListCard({
   onToggleSelect,
 }: TripListCardProps) {
   const remaining = trip.budget - trip.spent;
-  const usedPercent = Math.round((trip.spent / trip.budget) * 100);
+  const usedPercent =
+    trip.budget > 0 ? Math.round((trip.spent / trip.budget) * 100) : 0;
   const dDay = computeTripDDay(trip.dateRange, trip.dDay);
 
   const content = (

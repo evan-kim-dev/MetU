@@ -5,10 +5,12 @@ import Link from "next/link";
 import { formatRelativeTime } from "@/lib/format/relative-time";
 import { useAutomationStatus } from "@/lib/hooks/useAutomationStatus";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useFirstRunVisible } from "@/lib/onboarding/first-run";
 
 export function AutomationStatusBanner() {
   const { isReady, isLoggedIn, provider } = useAuth();
   const isGuest = provider === "guest";
+  const firstRunVisible = useFirstRunVisible();
   const { data, loading, error, uiState } = useAutomationStatus({
     enabled: isReady && isLoggedIn && !isGuest,
     lite: true,
@@ -27,6 +29,7 @@ export function AutomationStatusBanner() {
   }
 
   if (uiState === "off") {
+    if (firstRunVisible) return null;
     return (
       <section
         aria-label="자동 기록 상태"
@@ -51,6 +54,7 @@ export function AutomationStatusBanner() {
   }
 
   if (uiState === "unverified") {
+    if (firstRunVisible) return null;
     return (
       <section
         aria-label="자동 기록 상태"
