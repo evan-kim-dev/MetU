@@ -296,4 +296,189 @@ describe("AgentInbox", () => {
       )
     ).toBe("true");
   });
-});
+  describe("미배정 제안 / 모두 붙이기", () => {
+    const tokyo = {
+      id: "t1",
+      destination: "도쿄",
+      dateRange: "2026-07-20 · 3박 4일",
+      startDate: "2026-07-20",
+      endDate: "2026-07-23",
+      status: "upcoming",
+    };
+    const osaka = {
+      id: "t2",
+      destination: "오사카",
+      dateRange: "2026-09-01 · 3박 4일",
+      startDate: "2026-09-01",
+      endDate: "2026-09-04",
+      status: "upcoming",
+    };
+
+    function unassigned(id: string, createdAt: string, result: unknown = null) {
+      return {
+        id,
+        trip_id: null,
+        source: "sms_shortcut",
+        kind: "text",
+        status: "unassigned",
+        payload: { text: "결제 12,500원 스타벅스", received_at: createdAt },
+        result,
+        error: null,
+        created_at: createdAt,
+        processed_at: null,
+      };
+    }
+
+    function setup(events: unknown[], trips: unknown[]) {
+      useAuth.mockReturnValue({
+        user: { id: "u1" },
+        provider: "kakao",
+        isReady: true,
+        isLoggedIn: true,
+      });
+      useTrips.mockReturnValue({
+        activeTrips: trips,
+        trips,
+        isReady: true,
+      });
+      fromMock.mockReturnValue(chainQuery({ data: events, error: null }));
+      getBrowserSupabase.mockReturnValue({
+        from: fromMock,
+        channel: () => {
+          const ch = { on: () => ch, subscribe: () => ch };
+          return ch;
+        },
+        removeChannel: vi.fn(),
+      });
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ ok: true }),
+      }));
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("날짜가 맞는 여행이 있으면 '○○ 여행에 붙이기' 를 보여주고, 누르면 assign API 를 호출한다", async () => {
+      const fetchMock = setup(
+        [unassigned("e1", "2026-07-21T03:00:00Z")],
+        [tokyo]
+      );
+      render(<AgentInbox />);
+
+      const btn = await screen.findByRole("button", {
+        name: "도쿄 여행에 붙이기",
+      });
+      expect(btn.className).toContain("min-h-11");
+      expect(screen.getByText(/도쿄 여행\(7\/20~23\) 기간에 맞아요/)).toBeTruthy();
+
+      fireEvent.click(btn);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [
+        string,
+        RequestInit,
+      ];
+      expect(url).toBe("/api/agent/events/e1/assign");
+      expect(JSON.parse(init.body as string)).toEqual({ tripId: "t1" });
+    });
+
+    it("날짜가 다르면 가장 가까운 여행을 제안하고 사유 문구를 보여준다", async () => {
+      setup([unassigned("e1", "2026-01-10T03:00:00Z")], [tokyo, osaka]);
+      render(<AgentInbox />);
+
+      expect(
+        await screen.findByText("도쿄 여행(7/20~23)과 날짜가 달라요. 붙일까요?")
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: "도쿄 여행에 붙이기" })
+      ).toBeTruthy();
+      expect(screen.queryByText(/여행이 없어서/)).toBeNull();
+    });
+
+    it("같은 여행으로 붙는 미배정이 2건 이상이면 'N건 모두 ○○에 붙이기' 가 순차 호출된다", async () => {
+      const fetchMock = setup(
+        [
+          unassigned("e1", "2026-07-21T03:00:00Z"),
+          unassigned("e2", "2026-07-22T03:00:00Z"),
+          unassigned("e3", "2026-07-22T05:00:00Z"),
+        ],
+        [tokyo]
+      );
+      render(<AgentInbox />);
+
+      const bulkBtn = await screen.findByRole("button", {
+        name: "3건 모두 도쿄에 붙이기",
+      });
+      fireEvent.click(bulkBtn);
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+      const urls = fetchMock.mock.calls.map(
+        (c) => (c as unknown as [string])[0]
+      );
+      expect(urls).toEqual([
+        "/api/agent/events/e1/assign",
+        "/api/agent/events/e2/assign",
+        "/api/agent/events/e3/assign",
+      ]);
+      expect(await screen.findByText("3건을 모두 붙였어요")).toBeTruthy();
+    });
+
+    it("모두 붙이기 중 일부가 실패하면 실패 건수를 알려준다", async () => {
+      const fetchMock = setup(
+        [
+          unassigned("e1", "2026-07-21T03:00:00Z"),
+          unassigned("e2", "2026-07-22T03:00:00Z"),
+        ],
+        [tokyo]
+      );
+      fetchMock
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as never)
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({ error: "forbidden" }),
+        } as never);
+      render(<AgentInbox />);
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "2건 모두 도쿄에 붙이기" })
+      );
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toContain("2건 중 1건을 붙이지 못했어요");
+    });
+
+    it("미배정이 1건이면 모두 붙이기는 없다", async () => {
+      setup([unassigned("e1", "2026-07-21T03:00:00Z")], [tokyo]);
+      render(<AgentInbox />);
+      await screen.findByRole("button", { name: "도쿄 여행에 붙이기" });
+      expect(screen.queryByText(/건 모두/)).toBeNull();
+    });
+
+    it("여행이 0개면 '여행을 만들면 자동으로 붙어요' + 여행 만들기", async () => {
+      setup([unassigned("e1", "2026-07-21T03:00:00Z")], []);
+      render(<AgentInbox />);
+      expect(
+        await screen.findByText("여행을 만들면 자동으로 붙어요")
+      ).toBeTruthy();
+      expect(screen.queryByText(/붙이기$/)).toBeNull();
+      fireEvent.click(screen.getAllByRole("button", { name: "여행 만들기" })[0]!);
+      expect(screen.getByTestId("quick-trip-sheet")).toBeTruthy();
+    });
+
+    it("여행은 있지만 날짜를 못 읽으면 '여행 날짜를 넣으면 자동으로 붙어요'", async () => {
+      setup(
+        [unassigned("e1", "2026-07-21T03:00:00Z", { reason: "no_dates" })],
+        [
+          { id: "t1", destination: "A", dateRange: "미정", status: "upcoming" },
+          { id: "t2", destination: "B", dateRange: "미정", status: "upcoming" },
+        ]
+      );
+      render(<AgentInbox />);
+      expect(
+        await screen.findByText("여행 날짜를 넣으면 자동으로 붙어요")
+      ).toBeTruthy();
+      expect(screen.getByRole("combobox")).toBeTruthy();
+    });
+  });});

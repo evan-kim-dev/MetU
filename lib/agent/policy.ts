@@ -37,6 +37,11 @@ export type DuplicateSignal = {
 export type PolicySignals = {
   duplicateCandidates: DuplicateSignal[];
   autoCountToday: number;
+  /**
+   * 여행이 어떤 규칙으로 붙었는지 (lib/onboarding/trip-match.ts).
+   * 생략 = 사용자/토큰이 명시한 여행. "exact" 가 아니면(near/single) 자동 저장 금지.
+   */
+  tripMatchRule?: "exact" | "near" | "single" | "none";
 };
 
 export type PolicyEnv = {
@@ -55,7 +60,18 @@ export type PolicyResult = {
   mergeExpenseId?: string;
   /** review 이면서 같은 결제로 보이는 기존 지출 (수신함 합치기 선택용) */
   duplicateOfExpenseId?: string;
+  /** review 사유 코드 (기계 판독용, 예: "trip_match_uncertain") */
+  reasonCode?: string;
 };
+
+export const TRIP_MATCH_UNCERTAIN = "trip_match_uncertain";
+
+/** 날짜 규칙으로 붙었지만 exact 가 아닌 경우 */
+export function isTripMatchUncertain(
+  rule: PolicySignals["tripMatchRule"]
+): boolean {
+  return rule === "near" || rule === "single" || rule === "none";
+}
 
 function fmtWon(n: number): string {
   return `${Math.trunc(n).toLocaleString("ko-KR")}원`;
@@ -96,6 +112,16 @@ export function decide(
     return {
       decision: "ignore",
       reasons: ["이미 받은 같은 문자라서 건너뛰었어요"],
+    };
+  }
+
+  // Trip was attached by a loose rule (near/single): never auto-save. A human
+  // confirms in the inbox (existing confirm path). Stricter-only gate.
+  if (isTripMatchUncertain(signals.tripMatchRule)) {
+    return {
+      decision: "review",
+      reasons: ["여행 날짜가 정확히 맞지 않아 확인이 필요해요"],
+      reasonCode: TRIP_MATCH_UNCERTAIN,
     };
   }
 

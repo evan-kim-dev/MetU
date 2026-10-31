@@ -56,10 +56,36 @@ export function suggestTripDates(
     return { startDate: start, endDate: end };
   }
 
-  // ISO 두 날짜
-  const isos = [...dateRange.matchAll(/(\d{4}-\d{2}-\d{2})/g)].map((x) => x[1]!);
-  if (isos.length >= 2 && isos[1]! >= isos[0]!) {
-    return { startDate: isos[0]!, endDate: isos[1]! };
+  // 전체 날짜 두 개 또는 끝 연도 생략: "2026-07-20 ~ 2026-07-25", "2026.08.01~08.05"
+  const full = dateRange.match(
+    /(\d{4})[-./](\d{1,2})[-./](\d{1,2})\s*[-~–—]\s*(?:(\d{4})[-./])?(\d{1,2})[-./](\d{1,2})/
+  );
+  if (full) {
+    const startYear = Number(full[1]);
+    let endYear = full[4] ? Number(full[4]) : startYear;
+    const end = `${endYear}-${pad(Number(full[5]))}-${pad(Number(full[6]))}`;
+    if (end < start && !full[4]) {
+      // "12.30~01.03" 처럼 해를 넘기는 경우
+      endYear += 1;
+      const wrapped = `${endYear}-${pad(Number(full[5]))}-${pad(Number(full[6]))}`;
+      return { startDate: start, endDate: wrapped };
+    }
+    if (end >= start) return { startDate: start, endDate: end };
+    // 끝이 시작보다 앞서는 입력은 믿지 않고 시작일 하루로 둔다.
+  }
+
+  // "2026년 8월 중순" (박 수 없음): 그 달의 해당 순(초 1~10 / 중순 11~20 / 말 21~말일)
+  const period = dateRange.match(/(\d{4})년\s*(\d{1,2})월\s*(초|중순|말)/);
+  if (period) {
+    const y = Number(period[1]);
+    const mo = Number(period[2]);
+    const lastDay = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    const [from, to] =
+      period[3] === "초" ? [1, 10] : period[3] === "중순" ? [11, 20] : [21, lastDay];
+    return {
+      startDate: `${y}-${pad(mo)}-${pad(from)}`,
+      endDate: `${y}-${pad(mo)}-${pad(to)}`,
+    };
   }
 
   return { startDate: start, endDate: start };

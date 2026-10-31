@@ -54,6 +54,10 @@ export interface Trip {
   /** AI 추천 일정표 (저장 시 포함) */
   dailySchedule?: TripDaySchedule[];
   tips?: string[];
+  /** 확정된 출발일 (YYYY-MM-DD). 없으면 dateRange 에서 추정한다. */
+  startDate?: string | null;
+  /** 확정된 종료일 (YYYY-MM-DD). */
+  endDate?: string | null;
 }
 
 export type TripUpdate = Partial<Omit<Trip, "id" | "expenses">> & {

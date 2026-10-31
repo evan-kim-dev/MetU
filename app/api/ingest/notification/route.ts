@@ -65,7 +65,10 @@ export async function POST(request: Request) {
   }
 
   const duplicate = outcome.result.duplicate;
-  const message = ingestStatusMessage(outcome.status, duplicate);
+  const message = ingestStatusMessage(outcome.status, duplicate, {
+    reason: outcome.missReason,
+    rule: outcome.matchRule,
+  });
 
   if (duplicate) {
     return NextResponse.json(

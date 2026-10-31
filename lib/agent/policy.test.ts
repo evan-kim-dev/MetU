@@ -300,3 +300,36 @@ describe("decide — receipt merge", () => {
     expect(r.decision).toBe("review");
   });
 });
+describe("decide — tripMatchRule (날짜 매칭이 느슨하면 자동 저장 금지)", () => {
+  it("exact → 기존처럼 auto_commit", () => {
+    expect(
+      decide(draft(), signals({ tripMatchRule: "exact" }), baseEnv).decision
+    ).toBe("auto_commit");
+  });
+
+  it("명시한 여행(규칙 없음)도 기존처럼 auto_commit", () => {
+    expect(
+      decide(draft(), signals({ tripMatchRule: undefined }), baseEnv).decision
+    ).toBe("auto_commit");
+  });
+
+  it.each(["near", "single", "none"] as const)(
+    "%s → review (trip_match_uncertain), 임계값을 모두 통과해도 자동 저장 안 함",
+    (rule) => {
+      const r = decide(draft(), signals({ tripMatchRule: rule }), baseEnv);
+      expect(r.decision).toBe("review");
+      expect(r.reasonCode).toBe("trip_match_uncertain");
+      expect(r.reasons.join(" ")).toContain("여행 날짜");
+    }
+  );
+
+  it("취소·환불은 규칙과 무관하게 기존 사유 그대로 review", () => {
+    const r = decide(
+      draft({ kind: "cancel" }),
+      signals({ tripMatchRule: "near" }),
+      baseEnv
+    );
+    expect(r.decision).toBe("review");
+    expect(r.reasonCode).toBeUndefined();
+  });
+});

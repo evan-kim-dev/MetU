@@ -28,7 +28,12 @@ import { receiptDraftToExpenseDraft } from "@/lib/ledger/receipt-client";
 import { computeKrw } from "@/lib/ledger/money";
 import { getDailyFxQuote } from "@/lib/ledger/fx-server";
 import { onExpenseChanged } from "@/lib/agent/handlers/settlement";
+import { ensureOwnerMemberAdmin } from "@/lib/agent/membership";
 import { pickTripForReceivedAt } from "@/lib/onboarding/agent-context";
+import {
+  readTripMatchRule,
+  tripPickToResult,
+} from "@/lib/onboarding/trip-match";
 import { parseReceivedAtMs } from "@/lib/onboarding/trip-window";
 
 type TripMemberRow = {
@@ -43,7 +48,8 @@ type TripRow = {
   user_id: string;
   start_date?: string | null;
   end_date?: string | null;
-  currency?: string | null;
+  /** trips.local_currency (there is no trips.currency column) */
+  local_currency?: string | null;
 };
 
 type EventRow = {
@@ -55,6 +61,8 @@ type EventRow = {
   payload: Record<string, unknown> | null;
   status: string;
   created_at: string;
+  /** e.g. { match: { rule } } written at ingest / attach time */
+  result?: Record<string, unknown> | null;
 };
 
 function todayKst(): string {
@@ -92,21 +100,39 @@ async function loadCtx(tripId: string, userId: string) {
   const admin = getAgentAdmin();
   if (!admin) return null;
 
-  const { data: trip } = await admin
+  const { data: trip, error: tripError } = await admin
     .from("trips")
-    .select("id, user_id, start_date, end_date, currency")
+    .select("id, user_id, start_date, end_date, local_currency")
     .eq("id", tripId)
     .maybeSingle();
+  if (tripError) {
+    // A bad column name used to be swallowed here and surfaced as "no-owner-member".
+    console.error("[loadCtx] trip query failed", tripError.message);
+    return null;
+  }
   if (!trip) return null;
 
-  const { data: members } = await admin
-    .from("trip_members")
-    .select("id, user_id, display_name, auto_include")
-    .eq("trip_id", tripId);
+  const loadMembers = async (): Promise<TripMemberRow[]> => {
+    const { data: members } = await admin
+      .from("trip_members")
+      .select("id, user_id, display_name, auto_include")
+      .eq("trip_id", tripId);
+    return (members ?? []) as TripMemberRow[];
+  };
 
-  const list = (members ?? []) as TripMemberRow[];
+  let list = await loadMembers();
   // Event actor must be a member — do not silently fall back to trip owner.
-  const ownerMember = list.find((m) => m.user_id === userId) ?? null;
+  let ownerMember = list.find((m) => m.user_id === userId) ?? null;
+
+  // The owner's own row used to exist only after the ledger screen was opened.
+  // Guarantee it on the server (idempotent) when the actor owns the trip.
+  if (!ownerMember && (trip as TripRow).user_id === userId) {
+    const ensured = await ensureOwnerMemberAdmin(tripId, userId);
+    if (ensured.ok) {
+      list = await loadMembers();
+      ownerMember = list.find((m) => m.user_id === userId) ?? null;
+    }
+  }
 
   return {
     trip: trip as TripRow,
@@ -509,22 +535,33 @@ export async function processEvent(eventId: string): Promise<void> {
         event.payload as Record<string, unknown> | null,
         event.created_at
       );
-      const resolved = await pickTripForReceivedAt(
+      const pick = await pickTripForReceivedAt(
         event.user_id,
         new Date(receivedMs)
       );
-      if (resolved) {
+      // Keep the rule-parser preview (if any); store the match rule / miss reason.
+      const prevPreview = event.result?.preview;
+      const matchResult = {
+        ...(prevPreview ? { preview: prevPreview } : {}),
+        ...tripPickToResult(pick),
+      };
+      if (pick.tripId) {
         await admin
           .from("agent_events")
-          .update({ trip_id: resolved, status: "processing" })
+          .update({
+            trip_id: pick.tripId,
+            status: "processing",
+            result: matchResult,
+          })
           .eq("id", event.id);
-        event.trip_id = resolved;
+        event.trip_id = pick.tripId;
+        event.result = matchResult;
       } else {
         await admin
           .from("agent_events")
           .update({
             status: "unassigned",
-            result: { reason: "unassigned" },
+            result: matchResult,
             error: null,
             processed_at: null,
             locked_at: null,
@@ -534,8 +571,12 @@ export async function processEvent(eventId: string): Promise<void> {
           event.id,
           seq++,
           "unassigned",
-          {},
-          { message: "기간이 맞는 여행이 생기면 자동으로 붙여요" },
+          { reason: pick.reason ?? null },
+          {
+            reason: pick.reason ?? null,
+            suggest: pick.suggest ?? null,
+            message: "기간이 맞는 여행이 생기면 자동으로 붙여요",
+          },
           0,
           true
         );
@@ -616,7 +657,7 @@ export async function processEvent(eventId: string): Promise<void> {
         userId: event.user_id,
         tripId: event.trip_id,
         payload,
-        tripCurrency: ctx.trip.currency,
+        tripCurrency: ctx.trip.local_currency,
       });
       await recordStep(
         event.id,
@@ -699,6 +740,8 @@ export async function processEvent(eventId: string): Promise<void> {
 
     let autoCountToday = await countAutoToday(event.user_id, event.trip_id);
     const env = policyEnvFromProcess(ctx.ownerMember.id);
+    // undefined = explicit trip (token / manual assign / attach RPC). near/single → never auto-save.
+    const tripMatchRule = readTripMatchRule(event.result);
     const items: Array<Record<string, unknown>> = [];
     let anyReview = false;
     let anyFailedCommit = false;
@@ -771,6 +814,7 @@ export async function processEvent(eventId: string): Promise<void> {
         {
           duplicateCandidates: duplicateSignals(dupes, existing, receiptAttached),
           autoCountToday,
+          tripMatchRule,
         },
         env
       );
@@ -916,6 +960,7 @@ export async function processEvent(eventId: string): Promise<void> {
         ref: i,
         decision: "review",
         reasons: reviewReasons,
+        ...(decision.reasonCode ? { reasonCode: decision.reasonCode } : {}),
         ...(mergeInto ? { mergeInto } : {}),
         draft,
         priced: {
@@ -946,7 +991,10 @@ export async function processEvent(eventId: string): Promise<void> {
       .from("agent_events")
       .update({
         status,
-        result: { items },
+        result: {
+          items,
+          ...(event.result?.match ? { match: event.result.match } : {}),
+        },
         processed_at: new Date().toISOString(),
         error: anyFailedCommit ? "commit-failed" : null,
       })

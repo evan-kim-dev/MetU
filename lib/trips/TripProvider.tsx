@@ -18,6 +18,7 @@ import {
   fetchTripsFromSupabase,
   insertTripToSupabase,
   isTripDetailHydrated,
+  tripDateColumns,
   updateTripInSupabase,
   upsertTripsToSupabase,
 } from "./supabase";
@@ -36,6 +37,32 @@ interface TripContextValue {
 }
 
 const TripContext = createContext<TripContextValue | null>(null);
+
+/**
+ * 미배정 알림 재부착 요청. 실패해도 화면 흐름은 막지 않는다(콘솔만).
+ * 저장된 start/end 를 함께 보내 서버 RPC 가 컬럼이 비어 있어도 창을 계산할 수 있게 한다.
+ */
+async function requestAttachUnassigned(trip: Trip): Promise<void> {
+  try {
+    const res = await fetch("/api/agent/attach-unassigned", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tripId: trip.id,
+        ...(trip.startDate ? { startDate: trip.startDate } : {}),
+        ...(trip.startDate && trip.endDate ? { endDate: trip.endDate } : {}),
+      }),
+    });
+    if (!res.ok) {
+      console.warn("[TripProvider] attach-unassigned", res.status);
+    }
+  } catch (err) {
+    console.warn(
+      "[TripProvider] attach-unassigned",
+      err instanceof Error ? err.message : err
+    );
+  }
+}
 
 function hasPersistedLocalTrips(): boolean {
   if (typeof window === "undefined") return false;
@@ -147,24 +174,40 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
 
   const updateTrip = useCallback(
     (id: string, update: TripUpdate) => {
-      setTrips((prev) => {
-        const next = updateTripInList(prev, id, update);
-        const updated = next.find((trip) => trip.id === id);
-        if (useDb && userId && updated) {
-          const supabase = getBrowserSupabase();
-          if (supabase) {
-            void updateTripInSupabase(supabase, userId, id, update);
-          }
-          if (update.dateRange !== undefined) {
-            void fetch("/api/agent/attach-unassigned", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ tripId: id }),
-            }).catch(() => undefined);
-          }
+      // 날짜 라벨이 바뀌면 확정 날짜도 같이 계산해 화면 상태와 DB 컬럼을 맞춘다.
+      let normalized: TripUpdate = update;
+      if (update.dateRange !== undefined && update.startDate === undefined) {
+        const cols = tripDateColumns({ dateRange: update.dateRange });
+        normalized = {
+          ...update,
+          startDate: cols.start_date,
+          endDate: cols.end_date,
+        };
+      }
+      const toApply = normalized;
+
+      setTrips((prev) => updateTripInList(prev, id, toApply));
+
+      if (!useDb || !userId) return;
+      const supabase = getBrowserSupabase();
+      if (!supabase) return;
+
+      // 저장이 끝난 뒤에만 미배정 알림을 붙인다 (update 와 attach 가 경합하면
+      // attach 가 낡은 날짜를 보고 0건으로 끝난다).
+      void (async () => {
+        const saved = await updateTripInSupabase(supabase, userId, id, toApply);
+        if (!saved) {
+          console.warn("[TripProvider] 여행 저장에 실패했어요", id);
+          return;
         }
-        return next;
-      });
+        if (
+          toApply.dateRange !== undefined ||
+          toApply.startDate !== undefined ||
+          toApply.endDate !== undefined
+        ) {
+          await requestAttachUnassigned(saved);
+        }
+      })();
     },
     [useDb, userId]
   );
@@ -178,11 +221,7 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
           if (saved) {
             setTrips((prev) => [saved, ...prev]);
             // 기간이 맞는 미할당 이벤트만 이 여행에 붙인다(토큰은 사용자 단위 유지).
-            void fetch("/api/agent/attach-unassigned", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ tripId: saved.id }),
-            }).catch(() => undefined);
+            void requestAttachUnassigned(saved);
             return saved;
           }
         }
