@@ -24,6 +24,14 @@ export type DuplicateSignal = {
   expenseId: string;
   score: number;
   spentOn?: string | null;
+  /** 영수증 amount+time 강한 일치 (lib/ledger/dedupe.ts isReceiptStrongCandidate) */
+  strong?: boolean;
+  /** 기존 지출에 이미 영수증(receipt_path)이 붙어 있음 */
+  receiptAttached?: boolean;
+  /** 시각을 서로 비교할 수 있었음(±30분 안) */
+  timeKnown?: boolean;
+  /** 상호 유사도가 높음 */
+  merchantSimilar?: boolean;
 };
 
 export type PolicySignals = {
@@ -38,11 +46,15 @@ export type PolicyEnv = {
   ownerMemberId: string;
 };
 
-export type PolicyDecision = "auto_commit" | "review" | "ignore";
+export type PolicyDecision = "auto_commit" | "review" | "ignore" | "merge";
 
 export type PolicyResult = {
   decision: PolicyDecision;
   reasons: string[];
+  /** decision=merge: 새 지출 없이 영수증을 붙일 기존 지출 */
+  mergeExpenseId?: string;
+  /** review 이면서 같은 결제로 보이는 기존 지출 (수신함 합치기 선택용) */
+  duplicateOfExpenseId?: string;
 };
 
 function fmtWon(n: number): string {
@@ -85,6 +97,38 @@ export function decide(
       decision: "ignore",
       reasons: ["이미 받은 같은 문자라서 건너뛰었어요"],
     };
+  }
+
+  // Receipt vs existing payment: never create a second expense for the same
+  // payment. Attach to the existing one when it is unambiguous, else review.
+  if (priced.origin === "receipt") {
+    const strong = signals.duplicateCandidates
+      .filter((d) => d.strong)
+      .sort((a, b) => b.score - a.score);
+    if (strong.length >= 2) {
+      return {
+        decision: "review",
+        reasons: ["같은 결제로 보이는 지출이 여러 건이에요 — 합칠 지출을 골라 주세요"],
+      };
+    }
+    const only = strong[0];
+    if (only) {
+      if (
+        only.receiptAttached ||
+        (!only.timeKnown && !only.merchantSimilar)
+      ) {
+        return {
+          decision: "review",
+          reasons: ["이미 같은 결제가 있어요 — 합치기/별개로 저장"],
+          duplicateOfExpenseId: only.expenseId,
+        };
+      }
+      return {
+        decision: "merge",
+        reasons: ["이미 같은 결제가 있어서 영수증만 붙여요"],
+        mergeExpenseId: only.expenseId,
+      };
+    }
   }
 
   if (priced.origin === "llm") {

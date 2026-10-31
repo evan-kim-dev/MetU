@@ -4,6 +4,7 @@ export type ErrorSource =
   | "supabase-auth"
   | "oauth-query"
   | "network"
+  | "upload"
   | "unknown";
 
 export type UserFacingAction =
@@ -173,6 +174,32 @@ export function toUserFacingError(input: {
       retryable: false,
       action: "reissue-code",
     };
+  }
+
+  // 영수증 사진 업로드 (/api/events/upload)
+  if (source === "upload") {
+    if (status === 413) {
+      return {
+        code: "photo-too-large",
+        message: "사진이 너무 커요. 더 작은 사진으로 다시 올려 주세요.",
+        retryable: false,
+      };
+    }
+    if (status === 400 && errorCode === "unsupported-image") {
+      return {
+        code: "photo-unsupported",
+        message: "JPEG, PNG, WebP 사진만 올릴 수 있어요.",
+        retryable: false,
+      };
+    }
+    if (status === 401) {
+      return {
+        code: "session-expired",
+        message: "로그인이 만료됐어요. 다시 로그인해 주세요.",
+        retryable: false,
+        action: "login",
+      };
+    }
   }
 
   if (status === 401 && (source === "api" || source === "unknown")) {

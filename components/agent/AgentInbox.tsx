@@ -22,6 +22,8 @@ type ResultItem = {
   decision?: string;
   expenseId?: string;
   reasons?: string[];
+  /** 같은 결제로 보이는 기존 지출 (영수증 합치기 후보) */
+  mergeInto?: string;
   draft?: {
     merchant?: string | null;
     amount?: number | null;
@@ -40,6 +42,8 @@ type AgentEventRow = {
   result: {
     items?: ResultItem[];
     reason?: string;
+    /** 서버가 만든 한국어 사유 (reason 은 내부 코드) */
+    message?: string;
     preview?: SmsParsePreviewLabel & { confidence?: number; kind?: string };
   } | null;
   error: string | null;
@@ -53,6 +57,7 @@ function previewText(event: AgentEventRow): string {
   const text =
     typeof event.payload?.text === "string" ? event.payload.text.trim() : "";
   if (text) return text.length > 120 ? `${text.slice(0, 120)}…` : text;
+  if (event.result?.message) return event.result.message;
   if (event.result?.reason) return event.result.reason;
   return event.kind === "image" ? "영수증 이미지" : "자동 수집 이벤트";
 }
@@ -66,6 +71,12 @@ function isTestEvent(event: AgentEventRow): boolean {
 function autoItems(event: AgentEventRow): ResultItem[] {
   const items = event.result?.items ?? [];
   return items.filter((it) => it.decision === "auto_commit" && it.expenseId);
+}
+
+function mergedItems(event: AgentEventRow): ResultItem[] {
+  return (event.result?.items ?? []).filter(
+    (it) => it.decision === "merged" && it.expenseId
+  );
 }
 
 function reviewItems(event: AgentEventRow): ResultItem[] {
@@ -239,13 +250,18 @@ export function AgentInbox({
       ["received", "processing"].includes(e.status)
     );
     const autoDone = scoped.filter(
-      (e) => e.status === "done" && autoItems(e).length > 0
+      (e) =>
+        e.status === "done" &&
+        (autoItems(e).length > 0 || mergedItems(e).length > 0)
     );
     const review = scoped.filter((e) => e.status === "needs_review");
     const failed = scoped.filter((e) => e.status === "failed");
     const ignored = scoped.filter((e) => e.status === "ignored");
     const doneQuiet = scoped.filter(
-      (e) => e.status === "done" && autoItems(e).length === 0
+      (e) =>
+        e.status === "done" &&
+        autoItems(e).length === 0 &&
+        mergedItems(e).length === 0
     );
     const unassignedCards = scoped.filter((e) => e.status === "unassigned");
     return {
@@ -355,19 +371,40 @@ export function AgentInbox({
       return renderAssign(event);
     }
     if (event.status === "needs_review") {
+      const canMerge = reviewItems(event).some((it) => it.mergeInto);
       return (
         <div className="mt-2 flex flex-wrap gap-2">
+          {canMerge ? (
+            <button
+              type="button"
+              disabled={disabled}
+              className="min-h-11 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              onClick={() =>
+                void withBusy(event.id, () =>
+                  post(`/api/agent/events/${event.id}/confirm`, {
+                    mode: "merge",
+                  })
+                )
+              }
+            >
+              기존 지출에 합치기
+            </button>
+          ) : null}
           <button
             type="button"
             disabled={disabled}
-            className="min-h-11 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className={`min-h-11 rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+              canMerge
+                ? "bg-surface-soft text-ink-body"
+                : "bg-brand text-white"
+            }`}
             onClick={() =>
               void withBusy(event.id, () =>
                 post(`/api/agent/events/${event.id}/confirm`)
               )
             }
           >
-            가계부에 추가
+            {canMerge ? "별개로 저장" : "가계부에 추가"}
           </button>
           <button
             type="button"
@@ -531,6 +568,11 @@ export function AgentInbox({
               </li>
             ))}
           </ul>
+        ) : null}
+        {mergedItems(event).length > 0 ? (
+          <p className="mt-2 text-xs font-semibold text-emerald-800">
+            이미 있는 지출에 영수증을 붙였어요
+          </p>
         ) : null}
         {renderAutoUndo(event)}
         {renderActions(event)}

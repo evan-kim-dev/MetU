@@ -7,6 +7,31 @@ type ReceiptApiOk = {
   rejected?: { reason?: string };
 };
 
+/** 영수증 초안 → 공통 지출 초안 (확인 시트·에이전트 파이프라인 공용, 순수 함수) */
+export function receiptDraftToExpenseDraft(
+  d: ReceiptDraft,
+  rawExtract?: unknown
+): ExpenseDraftInput {
+  return {
+    origin: "receipt",
+    source: "receipt",
+    merchant: d.merchant,
+    merchantKo: d.merchantKo,
+    amount: d.amount,
+    currency: d.currency,
+    spentOn: d.spentOn,
+    paidAt: d.paidAt,
+    timeIsEstimated: d.timeIsEstimated,
+    category: d.category,
+    paymentMethod: d.paymentMethod,
+    confidence: d.confidence,
+    warnings: d.warnings,
+    kind: "approval",
+    items: d.items,
+    rawInput: rawExtract ?? null,
+  };
+}
+
 /** `/api/ledger/receipt` JSON → 확인 시트 초안 */
 export function receiptResponseToDraft(
   data: ReceiptApiOk
@@ -22,23 +47,6 @@ export function receiptResponseToDraft(
   }
   return {
     ok: true,
-    draft: {
-      origin: "receipt",
-      source: "receipt",
-      merchant: d.merchant,
-      merchantKo: d.merchantKo,
-      amount: d.amount,
-      currency: d.currency,
-      spentOn: d.spentOn,
-      paidAt: d.paidAt,
-      timeIsEstimated: d.timeIsEstimated,
-      category: d.category,
-      paymentMethod: d.paymentMethod,
-      confidence: d.confidence,
-      warnings: d.warnings,
-      kind: "approval",
-      items: d.items,
-      rawInput: data.rawExtract ?? null,
-    },
+    draft: receiptDraftToExpenseDraft(d, data.rawExtract),
   };
 }

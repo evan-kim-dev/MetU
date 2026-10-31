@@ -209,3 +209,94 @@ describe("decide", () => {
     ).toBe("review");
   });
 });
+
+describe("decide — receipt merge", () => {
+  const receipt = (p: Partial<PricedDraft> = {}) =>
+    draft({ origin: "receipt", confidence: 0.95, ...p });
+  const strong = (p: Record<string, unknown> = {}) => ({
+    expenseId: "e1",
+    score: 0.9,
+    strong: true,
+    receiptAttached: false,
+    timeKnown: true,
+    merchantSimilar: false,
+    ...p,
+  });
+
+  it("strong 중복 + 단일 후보 + 영수증 없음 → merge (AUTO_RECEIPT 미설정이어도 새 지출 없음)", () => {
+    const r = decide(
+      receipt(),
+      signals({ duplicateCandidates: [strong()] }),
+      baseEnv
+    );
+    expect(r.decision).toBe("merge");
+    expect(r.mergeExpenseId).toBe("e1");
+  });
+
+  it("기존 지출에 이미 영수증이 있으면 review (합치기/별개로 저장)", () => {
+    const r = decide(
+      receipt(),
+      signals({ duplicateCandidates: [strong({ receiptAttached: true })] }),
+      baseEnv
+    );
+    expect(r.decision).toBe("review");
+    expect(r.duplicateOfExpenseId).toBe("e1");
+    expect(r.reasons[0]).toContain("이미 같은 결제가 있어요");
+  });
+
+  it("시각을 모르고 상호도 다르면 review", () => {
+    const r = decide(
+      receipt(),
+      signals({
+        duplicateCandidates: [strong({ timeKnown: false, merchantSimilar: false })],
+      }),
+      baseEnv
+    );
+    expect(r.decision).toBe("review");
+    expect(r.duplicateOfExpenseId).toBe("e1");
+  });
+
+  it("시각을 몰라도 상호가 비슷하면 merge", () => {
+    const r = decide(
+      receipt(),
+      signals({
+        duplicateCandidates: [strong({ timeKnown: false, merchantSimilar: true })],
+      }),
+      baseEnv
+    );
+    expect(r.decision).toBe("merge");
+  });
+
+  it("strong 후보가 여러 건이면 review (임의로 합치지 않는다)", () => {
+    const r = decide(
+      receipt(),
+      signals({
+        duplicateCandidates: [strong(), strong({ expenseId: "e2", score: 0.85 })],
+      }),
+      baseEnv
+    );
+    expect(r.decision).toBe("review");
+    expect(r.mergeExpenseId).toBeUndefined();
+  });
+
+  it("strong 이 아니면(soft) 영수증은 기존처럼 review", () => {
+    const r = decide(
+      receipt(),
+      signals({
+        duplicateCandidates: [strong({ strong: false, score: 0.7 })],
+      }),
+      baseEnv
+    );
+    expect(r.decision).toBe("review");
+    expect(r.mergeExpenseId).toBeUndefined();
+  });
+
+  it("카드 문자(rule)는 strong 신호가 있어도 merge 하지 않고 자동 저장도 안 한다", () => {
+    const r = decide(
+      draft(),
+      signals({ duplicateCandidates: [strong()] }),
+      baseEnv
+    );
+    expect(r.decision).toBe("review");
+  });
+});

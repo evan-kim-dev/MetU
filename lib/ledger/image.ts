@@ -1,10 +1,4 @@
-const DEFAULT_MAX_MB = 4;
-
-function maxBytes(): number {
-  const parsed = Number(process.env.RECEIPT_MAX_IMAGE_MB ?? DEFAULT_MAX_MB);
-  const mb = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_MB;
-  return mb * 1024 * 1024;
-}
+import { receiptMaxImageBytes } from "@/lib/ledger/image-limits";
 
 function canvasToJpegBlob(
   canvas: HTMLCanvasElement,
@@ -53,7 +47,7 @@ export async function resizeImageToJpeg(
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close();
 
-  const limit = maxBytes();
+  const limit = receiptMaxImageBytes();
   let q = quality;
   let blob = await canvasToJpegBlob(canvas, q);
   while (blob && blob.size > limit && q > 0.35) {

@@ -18,6 +18,8 @@ const ItemSchema = z.object({
 
 const BodySchema = z.object({
   items: z.array(ItemSchema).optional(),
+  /** merge: 영수증을 기존 지출에 합치기, separate(기본): 별개로 저장 */
+  mode: z.enum(["merge", "separate"]).optional(),
 });
 
 export async function POST(
@@ -65,7 +67,9 @@ export async function POST(
   const outcome = await confirmEventReviews(
     eventId,
     guard.identity.userId,
-    items?.length ? { items } : undefined
+    items?.length || parsed.mode
+      ? { items, mode: parsed.mode }
+      : undefined
   );
 
   if (!outcome.ok) {
