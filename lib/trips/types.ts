@@ -58,8 +58,13 @@ export interface Trip {
   startDate?: string | null;
   /** 확정된 종료일 (YYYY-MM-DD). */
   endDate?: string | null;
+  /**
+   * 내가 만든 여행이면 true, 초대로 합류한 여행이면 false.
+   * 값이 없으면(로컬/게스트 여행) 소유자로 본다. 수정·삭제·초대·정산 생성은 소유자만 한다.
+   */
+  isOwner?: boolean;
 }
 
-export type TripUpdate = Partial<Omit<Trip, "id" | "expenses">> & {
+export type TripUpdate = Partial<Omit<Trip, "id" | "expenses" | "isOwner">> & {
   expenses?: TripExpense[];
 };

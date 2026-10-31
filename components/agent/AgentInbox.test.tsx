@@ -467,6 +467,38 @@ describe("AgentInbox", () => {
       expect(screen.getByTestId("quick-trip-sheet")).toBeTruthy();
     });
 
+    it("공유받은 여행(isOwner=false)은 선택지에 \"· 공유받음\" 으로 나온다", async () => {
+      setup(
+        [unassigned("e1", "2026-07-21T03:00:00Z", { reason: "no_dates" })],
+        [
+          {
+            id: "t1",
+            destination: "A",
+            dateRange: "미정",
+            status: "upcoming",
+            isOwner: true,
+          },
+          {
+            id: "t2",
+            destination: "B",
+            dateRange: "미정",
+            status: "upcoming",
+            isOwner: false,
+          },
+        ]
+      );
+      render(<AgentInbox />);
+
+      const select = (await screen.findByRole("combobox")) as HTMLSelectElement;
+      const labels = Array.from(select.options).map((o) => o.textContent);
+      expect(labels).toContain("B · 미정 · 공유받음");
+      // 내 여행에는 붙지 않는다
+      expect(labels).toContain("A · 미정");
+      expect(labels.some((l) => l?.startsWith("A") && l.includes("공유받음"))).toBe(
+        false
+      );
+    });
+
     it("여행은 있지만 날짜를 못 읽으면 '여행 날짜를 넣으면 자동으로 붙어요'", async () => {
       setup(
         [unassigned("e1", "2026-07-21T03:00:00Z", { reason: "no_dates" })],

@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  fetchTripByIdFromSupabase,
+  fetchTripsFromSupabase,
   tripDateColumns,
   tripToRow,
   updateToRow,
@@ -126,5 +129,166 @@ describe("updateToRow", () => {
     const row = updateToRow({ memo: "메모", status: "ongoing" });
     expect(row).not.toHaveProperty("start_date");
     expect(row).not.toHaveProperty("end_date");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 소유 + 공유받은 여행
+// ---------------------------------------------------------------------------
+const OWNER = USER;
+const OTHER = "99999999-9999-4999-8999-999999999999";
+const OWN_TRIP = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const SHARED_TRIP = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
+type Call = { table: string; method: string; args: unknown[] };
+type Result = { data: unknown; error: { message: string } | null };
+
+/** from(table) 마다 미리 정한 결과를 돌려주는 최소 fake. 호출 기록을 남긴다. */
+function fakeSupabase(results: Record<string, Result[]>) {
+  const calls: Call[] = [];
+  const queues = Object.fromEntries(
+    Object.entries(results).map(([k, v]) => [k, [...v]])
+  );
+  const from = vi.fn((table: string) => {
+    const result: Result = queues[table]?.shift() ?? { data: [], error: null };
+    const builder: Record<string, unknown> = {};
+    for (const method of ["select", "eq", "in", "order", "limit"]) {
+      builder[method] = (...args: unknown[]) => {
+        calls.push({ table, method, args });
+        return builder;
+      };
+    }
+    builder.maybeSingle = () => {
+      calls.push({ table, method: "maybeSingle", args: [] });
+      return Promise.resolve(result);
+    };
+    builder.then = (
+      resolve: (value: Result) => unknown,
+      reject?: (reason: unknown) => unknown
+    ) => Promise.resolve(result).then(resolve, reject);
+    return builder;
+  });
+  return { client: { from } as unknown as SupabaseClient, calls };
+}
+
+function row(id: string, userId: string, createdAt: string) {
+  return {
+    id,
+    user_id: userId,
+    destination: id === OWN_TRIP ? "도쿄" : "오사카",
+    country: "일본",
+    origin: "서울",
+    date_range: "2026-07-20 · 3박 4일",
+    start_date: "2026-07-20",
+    end_date: "2026-07-23",
+    d_day: 0,
+    budget: 0,
+    spent: 0,
+    people: 2,
+    styles: [],
+    image_url: "",
+    memo: null,
+    status: "upcoming",
+    created_at: createdAt,
+  };
+}
+
+describe("fetchTripsFromSupabase — 소유 + 멤버 합집합", () => {
+  it("내 여행과 멤버로 합류한 여행을 합치고 isOwner 를 표시한다 (최신순)", async () => {
+    const { client, calls } = fakeSupabase({
+      trips: [
+        { data: [row(OWN_TRIP, OWNER, "2026-10-01T00:00:00Z")], error: null },
+        { data: [row(SHARED_TRIP, OTHER, "2026-10-05T00:00:00Z")], error: null },
+      ],
+      trip_members: [
+        {
+          data: [{ trip_id: SHARED_TRIP }, { trip_id: OWN_TRIP }],
+          error: null,
+        },
+      ],
+    });
+
+    const trips = await fetchTripsFromSupabase(client, OWNER);
+
+    expect(trips.map((t) => t.id)).toEqual([SHARED_TRIP, OWN_TRIP]);
+    expect(trips.find((t) => t.id === OWN_TRIP)?.isOwner).toBe(true);
+    expect(trips.find((t) => t.id === SHARED_TRIP)?.isOwner).toBe(false);
+
+    // 소유 쿼리는 user_id, 멤버 쿼리는 user_id, 공유 여행 쿼리는 소유한 id 를 뺀 목록
+    expect(calls).toContainEqual({
+      table: "trips",
+      method: "eq",
+      args: ["user_id", OWNER],
+    });
+    expect(calls).toContainEqual({
+      table: "trip_members",
+      method: "eq",
+      args: ["user_id", OWNER],
+    });
+    expect(calls).toContainEqual({
+      table: "trips",
+      method: "in",
+      args: ["id", [SHARED_TRIP]],
+    });
+  });
+
+  it("공유받은 여행이 없으면 두 번째 trips 조회를 하지 않는다", async () => {
+    const { client, calls } = fakeSupabase({
+      trips: [
+        { data: [row(OWN_TRIP, OWNER, "2026-10-01T00:00:00Z")], error: null },
+      ],
+      trip_members: [{ data: [{ trip_id: OWN_TRIP }], error: null }],
+    });
+    const trips = await fetchTripsFromSupabase(client, OWNER);
+    expect(trips).toHaveLength(1);
+    expect(trips[0]?.isOwner).toBe(true);
+    expect(calls.filter((c) => c.table === "trips" && c.method === "in")).toEqual(
+      []
+    );
+  });
+
+  it("멤버 조회가 실패해도 내 여행은 돌려준다", async () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeSupabase({
+      trips: [
+        { data: [row(OWN_TRIP, OWNER, "2026-10-01T00:00:00Z")], error: null },
+      ],
+      trip_members: [{ data: null, error: { message: "boom" } }],
+    });
+    const trips = await fetchTripsFromSupabase(client, OWNER);
+    expect(trips.map((t) => t.id)).toEqual([OWN_TRIP]);
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
+  it("내 여행 조회가 실패하면 빈 배열", async () => {
+    const { client } = fakeSupabase({
+      trips: [{ data: null, error: { message: "boom" } }],
+    });
+    expect(await fetchTripsFromSupabase(client, OWNER)).toEqual([]);
+  });
+});
+
+describe("fetchTripByIdFromSupabase — 멤버 허용", () => {
+  it("user_id 로 거르지 않고 id 로만 조회하며 isOwner 를 계산한다", async () => {
+    const { client, calls } = fakeSupabase({
+      trips: [{ data: row(SHARED_TRIP, OTHER, "2026-10-05T00:00:00Z"), error: null }],
+    });
+    const found = await fetchTripByIdFromSupabase(client, OWNER, SHARED_TRIP);
+    expect(found?.id).toBe(SHARED_TRIP);
+    expect(found?.isOwner).toBe(false);
+    expect(calls.some((c) => c.method === "eq" && c.args[0] === "user_id")).toBe(
+      false
+    );
+    expect(calls).toContainEqual({
+      table: "trips",
+      method: "eq",
+      args: ["id", SHARED_TRIP],
+    });
+  });
+
+  it("RLS 로 안 보이면 null", async () => {
+    const { client } = fakeSupabase({ trips: [{ data: null, error: null }] });
+    expect(await fetchTripByIdFromSupabase(client, OWNER, SHARED_TRIP)).toBeNull();
   });
 });

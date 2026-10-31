@@ -12,6 +12,7 @@ import { basisHash, type LedgerExpense } from "@/lib/ledger/settle";
 import type { SettlementSnapshot } from "@/lib/ledger/supabase";
 
 const fetchLatestSettlement = vi.fn();
+const fetchSettlementHistory = vi.fn();
 const listMembers = vi.fn();
 const listExpenses = vi.fn();
 const listVoidedExpenseIds = vi.fn();
@@ -41,6 +42,7 @@ vi.mock("@/lib/supabase/browser", () => ({
 }));
 vi.mock("@/lib/ledger/supabase", () => ({
   fetchLatestSettlement: (...a: unknown[]) => fetchLatestSettlement(...a),
+  fetchSettlementHistory: (...a: unknown[]) => fetchSettlementHistory(...a),
   listMembers: (...a: unknown[]) => listMembers(...a),
   listExpenses: (...a: unknown[]) => listExpenses(...a),
   listVoidedExpenseIds: (...a: unknown[]) => listVoidedExpenseIds(...a),
@@ -101,6 +103,7 @@ async function settlement(
 const writeText = vi.fn();
 
 beforeEach(() => {
+  fetchSettlementHistory.mockResolvedValue([]);
   listMembers.mockResolvedValue(members);
   listExpenses.mockResolvedValue([expenseRow]);
   listVoidedExpenseIds.mockResolvedValue(new Set<string>());
@@ -225,5 +228,73 @@ describe("LedgerSettlePage", () => {
       (screen.getByRole("button", { name: "문구 복사" }) as HTMLButtonElement)
         .disabled
     ).toBe(false);
+  });
+});
+
+describe("LedgerSettlePage — 이전 정산(공유 이력)", () => {
+  it("이전 버전의 /s 링크를 목록으로 보여주고 복사한다 (현재 버전은 제외)", async () => {
+    fetchLatestSettlement.mockResolvedValue({
+      ok: true,
+      settlement: await settlement({ id: "s2", version: 2, shareToken: "tokNEW" }),
+    });
+    fetchSettlementHistory.mockResolvedValue([
+      {
+        id: "s2",
+        version: 2,
+        status: "open",
+        origin: "manual",
+        shareToken: "tokNEW",
+        createdAt: "2026-11-02T01:00:00Z",
+      },
+      {
+        id: "s1",
+        version: 1,
+        status: "superseded",
+        origin: "manual",
+        shareToken: "tokOLD",
+        createdAt: "2026-11-01T01:00:00Z",
+      },
+    ]);
+    render(<LedgerSettlePage />);
+
+    const section = await screen.findByRole("region", { name: "이전 정산" });
+    expect(section.textContent).toContain("v1");
+    expect(section.textContent).toContain("최신 아님");
+    expect(section.textContent).not.toContain("v2");
+
+    fireEvent.click(screen.getByRole("button", { name: "v1 공유 링크 복사" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]![0])).toMatch(/\/s\/tokOLD$/);
+    expect(
+      screen.getByRole("link", { name: "v1 정산 열기" }).getAttribute("href")
+    ).toBe("/s/tokOLD");
+  });
+
+  it("이전 버전이 없으면 이전 정산 영역을 그리지 않는다", async () => {
+    fetchLatestSettlement.mockResolvedValue({
+      ok: true,
+      settlement: await settlement(),
+    });
+    render(<LedgerSettlePage />);
+    await screen.findByText(/지영 → 민수/);
+    expect(screen.queryByRole("region", { name: "이전 정산" })).toBeNull();
+  });
+
+  it("소유자가 아니면 정산 계산 버튼이 없고 안내만 보인다", async () => {
+    listMembers.mockResolvedValue([
+      { ...members[0], userId: "u-other" },
+      { ...members[1], userId: "u-a", isOwner: false },
+    ]);
+    fetchLatestSettlement.mockResolvedValue({
+      ok: true,
+      settlement: await settlement(),
+    });
+    render(<LedgerSettlePage />);
+    await screen.findByText(/지영 → 민수/);
+    expect(screen.queryByRole("button", { name: "정산 계산하기" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "정산 다시 계산하기" })
+    ).toBeNull();
+    expect(screen.getByText(/여행을 만든 분만 만들 수 있어요/)).toBeTruthy();
   });
 });

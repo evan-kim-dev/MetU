@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FxAttribution } from "@/components/fx/FxAttribution";
+import { SettlementHistory } from "@/components/ledger/SettlementHistory";
 import { useClipboardCopy } from "@/components/onboarding/connect/useClipboardCopy";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
@@ -27,9 +28,11 @@ import {
 } from "@/lib/ledger/settle-share";
 import {
   fetchLatestSettlement,
+  fetchSettlementHistory,
   listExpenses,
   listMembers,
   listVoidedExpenseIds,
+  type SettlementHistoryItem,
   type SettlementSnapshot,
 } from "@/lib/ledger/supabase";
 import type { TripMember } from "@/lib/ledger/types";
@@ -62,6 +65,7 @@ export default function LedgerSettlePage() {
   const [fxFallbackCount, setFxFallbackCount] = useState(0);
   const [hasForeign, setHasForeign] = useState(false);
   const [settlement, setSettlement] = useState<SettlementSnapshot | null>(null);
+  const [history, setHistory] = useState<SettlementHistoryItem[]>([]);
   const [basisState, setBasisState] = useState<{
     source: LedgerExpense[];
     hash: string;
@@ -93,6 +97,9 @@ export default function LedgerSettlePage() {
       return;
     }
     setSettlement(res.settlement);
+    // 이전 버전 공유 링크 목록. 실패해도 현재 정산 화면은 그대로 보여준다(로그는 남김).
+    const past = await fetchSettlementHistory(supabase, tripId);
+    if (past) setHistory(past);
   }, [tripId]);
 
   const reload = useCallback(async () => {
@@ -356,13 +363,20 @@ export default function LedgerSettlePage() {
         </div>
       ) : null}
 
-      <button
-        type="button"
-        className="min-h-[44px] rounded-xl bg-brand py-3 text-sm font-extrabold text-white"
-        onClick={() => void createSettlement()}
-      >
-        {settlement ? "정산 다시 계산하기" : "정산 계산하기"}
-      </button>
+      {isOwner ? (
+        <button
+          type="button"
+          className="min-h-[44px] rounded-xl bg-brand py-3 text-sm font-extrabold text-white"
+          onClick={() => void createSettlement()}
+        >
+          {settlement ? "정산 다시 계산하기" : "정산 계산하기"}
+        </button>
+      ) : loaded ? (
+        <p className="text-xs text-ink-muted">
+          정산표는 여행을 만든 분만 만들 수 있어요. 내 송금은 아래에서 표시할 수
+          있어요.
+        </p>
+      ) : null}
 
       {completed ? (
         <p
@@ -486,6 +500,12 @@ export default function LedgerSettlePage() {
           ) : null}
         </section>
       ) : null}
+
+      <SettlementHistory
+        items={history}
+        currentId={settlement?.id ?? null}
+        origin={origin}
+      />
 
       {msg ? <p className="text-xs text-ink-muted">{msg}</p> : null}
 

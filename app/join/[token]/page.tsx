@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { useTrips } from "@/lib/trips/TripProvider";
 
 type Preview = {
   tripId: string;
@@ -20,6 +21,7 @@ export default function JoinTripPage() {
   const token = params.token;
   const { user, provider } = useAuth();
   const router = useRouter();
+  const { afterJoinTrip } = useTrips();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [claimId, setClaimId] = useState<string>("");
   const [name, setName] = useState("");
@@ -84,8 +86,19 @@ export default function JoinTripPage() {
       p_display_name: name || null,
     });
     if (err || !data) {
-      setError("합류에 실패했어요.");
+      console.error("[join] join_trip", err?.message ?? "no-data");
+      setError(
+        err?.message?.includes("invite-invalid")
+          ? "초대가 만료되었거나 유효하지 않아요."
+          : "합류에 실패했어요. 잠시 후 다시 시도해 주세요."
+      );
       return;
+    }
+    try {
+      // 목록을 갱신하고 합류한 여행 기간의 미배정 알림을 다시 매칭해요.
+      await afterJoinTrip(preview!.tripId);
+    } catch (e) {
+      console.error("[join] afterJoinTrip", e instanceof Error ? e.message : e);
     }
     router.replace(`/trips/${preview!.tripId}/ledger`);
   }
