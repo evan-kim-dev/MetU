@@ -3,6 +3,7 @@ import { TABLES } from "@/lib/constants";
 import { dedupeHash } from "@/lib/ledger/dedupe";
 import { computeKrw } from "@/lib/ledger/money";
 import { computeShares, splitEqual } from "@/lib/ledger/settle";
+import { parseSharedSettlementDetail } from "@/lib/ledger/shared-settlement";
 import {
   expenseToInsert,
   rowToExpense,
@@ -241,6 +242,52 @@ export async function fetchLatestSettlement(
       (transferRows ?? []) as SettlementTransferRowDb[]
     ),
   };
+}
+
+export interface SettlementHistoryItem {
+  id: string;
+  version: number;
+  status: SettlementStatus;
+  origin: "manual" | "auto";
+  shareToken: string | null;
+  createdAt: string | null;
+}
+
+interface SettlementHistoryRowDb {
+  id: string;
+  version: number | string;
+  status: string;
+  origin?: string | null;
+  share_token: string | null;
+  created_at?: string | null;
+}
+
+/**
+ * 이 여행의 정산 버전 목록(최신 먼저, 최대 20개). 이전 버전의 공유 링크를 다시 보내는 데 쓴다.
+ * RLS: 여행 멤버만 조회 가능. 실패하면 null.
+ */
+export async function fetchSettlementHistory(
+  supabase: SupabaseClient,
+  tripId: string
+): Promise<SettlementHistoryItem[] | null> {
+  const { data, error } = await supabase
+    .from(TABLES.tripSettlements)
+    .select("id, version, status, origin, share_token, created_at")
+    .eq("trip_id", tripId)
+    .order("version", { ascending: false })
+    .limit(20);
+  if (error) {
+    console.error("[fetchSettlementHistory]", error.message);
+    return null;
+  }
+  return ((data ?? []) as SettlementHistoryRowDb[]).map((r) => ({
+    id: r.id,
+    version: Number(r.version),
+    status: r.status as SettlementStatus,
+    origin: r.origin === "auto" ? "auto" : "manual",
+    shareToken: r.share_token ?? null,
+    createdAt: r.created_at ?? null,
+  }));
 }
 
 export async function fetchLedger(
@@ -693,7 +740,38 @@ export async function fetchSharedLedger(
   supabase: SupabaseClient,
   token: string
 ): Promise<LedgerSnapshot | null> {
-  // L-1A: prefer get_shared_settlement; fall back to legacy get_shared_ledger
+  // 1) 정산 공유 상세(이체 + 지출 내역). RPC 가 없거나 토큰이 아니면 다음 단계로.
+  const detailRes = await supabase.rpc("get_shared_settlement_detail", {
+    p_token: token,
+  });
+  if (!detailRes.error && detailRes.data) {
+    const detail = parseSharedSettlementDetail(detailRes.data);
+    if (detail) {
+      const members: TripMember[] = detail.members.map((m) => ({
+        id: m.id,
+        tripId: "",
+        displayName: m.displayName,
+        isOwner: false,
+      }));
+      const expenses: LedgerExpenseRow[] = detail.expenses.map((e) => ({
+        id: e.id,
+        tripId: "",
+        paidBy: e.paidBy,
+        label: e.label,
+        category: e.category,
+        amount: e.amount,
+        currency: e.currency,
+        fxRateToKrw: e.fxRateToKrw ?? 1,
+        krwAmount: e.krwAmount,
+        spentOn: e.spentOn ?? undefined,
+        splitType: "equal",
+        shares: {},
+      }));
+      return { members, expenses };
+    }
+  }
+
+  // 2) 상세 RPC 가 아직 없을 때: 멤버만 있는 기존 정산 공유.
   const settlement = await supabase.rpc("get_shared_settlement", {
     p_token: token,
   });

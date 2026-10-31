@@ -125,7 +125,10 @@ export function AgentInbox({
       tripsProp ??
       activeTrips.map((t) => ({
         id: t.id,
-        label: `${t.destination} · ${t.dateRange}`,
+        // 초대로 합류한 여행은 "공유받음"으로 구분해 보여줘요.
+        label: `${t.destination} · ${t.dateRange}${
+          t.isOwner === false ? " · 공유받음" : ""
+        }`,
       })),
     [tripsProp, activeTrips]
   );

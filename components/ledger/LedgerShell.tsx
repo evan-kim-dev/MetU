@@ -9,6 +9,7 @@ import { LedgerDashboard } from "@/components/ledger/LedgerDashboard";
 import { PasteExpenseBox } from "@/components/ledger/PasteExpenseBox";
 import { ReceiptUploader } from "@/components/ledger/ReceiptUploader";
 import { VoiceInputButton } from "@/components/ledger/VoiceInputButton";
+import { TripInvitePanel } from "@/components/trips/ledger/TripInvitePanel";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
 import {
@@ -213,6 +214,12 @@ export function LedgerShell({ tripId }: Props) {
             <Link href={`/trips/${tripId}/ledger/settle`}>정산</Link>
             <Link href={`/trips/${tripId}/ledger/report`}>리포트</Link>
           </div>
+
+          <TripInvitePanel
+            tripId={tripId}
+            members={members}
+            canInvite={Boolean(me?.isOwner && me.userId === user?.id)}
+          />
 
           {cancelNotice ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs">

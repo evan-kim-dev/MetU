@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -34,6 +35,11 @@ interface TripContextValue {
   addTrip: (trip: Trip) => Promise<Trip>;
   removeTrip: (id: string) => void;
   activeTrips: Trip[];
+  /**
+   * 초대로 합류한 직후 호출: 내 여행 목록을 다시 불러오고, 합류한 여행의 기간에 맞는
+   * 미배정 알림을 재매칭해요. 실패해도 화면 흐름은 막지 않아요.
+   */
+  afterJoinTrip: (tripId: string) => Promise<void>;
 }
 
 const TripContext = createContext<TripContextValue | null>(null);
@@ -42,7 +48,9 @@ const TripContext = createContext<TripContextValue | null>(null);
  * 미배정 알림 재부착 요청. 실패해도 화면 흐름은 막지 않는다(콘솔만).
  * 저장된 start/end 를 함께 보내 서버 RPC 가 컬럼이 비어 있어도 창을 계산할 수 있게 한다.
  */
-async function requestAttachUnassigned(trip: Trip): Promise<void> {
+async function requestAttachUnassigned(
+  trip: Pick<Trip, "id" | "startDate" | "endDate">
+): Promise<void> {
   try {
     const res = await fetch("/api/agent/attach-unassigned", {
       method: "POST",
@@ -76,6 +84,12 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
 
   const userId = user?.id ?? null;
   const useDb = Boolean(userId) && provider !== "guest";
+
+  // updateTrip/removeTrip 의 콜백 신원을 유지하면서 소유 여부를 확인하기 위한 최신 목록.
+  const tripsRef = useRef<Trip[]>([]);
+  useEffect(() => {
+    tripsRef.current = trips;
+  }, [trips]);
 
   useEffect(() => {
     if (!isAuthReady) return;
@@ -174,6 +188,11 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
 
   const updateTrip = useCallback(
     (id: string, update: TripUpdate) => {
+      // 공유받은 여행은 읽기 전용이에요 (DB 도 소유자만 수정할 수 있어요).
+      if (tripsRef.current.find((trip) => trip.id === id)?.isOwner === false) {
+        console.warn("[TripProvider] 공유받은 여행은 수정할 수 없어요", id);
+        return;
+      }
       // 날짜 라벨이 바뀌면 확정 날짜도 같이 계산해 화면 상태와 DB 컬럼을 맞춘다.
       let normalized: TripUpdate = update;
       if (update.dateRange !== undefined && update.startDate === undefined) {
@@ -235,6 +254,10 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
 
   const removeTrip = useCallback(
     (id: string) => {
+      if (tripsRef.current.find((trip) => trip.id === id)?.isOwner === false) {
+        console.warn("[TripProvider] 공유받은 여행은 삭제할 수 없어요", id);
+        return;
+      }
       setTrips((prev) => prev.filter((trip) => trip.id !== id));
       if (useDb && userId) {
         const supabase = getBrowserSupabase();
@@ -242,6 +265,22 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
           void deleteTripFromSupabase(supabase, userId, id);
         }
       }
+    },
+    [useDb, userId]
+  );
+
+  const afterJoinTrip = useCallback(
+    async (tripId: string): Promise<void> => {
+      if (!useDb || !userId) return;
+      const supabase = getBrowserSupabase();
+      if (!supabase) return;
+      const remote = await fetchTripsFromSupabase(supabase, userId);
+      // 조회가 실패해 빈 배열이 오면 화면의 기존 목록을 지우지 않는다.
+      if (remote.length > 0) setTrips(remote);
+      const joined = remote.find((trip) => trip.id === tripId);
+      await requestAttachUnassigned(
+        joined ?? { id: tripId, startDate: null, endDate: null }
+      );
     },
     [useDb, userId]
   );
@@ -261,6 +300,7 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
       addTrip,
       removeTrip,
       activeTrips,
+      afterJoinTrip,
     }),
     [
       trips,
@@ -271,6 +311,7 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
       addTrip,
       removeTrip,
       activeTrips,
+      afterJoinTrip,
     ]
   );
 

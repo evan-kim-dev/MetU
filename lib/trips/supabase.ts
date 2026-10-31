@@ -25,6 +25,7 @@ interface TripRow {
   daily_schedule?: Trip["dailySchedule"] | null;
   tips?: string[] | null;
   expenses?: Trip["expenses"] | null;
+  created_at?: string | null;
 }
 
 /** List/home cards — skip heavy JSON payloads */
@@ -45,6 +46,7 @@ const TRIP_LIST_COLUMNS = [
   "image_url",
   "memo",
   "status",
+  "created_at",
 ].join(", ");
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -88,9 +90,10 @@ const TRIP_DETAIL_COLUMNS = [
   "expenses",
 ].join(", ");
 
-function rowToTrip(row: TripRow): Trip {
+function rowToTrip(row: TripRow, userId: string): Trip {
   return {
     id: row.id,
+    isOwner: row.user_id === userId,
     destination: row.destination,
     country: row.country,
     origin: row.origin,
@@ -187,6 +190,15 @@ export function isTripDetailHydrated(trip: Trip): boolean {
   );
 }
 
+function byCreatedAtDesc(a: TripRow, b: TripRow): number {
+  return (b.created_at ?? "").localeCompare(a.created_at ?? "");
+}
+
+/**
+ * 내가 만든 여행 + 내가 멤버로 합류한 여행(공유받음).
+ * 멤버 여행은 RLS `trips_select_member` 가 있어야 읽힌다. 정책이 없거나 멤버 조회가
+ * 실패하면 내 여행만 돌려준다(로그만 남김).
+ */
 export async function fetchTripsFromSupabase(
   supabase: SupabaseClient,
   userId: string
@@ -198,9 +210,42 @@ export async function fetchTripsFromSupabase(
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];
-  return (data as unknown as TripRow[]).map(rowToTrip);
+  const owned = data as unknown as TripRow[];
+
+  const { data: memberRows, error: memberErr } = await supabase
+    .from(TABLES.tripMembers)
+    .select("trip_id")
+    .eq("user_id", userId);
+  if (memberErr) {
+    console.error("[fetchTripsFromSupabase] members", memberErr.message);
+    return owned.map((row) => rowToTrip(row, userId));
+  }
+
+  const ownedIds = new Set(owned.map((row) => row.id));
+  const sharedIds = [
+    ...new Set(
+      ((memberRows ?? []) as Array<{ trip_id: string }>)
+        .map((r) => r.trip_id)
+        .filter((id) => !ownedIds.has(id))
+    ),
+  ];
+  if (sharedIds.length === 0) return owned.map((row) => rowToTrip(row, userId));
+
+  const { data: sharedData, error: sharedErr } = await supabase
+    .from(TABLES.trips)
+    .select(TRIP_LIST_COLUMNS)
+    .in("id", sharedIds);
+  if (sharedErr) {
+    console.error("[fetchTripsFromSupabase] shared", sharedErr.message);
+    return owned.map((row) => rowToTrip(row, userId));
+  }
+
+  return [...owned, ...((sharedData ?? []) as unknown as TripRow[])]
+    .sort(byCreatedAtDesc)
+    .map((row) => rowToTrip(row, userId));
 }
 
+/** 내 여행 또는 멤버로 합류한 여행 한 건 (읽기 권한은 RLS 가 정한다). */
 export async function fetchTripByIdFromSupabase(
   supabase: SupabaseClient,
   userId: string,
@@ -209,12 +254,11 @@ export async function fetchTripByIdFromSupabase(
   const { data, error } = await supabase
     .from(TABLES.trips)
     .select(TRIP_DETAIL_COLUMNS)
-    .eq("user_id", userId)
     .eq("id", tripId)
     .maybeSingle();
 
   if (error || !data) return null;
-  return rowToTrip(data as unknown as TripRow);
+  return rowToTrip(data as unknown as TripRow, userId);
 }
 
 function isValidUuid(id: string): boolean {
@@ -239,7 +283,7 @@ export async function insertTripToSupabase(
     .single();
 
   if (error || !data) return null;
-  return rowToTrip(data as unknown as TripRow);
+  return rowToTrip(data as unknown as TripRow, userId);
 }
 
 export async function updateTripInSupabase(
@@ -258,7 +302,7 @@ export async function updateTripInSupabase(
     .single();
 
   if (error || !data) return null;
-  return rowToTrip(data as unknown as TripRow);
+  return rowToTrip(data as unknown as TripRow, userId);
 }
 
 export async function deleteTripFromSupabase(
@@ -289,5 +333,5 @@ export async function upsertTripsToSupabase(
     .upsert(rows, { onConflict: "id" })
     .select(TRIP_DETAIL_COLUMNS);
   if (error || !data) return [];
-  return (data as unknown as TripRow[]).map(rowToTrip);
+  return (data as unknown as TripRow[]).map((row) => rowToTrip(row, userId));
 }

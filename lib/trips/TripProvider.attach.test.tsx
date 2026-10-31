@@ -196,3 +196,55 @@ describe("TripProvider — 저장 후 미배정 재부착", () => {
     await waitFor(() => expect(console.warn).toHaveBeenCalled());
   });
 });
+
+describe("TripProvider — 공유받은 여행", () => {
+  it("isOwner=false 여행은 수정/삭제하지 않는다 (DB 호출 없음)", async () => {
+    mocks.fetchTrips.mockResolvedValue([makeTrip({ isOwner: false })]);
+    const { result } = renderHook(() => useTrips(), { wrapper });
+    await waitFor(() => expect(result.current.isReady).toBe(true));
+    expect(result.current.activeTrips.map((t) => t.id)).toEqual([TRIP_ID]);
+
+    await act(async () => {
+      result.current.updateTrip(TRIP_ID, { memo: "바꾸기" });
+      result.current.removeTrip(TRIP_ID);
+    });
+
+    expect(mocks.updateTrip).not.toHaveBeenCalled();
+    expect(result.current.trips).toHaveLength(1);
+    expect(result.current.trips[0]?.memo).toBeUndefined();
+  });
+
+  it("afterJoinTrip: 목록을 다시 불러오고 합류한 여행의 기간으로 attach 를 호출한다", async () => {
+    const shared = makeTrip({ id: "66666666-6666-4666-8666-666666666666", isOwner: false });
+    mocks.fetchTrips.mockResolvedValueOnce([makeTrip()]);
+    const { result } = renderHook(() => useTrips(), { wrapper });
+    await waitFor(() => expect(result.current.isReady).toBe(true));
+    expect(result.current.trips).toHaveLength(1);
+
+    mocks.fetchTrips.mockResolvedValueOnce([makeTrip(), shared]);
+    await act(async () => {
+      await result.current.afterJoinTrip(shared.id);
+    });
+
+    expect(mocks.fetchTrips).toHaveBeenCalledTimes(2);
+    expect(result.current.trips.map((t) => t.id)).toContain(shared.id);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("/api/agent/attach-unassigned");
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      tripId: shared.id,
+      startDate: "2026-07-20",
+      endDate: "2026-07-23",
+    });
+  });
+
+  it("afterJoinTrip: 조회가 비어도 기존 목록을 지우지 않는다", async () => {
+    const { result } = renderHook(() => useTrips(), { wrapper });
+    await waitFor(() => expect(result.current.isReady).toBe(true));
+
+    mocks.fetchTrips.mockResolvedValueOnce([]);
+    await act(async () => {
+      await result.current.afterJoinTrip(TRIP_ID);
+    });
+    expect(result.current.trips).toHaveLength(1);
+  });
+});
