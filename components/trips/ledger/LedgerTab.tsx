@@ -2,7 +2,11 @@
 
 import { Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
+import { FxAttribution } from "@/components/fx/FxAttribution";
+import { CurrencyTotals } from "@/components/ledger/CurrencyTotals";
+import { ExpenseFxLine } from "@/components/trips/ledger/ExpenseFxLine";
 import { MemberManager } from "@/components/trips/ledger/MemberManager";
+import { totalsByCurrency } from "@/lib/ledger/stats";
 import { ExpenseForm, type ExpenseDraft } from "@/components/trips/ledger/ExpenseForm";
 import { NaturalExpenseInput } from "@/components/trips/ledger/NaturalExpenseInput";
 import type { ExpenseParseItemOut } from "@/lib/ai/contracts";
@@ -58,6 +62,12 @@ export function LedgerTab({
     return (id: string) => map.get(id) ?? "?";
   }, [members]);
 
+  const currencyTotals = useMemo(() => totalsByCurrency(expenses), [expenses]);
+  const hasForeign = useMemo(
+    () => expenses.some((e) => e.currency.trim().toUpperCase() !== "KRW"),
+    [expenses]
+  );
+
   if (loading) {
     return (
       <div className="h-40 animate-pulse rounded-2xl bg-surface-soft" aria-busy="true" />
@@ -101,6 +111,11 @@ export function LedgerTab({
         <p className="text-xs text-ink-caption">총 지출 (원화)</p>
         <p className="text-xl font-extrabold text-ink-heading">{formatKRW(totalKrw)}</p>
       </div>
+      <CurrencyTotals
+        totals={currencyTotals}
+        totalKrw={totalKrw}
+        className="rounded-xl border border-line-soft px-3 py-2"
+      />
 
       {!readOnly && meId ? (
         <>
@@ -168,8 +183,9 @@ export function LedgerTab({
             ) : (
               <div
                 key={exp.id}
-                className="flex items-center gap-2 rounded-2xl border border-line-soft bg-surface-white px-3 py-3"
+                className="flex flex-col rounded-2xl border border-line-soft bg-surface-white px-3 py-3"
               >
+              <div className="flex items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-ink-heading">
                     {exp.label}
@@ -204,9 +220,12 @@ export function LedgerTab({
                   </>
                 ) : null}
               </div>
+              <ExpenseFxLine expense={exp} />
+              </div>
             )
           )
         )}
+        {hasForeign ? <FxAttribution /> : null}
       </div>
 
       {members.length > 0 && settlement.transfers.length > 0 ? (

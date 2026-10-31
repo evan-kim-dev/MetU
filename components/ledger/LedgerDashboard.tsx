@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CurrencyTotals } from "@/components/ledger/CurrencyTotals";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
 import type { BudgetAllocation } from "@/lib/ai/types";
 import {
@@ -137,6 +138,11 @@ export function LedgerDashboard({
           일자별 중앙값 환율 기준 근사치, 실제 청구액과 다를 수 있어요.
         </p>
       </div>
+
+      <CurrencyTotals
+        totals={stats.totalsByCurrency}
+        totalKrw={stats.totalKrw}
+      />
 
       <div>
         <p className="mb-2 text-xs font-bold text-ink-heading">일별</p>
