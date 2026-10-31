@@ -21,153 +21,15 @@ import {
 } from "@/lib/checklist/resolve-docs-country";
 import { useChecklistItems } from "@/lib/checklist/useChecklistItems";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import {
+  COUNTRY_DOCS,
+  DOCS_CHECKLIST_DISCLAIMER,
+  type DocsChecklistItem,
+} from "@/lib/checklist/country-docs";
 
 type CountryId = DocsCountryId;
-
-type DocItem = {
-  id: string;
-  label: string;
-  required: boolean;
-  tip?: string;
-};
-
+type DocItem = DocsChecklistItem;
 type UploadFile = StoredDocUpload;
-
-const COUNTRY_DOCS: Record<CountryId, { label: string; docs: DocItem[] }> = {
-  japan: {
-    label: "일본",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "visitjapan", label: "Visit Japan 등록 QR (권장)", required: false },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  thailand: {
-    label: "태국",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "hotel-voucher", label: "숙소 바우처", required: true },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  vietnam: {
-    label: "베트남",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "evisa", label: "전자비자 승인서(필요 시)", required: false },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  taiwan: {
-    label: "대만",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "entry-form", label: "입국 신고 정보", required: false },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  philippines: {
-    label: "필리핀",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "etravel", label: "eTravel 등록 정보", required: true },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  singapore: {
-    label: "싱가포르",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "sg-arrival", label: "SG Arrival Card 승인", required: true },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  malaysia: {
-    label: "말레이시아",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "mdac", label: "MDAC 등록 확인", required: true },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  indonesia: {
-    label: "인도네시아",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "evisa", label: "전자비자/VOA 승인 (필요 시)", required: false },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  china: {
-    label: "중국",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "visa", label: "비자 승인서 (필요 시)", required: false },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  hongkong: {
-    label: "홍콩",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "hotel-voucher", label: "숙소 예약 확인서", required: false },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  cambodia: {
-    label: "캄보디아",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "evisa", label: "전자비자 승인 (필요 시)", required: false },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  europe: {
-    label: "유럽",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      {
-        id: "visa",
-        label: "쉥겐 비자/ETIAS 승인 (필요 시)",
-        required: false,
-        tip: "목적지·체류 기간에 따라 쉥겐 비자 또는 ETIAS가 필요할 수 있어요.",
-      },
-      { id: "hotel-voucher", label: "숙소 예약 확인서", required: true },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  uk: {
-    label: "영국",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "eta", label: "영국 ETA 승인 화면", required: true },
-      { id: "hotel-voucher", label: "숙소 예약 확인서", required: true },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-  usa: {
-    label: "미국",
-    docs: [
-      { id: "passport", label: "여권(유효기간 확인)", required: true },
-      { id: "esta", label: "ESTA 승인 화면", required: true },
-      { id: "return-ticket", label: "왕복 항공권 E-티켓", required: true },
-      { id: "insurance", label: "해외여행자 보험 증서", required: false },
-    ],
-  },
-};
 
 export function DocsChecklistContent() {
   const { user, provider } = useAuth();
@@ -178,6 +40,10 @@ export function DocsChecklistContent() {
     [primaryTrip]
   );
   const [country, setCountry] = useState<CountryId>("japan");
+  const [docs, setDocs] = useState<DocItem[]>(COUNTRY_DOCS.japan.docs);
+  const [docsSource, setDocsSource] = useState<"ai" | "fallback" | "loading">(
+    "loading"
+  );
   const [checkedMap, setCheckedMap] = useState<Record<string, boolean>>({});
   const [uploads, setUploads] = useState<Record<string, UploadFile[]>>({});
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
@@ -192,7 +58,6 @@ export function DocsChecklistContent() {
   );
 
   const countryInfo = COUNTRY_DOCS[country];
-  const docs = countryInfo.docs;
 
   const progress = useMemo(() => {
     const total = docs.length;
@@ -221,6 +86,43 @@ export function DocsChecklistContent() {
       uploads,
     });
   }, [checkedMap, uploads, isHydrated, scopeKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDocs(COUNTRY_DOCS[country].docs);
+    setDocsSource("loading");
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/docs-checklist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ country }),
+        });
+        if (!res.ok) throw new Error(`docs-http-${res.status}`);
+        const body = (await res.json()) as {
+          docs?: DocItem[];
+          source?: "ai" | "fallback";
+        };
+        if (cancelled) return;
+        if (Array.isArray(body.docs) && body.docs.length > 0) {
+          setDocs(body.docs);
+          setDocsSource(body.source === "ai" ? "ai" : "fallback");
+          return;
+        }
+        setDocs(COUNTRY_DOCS[country].docs);
+        setDocsSource("fallback");
+      } catch {
+        if (cancelled) return;
+        setDocs(COUNTRY_DOCS[country].docs);
+        setDocsSource("fallback");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [country]);
 
   function toggleCheck(docId: string) {
     setCheckedMap((prev) => {
@@ -324,6 +226,12 @@ export function DocsChecklistContent() {
           진행 중인 여행 국가에 맞춰 필요한 서류를 확인하고, 증빙 이미지를 업로드해 관리할
           수 있어요.
         </p>
+        <p
+          role="note"
+          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-950"
+        >
+          {DOCS_CHECKLIST_DISCLAIMER}
+        </p>
       </header>
 
       <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">
@@ -382,6 +290,13 @@ export function DocsChecklistContent() {
           <h3 className="text-sm font-bold text-ink-heading">
             {countryInfo.label} 서류 목록
           </h3>
+          <span className="ml-auto text-2xs font-semibold text-ink-caption">
+            {docsSource === "loading"
+              ? "불러오는 중…"
+              : docsSource === "ai"
+                ? "AI 참고"
+                : "기본 목록"}
+          </span>
         </div>
         {uploadError ? (
           <p className="mb-3 text-xs text-red-500">{uploadError}</p>
@@ -399,7 +314,7 @@ export function DocsChecklistContent() {
                   <button
                     type="button"
                     onClick={() => toggleCheck(doc.id)}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 text-left"
                   >
                     <CheckCircle2
                       className={`h-4.5 w-4.5 shrink-0 ${
@@ -443,7 +358,7 @@ export function DocsChecklistContent() {
                       type="button"
                       disabled={uploadingDocId === doc.id}
                       onClick={() => openFilePicker(doc.id)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/5 px-2.5 text-xs font-semibold text-brand disabled:opacity-50"
+                      className="inline-flex h-11 min-h-[44px] items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/5 px-2.5 text-xs font-semibold text-brand disabled:opacity-50"
                     >
                       <ImagePlus className="h-3.5 w-3.5" />
                       {uploadingDocId === doc.id ? "업로드 중..." : "사진 업로드"}
@@ -469,7 +384,7 @@ export function DocsChecklistContent() {
                           type="button"
                           aria-label="업로드 이미지 삭제"
                           onClick={() => removeUpload(doc.id, file.id)}
-                          className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
+                          className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>

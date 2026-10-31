@@ -17,8 +17,13 @@ import { aiChatOrNull } from "@/lib/ai/chat-client";
 import { parsePlanItinerary } from "@/lib/ai/contracts";
 import { optimizeDailyScheduleRoutes } from "@/lib/route/optimize-schedule";
 import { resolveDestinationImage } from "@/lib/trips/destination-image";
-import { buildDestinationPoiSchedule, buildDynamicPoiSchedule } from "@/lib/ai/destination-pois";
 import {
+  buildMinimalLodgingTransportSchedule,
+  isMinimalScheduleFallback,
+  SCHEDULE_RETRY_TIP,
+} from "@/lib/ai/destination-pois";
+import {
+  buildDynamicPoiSchedule,
   fetchDestinationKnowledge,
   knowledgeToRagContexts,
   type DestinationKnowledge,
@@ -161,7 +166,6 @@ function buildDailySchedule(
   };
 
   const { city } = parseDestination(form.destination);
-  const styleSet = new Set(form.styles);
 
   if (
     process.env.PLACE_ITINERARY_ENABLED === "1" &&
@@ -179,14 +183,6 @@ function buildDailySchedule(
     if (fromPlaces.length) return fromPlaces;
   }
 
-  const hardcoded = buildDestinationPoiSchedule(
-    city,
-    nights,
-    form.styles,
-    budgets
-  );
-  if (hardcoded) return hardcoded;
-
   if (knowledge?.attractions?.length) {
     const dynamic = buildDynamicPoiSchedule(
       city,
@@ -199,131 +195,13 @@ function buildDailySchedule(
     if (dynamic) return dynamic;
   }
 
-  const dayTemplates = [
-    {
-      label: `${city} 도착 · 적응`,
-      items: [
-        {
-          time: "14:00",
-          title: `${city} 공항 도착 · 시내 이동`,
-          detail: `${form.origin}에서 도착한 뒤 대중교통·택시로 ${city} 시내로 이동해요.`,
-          cost: transportPerDay,
-        },
-        {
-          time: "16:00",
-          title: "숙소 체크인 & 휴식",
-          detail: `${city} 시내 숙소에 짐을 내려놓고 가볍게 쉬어요.`,
-          cost: 0,
-        },
-        {
-          time: "18:30",
-          title: `${city} 현지 저녁`,
-          detail: `${city} 숙소 근처 식당에서 첫 저녁을 먹으며 동네를 익혀요.`,
-          cost: foodPerDay,
-        },
-      ],
-    },
-    {
-      label: `${city} 대표 구역 산책`,
-      items: [
-        {
-          time: "09:30",
-          title: `${city} 대표 관광 구역`,
-          detail: `${city}에서 가장 잘 알려진 중심가를 걸으며 오전을 보내요.`,
-          cost: activityPerDay,
-        },
-        {
-          time: "13:00",
-          title: `${city} 현지 점심`,
-          detail: `${city} 로컬 메뉴로 점심을 먹고 잠깐 쉬어요.`,
-          cost: foodPerDay,
-        },
-        {
-          time: "15:30",
-          title: `${city} 카페·골목 산책`,
-          detail: `${city}의 분위기 좋은 골목·카페에서 여유를 즐기고 사진을 남겨요.`,
-          cost: Math.round(activityPerDay * 0.3),
-        },
-      ],
-    },
-    {
-      label: `${city} 문화 · 로컬 체험`,
-      items: [
-        {
-          time: "10:00",
-          title: `${city} 박물관·전시`,
-          detail: `${city}의 역사·문화를 알 수 있는 전시 공간을 찾아가요.`,
-          cost: activityPerDay,
-        },
-        {
-          time: "14:00",
-          title: `${city} 시장·상점가`,
-          detail: `${city} 로컬 마켓을 돌며 간식과 기념품을 구경해요.`,
-          cost: Math.round(foodPerDay * 0.8),
-        },
-        {
-          time: "19:00",
-          title: `${city} 야경 스팟`,
-          detail: `${city}에서 해 질 녘 전망 좋은 곳에서 야경을 감상해요.`,
-          cost: transportPerDay,
-        },
-      ],
-    },
-    {
-      label: styleSet.has("healing")
-        ? `${city} 힐링 데이`
-        : `${city} 여유 · 쇼핑`,
-      items: [
-        {
-          time: "11:00",
-          title: `${city} 공원·물가`,
-          detail: `${city}의 초록 공간이나 물가에서 여유롭게 시간을 보내요.`,
-          cost: activityPerDay,
-        },
-        {
-          time: "15:00",
-          title: `${city} 브런치 카페`,
-          detail: `${city} 분위기 좋은 카페에서 늦은 브런치를 즐겨요.`,
-          cost: foodPerDay,
-        },
-        {
-          time: "17:00",
-          title: `${city} 기념품 거리`,
-          detail: `귀국 전에 ${city} 기념품을 고르며 산책해요.`,
-          cost: Math.round(activityPerDay * 0.4),
-        },
-      ],
-    },
-    {
-      label: `${city} 출발 · 귀국`,
-      items: [
-        {
-          time: "10:00",
-          title: "체크아웃 & 마지막 산책",
-          detail: `${city} 숙소 체크아웃 후 남는 시간에 근처를 한 바퀴 돌아요.`,
-          cost: 0,
-        },
-        {
-          time: "12:00",
-          title: `${city} → 공항 이동`,
-          detail: `${form.origin}행에 맞춰 ${city}에서 여유 있게 공항으로 이동해요.`,
-          cost: transportPerDay,
-        },
-        {
-          time: "15:00",
-          title: `${form.origin} 행 항공편`,
-          detail: "탑승 수속을 마치고 귀국 일정으로 이어가요.",
-          cost: 0,
-        },
-      ],
-    },
-  ];
-
-  return dayTemplates.slice(0, nights + 1).map((day, index) => {
-    const items = day.items;
-    const dayTotal = items.reduce((sum, item) => sum + item.cost, 0);
-    return { day: index + 1, label: day.label, items, dayTotal };
-  });
+  // 동적 POI 비었을 때: 숙소/교통 최소 일정 (재시도 안내는 tips에서)
+  return buildMinimalLodgingTransportSchedule(
+    city,
+    form.origin,
+    nights,
+    budgets
+  );
 }
 
 function estimateItemCost(
@@ -655,7 +533,17 @@ export function buildFallbackTripPlan(
     styleLabels,
   });
 
-  const tips =
+  const dailySchedule =
+    dailyScheduleOverride ??
+    buildDailySchedule(
+      form,
+      budgetAllocation,
+      nights,
+      knowledge,
+      candidatePool
+    );
+
+  const tipsBase =
     summaryResult.tone === "factbomb"
       ? [
           budgetRag.allowedRegions.length > 0
@@ -668,6 +556,11 @@ export function buildFallbackTripPlan(
           ...travelSources.slice(0, 4).map((s) => s.content),
           budgetRag.seasonTip,
         ].filter(Boolean);
+
+  const tips =
+    !dailyScheduleOverride && isMinimalScheduleFallback(dailySchedule)
+      ? [SCHEDULE_RETRY_TIP, ...tipsBase]
+      : tipsBase;
 
   const ragSources = buildBaseRagSources({
     budgetRag,
@@ -733,15 +626,7 @@ export function buildFallbackTripPlan(
       total: hotelAmount,
       note: `${people}인 기준 · 조식 포함 옵션`,
     },
-    dailySchedule:
-      dailyScheduleOverride ??
-      buildDailySchedule(
-        form,
-        budgetAllocation,
-        nights,
-        knowledge,
-        candidatePool
-      ),
+    dailySchedule,
     tips,
     ragSources,
   };
