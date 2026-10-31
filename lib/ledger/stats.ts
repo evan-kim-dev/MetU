@@ -1,3 +1,4 @@
+import { minorUnits, roundHalfUp } from "@/lib/ledger/money";
 import type { LedgerExpenseRow } from "@/lib/ledger/types";
 
 export type LedgerStatsInput = {
@@ -10,6 +11,40 @@ export type LedgerStatsInput = {
 
 export function totalKrw(expenses: LedgerExpenseRow[]): number {
   return expenses.reduce((s, e) => s + e.krwAmount, 0);
+}
+
+export interface CurrencyTotal {
+  currency: string;
+  /** 원 통화 합계 (통화 최소 단위로 반올림) */
+  amount: number;
+  /** 같은 통화 지출의 원화 합계 (저장된 krwAmount 합) */
+  krw: number;
+  count: number;
+}
+
+/**
+ * 통화별 합계. 표시 전용이며 환율을 다시 계산하지 않는다.
+ * 모든 항목의 krw 합은 totalKrw(expenses) 와 항상 같다.
+ * 정렬: 원화 합계 큰 순, 같으면 통화 코드 순.
+ */
+export function totalsByCurrency(
+  expenses: LedgerExpenseRow[]
+): CurrencyTotal[] {
+  const map = new Map<string, CurrencyTotal>();
+  for (const e of expenses) {
+    const code = (e.currency || "KRW").trim().toUpperCase();
+    const cur = map.get(code) ?? { currency: code, amount: 0, krw: 0, count: 0 };
+    cur.amount += Number.isFinite(e.amount) ? e.amount : 0;
+    cur.krw += e.krwAmount;
+    cur.count += 1;
+    map.set(code, cur);
+  }
+  return [...map.values()]
+    .map((t) => {
+      const scale = 10 ** minorUnits(t.currency);
+      return { ...t, amount: roundHalfUp(t.amount * scale) / scale };
+    })
+    .sort((a, b) => b.krw - a.krw || a.currency.localeCompare(b.currency));
 }
 
 export function byDay(expenses: LedgerExpenseRow[]): Record<string, number> {
@@ -96,6 +131,7 @@ export function computeLedgerStats(input: LedgerStatsInput) {
   const remaining = remainingBudget(input.budget, spent);
   return {
     totalKrw: spent,
+    totalsByCurrency: totalsByCurrency(input.expenses),
     byDay: byDay(input.expenses),
     byCategory: byCategory(input.expenses),
     byPayer: byPayer(input.expenses),
