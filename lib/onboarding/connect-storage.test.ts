@@ -65,6 +65,33 @@ describe("connect-storage", () => {
     expect(loadSnapshot()).toBeNull();
   });
 
+  it("keeps verifyStartedAt / realOk and rejects a bad timestamp", () => {
+    saveSnapshot({
+      phase: "verify",
+      platform: "ios",
+      ios27: true,
+      selectedApps: [],
+      serverOk: false,
+      deviceOk: false,
+      realOk: false,
+      verifyStartedAt: "2026-10-31T00:00:00.000Z",
+    });
+    expect(loadSnapshot()?.verifyStartedAt).toBe("2026-10-31T00:00:00.000Z");
+    sessionStorage.setItem(
+      CONNECT_STORAGE_KEY,
+      JSON.stringify({
+        phase: "verify",
+        platform: "ios",
+        ios27: true,
+        selectedApps: [],
+        serverOk: false,
+        deviceOk: false,
+        verifyStartedAt: "not-a-date",
+      })
+    );
+    expect(loadSnapshot()).toBeNull();
+  });
+
   it("clearSnapshot removes key", () => {
     saveSnapshot({
       phase: "verify",

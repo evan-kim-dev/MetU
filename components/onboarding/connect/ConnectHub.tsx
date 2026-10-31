@@ -85,7 +85,7 @@ export function ConnectHub({
           href="/agent"
           className="rounded-2xl bg-surface-soft px-4 py-3 text-sm font-semibold text-ink-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
-          여행 가계부에서 따로 연결
+          가계부에서 따로 연결
         </Link>
         <Link
           href={pasteHref}

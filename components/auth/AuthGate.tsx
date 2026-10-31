@@ -3,15 +3,8 @@
 import { useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { isPublicPagePath } from "@/lib/auth/route-access";
 import { safeNextPath } from "@/lib/security/safe-next";
-
-const PUBLIC_PATHS = ["/login", "/legal", "/auth"];
-
-function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`)
-  );
-}
 
 /**
  * 미로그인 사용자를 /login 으로 보내고,
@@ -22,7 +15,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const publicPath = isPublicPath(pathname);
+  const publicPath = isPublicPagePath(pathname);
 
   useEffect(() => {
     if (!isReady) return;

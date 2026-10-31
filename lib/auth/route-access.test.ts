@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildGateRedirect,
-  isGateExempt,
-  isPublicPath,
-} from "@/lib/auth/route-access";
+import { isPublicPagePath, isPublicPath } from "@/lib/auth/route-access";
 
 describe("isPublicPath", () => {
   it("allows PWA static assets", () => {
@@ -15,8 +11,9 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/.well-known/assetlinks.json")).toBe(true);
   });
 
-  it("allows login and auth", () => {
+  it("allows login, legal and auth", () => {
     expect(isPublicPath("/login")).toBe(true);
+    expect(isPublicPath("/legal/privacy")).toBe(true);
     expect(isPublicPath("/auth/callback")).toBe(true);
   });
 
@@ -26,65 +23,46 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/aboutx")).toBe(false);
   });
 
-  it("does not treat trips as public", () => {
+  it("allows shared settlement links", () => {
+    expect(isPublicPath("/s/abc")).toBe(true);
+    expect(isPublicPath("/trips/share/abc")).toBe(true);
+  });
+
+  it("allows the PWA share target", () => {
+    expect(isPublicPath("/share-target")).toBe(true);
+  });
+
+  it("does not treat trips, agent or join as public", () => {
     expect(isPublicPath("/trips")).toBe(false);
+    expect(isPublicPath("/trips/123")).toBe(false);
+    expect(isPublicPath("/agent")).toBe(false);
+    expect(isPublicPath("/join/abc")).toBe(false);
+    expect(isPublicPath("/sx")).toBe(false);
   });
 });
 
-describe("isGateExempt", () => {
-  it("exempts onboarding planner and automation", () => {
-    expect(isGateExempt("/onboarding")).toBe(true);
-    expect(isGateExempt("/onboarding/automation")).toBe(true);
-    expect(isGateExempt("/onboarding/shortcut-guide")).toBe(true);
+describe("isPublicPagePath (AuthGate)", () => {
+  it("opens about, legal, login, auth and share links without login", () => {
+    for (const path of [
+      "/about",
+      "/legal",
+      "/login",
+      "/auth/callback",
+      "/s/abc",
+      "/trips/share/abc",
+    ]) {
+      expect(isPublicPagePath(path), path).toBe(true);
+    }
   });
 
-  it("exempts join and inbox", () => {
-    expect(isGateExempt("/join/abc")).toBe(true);
-    expect(isGateExempt("/agent/inbox")).toBe(true);
+  it("keeps trips and join gated", () => {
+    expect(isPublicPagePath("/trips")).toBe(false);
+    expect(isPublicPagePath("/trips/123")).toBe(false);
+    expect(isPublicPagePath("/join/abc")).toBe(false);
   });
 
-  it("exempts the public about page", () => {
-    expect(isGateExempt("/about")).toBe(true);
-    expect(isGateExempt("/aboutx")).toBe(false);
-  });
-
-  it("gates trip detail", () => {
-    expect(isGateExempt("/trips/123")).toBe(false);
-  });
-});
-
-describe("buildGateRedirect", () => {
-  it("adds gate=1 and next for /trips", () => {
-    const url = new URL("https://met-u.vercel.app/trips");
-    const dest = buildGateRedirect(url, "https://met-u.vercel.app");
-    expect(dest.pathname).toBe("/onboarding/automation");
-    expect(dest.searchParams.get("gate")).toBe("1");
-    expect(dest.searchParams.get("next")).toBe("/trips");
-  });
-
-  it("omits next for home", () => {
-    const url = new URL("https://met-u.vercel.app/");
-    const dest = buildGateRedirect(url, "https://met-u.vercel.app");
-    expect(dest.searchParams.get("gate")).toBe("1");
-    expect(dest.searchParams.get("next")).toBeNull();
-  });
-
-  it("attaches join path as next", () => {
-    const join = new URL("https://met-u.vercel.app/join/tok");
-    const dest = buildGateRedirect(join, "https://met-u.vercel.app");
-    expect(dest.searchParams.get("next")).toBe("/join/tok");
-  });
-
-  it("does not attach next for /api paths", () => {
-    const url = new URL("https://met-u.vercel.app/api/x");
-    const dest = buildGateRedirect(url, "https://met-u.vercel.app");
-    expect(dest.searchParams.get("next")).toBeNull();
-  });
-
-  it("does not copy unrelated query onto automation", () => {
-    const url = new URL("https://met-u.vercel.app/trips?platform=ios&x=1");
-    const dest = buildGateRedirect(url, "https://met-u.vercel.app");
-    expect(dest.searchParams.get("platform")).toBeNull();
-    expect(dest.searchParams.get("next")).toBe("/trips?platform=ios&x=1");
+  it("does not open static assets or share-target as pages", () => {
+    expect(isPublicPagePath("/sw.js")).toBe(false);
+    expect(isPublicPagePath("/share-target")).toBe(false);
   });
 });

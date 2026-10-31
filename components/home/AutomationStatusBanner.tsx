@@ -7,10 +7,19 @@ import { useAutomationStatus } from "@/lib/hooks/useAutomationStatus";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useFirstRunVisible } from "@/lib/onboarding/first-run";
 
-export function AutomationStatusBanner() {
+type Props = {
+  /**
+   * 홈은 첫 실행 체크리스트가 보이는 동안 배너를 숨겨요.
+   * 가계부·내 여행처럼 체크리스트가 없는 화면은 true 로 항상 보여 줘요.
+   */
+  ignoreFirstRun?: boolean;
+};
+
+export function AutomationStatusBanner({ ignoreFirstRun = false }: Props) {
   const { isReady, isLoggedIn, provider } = useAuth();
   const isGuest = provider === "guest";
-  const firstRunVisible = useFirstRunVisible();
+  const firstRunVisibleRaw = useFirstRunVisible();
+  const firstRunVisible = ignoreFirstRun ? false : firstRunVisibleRaw;
   const { data, loading, error, uiState } = useAutomationStatus({
     enabled: isReady && isLoggedIn && !isGuest,
     lite: true,
@@ -40,7 +49,7 @@ export function AutomationStatusBanner() {
             ⚪
           </span>
           <p className="text-sm text-ink-heading">
-            자동 기록이 꺼져 있어요 · 카드 알림을 연결하면 지출이 자동으로 적혀요
+            자동 기록 꺼짐 · 연결하면 카드 알림이 가계부에 자동으로 적혀요
           </p>
         </div>
         <Link

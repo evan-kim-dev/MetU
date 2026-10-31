@@ -4,9 +4,10 @@ import { defaultNotificationIdempotencyKey } from "@/lib/agent/ingest";
 import { ingestNotificationPayload } from "@/lib/agent/ingest-notification";
 import { SYNTHETIC_SMS } from "@/lib/ledger/sms/__fixtures__/sms";
 
-const { createEventMock, pickMock } = vi.hoisted(() => ({
+const { createEventMock, pickMock, touchMock } = vi.hoisted(() => ({
   createEventMock: vi.fn(),
   pickMock: vi.fn(),
+  touchMock: vi.fn(async (..._args: unknown[]) => undefined),
 }));
 
 vi.mock("@/lib/agent/ingest", async (importOriginal) => {
@@ -15,7 +16,7 @@ vi.mock("@/lib/agent/ingest", async (importOriginal) => {
 });
 vi.mock("@/lib/agent/run", () => ({ processEvent: vi.fn() }));
 vi.mock("@/lib/onboarding/agent-context", () => ({
-  touchNotificationAt: vi.fn(async () => undefined),
+  touchNotificationAt: touchMock,
   pickTripForReceivedAt: pickMock,
 }));
 vi.mock("next/server", () => ({ after: vi.fn() }));
@@ -165,6 +166,43 @@ describe("ingestNotificationPayload — 여행 매칭 규칙 저장", () => {
     expect(outcome.status).toBe("received");
     const arg = createEventMock.mock.calls[0]![0] as { result: unknown };
     expect(arg.result).toBeNull();
+  });
+});
+
+describe("ingestNotificationPayload — 연결 테스트(MTU-TEST)", () => {
+  beforeEach(() => {
+    createEventMock.mockReset();
+    createEventMock.mockResolvedValue({ ok: true, id: "evt-t", duplicate: false });
+    pickMock.mockReset();
+    touchMock.mockClear();
+  });
+
+  it("MTU-TEST 는 device 테스트로만 기록하고 여행 매칭/처리는 하지 않아요", async () => {
+    const outcome = await ingestNotificationPayload({
+      userId: "u1",
+      tokenTripId: null,
+      app: "단축어",
+      title: "",
+      body: "MTU-TEST 연결 확인",
+      receivedAt: "2026-07-15T12:31:00+09:00",
+    });
+    expect(outcome.status).toBe("ignored");
+    expect(outcome.shouldProcess).toBe(false);
+    expect(pickMock).not.toHaveBeenCalled();
+    expect(touchMock).toHaveBeenCalledWith("u1", "단축어", { deviceTest: true });
+  });
+
+  it("실제 알림은 deviceTest 없이 기록해요", async () => {
+    pickMock.mockResolvedValue({ tripId: null, rule: "none", reason: "no_trips" });
+    await ingestNotificationPayload({
+      userId: "u1",
+      tokenTripId: null,
+      app: "카드앱",
+      title: "결제",
+      body: "승인 12,500원 스타벅스",
+      receivedAt: "2026-07-15T12:31:00+09:00",
+    });
+    expect(touchMock).toHaveBeenCalledWith("u1", "카드앱", { deviceTest: false });
   });
 });
 

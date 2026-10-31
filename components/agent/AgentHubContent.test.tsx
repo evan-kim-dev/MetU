@@ -16,6 +16,9 @@ vi.mock("@/lib/trips/TripProvider", () => ({
 vi.mock("@/lib/hooks/useAutomationStatus", () => ({
   useAutomationStatus: (...a: unknown[]) => useAutomationStatus(...a),
 }));
+vi.mock("@/lib/onboarding/first-run", () => ({
+  useFirstRunVisible: () => false,
+}));
 vi.mock("@/components/trips/QuickTripSheet", () => ({
   QuickTripSheet: ({ open }: { open: boolean }) =>
     open ? <div data-testid="quick-trip-sheet" /> : null,
@@ -66,7 +69,7 @@ describe("AgentHubContent", () => {
     expect(text).not.toContain("/s/토큰");
     expect(text).not.toContain("/board)");
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      "가계부·자동 기록"
+      "가계부"
     );
   });
 
@@ -126,12 +129,13 @@ describe("AgentHubContent", () => {
       uiState: "off",
       loading: false,
       error: null,
+      data: { status: "pending", platform: null, lastNotificationAt: null },
     });
     render(<AgentHubContent />);
+    expect(screen.getByText(/자동 기록 꺼짐/)).toBeTruthy();
     expect(
-      screen.getByText("카드 알림을 자동으로 기록해 보세요")
-    ).toBeTruthy();
-    expect(screen.getByText("연결하기")).toBeTruthy();
+      screen.getByRole("link", { name: "연결하기" }).getAttribute("href")
+    ).toBe("/onboarding/automation");
   });
 
   it("hides automation card for guest / loading / error", () => {

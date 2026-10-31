@@ -30,6 +30,7 @@ AI 여행 플래너 + 원장/에이전트. Next.js 15 App Router + Supabase.
 | `GEMINI_MODEL_*` / `AGENT_AUTO_*` / `FX_*` | 모델·정책·환율 튜닝 |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | 웹 푸시 |
 | `NEXT_PUBLIC_IOS_SHORTCUT_URL` | 온보딩 단축어 링크 |
+| `NEXT_PUBLIC_DEMO_MODE` | `1` 이면 가계부의 데모 패널과 `/api/agent/demo/*` 가 켜져요. 기본 꺼짐(라우트 404). **빌드 타임 변수라 설정 후 재배포 필요** |
 
 ### 삭제됨 (설정하지 마세요)
 

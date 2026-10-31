@@ -35,6 +35,10 @@ export type AutomationStatusData = {
   selectedApps: string[];
   lastNotificationAt: string | null;
   lastDeviceTestAt: string | null;
+  /** 실제 카드 알림(sim·MTU-TEST 제외) 최신 도착 시각 */
+  lastRealEventAt?: string | null;
+  /** 서버 시각(ISO). 클라이언트 시계 오차 보정용 */
+  serverNow?: string;
   lastServerTestAt: string | null;
   lastDroppedApp: string | null;
   state: string;

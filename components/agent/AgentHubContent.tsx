@@ -16,6 +16,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { DemoModePanel } from "@/components/agent/DemoModePanel";
+import { AutomationStatusBanner } from "@/components/home/AutomationStatusBanner";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -76,44 +77,36 @@ export function AgentHubContent() {
   });
 
   return (
-    <MobileShell title="가계부·자동 기록">
+    <MobileShell title="가계부">
       <div className="flex flex-col gap-5 px-4 py-4">
-        {!isGuest && !loading && !error && uiState ? (
+        {!isGuest &&
+        !loading &&
+        !error &&
+        (uiState === "ok" || uiState === "silent") ? (
           <section className="rounded-2xl bg-surface-white p-4 shadow-sm ring-1 ring-line-soft">
-            {uiState === "ok" || uiState === "silent" ? (
-              <>
-                <p className="text-sm font-extrabold text-ink-heading">
-                  카드 알림 자동 기록이 켜져 있어요
-                </p>
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <Link
-                    href="/onboarding/automation"
-                    className="inline-flex min-h-11 items-center text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  >
-                    관리
-                  </Link>
-                  <Link
-                    href="/agent/inbox"
-                    className="inline-flex min-h-11 items-center text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  >
-                    수신함 보기
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-extrabold text-ink-heading">
-                  카드 알림을 자동으로 기록해 보세요
-                </p>
-                <Link
-                  href="/onboarding/automation"
-                  className="ai-gradient-bg mt-2 inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-surface-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                >
-                  연결하기
-                </Link>
-              </>
-            )}
+            <p className="text-sm font-extrabold text-ink-heading">
+              카드 알림 자동 기록이 켜져 있어요
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <Link
+                href="/onboarding/automation"
+                className="inline-flex min-h-11 items-center text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                관리
+              </Link>
+              <Link
+                href="/agent/inbox"
+                className="inline-flex min-h-11 items-center text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                수신함 보기
+              </Link>
+            </div>
           </section>
+        ) : null}
+
+        {/* 소프트 배너: 미설정·건너뛴 사용자에게 강제 이동 없이 안내만 해요. */}
+        {!isGuest && (uiState === "off" || uiState === "unverified") ? (
+          <AutomationStatusBanner ignoreFirstRun />
         ) : null}
 
         {!isGuest ? <DemoModePanel /> : null}

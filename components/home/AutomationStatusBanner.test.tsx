@@ -12,13 +12,15 @@ vi.mock("@/lib/auth/AuthProvider", () => ({
 vi.mock("@/lib/hooks/useAutomationStatus", () => ({
   useAutomationStatus: (...a: unknown[]) => useAutomationStatus(...a),
 }));
+let firstRunVisible = false;
 vi.mock("@/lib/onboarding/first-run", () => ({
-  useFirstRunVisible: () => false,
+  useFirstRunVisible: () => firstRunVisible,
 }));
 
 import { AutomationStatusBanner } from "@/components/home/AutomationStatusBanner";
 
 afterEach(() => {
+  firstRunVisible = false;
   cleanup();
   vi.clearAllMocks();
 });
@@ -43,10 +45,39 @@ describe("AutomationStatusBanner", () => {
     render(<AutomationStatusBanner />);
     expect(
       screen.getByText(
-        "자동 기록이 꺼져 있어요 · 카드 알림을 연결하면 지출이 자동으로 적혀요"
+        "자동 기록 꺼짐 · 연결하면 카드 알림이 가계부에 자동으로 적혀요"
       )
     ).toBeTruthy();
     expect(screen.getByText("연결하기")).toBeTruthy();
+  });
+
+  it("skipped/pending 도 off 로 보이고, 첫 실행 체크리스트 중엔 홈에서만 숨겨요", () => {
+    firstRunVisible = true;
+    useAuth.mockReturnValue({
+      isReady: true,
+      isLoggedIn: true,
+      provider: "kakao",
+    });
+    useAutomationStatus.mockReturnValue({
+      data: {
+        status: "skipped",
+        platform: null,
+        lastNotificationAt: null,
+      },
+      loading: false,
+      error: null,
+      uiState: "off",
+    });
+    const home = render(<AutomationStatusBanner />);
+    expect(home.container.textContent).toBe("");
+    home.unmount();
+
+    // 가계부(/agent)·내 여행(/trips) 처럼 체크리스트가 없는 화면
+    render(<AutomationStatusBanner ignoreFirstRun />);
+    expect(screen.getByText(/자동 기록 꺼짐/)).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "연결하기" }).getAttribute("href")
+    ).toBe("/onboarding/automation");
   });
 
   it("renders unverified copy", () => {

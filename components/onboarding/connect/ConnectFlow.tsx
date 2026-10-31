@@ -12,7 +12,7 @@ import {
 
 import { ConnectError } from "@/components/onboarding/connect/ConnectError";
 import { ConnectHub } from "@/components/onboarding/connect/ConnectHub";
-import { ConnectStepper } from "@/components/onboarding/connect/ConnectStepper";
+import { ConnectStepCards } from "@/components/onboarding/connect/ConnectStepCards";
 import { GateNotice } from "@/components/onboarding/connect/GateNotice";
 import { RecentEventsStrip } from "@/components/onboarding/connect/RecentEventsStrip";
 import { StepAutomation } from "@/components/onboarding/connect/StepAutomation";
@@ -34,13 +34,15 @@ import { shouldEnterConnectHub } from "@/lib/onboarding/connect-entry";
 import {
   connectReducer,
   initialConnectState,
+  pickVerifyArrival,
   showConnectStepper,
-  stepIndex,
-  stepLabel,
-  stepTotal,
   toSnapshot,
   type ConnectErrorState,
 } from "@/lib/onboarding/connect-machine";
+import {
+  eventsSince,
+  newestRealEvent,
+} from "@/lib/onboarding/last-device-event";
 import {
   clearSnapshot,
   loadSnapshot,
@@ -102,6 +104,8 @@ export function ConnectFlow() {
   const prevPhase = useRef(state.phase);
   const prevEventCount = useRef(0);
   const bootStarted = useRef(false);
+  // 서버 시각 - 클라이언트 시각. 연결 확인 기준 시각(verifyStartedAt)을 서버 시계로 맞춰요.
+  const clockOffsetMs = useRef(0);
   const { copy } = useClipboardCopy();
 
   const gate = searchParams.get("gate");
@@ -121,7 +125,10 @@ export function ConnectFlow() {
 
   const status = useAutomationStatus({
     enabled:
-      (showStrip && !pollingStopped) || state.phase === "hub",
+      (showStrip &&
+        !pollingStopped &&
+        !(state.phase === "verify" && state.realOk)) ||
+      state.phase === "hub",
     lite: state.phase !== "verify",
     intervalMs: state.phase === "verify" ? 5000 : 10_000,
     cacheTtlMs: 0,
@@ -210,8 +217,20 @@ export function ConnectFlow() {
     if (h2 instanceof HTMLElement) h2.focus();
   }, [state.phase]);
 
+  const serverNow = status.data?.serverNow ?? bootStatus.data?.serverNow;
   useEffect(() => {
-    if (state.phase !== "verify" || state.deviceOk || pollingStopped) return;
+    if (!serverNow) return;
+    const server = Date.parse(serverNow);
+    if (Number.isFinite(server)) clockOffsetMs.current = server - Date.now();
+  }, [serverNow]);
+
+  const nowIso = useCallback(
+    () => new Date(Date.now() + clockOffsetMs.current).toISOString(),
+    []
+  );
+
+  useEffect(() => {
+    if (state.phase !== "verify" || state.realOk || pollingStopped) return;
     const started = Date.now();
     const t = setInterval(() => {
       const elapsed = Date.now() - started;
@@ -219,23 +238,18 @@ export function ConnectFlow() {
       if (elapsed >= 10 * 60 * 1000) setPollingStopped(true);
     }, 1000);
     return () => clearInterval(t);
-  }, [state.phase, state.deviceOk, pollingStopped, pollEpoch]);
+  }, [state.phase, state.realOk, pollingStopped, pollEpoch]);
 
+  // 연결 확인: 이 단계에 들어온 뒤 도착한 알림만 인정해요(예전 타임스탬프·sim 무시).
   useEffect(() => {
-    if (state.phase !== "verify" || state.deviceOk) return;
+    if (state.phase !== "verify") return;
     const data = status.data;
     if (!data) return;
-    if (data.lastNotificationAt || data.lastDeviceTestAt) {
-      dispatch({
-        type: "EVENT_RECEIVED",
-        kind: data.lastDeviceTestAt ? "device-test" : "real",
-        at:
-          data.lastNotificationAt ??
-          data.lastDeviceTestAt ??
-          new Date().toISOString(),
-      });
+    const arrival = pickVerifyArrival(state.verifyStartedAt, data);
+    if (arrival) {
+      dispatch({ type: "EVENT_RECEIVED", kind: arrival.kind, at: arrival.at });
     }
-  }, [status.data, state.phase, state.deviceOk]);
+  }, [status.data, state.phase, state.verifyStartedAt]);
 
   useEffect(() => {
     const n = status.data?.recentEvents.length ?? 0;
@@ -340,13 +354,13 @@ export function ConnectFlow() {
   }, [online, router, saveOnboarding, state.platform]);
 
   const enterVerify = useCallback(async () => {
-    dispatch({ type: "CONFIRM_AUTOMATION" });
+    dispatch({ type: "CONFIRM_AUTOMATION", at: nowIso() });
     void saveOnboarding({
       status: "partial",
       platform: state.platform,
       selectedApps: state.selectedApps,
     });
-  }, [saveOnboarding, state.platform, state.selectedApps]);
+  }, [nowIso, saveOnboarding, state.platform, state.selectedApps]);
 
   const serverTest = useCallback(async () => {
     if (!online) {
@@ -436,9 +450,14 @@ export function ConnectFlow() {
   const showLater =
     showConnectStepper(state) && state.issueMode === "wizard";
 
-  const firstEvent =
-    state.deviceOk && status.data?.recentEvents[0]
-      ? status.data.recentEvents[0]
+  const sinceEvents = eventsSince(
+    status.data?.recentEvents ?? [],
+    state.verifyStartedAt
+  );
+  const realEvent = state.realOk ? newestRealEvent(sinceEvents) : null;
+  const realEventTripLabel =
+    realEvent?.tripId != null
+      ? (trips.find((t) => t.id === realEvent.tripId)?.destination ?? null)
       : null;
 
   const userError: UserFacingError | null = state.error
@@ -468,10 +487,9 @@ export function ConnectFlow() {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {showConnectStepper(state) ? (
-            <ConnectStepper
-              index={stepIndex(state)}
-              total={stepTotal(state)}
-              label={stepLabel(state)}
+            <ConnectStepCards
+              state={state}
+              onGoTo={(phase) => dispatch({ type: "GO_TO_STEP", phase })}
             />
           ) : null}
         </div>
@@ -535,7 +553,7 @@ export function ConnectFlow() {
           activeTokenCount={activeTokenCount}
           lastNotificationAt={lastAt}
           pasteHref={pasteHref}
-          onVerify={() => dispatch({ type: "RESUME_VERIFY" })}
+          onVerify={() => dispatch({ type: "RESUME_VERIFY", at: nowIso() })}
           onAddDevice={() => {
             void refreshTokenMeta().then(() =>
               dispatch({ type: "START_ADD_DEVICE" })
@@ -621,12 +639,12 @@ export function ConnectFlow() {
           platform={state.platform}
           events={status.data?.recentEvents ?? []}
           eventsLoading={status.loading}
-          unassignedCount={status.data?.unassignedCount ?? 0}
           rateSlow={status.rateSlow}
           serverTestError={serverTestError}
           waitingMs={waitingMs}
           pollingStopped={pollingStopped}
-          firstEvent={firstEvent}
+          realEvent={realEvent}
+          realEventTripLabel={realEventTripLabel}
           finishing={state.busy === "finish"}
           testing={state.busy === "server-test"}
           onServerTest={() => void serverTest()}

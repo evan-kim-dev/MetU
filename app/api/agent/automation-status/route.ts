@@ -33,14 +33,40 @@ function textPreview(payload: Record<string, unknown> | null): string {
   return trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed;
 }
 
-function eventIsTest(e: EventRow): boolean {
+function eventIsTest(e: Pick<EventRow, "payload" | "result">): boolean {
   const body =
     (typeof e.payload?.body === "string" && e.payload.body) ||
     (typeof e.payload?.text === "string" && e.payload.text) ||
     "";
   if (body.startsWith("MTU-TEST")) return true;
   if (e.result?.test === true) return true;
+  if (e.payload?.test === true) return true;
   return false;
+}
+
+/**
+ * 실제 알림 도착 시각: source<>sim 이고 연결 테스트(MTU-TEST)가 아닌 최신 이벤트의 created_at.
+ * 연결 테스트(lastDeviceTestAt)·서버 테스트(sim)와 섞이지 않게 분리한다.
+ */
+async function loadRealEvents(
+  admin: NonNullable<ReturnType<typeof getAgentAdmin>>,
+  userId: string
+): Promise<{ lastRealEventAt: string | null; anyNonSim: boolean }> {
+  const { data } = await admin
+    .from("agent_events")
+    .select("id, created_at, payload, result")
+    .eq("user_id", userId)
+    .neq("source", "sim")
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const rows = (data ?? []) as Array<
+    Pick<EventRow, "id" | "created_at" | "payload" | "result">
+  >;
+  const real = rows.find((e) => !eventIsTest(e));
+  return {
+    lastRealEventAt: real?.created_at ?? null,
+    anyNonSim: rows.length > 0,
+  };
 }
 
 export async function GET(request: Request) {
@@ -82,16 +108,15 @@ export async function GET(request: Request) {
   }> = [];
   let unassignedCount = 0;
   let hasRecentEvent = false;
+  let lastRealEventAt: string | null = null;
 
-  if (admin && lite) {
-    const { count } = await admin
-      .from("agent_events")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .neq("source", "sim")
-      .limit(1);
-    hasRecentEvent = (count ?? 0) > 0;
-  } else if (admin) {
+  if (admin) {
+    const real = await loadRealEvents(admin, userId);
+    lastRealEventAt = real.lastRealEventAt;
+    hasRecentEvent = real.anyNonSim;
+  }
+
+  if (admin && !lite) {
     const { data: events } = await admin
       .from("agent_events")
       .select("id, status, created_at, source, trip_id, error, payload, result")
@@ -127,8 +152,6 @@ export async function GET(request: Request) {
       };
     });
 
-    hasRecentEvent = recentEvents.some((e) => e.source !== "sim");
-
     const { count } = await admin
       .from("agent_events")
       .select("id", { count: "exact", head: true })
@@ -155,6 +178,9 @@ export async function GET(request: Request) {
     selectedApps: parseSelectedApps(row?.selected_apps),
     lastNotificationAt: row?.last_notification_at ?? null,
     lastDeviceTestAt: row?.last_device_test_at ?? null,
+    lastRealEventAt,
+    // 클라이언트 시계와의 차이를 보정해 연결 확인 기준 시각을 잡는 데 써요.
+    serverNow: new Date().toISOString(),
     lastServerTestAt: row?.last_server_test_at ?? null,
     lastDroppedApp: row?.last_dropped_app ?? null,
     state,

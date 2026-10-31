@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StepVerify } from "@/components/onboarding/connect/StepVerify";
@@ -8,14 +8,35 @@ import {
   initialConnectState,
   type ConnectState,
 } from "@/lib/onboarding/connect-machine";
+import type { AutomationStatusEvent } from "@/lib/hooks/useAutomationStatus";
+
+const STARTED = "2026-10-31T00:00:00.000Z";
+const AFTER = "2026-10-31T00:00:05.000Z";
+const BEFORE = "2026-10-30T23:00:00.000Z";
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
 
+function ev(
+  over: Partial<AutomationStatusEvent> & { id: string }
+): AutomationStatusEvent {
+  return {
+    status: "done",
+    createdAt: AFTER,
+    source: "notification",
+    tripId: null,
+    textPreview: "승인 12,500원 스타벅스",
+    error: null,
+    reason: null,
+    isTest: false,
+    ...over,
+  };
+}
+
 function baseProps(
-  overrides: Partial<React.ComponentProps<typeof StepVerify>> & {
+  overrides: Partial<Omit<React.ComponentProps<typeof StepVerify>, "state">> & {
     state?: Partial<ConnectState>;
   } = {}
 ) {
@@ -24,18 +45,19 @@ function baseProps(
     ...initialConnectState(),
     phase: "verify",
     platform: "ios",
+    verifyStartedAt: STARTED,
     ...stateOverride,
   };
   return {
     platform: "ios" as const,
     events: [],
     eventsLoading: false,
-    unassignedCount: 0,
     rateSlow: false,
     serverTestError: null,
     waitingMs: 0,
     pollingStopped: false,
-    firstEvent: null,
+    realEvent: null,
+    realEventTripLabel: null,
     finishing: false,
     testing: false,
     onServerTest: vi.fn(),
@@ -48,6 +70,10 @@ function baseProps(
   };
 }
 
+function stage(id: string): string | null {
+  return screen.getByTestId(id).getAttribute("data-status");
+}
+
 describe("StepVerify", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -55,80 +81,102 @@ describe("StepVerify", () => {
 
   it("shows 60s hint", () => {
     render(<StepVerify {...baseProps({ waitingMs: 60_000 })} />);
-    expect(
-      screen.getByText(/아직 도착하지 않았어요/)
-    ).toBeTruthy();
+    expect(screen.getByText(/아직 도착하지 않았어요/)).toBeTruthy();
   });
 
-  it("finish buttons: both ok", () => {
+  it("아무것도 오지 않으면 계속 기다리는 중이에요 (이전 성공 기록이 있어도)", () => {
+    render(<StepVerify {...baseProps({ state: { serverOk: true } })} />);
+    expect(stage("stage-wait")).toBe("current");
+    expect(stage("stage-test")).toBe("pending");
+    expect(stage("stage-real")).toBe("pending");
+    expect(screen.getByText("알림을 기다리는 중이에요")).toBeTruthy();
+    expect(screen.queryByText("완료하고 홈으로")).toBeNull();
+  });
+
+  it("연결 테스트(MTU-TEST) 알림이 오면 연결 OK 단계가 완료돼요", () => {
     render(
       <StepVerify
         {...baseProps({
-          state: {
-            ...initialConnectState(),
-            phase: "verify",
-            serverOk: true,
-            deviceOk: true,
-          },
+          state: { deviceOk: true, realOk: false },
+          events: [
+            ev({
+              id: "t",
+              isTest: true,
+              status: "ignored",
+              textPreview: "MTU-TEST 연결 확인",
+            }),
+          ],
         })}
+      />
+    );
+    expect(stage("stage-test")).toBe("done");
+    expect(stage("stage-real")).toBe("current");
+    expect(screen.getByText("완료하고 홈으로")).toBeTruthy();
+    expect(screen.queryByTestId("real-event-result")).toBeNull();
+  });
+
+  it("실제 카드 알림: 여행에 붙었어요 / 아직 안 붙었어요", () => {
+    const { rerender } = render(
+      <StepVerify
+        {...baseProps({
+          state: { deviceOk: true, realOk: true },
+          realEvent: ev({ id: "r", tripId: "trip-1" }),
+          realEventTripLabel: "도쿄",
+        })}
+      />
+    );
+    expect(stage("stage-real")).toBe("done");
+    expect(screen.getByText("여행 도쿄에 붙었어요")).toBeTruthy();
+
+    rerender(
+      <StepVerify
+        {...baseProps({
+          state: { deviceOk: true, realOk: true },
+          realEvent: ev({ id: "r", status: "unassigned", tripId: null }),
+        })}
+      />
+    );
+    expect(screen.getByText("아직 여행에 안 붙었어요")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "수신함에서 붙이기" }).getAttribute("href")
+    ).toBe("/agent/inbox");
+  });
+
+  it("finish buttons: arrived → done", () => {
+    render(
+      <StepVerify
+        {...baseProps({ state: { deviceOk: true, serverOk: false } })}
       />
     );
     expect(screen.getByText("완료하고 홈으로")).toBeTruthy();
   });
 
-  it("finish buttons: server only", () => {
+  it("finish buttons: 못 받았으면 서버 테스트와 관계없이 '일단 완료'(partial)", () => {
     render(
       <StepVerify
-        {...baseProps({
-          state: {
-            ...initialConnectState(),
-            phase: "verify",
-            serverOk: true,
-            deviceOk: false,
-          },
-        })}
+        {...baseProps({ state: { serverOk: true, deviceOk: false } })}
       />
     );
-    expect(
-      screen.getByText("일단 완료하고 나중에 확인할게요")
-    ).toBeTruthy();
-  });
-
-  it("finish buttons: none", () => {
-    render(<StepVerify {...baseProps()} />);
+    expect(screen.getByText("일단 완료하고 나중에 확인할게요")).toBeTruthy();
     expect(screen.queryByText("완료하고 홈으로")).toBeNull();
-    expect(
-      screen.queryByText("일단 완료하고 나중에 확인할게요")
-    ).toBeNull();
   });
 
-  it("arrival banner + unassigned", () => {
-    render(
-      <StepVerify
-        {...baseProps({
-          firstEvent: {
-            id: "1",
-            status: "unassigned",
-            createdAt: new Date().toISOString(),
-            source: "notification",
-            tripId: null,
-            textPreview: "승인 테스트 1,000원",
-            error: null,
-            reason: null,
-            isTest: false,
-          },
-          unassignedCount: 1,
-          state: {
-            ...initialConnectState(),
-            phase: "verify",
-            deviceOk: true,
-            serverOk: true,
-          },
-        })}
-      />
-    );
-    expect(screen.getByText("알림이 도착했어요 🎉")).toBeTruthy();
-    expect(screen.getByText(/수신함에 보관했어요/)).toBeTruthy();
+  it("서버 테스트 버튼은 보조로 낮추고 '폰 연결은 아니에요'를 밝혀요", () => {
+    const onServerTest = vi.fn();
+    render(<StepVerify {...baseProps({ onServerTest })} />);
+    const btn = screen.getByRole("button", {
+      name: "서버만 확인(폰 연결은 아니에요)",
+    });
+    fireEvent.click(btn);
+    expect(onServerTest).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("서버 테스트 보내기")).toBeNull();
+  });
+
+  it("서버 테스트가 통과해도 연결됨으로 표시하지 않아요", () => {
+    render(<StepVerify {...baseProps({ state: { serverOk: true } })} />);
+    expect(screen.getByText(/MetU 서버는 정상이에요/)).toBeTruthy();
+    expect(stage("stage-test")).toBe("pending");
+    expect(stage("stage-wait")).toBe("current");
   });
 
   it("polling stopped UI", () => {
@@ -138,7 +186,7 @@ describe("StepVerify", () => {
 
   it("explains MTU-TEST and shows empty last device event", () => {
     render(<StepVerify {...baseProps()} />);
-    expect(screen.getByText(/MTU-TEST 연결 확인/)).toBeTruthy();
+    expect(screen.getAllByText(/MTU-TEST 연결 확인/).length).toBeGreaterThan(0);
     expect(screen.getByTestId("last-device-event").textContent).toBe(
       "아직 폰에서 받은 알림이 없어요"
     );
@@ -149,18 +197,27 @@ describe("StepVerify", () => {
       <StepVerify
         {...baseProps({
           events: [
-            {
+            ev({
               id: "sim-1",
               status: "ignored",
-              createdAt: new Date().toISOString(),
               source: "sim",
-              tripId: null,
               textPreview: "MTU-TEST-SERVER",
-              error: null,
-              reason: null,
               isTest: true,
-            },
+            }),
           ],
+        })}
+      />
+    );
+    expect(screen.getByTestId("last-device-event").textContent).toBe(
+      "아직 폰에서 받은 알림이 없어요"
+    );
+  });
+
+  it("확인 단계 진입 이전 이벤트는 '마지막으로 받은 알림'에 쓰지 않아요", () => {
+    render(
+      <StepVerify
+        {...baseProps({
+          events: [ev({ id: "old", createdAt: BEFORE })],
         })}
       />
     );
@@ -174,18 +231,15 @@ describe("StepVerify", () => {
       <StepVerify
         {...baseProps({
           events: [
-            {
+            ev({
               id: "dev-1",
               status: "ignored",
               createdAt: new Date().toISOString(),
-              source: "notification",
-              tripId: null,
-              textPreview: "MTU-TEST 연결 확인",
-              error: null,
-              reason: null,
               isTest: true,
-            },
+              textPreview: "MTU-TEST 연결 확인",
+            }),
           ],
+          state: { verifyStartedAt: "2020-01-01T00:00:00.000Z" },
         })}
       />
     );

@@ -1,15 +1,7 @@
-﻿import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { GUEST_COOKIE, verifyGuestCookie } from "@/lib/auth/guest-cookie";
-import {
-  buildGateRedirect,
-  isGateExempt,
-  isPublicPath,
-} from "@/lib/auth/route-access";
-import {
-  MTU_ONB_COOKIE,
-  MTU_ONB_SKIP_STATUSES,
-} from "@/lib/onboarding/constants";
+import { isPublicPath } from "@/lib/auth/route-access";
 import { resolveGuestCookieSecret } from "@/lib/security/guest-secret";
 import { isPublicApiPath } from "@/lib/security/public-api";
 import { safeNextPath } from "@/lib/security/safe-next";
@@ -18,7 +10,6 @@ import { getPublicSupabaseKey } from "@/lib/supabase/env";
 async function resolveAuth(request: NextRequest): Promise<{
   response: NextResponse;
   hasUser: boolean;
-  userId: string | null;
   hasGuestSession: boolean;
 }> {
   let response = NextResponse.next({
@@ -36,7 +27,6 @@ async function resolveAuth(request: NextRequest): Promise<{
   const anonKey = getPublicSupabaseKey();
 
   let hasUser = false;
-  let userId: string | null = null;
 
   if (url && anonKey) {
     const supabase = createServerClient(url, anonKey, {
@@ -65,14 +55,13 @@ async function resolveAuth(request: NextRequest): Promise<{
       ]);
       if (result && "data" in result && result.data.user?.id) {
         hasUser = true;
-        userId = result.data.user.id;
       }
     } catch {
       // ignore and continue
     }
   }
 
-  return { response, hasUser, userId, hasGuestSession };
+  return { response, hasUser, hasGuestSession };
 }
 
 /**
@@ -104,7 +93,7 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  const { response, hasUser, userId, hasGuestSession } =
+  const { response, hasUser, hasGuestSession } =
     await resolveAuth(request);
 
   if (pathname.startsWith("/api/")) {
@@ -115,42 +104,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
     return response;
-  }
-
-  if (hasUser && userId && !hasGuestSession && !isGateExempt(pathname)) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = getPublicSupabaseKey();
-    const onbHint = request.cookies.get(MTU_ONB_COOKIE)?.value;
-    const skipDb =
-      onbHint != null &&
-      MTU_ONB_SKIP_STATUSES.has(onbHint as "done" | "partial" | "skipped");
-
-    if (!skipDb && url && anonKey) {
-      try {
-        const supabaseOnb = createServerClient(url, anonKey, {
-          cookies: {
-            getAll() {
-              return request.cookies.getAll();
-            },
-            setAll() {
-              /* read-only probe */
-            },
-          },
-        });
-        const { data: row } = await supabaseOnb
-          .from("agent_user_state")
-          .select("onboarding_status")
-          .eq("user_id", userId)
-          .maybeSingle();
-        const onboardingStatus = row?.onboarding_status ?? "pending";
-        if (onboardingStatus === "pending") {
-          const dest = buildGateRedirect(request.nextUrl, request.nextUrl.origin);
-          return NextResponse.redirect(dest);
-        }
-      } catch {
-        // ignore gate errors
-      }
-    }
   }
 
   if (!isPublicPath(pathname) && !hasUser && !hasGuestSession) {

@@ -2,10 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { readJsonLimited } from "@/lib/agent/body-limit";
-import {
-  MTU_ONB_COOKIE,
-  ONB_COOKIE_MAX_AGE_SEC,
-} from "@/lib/onboarding/constants";
 import { apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -20,16 +16,6 @@ const BodySchema = z.object({
     .max(20)
     .optional(),
 });
-
-function withOnbCookie(response: NextResponse, status: string) {
-  response.cookies.set(MTU_ONB_COOKIE, status, {
-    httpOnly: false,
-    sameSite: "lax",
-    path: "/",
-    maxAge: ONB_COOKIE_MAX_AGE_SEC,
-  });
-  return response;
-}
 
 export async function POST(request: Request) {
   const guard = await guardApi(request, { bucket: "ledger-parse" });
@@ -58,8 +44,5 @@ export async function POST(request: Request) {
     return apiInternalError(error.message);
   }
 
-  return withOnbCookie(
-    NextResponse.json({ ok: true, status }),
-    status
-  );
+  return NextResponse.json({ ok: true, status });
 }

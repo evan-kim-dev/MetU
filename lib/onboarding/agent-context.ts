@@ -222,48 +222,6 @@ export async function pickTripForReceivedAt(
   };
 }
 
-/**
- * Onboarding server-test helper: prefer an active trip if any (no date match).
- * Ingest / processEvent must use pickTripForReceivedAt instead.
- */
-export async function pickTripForAutomationTest(
-  userId: string
-): Promise<string | null> {
-  const admin = getAgentAdmin();
-  if (!admin) return null;
-
-  const { data: owned } = await admin
-    .from("trips")
-    .select("id")
-    .eq("user_id", userId)
-    .neq("status", "completed")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (owned?.id) return owned.id as string;
-
-  const { data: memberships } = await admin
-    .from("trip_members")
-    .select("trip_id")
-    .eq("user_id", userId)
-    .limit(50);
-
-  const ids = (memberships ?? []).map((m) => m.trip_id as string);
-  if (ids.length === 0) return null;
-
-  const { data: trip } = await admin
-    .from("trips")
-    .select("id")
-    .in("id", ids)
-    .neq("status", "completed")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return (trip?.id as string) ?? null;
-}
-
 export async function touchServerTestAt(userId: string): Promise<void> {
   const admin = getAgentAdmin();
   if (!admin) return;
@@ -279,6 +237,32 @@ export async function touchServerTestAt(userId: string): Promise<void> {
   );
 }
 
+/**
+ * 폰에서 알림이 도착했음을 기록할 row 를 만든다.
+ * - 실제 알림: last_notification_at(+ 마지막 카드 앱)만 갱신.
+ * - 연결 테스트(MTU-TEST): last_device_test_at 만 갱신. "실제 알림 수신 시각"을 오염시키지 않는다.
+ */
+export function buildNotificationTouchRow(
+  userId: string,
+  app: string,
+  opts: { deviceTest?: boolean } | undefined,
+  now: string
+): Record<string, unknown> {
+  if (opts?.deviceTest) {
+    return {
+      user_id: userId,
+      last_device_test_at: now,
+      updated_at: now,
+    };
+  }
+  return {
+    user_id: userId,
+    last_notification_at: now,
+    last_dropped_app: app.trim().slice(0, 80) || null,
+    updated_at: now,
+  };
+}
+
 /** Record that a phone notification (or device test) arrived. */
 export async function touchNotificationAt(
   userId: string,
@@ -288,16 +272,11 @@ export async function touchNotificationAt(
   const admin = getAgentAdmin();
   if (!admin) return;
 
-  const now = new Date().toISOString();
-  const dropped = app.trim().slice(0, 80) || null;
-  const row: Record<string, unknown> = {
-    user_id: userId,
-    last_notification_at: now,
-    last_dropped_app: dropped,
-    updated_at: now,
-  };
-  if (opts?.deviceTest) {
-    row.last_device_test_at = now;
-  }
+  const row = buildNotificationTouchRow(
+    userId,
+    app,
+    opts,
+    new Date().toISOString()
+  );
   await admin.from("agent_user_state").upsert(row, { onConflict: "user_id" });
 }

@@ -10,6 +10,7 @@ import {
   demoTripDates,
 } from "@/lib/demo/scenario";
 import { apiInternalError } from "@/lib/api/respond";
+import { isDemoModeEnabled } from "@/lib/demo/mode";
 import { TABLES } from "@/lib/constants";
 import {
   addTripMember,
@@ -46,6 +47,10 @@ async function findDemoTrip(
 }
 
 export async function POST(request: Request) {
+  // 데모 모드가 꺼진 환경에서는 존재하지 않는 라우트처럼 404.
+  if (!isDemoModeEnabled()) {
+    return NextResponse.json({ error: "not-found" }, { status: 404 });
+  }
   const guard = await guardApi(request, { bucket: "ledger-parse" });
   if (guard instanceof NextResponse) return guard;
   if (guard.identity.kind !== "user") {

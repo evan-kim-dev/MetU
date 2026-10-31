@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Check, Pencil, Trash2, X } from "lucide-react";
+import { AutomationStatusBanner } from "@/components/home/AutomationStatusBanner";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
 import { TripListCard } from "@/components/trips/TripListCard";
@@ -67,6 +68,7 @@ export function TripsPageContent() {
   return (
     <MobileShell>
       <div className="flex flex-col gap-4 px-5 pt-5">
+        {!editMode ? <AutomationStatusBanner ignoreFirstRun /> : null}
         {isReady && !editMode ? <VisitedWorldMap trips={trips} /> : null}
 
         <div className="flex items-start justify-between gap-3">
