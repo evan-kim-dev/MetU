@@ -444,6 +444,17 @@ export function ProfileContent() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link
+                  href="/about"
+                  className="flex min-h-[44px] items-center justify-between border-t border-membership py-4 transition-colors active:bg-surface-soft"
+                >
+                  <span className="text-sm font-semibold tracking-wide text-ink-heading">
+                    MetU 소개
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-line-muted" />
+                </Link>
+              </li>
             </ul>
           </section>
 
