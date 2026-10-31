@@ -1,3 +1,4 @@
+import { normalizeCurrencyCode } from "@/lib/fx/currencies";
 import { minorUnits } from "@/lib/ledger/money";
 
 export interface SmsContext {
@@ -16,6 +17,11 @@ export interface ParsedSms {
     | "hana"
     | "woori"
     | "kb"
+    | "lotte"
+    | "nh"
+    | "bc"
+    | "kakaobank"
+    | "tossbank"
     | "unknown";
   kind: "approval" | "cancel" | "unknown";
   domestic: boolean;
@@ -37,6 +43,8 @@ const KOREAN_CCY: Record<string, string> = {
   바트: "THB",
   동: "VND",
   파운드: "GBP",
+  루피아: "IDR",
+  링깃: "MYR",
   원: "KRW",
 };
 
@@ -146,6 +154,12 @@ export function inferYear(
 }
 
 function detectIssuer(text: string): ParsedSms["issuer"] {
+  // 신규 발급사는 가맹점명(롯데마트 등) 오탐을 피하려고 "카드/뱅크" 접미를 요구한다.
+  if (/카카오뱅크/.test(text)) return "kakaobank";
+  if (/토스뱅크/.test(text)) return "tossbank";
+  if (/롯데카드/.test(text)) return "lotte";
+  if (/NH\s*농협|농협카드|NH\s*(?:카드|체크)/.test(text)) return "nh";
+  if (/BC\s*카드|비씨/.test(text)) return "bc";
   if (/신한/.test(text)) return "shinhan";
   if (/삼성/.test(text)) return "samsung";
   if (/현대/.test(text)) return "hyundai";
@@ -170,7 +184,8 @@ function mapCurrency(
   if (!token) return null;
   const t = token.trim();
   const upper = t.toUpperCase();
-  if (/^[A-Z]{3}$/.test(upper)) return upper;
+  const iso = normalizeCurrencyCode(t);
+  if (iso) return iso;
   if (t === "달러" || upper === "DOLLAR") {
     if (country && DOLLAR_BY_COUNTRY[country]) {
       return DOLLAR_BY_COUNTRY[country]!;
@@ -237,42 +252,29 @@ function cleanMerchant(raw: string | null | undefined): string | null {
   let m = raw.trim();
   m = m.replace(/\([A-Z]{2}\)/g, " ");
   m = m.replace(/누적[\d,]+(?:\.\d+)?원?/g, " ");
-  m = m.replace(/일시불|할부\d*개월?/g, " ");
+  m = m.replace(/일시불|할부\(?\d*개월?\)?|(?<!\d)\d{1,2}개월/g, " ");
   m = m.replace(/\s+/g, " ").trim();
   return m || null;
 }
 
+const ISSUER_LABEL: Record<Exclude<ParsedSms["issuer"], "unknown">, string> = {
+  shinhan: "신한",
+  samsung: "삼성",
+  hyundai: "현대",
+  hana: "하나",
+  woori: "우리",
+  kb: "KB",
+  lotte: "롯데",
+  nh: "NH농협",
+  bc: "BC",
+  kakaobank: "카카오뱅크",
+  tossbank: "토스뱅크",
+};
+
 function cardHintFrom(text: string, issuer: ParsedSms["issuer"]): string | null {
   const digits = text.match(/(?:신한|삼성|현대|하나|우리)\(?(\d{2,4})\)?/);
-  if (digits) {
-    const name =
-      issuer === "unknown"
-        ? "카드"
-        : issuer === "kb"
-          ? "KB"
-          : issuer === "shinhan"
-            ? "신한"
-            : issuer === "samsung"
-              ? "삼성"
-              : issuer === "hyundai"
-                ? "현대"
-                : issuer === "hana"
-                  ? "하나"
-                  : "우리";
-    return `${name}`;
-  }
-  if (issuer === "unknown") return null;
-  return issuer === "kb"
-    ? "KB"
-    : issuer === "shinhan"
-      ? "신한"
-      : issuer === "samsung"
-        ? "삼성"
-        : issuer === "hyundai"
-          ? "현대"
-          : issuer === "hana"
-            ? "하나"
-            : "우리";
+  if (issuer === "unknown") return digits ? "카드" : null;
+  return ISSUER_LABEL[issuer];
 }
 
 type Extracted = {
@@ -394,19 +396,218 @@ function tryDomesticKrw(text: string): Extracted | null {
   };
 }
 
+/** 카드 승인/취소 문자가 아닌 것 (인증번호, 광고, 입금·이체). 보수적으로 파싱하지 않는다. */
+const NON_CARD_RE =
+  /인증번호|인증\s*코드|\bOTP\b|본인\s*확인|\(광고\)|\[광고\]|무료\s*수신거부|수신거부|이벤트|프로모션|대출|입금|이체/i;
+
+const FLEX_ISSUERS: ReadonlySet<ParsedSms["issuer"]> = new Set([
+  "lotte",
+  "nh",
+  "bc",
+  "kakaobank",
+  "tossbank",
+  "kb",
+]);
+
+const AMOUNT_RE = String.raw`\d[\d,]*(?:\.\d+)?`;
+const NOT_IN_NUMBER = String.raw`(?<![\d/:.,])`;
+
+type AmountHit = {
+  amount: string;
+  token: string;
+  index: number;
+  length: number;
+};
+
+/** DisplayNames 가 모르는 3글자 대문자(CGV 등)는 통화로 보지 않는다. */
+function isKnownIsoCurrency(code: string): boolean {
+  try {
+    return (
+      new Intl.DisplayNames(["en"], { type: "currency", fallback: "none" }).of(
+        code
+      ) != null
+    );
+  } catch {
+    return false;
+  }
+}
+
+function findOverseasAmount(flat: string): AmountHit | null {
+  const koreanCcy = ["달러", ...Object.keys(KOREAN_CCY).filter((k) => k !== "원")];
+  const patterns: { re: RegExp; amountIdx: number; tokenIdx: number }[] = [
+    // USD 12.34
+    {
+      re: new RegExp(
+        String.raw`(?<![A-Za-z])([A-Z]{3})\s+(${AMOUNT_RE})(?![\d/:])`,
+        "g"
+      ),
+      amountIdx: 2,
+      tokenIdx: 1,
+    },
+    // 12.34 USD
+    {
+      re: new RegExp(
+        String.raw`${NOT_IN_NUMBER}(${AMOUNT_RE})\s*([A-Z]{3})(?![A-Za-z])`,
+        "g"
+      ),
+      amountIdx: 1,
+      tokenIdx: 2,
+    },
+    // 4.48달러 / 12,205 엔
+    {
+      re: new RegExp(
+        String.raw`${NOT_IN_NUMBER}(${AMOUNT_RE})\s*(${koreanCcy.join("|")})(?![가-힣])`,
+        "g"
+      ),
+      amountIdx: 1,
+      tokenIdx: 2,
+    },
+  ];
+  let best: AmountHit | null = null;
+  for (const p of patterns) {
+    for (const m of flat.matchAll(p.re)) {
+      const token = m[p.tokenIdx]!;
+      const iso = normalizeCurrencyCode(token);
+      if (iso && !isKnownIsoCurrency(iso)) continue;
+      const hit: AmountHit = {
+        amount: m[p.amountIdx]!,
+        token,
+        index: m.index ?? 0,
+        length: m[0].length,
+      };
+      if (!best || hit.index < best.index) best = hit;
+      break;
+    }
+  }
+  return best;
+}
+
+function findKrwAmount(flat: string): AmountHit | null {
+  const m = flat.match(new RegExp(String.raw`${NOT_IN_NUMBER}(\d[\d,]*)\s*원`));
+  if (!m) return null;
+  return {
+    amount: m[1]!,
+    token: "원",
+    index: m.index ?? 0,
+    length: m[0].length,
+  };
+}
+
+/**
+ * VERIFY: 작성 시점 조사 기준 합성 예시. 실제 문자와 다를 수 있음
+ * 롯데/NH농협/BC/카카오뱅크/토스뱅크/KB(+현대 국내) 승인·취소 공통 추출기.
+ * 형식: `<발급사> [카드뒷자리] [해외]승인|승인취소 <이름> <금액> [일시불|N개월] MM/DD HH:MM <가맹점> [누적…]`
+ * 금액: `12,500원` | `USD 12.34` | `12.34 USD` | `4.48달러` | `12,205엔 (JP)` | `VND 46,000.00`
+ * 해외 문자는 해외 금액만, 국내 문자는 원화만 본다 (누적/잔액 금액은 제외).
+ */
+function tryFlexibleCard(text: string): Extracted | null {
+  const flat = text
+    .replace(/\s+/g, " ")
+    .replace(/(?:누적|잔액)\s*(?:\[가림\]|\d[\d,.]*\s*원?)/g, " ")
+    .trim();
+  const overseas = /해외/.test(flat);
+  const hit = overseas ? findOverseasAmount(flat) : findKrwAmount(flat);
+  if (!hit) return null;
+  const amount = parseAmountToken(hit.amount);
+  if (amount == null) return null;
+
+  const without = `${flat.slice(0, hit.index)} ${flat.slice(hit.index + hit.length)}`;
+  const dt = without.match(/(\d{1,2}\/\d{1,2})\s+(\d{1,2}:\d{2})/);
+  const rest = dt
+    ? without.slice((dt.index ?? 0) + dt[0].length)
+    : without.slice(hit.index);
+  const merchant = cleanMerchant(
+    rest
+      .replace(/(?:승인)?취소.*$/, " ")
+      .replace(/^[\s\-:]+/, "")
+  );
+  return {
+    amount,
+    currencyToken: hit.token,
+    merchant,
+    domestic: !overseas,
+  };
+}
+
+function finalizeParse(
+  kind: "approval" | "cancel",
+  raw: string,
+  issuer: ParsedSms["issuer"],
+  extracted: Extracted,
+  ctx: SmsContext,
+  warnings: string[]
+): ParsedSms {
+  const countryCode = extractCountry(raw);
+  const currency = mapCurrency(
+    extracted.currencyToken,
+    countryCode,
+    warnings
+  );
+  const dt = extractDateTime(raw, ctx, warnings);
+
+  let confidence = 0.5;
+  if (extracted.amount != null) confidence += 0.2;
+  if (currency) confidence += 0.15;
+  if (dt.spentOn) confidence += 0.15;
+  if (extracted.merchant) confidence += 0.1;
+  if (warnings.includes("달러 종류 불명")) confidence -= 0.15;
+  if (warnings.includes("일반 패턴")) confidence -= 0.1;
+  confidence = Math.max(0, Math.min(1, confidence));
+
+  if (currency && extracted.amount != null) {
+    const minors = minorUnits(currency);
+    const frac = String(extracted.amount).split(".")[1];
+    if (minors === 0 && frac && Number(frac) !== 0) {
+      warnings.push("통화 소수 자릿수 이상");
+      confidence -= 0.05;
+    }
+  }
+
+  const ok =
+    extracted.amount != null && currency != null && dt.spentOn != null;
+  // 취소는 되돌릴 수 없는 성격이라 상한을 둔다.
+  const cap = kind === "cancel" ? 0.9 : 1;
+
+  return {
+    ok,
+    confidence: Math.min(cap, ok ? Math.max(confidence, 0.55) : confidence),
+    issuer,
+    kind,
+    domestic: extracted.domestic || currency === "KRW",
+    merchant: extracted.merchant,
+    currency,
+    amount: extracted.amount,
+    countryCode,
+    paidAt: dt.paidAt,
+    spentOn: dt.spentOn,
+    timeIsEstimated: dt.timeIsEstimated,
+    cardHint: cardHintFrom(raw, issuer),
+    warnings,
+  };
+}
+
 export function parseCardSms(text: string, ctx: SmsContext): ParsedSms {
-  const raw = text.trim();
+  const raw = text.replace(/\[Web발신\]/gi, " ").trim();
   if (!raw) return empty();
 
   const warnings: string[] = [];
   const issuer = detectIssuer(raw);
 
+  if (NON_CARD_RE.test(raw)) {
+    return empty({ issuer, warnings: ["카드 승인 문자 아님 (인증/광고/입금)"] });
+  }
+
   if (/취소/.test(raw)) {
+    const flexCancel = tryFlexibleCard(raw);
+    if (flexCancel && flexCancel.amount != null) {
+      return finalizeParse("cancel", raw, issuer, flexCancel, ctx, warnings);
+    }
     const dt = extractDateTime(raw, ctx, warnings);
     const amt = raw.match(/([\d,]+)원/);
+    const amount = amt ? parseAmountToken(amt[1]!) : null;
     return {
-      ok: true,
-      confidence: 0.9,
+      ok: amount != null,
+      confidence: amount != null ? 0.9 : 0.3,
       issuer,
       kind: "cancel",
       domestic: true,
@@ -414,7 +615,7 @@ export function parseCardSms(text: string, ctx: SmsContext): ParsedSms {
         raw.replace(/\[.*?\]/g, " ").replace(/취소.*$/, "").trim()
       ),
       currency: "KRW",
-      amount: amt ? parseAmountToken(amt[1]!) : null,
+      amount,
       countryCode: null,
       paidAt: dt.paidAt,
       spentOn: dt.spentOn,
@@ -431,7 +632,9 @@ export function parseCardSms(text: string, ctx: SmsContext): ParsedSms {
   let extracted: Extracted | null = null;
   if (issuer === "shinhan") extracted = tryShinhan(raw);
   else if (issuer === "samsung") extracted = trySamsung(raw);
-  else if (issuer === "hyundai") extracted = tryHyundai(raw);
+  else if (issuer === "hyundai") {
+    extracted = tryHyundai(raw) ?? tryFlexibleCard(raw);
+  } else if (FLEX_ISSUERS.has(issuer)) extracted = tryFlexibleCard(raw);
   if (!extracted) extracted = tryDomesticKrw(raw);
   if (!extracted && issuer === "shinhan") extracted = tryShinhan(raw);
   if (!extracted) {
@@ -454,49 +657,5 @@ export function parseCardSms(text: string, ctx: SmsContext): ParsedSms {
     return empty({ issuer, kind: "unknown", warnings: ["금액 파싱 실패"] });
   }
 
-  const countryCode = extractCountry(raw);
-  const currency = mapCurrency(
-    extracted.currencyToken,
-    countryCode,
-    warnings
-  );
-  const dt = extractDateTime(raw, ctx, warnings);
-
-  let confidence = 0.5;
-  if (extracted.amount != null) confidence += 0.2;
-  if (currency) confidence += 0.15;
-  if (dt.spentOn) confidence += 0.15;
-  if (extracted.merchant) confidence += 0.1;
-  if (warnings.includes("달러 종류 불명")) confidence -= 0.15;
-  if (warnings.includes("일반 패턴")) confidence -= 0.1;
-  confidence = Math.max(0, Math.min(1, confidence));
-
-  if (currency) {
-    const minors = minorUnits(currency);
-    const frac = String(extracted.amount).split(".")[1];
-    if (minors === 0 && frac && Number(frac) !== 0) {
-      warnings.push("통화 소수 자릿수 이상");
-      confidence -= 0.05;
-    }
-  }
-
-  const ok =
-    extracted.amount != null && currency != null && dt.spentOn != null;
-
-  return {
-    ok,
-    confidence: ok ? Math.max(confidence, 0.55) : confidence,
-    issuer,
-    kind: "approval",
-    domestic: extracted.domestic || currency === "KRW",
-    merchant: extracted.merchant,
-    currency,
-    amount: extracted.amount,
-    countryCode,
-    paidAt: dt.paidAt,
-    spentOn: dt.spentOn,
-    timeIsEstimated: dt.timeIsEstimated,
-    cardHint: cardHintFrom(raw, issuer),
-    warnings,
-  };
+  return finalizeParse("approval", raw, issuer, extracted, ctx, warnings);
 }
