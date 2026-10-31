@@ -37,6 +37,8 @@ export const STORAGE_KEYS = {
   guestAuthorId: "budgettrip-guest-author-id",
   docsChecklist: "budgettrip-docs-checklist",
   countryMemories: "budgettrip-country-memories",
+  /** 가계부 탭(/agent)에서 마지막으로 고른 여행 id */
+  ledgerSelectedTrip: "budgettrip-ledger-selected-trip",
 } as const;
 
 /** App defaults */
