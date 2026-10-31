@@ -135,4 +135,62 @@ describe("StepVerify", () => {
     render(<StepVerify {...baseProps({ pollingStopped: true })} />);
     expect(screen.getByText("자동 확인을 멈췄어요")).toBeTruthy();
   });
+
+  it("explains MTU-TEST and shows empty last device event", () => {
+    render(<StepVerify {...baseProps()} />);
+    expect(screen.getByText(/MTU-TEST 연결 확인/)).toBeTruthy();
+    expect(screen.getByTestId("last-device-event").textContent).toBe(
+      "아직 폰에서 받은 알림이 없어요"
+    );
+  });
+
+  it("does not count a server sim event as a phone-received alert", () => {
+    render(
+      <StepVerify
+        {...baseProps({
+          events: [
+            {
+              id: "sim-1",
+              status: "ignored",
+              createdAt: new Date().toISOString(),
+              source: "sim",
+              tripId: null,
+              textPreview: "MTU-TEST-SERVER",
+              error: null,
+              reason: null,
+              isTest: true,
+            },
+          ],
+        })}
+      />
+    );
+    expect(screen.getByTestId("last-device-event").textContent).toBe(
+      "아직 폰에서 받은 알림이 없어요"
+    );
+  });
+
+  it("shows last device event with 연결 테스트 label", () => {
+    render(
+      <StepVerify
+        {...baseProps({
+          events: [
+            {
+              id: "dev-1",
+              status: "ignored",
+              createdAt: new Date().toISOString(),
+              source: "notification",
+              tripId: null,
+              textPreview: "MTU-TEST 연결 확인",
+              error: null,
+              reason: null,
+              isTest: true,
+            },
+          ],
+        })}
+      />
+    );
+    expect(screen.getByTestId("last-device-event").textContent).toMatch(
+      /마지막으로 폰에서 받은 알림: .*연결 테스트/
+    );
+  });
 });

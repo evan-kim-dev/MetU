@@ -3,7 +3,7 @@
 import type { GuideMistake, GuideStep } from "@/lib/onboarding/guide-content";
 import { resolveStepExpect } from "@/lib/onboarding/guide-content";
 
-function renderMarkdownish(text: string) {
+export function renderMarkdownish(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {

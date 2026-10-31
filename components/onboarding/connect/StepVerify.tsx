@@ -8,7 +8,9 @@ import { FirstEventBanner } from "@/components/onboarding/connect/FirstEventBann
 import { RecentEvents } from "@/components/onboarding/connect/RecentEvents";
 import { StickyActionBar } from "@/components/onboarding/connect/StickyActionBar";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { agentEventStatusLabelForUi } from "@/lib/agent/event-status";
 import type { UserFacingError } from "@/lib/errors/user-message";
+import { formatRelativeTime } from "@/lib/format/relative-time";
 import type { AutomationStatusEvent } from "@/lib/hooks/useAutomationStatus";
 import type { DetectedPlatform } from "@/lib/onboarding/automation";
 import {
@@ -16,6 +18,7 @@ import {
   canFinishAnyway,
   type ConnectState,
 } from "@/lib/onboarding/connect-machine";
+import { lastDeviceEvent } from "@/lib/onboarding/last-device-event";
 
 type Props = {
   state: ConnectState;
@@ -67,6 +70,7 @@ export function StepVerify({
       ? "/onboarding/shortcut-guide?platform=android&faq=and-faq-1"
       : "/onboarding/shortcut-guide?platform=ios&faq=ios-faq-1";
 
+  const lastDevice = lastDeviceEvent(events);
   const finishOk = canFinish(state);
   const finishAnyway = canFinishAnyway(state);
 
@@ -147,6 +151,21 @@ export function StepVerify({
             보내기(내가 나에게 보낸 Gmail은 알림이 안 울릴 수 있어요)
           </li>
         </ol>
+
+        <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+          연결만 먼저 확인하고 싶다면 단축어(또는 매크로)로 본문이
+          &apos;MTU-TEST 연결 확인&apos;인 글을 한 번 보내 보세요. &apos;연결
+          테스트&apos;로 표시되고 가계부에는 들어가지 않아요.
+        </p>
+
+        <p
+          data-testid="last-device-event"
+          className="mt-3 rounded-xl bg-surface-soft p-3 text-sm text-ink-body"
+        >
+          {lastDevice
+            ? `마지막으로 폰에서 받은 알림: ${formatRelativeTime(lastDevice.createdAt)} · ${agentEventStatusLabelForUi({ status: lastDevice.status, isTest: lastDevice.isTest })}`
+            : "아직 폰에서 받은 알림이 없어요"}
+        </p>
 
         {!state.deviceOk && !pollingStopped ? (
           <p role="status" className="mt-3 flex items-center gap-2 text-sm text-ink-body">
