@@ -6,6 +6,7 @@ import { FxAttribution } from "@/components/fx/FxAttribution";
 import { CurrencyTotals } from "@/components/ledger/CurrencyTotals";
 import { ExpenseFxLine } from "@/components/trips/ledger/ExpenseFxLine";
 import { MemberManager } from "@/components/trips/ledger/MemberManager";
+import { TripInvitePanel } from "@/components/trips/ledger/TripInvitePanel";
 import { totalsByCurrency } from "@/lib/ledger/stats";
 import { ExpenseForm, type ExpenseDraft } from "@/components/trips/ledger/ExpenseForm";
 import { NaturalExpenseInput } from "@/components/trips/ledger/NaturalExpenseInput";
@@ -16,6 +17,10 @@ import { TripIconButton } from "@/components/trips/TripDetailParts";
 
 interface LedgerTabProps {
   readOnly?: boolean;
+  /** 초대 링크를 만들 여행 id. canInvite 와 함께 주면 초대 패널이 보여요. */
+  tripId?: string;
+  /** 여행 소유자만 true. 합류한 동행자에게는 초대 버튼을 보여주지 않아요. */
+  canInvite?: boolean;
   loading?: boolean;
   error?: string;
   members: TripMember[];
@@ -40,6 +45,8 @@ interface LedgerTabProps {
 
 export function LedgerTab({
   readOnly,
+  tripId,
+  canInvite,
   loading,
   error,
   members,
@@ -106,6 +113,14 @@ export function LedgerTab({
         onAdd={onAddMember}
         onRemove={onRemoveMember}
       />
+
+      {tripId && !readOnly ? (
+        <TripInvitePanel
+          tripId={tripId}
+          members={members}
+          canInvite={Boolean(canInvite)}
+        />
+      ) : null}
 
       <div className="rounded-xl bg-surface-soft px-3 py-2">
         <p className="text-xs text-ink-caption">총 지출 (원화)</p>

@@ -104,12 +104,15 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
     updateTripSchedule,
   } = useTripDetailEditor(tripId);
 
+  // 초대로 합류한 여행(isOwner === false)은 읽기 전용이에요. 지출/송금만 함께 해요.
+  const canEdit = trip?.isOwner !== false;
+
   const ledger = useLedger(tripId, {
     country: trip?.country,
     destination: trip?.destination,
     dailySchedule: trip?.dailySchedule,
     onTotalKrwChange: (totalKrw) => {
-      if (trip && trip.spent !== totalKrw) {
+      if (trip && trip.isOwner !== false && trip.spent !== totalKrw) {
         void updateTrip(tripId, { spent: totalKrw });
       }
     },
@@ -179,7 +182,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
       title="여행 상세"
       showBack
       backHref="/trips"
-      rightSlot={shareButton}
+      rightSlot={canEdit ? shareButton : undefined}
     >
       {shareError ? (
         <p className="px-5 pt-3 text-xs text-red-500">{shareError}</p>
@@ -239,7 +242,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
               <Wallet className="h-5 w-5 text-brand" />
               <h3 className="text-lg font-extrabold text-ink-heading">예산</h3>
             </div>
-            {editSection !== "budget" && (
+            {canEdit && editSection !== "budget" && (
               <TripIconButton label="예산 수정" onClick={openBudgetEdit}>
                 <Pencil className="h-4 w-4" strokeWidth={2.2} />
               </TripIconButton>
@@ -356,6 +359,8 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
 
         {!isGuest && detailTab === "ledger" ? (
           <LedgerTab
+            tripId={tripId}
+            canInvite={canEdit}
             loading={ledger.loading}
             error={ledger.error}
             members={ledger.members}
@@ -363,10 +368,14 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
             totalKrw={ledger.totalKrw}
             defaultCurrency={ledger.defaultCurrency}
             placeOptions={ledger.placeOptions}
-            meId={ledger.members.find((m) => m.isOwner)?.id ?? ledger.members[0]?.id}
+            meId={
+              ledger.members.find((m) => user?.id && m.userId === user.id)?.id ??
+              ledger.members.find((m) => m.isOwner)?.id ??
+              ledger.members[0]?.id
+            }
             settlement={ledger.settlement}
-            onAddMember={ledger.addMember}
-            onRemoveMember={ledger.removeMember}
+            onAddMember={canEdit ? ledger.addMember : undefined}
+            onRemoveMember={canEdit ? ledger.removeMember : undefined}
             onDeleteExpense={ledger.removeExpense}
             onSaveExpense={async (
               draft: ExpenseDraft,
@@ -420,21 +429,23 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                 <CalendarDays className="h-5 w-5 text-brand" />
                 <h3 className="text-lg font-extrabold text-ink-heading">일정표</h3>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setReorderMode((v) => !v);
-                  setReorderError("");
-                  cancelDayEdit();
-                }}
-                className={`rounded-full px-3 py-1 text-xs font-bold ${
-                  reorderMode
-                    ? "bg-brand text-white"
-                    : "bg-surface-soft text-ink-body"
-                }`}
-              >
-                {reorderMode ? "순서 바꾸기 종료" : "순서 바꾸기"}
-              </button>
+              {canEdit ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReorderMode((v) => !v);
+                    setReorderError("");
+                    cancelDayEdit();
+                  }}
+                  className={`rounded-full px-3 py-1 text-xs font-bold ${
+                    reorderMode
+                      ? "bg-brand text-white"
+                      : "bg-surface-soft text-ink-body"
+                  }`}
+                >
+                  {reorderMode ? "순서 바꾸기 종료" : "순서 바꾸기"}
+                </button>
+              ) : null}
             </div>
 
             {reorderError ? (
@@ -443,7 +454,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
               </p>
             ) : null}
 
-            {!reorderMode && trip.dailySchedule ? (
+            {canEdit && !reorderMode && trip.dailySchedule ? (
               <ItineraryChatBar
                 city={trip.destination}
                 country={trip.country}
@@ -585,12 +596,14 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
                           <span className="text-sm font-extrabold text-brand">
                             {day.day}일차
                           </span>
-                          <TripIconButton
-                            label={`${day.day}일차 일정 수정`}
-                            onClick={() => openDayEdit(dayIndex)}
-                          >
-                            <Pencil className="h-4 w-4" strokeWidth={2.2} />
-                          </TripIconButton>
+                          {canEdit ? (
+                            <TripIconButton
+                              label={`${day.day}일차 일정 수정`}
+                              onClick={() => openDayEdit(dayIndex)}
+                            >
+                              <Pencil className="h-4 w-4" strokeWidth={2.2} />
+                            </TripIconButton>
+                          ) : null}
                         </div>
                         <div className="flex flex-col gap-2">
                           {day.items.map((item, itemIndex) => {
@@ -771,7 +784,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
         <section className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-extrabold text-ink-heading">메모</h3>
-            {editSection !== "memo" && (
+            {canEdit && editSection !== "memo" && (
               <TripIconButton label="메모 수정" onClick={openMemoEdit}>
                 <Pencil className="h-4 w-4" strokeWidth={2.2} />
               </TripIconButton>
@@ -807,20 +820,26 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
             </div>
           ) : (
             <p className="rounded-2xl border border-line-soft bg-surface-white px-4 py-3 text-sm leading-relaxed text-ink-body">
-              {trip.memo?.trim() ? trip.memo : "메모가 없어요. 연필 아이콘으로 추가하세요."}
+              {trip.memo?.trim()
+                ? trip.memo
+                : canEdit
+                  ? "메모가 없어요. 연필 아이콘으로 추가하세요."
+                  : "메모가 없어요."}
             </p>
           )}
         </section>
 
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={isDeleting}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 py-3.5 text-sm font-bold text-red-600 transition-colors active:bg-red-100 disabled:opacity-60"
-        >
-          <Trash2 className="h-4 w-4" strokeWidth={2.2} />
-          {isDeleting ? "삭제 중..." : "여행 삭제하기"}
-        </button>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 py-3.5 text-sm font-bold text-red-600 transition-colors active:bg-red-100 disabled:opacity-60"
+          >
+            <Trash2 className="h-4 w-4" strokeWidth={2.2} />
+            {isDeleting ? "삭제 중..." : "여행 삭제하기"}
+          </button>
+        ) : null}
       </div>
     </MobileShell>
   );

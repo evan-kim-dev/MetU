@@ -177,6 +177,11 @@ export function AgentHubContent() {
                 >
                   <p className="text-sm font-extrabold text-ink-heading">
                     {trip.destination}
+                    {trip.isOwner === false ? (
+                      <span className="ml-1.5 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-bold text-brand">
+                        공유받음
+                      </span>
+                    ) : null}
                   </p>
                   <p className="mt-0.5 text-xs text-ink-body">
                     {trip.dateRange}
