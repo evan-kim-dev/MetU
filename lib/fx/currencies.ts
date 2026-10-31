@@ -8,53 +8,9 @@ export interface FxTarget {
   /** 몇 단위를 1로 볼지 (엔은 보통 100엔 단위로 보여주기도 함) */
   unit: number;
   label: string;
+  /** false 면 매핑 실패 — UI에서 통화 직접 선택 */
+  resolved?: boolean;
 }
-
-const COUNTRY_FX: Array<{ match: string[]; fx: FxTarget }> = [
-  {
-    match: ["일본", "japan", "도쿄", "오사카", "tokyo", "osaka"],
-    fx: { code: "JPY", symbol: "¥", unit: 100, label: "엔" },
-  },
-  {
-    match: ["미국", "usa", "united states", "뉴욕", "new york"],
-    fx: { code: "USD", symbol: "$", unit: 1, label: "달러" },
-  },
-  {
-    match: ["영국", "uk", "영국", "런던", "london", "england"],
-    fx: { code: "GBP", symbol: "£", unit: 1, label: "파운드" },
-  },
-  {
-    match: ["프랑스", "france", "파리", "paris", "이탈리아", "italy", "로마", "rome", "유로"],
-    fx: { code: "EUR", symbol: "€", unit: 1, label: "유로" },
-  },
-  {
-    match: ["태국", "thailand", "방콕", "bangkok"],
-    fx: { code: "THB", symbol: "฿", unit: 10, label: "밧" },
-  },
-  {
-    match: ["베트남", "vietnam", "다낭", "하노이", "호치민", "danang"],
-    fx: { code: "VND", symbol: "₫", unit: 10000, label: "동" },
-  },
-  {
-    match: ["대만", "taiwan", "타이베이", "taipei"],
-    fx: { code: "TWD", symbol: "NT$", unit: 10, label: "대만달러" },
-  },
-  {
-    match: ["캐나다", "canada", "몬트리올", "toronto"],
-    fx: { code: "CAD", symbol: "C$", unit: 1, label: "캐나다달러" },
-  },
-  {
-    match: ["호주", "australia", "시드니", "sydney"],
-    fx: { code: "AUD", symbol: "A$", unit: 1, label: "호주달러" },
-  },
-];
-
-const DEFAULT_FX: FxTarget = {
-  code: "USD",
-  symbol: "$",
-  unit: 1,
-  label: "달러",
-};
 
 const CURRENCY_CODE_RE = /^[A-Z]{3}$/;
 
@@ -68,19 +24,51 @@ export function normalizeCurrencyCode(code: string): string | null {
   return CURRENCY_CODE_RE.test(upper) ? upper : null;
 }
 
-export function resolveFxTarget(
-  country?: string | null,
-  destination?: string | null
-): FxTarget {
-  const hay = `${country ?? ""} ${destination ?? ""}`.toLowerCase();
-  if (!hay.trim()) return DEFAULT_FX;
-
-  for (const row of COUNTRY_FX) {
-    if (row.match.some((m) => hay.includes(m.toLowerCase()))) {
-      return row.fx;
-    }
+/** Intl 로 심볼·한글 라벨 계산 (상수 표 없음). */
+export function currencyDisplayMeta(code: string): {
+  symbol: string;
+  label: string;
+} {
+  const normalized = normalizeCurrencyCode(code) ?? code.trim().toUpperCase();
+  let symbol = normalized;
+  try {
+    const parts = new Intl.NumberFormat("ko", {
+      style: "currency",
+      currency: normalized,
+      currencyDisplay: "narrowSymbol",
+    }).formatToParts(0);
+    const part = parts.find((p) => p.type === "currency");
+    if (part?.value) symbol = part.value;
+  } catch {
+    /* keep code */
   }
-  return DEFAULT_FX;
+
+  let label = normalized;
+  try {
+    const name = new Intl.DisplayNames(["ko"], { type: "currency" }).of(
+      normalized
+    );
+    if (name) label = name;
+  } catch {
+    /* keep code */
+  }
+
+  return { symbol, label };
+}
+
+/**
+ * 1 외화의 원화값 × unit ≥ 100 이 되는 가장 작은 10의 거듭제곱.
+ * formatFxRate 의 표시 단위와 동일 규칙.
+ */
+export function computeFxDisplayUnit(krwPerUnit: number): number {
+  if (!(krwPerUnit > 0) || !Number.isFinite(krwPerUnit)) return 1;
+  let unit = 1;
+  let amount = krwPerUnit * unit;
+  while (amount < 100 && unit < 1_000_000) {
+    unit *= 10;
+    amount = krwPerUnit * unit;
+  }
+  return unit;
 }
 
 export function formatFxRate(target: FxTarget, krwPerUnit: number): string {

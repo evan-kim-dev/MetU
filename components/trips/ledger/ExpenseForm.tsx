@@ -55,6 +55,13 @@ export function ExpenseForm({
     }
   }, [members, draft.paidBy]);
 
+  // 여행지 통화가 늦게 해석되면 빈 통화만 채움 (USD 깜빡임 방지용).
+  useEffect(() => {
+    if (initial?.currency) return;
+    if (!defaultCurrency) return;
+    setDraft((d) => (d.currency ? d : { ...d, currency: defaultCurrency }));
+  }, [defaultCurrency, initial?.currency]);
+
   async function handleSave() {
     if (busy) return;
     setBusy(true);
