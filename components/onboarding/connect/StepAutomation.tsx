@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { AppPicker } from "@/components/onboarding/connect/AppPicker";
+import { GuideSideCard } from "@/components/onboarding/connect/GuideSideCard";
+import { ShortcutsAppActions } from "@/components/onboarding/connect/ShortcutsAppActions";
 import { StickyActionBar } from "@/components/onboarding/connect/StickyActionBar";
 import { useClipboardCopy } from "@/components/onboarding/connect/useClipboardCopy";
 import { ShortcutGuide } from "@/components/onboarding/guide/ShortcutGuide";
@@ -11,6 +13,10 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import type { DetectedPlatform } from "@/lib/onboarding/automation";
 import { ANDROID_MACRODROID_URL } from "@/lib/onboarding/constants";
 import { buildNotificationBody } from "@/lib/onboarding/dev-snippets";
+import {
+  ANDROID_PWA_FLOW_SECTION,
+  IOS_SMS_AUTOMATION_SECTION,
+} from "@/lib/onboarding/guide-content";
 
 type Props = {
   platform: DetectedPlatform;
@@ -76,15 +82,20 @@ export function StepAutomation({
       ) : null}
 
       {isAndroid ? (
-        <a
-          href={ANDROID_MACRODROID_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-surface-soft px-4 text-sm font-semibold text-ink-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
-          Play 스토어에서 MacroDroid 받기
-        </a>
+        <>
+          <GuideSideCard section={ANDROID_PWA_FLOW_SECTION} />
+          <a
+            href={ANDROID_MACRODROID_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-surface-soft px-4 text-sm font-semibold text-ink-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            Play 스토어에서 MacroDroid 받기
+          </a>
+        </>
       ) : null}
+
+      <ShortcutsAppActions platform={platform} />
 
       <ShortcutGuide
         variant="embedded"
@@ -95,6 +106,10 @@ export function StepAutomation({
       />
 
       <AppPicker selected={selectedApps} onChange={onSelectedApps} />
+
+      {platform === "ios" ? (
+        <GuideSideCard section={IOS_SMS_AUTOMATION_SECTION} />
+      ) : null}
 
       {isAndroid ? (
         <div className="flex flex-col gap-2">

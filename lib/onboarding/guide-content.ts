@@ -541,6 +541,50 @@ export const ANDROID_GUIDE: PlatformGuide = {
   ],
 };
 
+export interface GuideSideSection {
+  id: string;
+  title: string;
+  intro?: string;
+  items: string[];
+  note?: string;
+}
+
+/**
+ * 문자(메시지)로만 승인 알림이 오는 카드용 짧은 섹션 (StepAutomation, iOS).
+ * 알림 자동화(ios-b1~b7)와 같은 단축어·같은 연결 코드를 쓴다. 가이드 본문(ios-b3)의
+ * "[메시지] 앱 선택"과 충돌하면 기존 가이드가 우선이다.
+ * VERIFY: 단축어 앱의 '메시지' 자동화 메뉴명/변수명은 iOS 버전별로 다를 수 있음(작성 시점 조사 기준).
+ */
+export const IOS_SMS_AUTOMATION_SECTION: GuideSideSection = {
+  id: "ios-sms-automation",
+  title: "문자로만 승인 알림이 오는 카드",
+  intro:
+    "알림 자동화에서 [메시지] 앱을 골라도 잡히지 않으면, 문자를 직접 받는 자동화를 하나 더 만들어요.",
+  items: [
+    "**단축어** 앱 → **[자동화]** 탭 → **[+]** → **[메시지]**를 골라요.",
+    "**보낸 사람** 또는 **메시지 내용**에 **포함** 조건을 넣어요. 카드 승인 문자에는 보통 **`승인`**이 들어 있어요.",
+    "**[즉시 실행]**을 고르고 **[실행 전에 묻기]**는 꺼요.",
+    "동작은 **[단축어 실행] → [MetU 알림 전송]**이에요. 입력에는 글자가 아니라 **메시지 내용 변수 칩**을 넣어요. 알림 자동화와 같은 연결 코드로 MetU에 전달돼요.",
+  ],
+  note: "메시지 자동화는 문자로 온 승인 안내만 보내요. 앱 알림과 문자 둘 다 오는 카드는 한쪽만 만들어도 돼요.",
+};
+
+/**
+ * Android: PWA 설치 후 같은 흐름 + MacroDroid 안내 카드.
+ * VERIFY: 제조사별 배터리 최적화 메뉴명은 기기/OS 버전마다 다를 수 있음(작성 시점 조사 기준).
+ */
+export const ANDROID_PWA_FLOW_SECTION: GuideSideSection = {
+  id: "android-pwa-flow",
+  title: "Android도 같은 흐름이에요",
+  intro:
+    "MetU를 홈 화면에 설치한 뒤 같은 화면에서 연결 코드를 만들고, 알림을 읽는 일은 MacroDroid가 해요.",
+  items: [
+    "MetU에서 연결 코드를 만들어 복사해요.",
+    "MacroDroid에서 카드 앱 알림을 받는 매크로를 만들고 연결 코드를 넣어요.",
+  ],
+  note: "제조사마다 배터리 최적화 메뉴 이름이 달라요. MacroDroid를 '제한 없음' 또는 절전 예외 앱으로 해 두지 않으면 화면이 꺼진 뒤 멈출 수 있어요.",
+};
+
 export function faqForCode(code: string): GuideFaqItem | undefined {
   const all = [...IOS_GUIDE.faq, ...ANDROID_GUIDE.faq];
   return all.find((item) => item.relatedCodes?.includes(code));
@@ -579,6 +623,12 @@ export function collectIosUserVisibleStrings(
       texts.push(m.text);
     }
   }
+  texts.push(
+    IOS_SMS_AUTOMATION_SECTION.title,
+    IOS_SMS_AUTOMATION_SECTION.intro ?? "",
+    ...IOS_SMS_AUTOMATION_SECTION.items,
+    IOS_SMS_AUTOMATION_SECTION.note ?? ""
+  );
   for (const item of IOS_GUIDE.faq) {
     texts.push(item.symptom, item.cause, item.fix);
     if (item.causeRequiresP4 && revokeOnReissue) {
