@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StepVerify } from "@/components/onboarding/connect/StepVerify";
+import { AGENT_REASON_MESSAGES } from "@/lib/agent/event-status";
 import {
   initialConnectState,
   type ConnectState,
@@ -140,6 +141,37 @@ describe("StepVerify", () => {
     expect(
       screen.getByRole("link", { name: "수신함에서 붙이기" }).getAttribute("href")
     ).toBe("/agent/inbox");
+  });
+
+  it("안 붙은/실패한 실제 알림은 사유를 한 줄로 알려줘요 (수신함과 같은 문구)", () => {
+    const render1 = (e: AutomationStatusEvent) =>
+      render(
+        <StepVerify
+          {...baseProps({ state: { deviceOk: true, realOk: true }, realEvent: e })}
+        />
+      );
+
+    const a = render1(ev({ id: "r", status: "unassigned", reason: "no_trips" }));
+    expect(screen.getByTestId("real-event-reason").textContent).toBe(
+      AGENT_REASON_MESSAGES.no_trips
+    );
+    a.unmount();
+
+    const b = render1(ev({ id: "r", status: "unassigned", reason: "outside_window" }));
+    expect(screen.getByTestId("real-event-reason").textContent).toBe(
+      AGENT_REASON_MESSAGES.outside_window
+    );
+    expect(screen.queryByText(/여행이 없어서/)).toBeNull();
+    b.unmount();
+
+    const c = render1(ev({ id: "r", status: "failed", error: "no-owner-member" }));
+    expect(screen.getByTestId("real-event-reason").textContent).toBe(
+      AGENT_REASON_MESSAGES["no-owner-member"]
+    );
+    c.unmount();
+
+    render1(ev({ id: "r", status: "done", tripId: "trip-1" }));
+    expect(screen.queryByTestId("real-event-reason")).toBeNull();
   });
 
   it("finish buttons: arrived → done", () => {

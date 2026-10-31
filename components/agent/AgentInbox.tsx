@@ -6,7 +6,9 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
+  agentEventReasonLine,
   agentEventStatusLabelForUi,
+  agentReasonMessage,
   formatRelativeKo,
   formatSmsPreviewLabel,
   unassignedNote,
@@ -30,6 +32,8 @@ type ResultItem = {
   decision?: string;
   expenseId?: string;
   reasons?: string[];
+  /** 정책 사유 코드 (lib/agent/policy.ts). 알면 event-status 의 사유 표를 쓴다. */
+  reasonCode?: string;
   /** 같은 결제로 보이는 기존 지출 (영수증 합치기 후보) */
   mergeInto?: string;
   draft?: {
@@ -677,6 +681,15 @@ export function AgentInbox({
             }
           </p>
         ) : null}
+        {event.status === "failed" && !test ? (
+          <p role="status" className="mt-2 text-xs leading-relaxed text-danger">
+            {agentEventReasonLine({
+              status: event.status,
+              reason: event.result?.reason,
+              error: event.error,
+            })}
+          </p>
+        ) : null}
         <p className="mt-2 text-sm font-semibold text-ink-heading">
           {previewText(event)}
         </p>
@@ -699,7 +712,8 @@ export function AgentInbox({
           <ul className="mt-2 space-y-1 text-xs text-ink-body">
             {reviews.map((it) => (
               <li key={`${event.id}-r-${it.ref}`}>
-                {(it.reasons ?? []).join(" · ") ||
+                {agentReasonMessage(it.reasonCode) ||
+                  (it.reasons ?? []).join(" · ") ||
                   `${it.draft?.merchant ?? "항목"} 확인 필요`}
               </li>
             ))}
