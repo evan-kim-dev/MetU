@@ -7,8 +7,8 @@ describe("gateLabel", () => {
     expect(gateLabel("/")).toBe("홈");
     expect(gateLabel("/trips")).toBe("내 여행");
     expect(gateLabel("/trips/new")).toBe("여행 만들기");
-    expect(gateLabel("/trips/abc/ledger")).toBe("가계부");
-    expect(gateLabel("/agent")).toBe("자동 기록");
+    expect(gateLabel("/trips/abc/ledger")).toBe("여행 가계부");
+    expect(gateLabel("/agent")).toBe("가계부");
   });
 
   it("unknown internal path -> 원래 보려던 화면", () => {

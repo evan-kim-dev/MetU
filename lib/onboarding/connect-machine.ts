@@ -42,8 +42,17 @@ export type ConnectState = {
   ios27: boolean | null;
   selectedApps: string[];
   token: ConnectToken;
+  /** MetU 서버 자체 테스트 통과. 폰 연결과는 무관해서 "연결됨" 표시에 쓰지 않아요. */
   serverOk: boolean;
+  /** 연결 확인 단계에 들어간 뒤 도착한 알림(연결 테스트 MTU-TEST 또는 실제 알림)이 있어요. */
   deviceOk: boolean;
+  /** 연결 확인 단계에 들어간 뒤 실제 카드 알림(MTU-TEST 아님, sim 아님)이 도착했어요. */
+  realOk: boolean;
+  /**
+   * 연결 확인 단계에 들어온 시각(ISO, 서버 시계 기준 보정). 이보다 이전 기록은
+   * 성공으로 치지 않아요. 예전에 연결에 성공한 계정도 항상 "기다리는 중"에서 시작해요.
+   */
+  verifyStartedAt?: string;
   firstEventAt?: string;
   shortcutOpened: boolean;
   reissueOpen: boolean;
@@ -62,6 +71,8 @@ export type ConnectSnapshot = {
   selectedApps: string[];
   serverOk: boolean;
   deviceOk: boolean;
+  realOk?: boolean;
+  verifyStartedAt?: string;
 };
 
 export type ConnectAction =
@@ -78,14 +89,17 @@ export type ConnectAction =
   | { type: "COPY_RESULT"; ok: boolean }
   | { type: "OPEN_SHORTCUT" }
   | { type: "CONFIRM_ADDED" }
-  | { type: "CONFIRM_AUTOMATION" }
+  | { type: "CONFIRM_AUTOMATION"; at?: string }
   | { type: "SERVER_TEST_START" }
   | { type: "SERVER_TEST_OK"; duplicate?: boolean }
   | { type: "SERVER_TEST_FAIL"; error: ConnectErrorState }
   | {
       type: "EVENT_RECEIVED";
       kind: "device-test" | "real";
+      /** 이벤트 도착 시각(ISO, 서버 created_at). verifyStartedAt 이후여야 인정돼요. */
       at: string;
+      /** "sim"(서버 테스트)은 무시해요. */
+      source?: string;
     }
   | { type: "FINISH_START" }
   | { type: "FINISH_OK"; status: "done" | "partial" }
@@ -107,8 +121,35 @@ export type ConnectAction =
     }
   | { type: "START_ADD_DEVICE" }
   | { type: "START_REISSUE" }
-  | { type: "RESUME_VERIFY" }
+  | { type: "RESUME_VERIFY"; at?: string }
+  | { type: "GO_TO_STEP"; phase: ConnectStepPhase }
   | { type: "BACK_TO_HUB" };
+
+/** 단계 카드로 되돌아갈 수 있는 단계. */
+export type ConnectStepPhase =
+  | "device"
+  | "code"
+  | "shortcut"
+  | "automation"
+  | "verify";
+
+const IOS_STEP_ORDER: ConnectStepPhase[] = [
+  "device",
+  "code",
+  "shortcut",
+  "automation",
+  "verify",
+];
+const ANDROID_STEP_ORDER: ConnectStepPhase[] = [
+  "device",
+  "code",
+  "automation",
+  "verify",
+];
+
+function stepOrder(platform: DetectedPlatform): ConnectStepPhase[] {
+  return platform === "android" ? ANDROID_STEP_ORDER : IOS_STEP_ORDER;
+}
 
 export function initialConnectState(): ConnectState {
   return {
@@ -119,6 +160,7 @@ export function initialConnectState(): ConnectState {
     token: { copied: false },
     serverOk: false,
     deviceOk: false,
+    realOk: false,
     shortcutOpened: false,
     reissueOpen: false,
     busy: null,
@@ -136,16 +178,76 @@ export function showConnectStepper(state: ConnectState): boolean {
   );
 }
 
+/** 확인 단계 진입 뒤 연결 테스트 또는 실제 알림을 받았을 때만 "완료"(done)예요. */
 export function canFinish(state: ConnectState): boolean {
-  return state.phase === "verify" && state.serverOk && state.deviceOk;
+  return state.phase === "verify" && state.deviceOk;
 }
 
+/** 아직 받지 못했다면 "일단 완료"(partial)로 마칠 수 있어요. 홈 배너가 계속 알려 줘요. */
 export function canFinishAnyway(state: ConnectState): boolean {
-  return (
-    state.phase === "verify" &&
-    state.serverOk &&
-    !state.deviceOk
-  );
+  return state.phase === "verify" && !state.deviceOk;
+}
+
+function isAfter(atIso: string, baseIso: string | undefined): boolean {
+  if (!baseIso) return false;
+  const at = Date.parse(atIso);
+  const base = Date.parse(baseIso);
+  if (!Number.isFinite(at) || !Number.isFinite(base)) return false;
+  return at > base;
+}
+
+export type VerifyArrival = { kind: "device-test" | "real"; at: string };
+
+/**
+ * 상태 응답에서 확인 단계 진입 이후 도착한 알림을 고른다.
+ * 서버가 sim/테스트를 이미 걸러 준 lastRealEventAt 과 lastDeviceTestAt 만 쓰고,
+ * 진입 이전 타임스탬프는 무시한다. 실제 알림이 있으면 그쪽이 우선.
+ */
+export function pickVerifyArrival(
+  verifyStartedAt: string | undefined,
+  data: {
+    lastRealEventAt?: string | null;
+    lastDeviceTestAt?: string | null;
+  }
+): VerifyArrival | null {
+  if (data.lastRealEventAt && isAfter(data.lastRealEventAt, verifyStartedAt)) {
+    return { kind: "real", at: data.lastRealEventAt };
+  }
+  if (
+    data.lastDeviceTestAt &&
+    isAfter(data.lastDeviceTestAt, verifyStartedAt)
+  ) {
+    return { kind: "device-test", at: data.lastDeviceTestAt };
+  }
+  return null;
+}
+
+export type ConnectStepStatus = "done" | "current" | "upcoming";
+
+export type ConnectStepCard = {
+  phase: ConnectStepPhase;
+  label: string;
+  status: ConnectStepStatus;
+};
+
+/** 단계 카드 목록(기기 확인 · 연결 코드 · 단축어/매크로 · 자동화 · 연결 확인). */
+export function connectStepCards(state: ConnectState): ConnectStepCard[] {
+  const order = stepOrder(state.platform);
+  const labels =
+    state.platform === "android" ? STEP_LABELS_ANDROID : STEP_LABELS_IOS;
+  const finished = state.phase === "done" || state.phase === "skipped";
+  const currentIdx = finished
+    ? order.length
+    : order.indexOf(state.phase as ConnectStepPhase);
+  return order.map((phase, i) => ({
+    phase,
+    label: labels[i] ?? "",
+    status: finished || i < currentIdx
+      ? "done"
+      : i === currentIdx
+        ? "current"
+        : "upcoming",
+  }));
 }
 
 export function stepTotal(state: ConnectState): number {
@@ -312,7 +414,43 @@ export function connectReducer(
 
     case "CONFIRM_AUTOMATION": {
       if (state.phase !== "automation") return state;
-      return { ...state, phase: "verify" };
+      return {
+        ...state,
+        phase: "verify",
+        deviceOk: false,
+        realOk: false,
+        firstEventAt: undefined,
+        // 리듀서는 순수해야 하므로 시각은 액션으로 받고, 없을 때만 현재 시각.
+        verifyStartedAt: action.at ?? new Date().toISOString(),
+      };
+    }
+
+    case "GO_TO_STEP": {
+      if (state.phase === "hub" || state.phase === "unsupported") return state;
+      if (state.phase === "done" || state.phase === "skipped") return state;
+      if (state.busy) return state;
+      const order = stepOrder(state.platform);
+      const from = order.indexOf(state.phase as ConnectStepPhase);
+      const to = order.indexOf(action.phase);
+      // 끝낸 단계로만 되돌아가요.
+      if (from < 0 || to < 0 || to >= from) return state;
+      if (action.phase === "device") {
+        return {
+          ...state,
+          phase: "device",
+          ios27: null,
+          error: undefined,
+          busy: null,
+          reissueOpen: false,
+        };
+      }
+      return {
+        ...state,
+        phase: action.phase,
+        error: undefined,
+        busy: null,
+        reissueOpen: false,
+      };
     }
 
     case "SERVER_TEST_START": {
@@ -337,10 +475,17 @@ export function connectReducer(
 
     case "EVENT_RECEIVED": {
       if (state.phase !== "verify") return state;
+      // 서버 테스트(sim)는 폰 연결의 증거가 아니에요.
+      if (action.source === "sim") return state;
+      // 확인 단계 진입 뒤에 도착한 알림만 인정해요(예전 기록 금지).
+      if (!isAfter(action.at, state.verifyStartedAt)) return state;
+      const realOk = state.realOk || action.kind === "real";
+      if (state.deviceOk && realOk === state.realOk) return state;
       return {
         ...state,
         deviceOk: true,
-        firstEventAt: action.at,
+        realOk,
+        firstEventAt: state.firstEventAt ?? action.at,
       };
     }
 
@@ -428,6 +573,11 @@ export function connectReducer(
         selectedApps: snap.selectedApps,
         serverOk: snap.serverOk,
         deviceOk: snap.deviceOk,
+        realOk: snap.realOk ?? false,
+        verifyStartedAt:
+          snap.phase === "verify"
+            ? (snap.verifyStartedAt ?? new Date().toISOString())
+            : undefined,
         needsToken,
         token: { copied: false },
         issueMode: "wizard",
@@ -486,6 +636,8 @@ export function connectReducer(
         busy: null,
         serverOk: false,
         deviceOk: false,
+        realOk: false,
+        verifyStartedAt: undefined,
         shortcutOpened: false,
       };
     }
@@ -509,6 +661,8 @@ export function connectReducer(
         busy: null,
         serverOk: false,
         deviceOk: false,
+        realOk: false,
+        verifyStartedAt: undefined,
         shortcutOpened: false,
       };
     }
@@ -530,9 +684,11 @@ export function connectReducer(
         reissueOpen: false,
         error: undefined,
         busy: null,
-        // Keep prior ok flags false so user reconfirms from hub.
+        // 허브에서 다시 들어와도 항상 새로 기다려요(예전 성공 기록은 인정하지 않아요).
         serverOk: false,
         deviceOk: false,
+        realOk: false,
+        verifyStartedAt: action.at ?? new Date().toISOString(),
       };
     }
 
@@ -615,5 +771,9 @@ export function toSnapshot(state: ConnectState): ConnectSnapshot {
     selectedApps: state.selectedApps,
     serverOk: state.serverOk,
     deviceOk: state.deviceOk,
+    realOk: state.realOk,
+    ...(state.verifyStartedAt
+      ? { verifyStartedAt: state.verifyStartedAt }
+      : {}),
   };
 }

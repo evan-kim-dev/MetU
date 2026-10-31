@@ -7,7 +7,9 @@
 - Vercel env 확인 (값은 대시보드에서만, 레포/커밋 금지)
   - `GEMINI_API_KEY`, `SUPABASE_*`, `AGENT_INGEST_PEPPER`, `CRON_SECRET`
   - 데모용으로 `AGENT_SETTLE_COALESCE_SEC` 를 10~30 근처로 (Evan이 Vercel에서 직접 설정)
-  - UI 노출: `NEXT_PUBLIC_DEMO_MODE=1`
+  - UI 노출 + 데모 라우트: `NEXT_PUBLIC_DEMO_MODE=1` (`.env.example` 참고)
+    - **빌드 타임 변수**예요. Vercel 에 설정/변경한 뒤 **재배포**해야 반영돼요.
+    - 꺼져 있으면(기본) 패널이 안 보이고 `/api/agent/demo/seed`·`notify` 는 404 를 돌려줘요.
 - `npm run db:verify`
 - 실기기 PWA 설치, iOS 단축어/알림 권한, 웹 푸시 권한
 - 콜드스타트 완화: 시연 직전 `/api/warmup` 한 번 호출

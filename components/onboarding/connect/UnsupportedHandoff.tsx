@@ -1,11 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { DevCurlFold } from "@/components/onboarding/connect/DevCurlFold";
 import { StickyActionBar } from "@/components/onboarding/connect/StickyActionBar";
 import { useClipboardCopy } from "@/components/onboarding/connect/useClipboardCopy";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import {
+  handoffUrl,
+  renderQrSvg,
+  svgToDataUri,
+} from "@/lib/onboarding/qr-svg";
 
 type Props = {
   reason: "desktop" | "ios-low";
@@ -27,7 +33,25 @@ export function UnsupportedHandoff({
     setOrigin(window.location.origin);
   }, []);
 
-  const url = origin ? `${origin}/onboarding/automation` : "";
+  const url = origin ? handoffUrl(origin) : "";
+  const [qrSrc, setQrSrc] = useState<string | null>(null);
+
+  // 데스크톱에서만, 주소(토큰 없음)를 QR 로. 실패해도 주소·복사 버튼은 그대로 보여요.
+  useEffect(() => {
+    if (reason !== "desktop" || !url) return;
+    let cancelled = false;
+    void renderQrSvg(url)
+      .then((svg) => {
+        if (!cancelled) setQrSrc(svg ? svgToDataUri(svg) : null);
+      })
+      .catch((err: unknown) => {
+        console.warn("[handoff] QR 생성에 실패했어요", err);
+        if (!cancelled) setQrSrc(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reason, url]);
 
   if (reason === "ios-low") {
     return (
@@ -68,8 +92,25 @@ export function UnsupportedHandoff({
         휴대폰에서 이어서 설정해 주세요
       </h2>
       <p className="text-sm leading-relaxed text-ink-body">
-        자동 기록은 카드 알림이 오는 휴대폰에서 설정해요. 휴대폰에서 아래 주소를
-        열고 같은 계정으로 로그인해 주세요.
+        자동 기록은 카드 알림이 오는 휴대폰에서 설정해요. 휴대폰 카메라로 QR을
+        찍어 같은 계정으로 로그인해 주세요. iPhone은 Safari에서 열고, 홈 화면
+        앱은 로그인이 따로라 거기서도 한 번 더 로그인해야 해요.
+      </p>
+      {qrSrc ? (
+        <div className="flex justify-center">
+          {/* data URI(SVG) — 외부 이미지 서비스를 쓰지 않아요 */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qrSrc}
+            alt="휴대폰으로 열기 QR"
+            width={192}
+            height={192}
+            className="h-48 w-48 rounded-xl border border-line-muted bg-white p-1"
+          />
+        </div>
+      ) : null}
+      <p className="text-sm leading-relaxed text-ink-body">
+        QR을 쓸 수 없다면 아래 주소를 휴대폰에서 직접 열어 주세요.
       </p>
       <div className="break-all rounded-xl bg-surface-soft p-3 font-mono text-sm text-ink-heading">
         {url || "주소를 준비하는 중…"}
@@ -86,10 +127,6 @@ export function UnsupportedHandoff({
           복사했어요 ✓
         </p>
       ) : null}
-      <p className="text-sm leading-relaxed text-ink-body">
-        휴대폰이 iPhone이면 Safari에서 열어 주세요. 홈 화면 앱은 로그인이 따로
-        저장돼 다시 로그인해야 해요.
-      </p>
       <DevCurlFold />
       <StickyActionBar>
         <button
@@ -101,6 +138,12 @@ export function UnsupportedHandoff({
         >
           나중에 하기
         </button>
+        <Link
+          href="/"
+          className="inline-flex min-h-11 items-center text-sm font-semibold text-ink-body underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          그냥 둘러보기
+        </Link>
       </StickyActionBar>
     </div>
   );

@@ -4,10 +4,7 @@ import { NextResponse } from "next/server";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
 import { runIngest } from "@/lib/agent/ingest-pipeline";
-import {
-  pickTripForAutomationTest,
-  touchServerTestAt,
-} from "@/lib/onboarding/agent-context";
+import { touchServerTestAt } from "@/lib/onboarding/agent-context";
 import { apiInternalError } from "@/lib/api/respond";
 import { guardApi } from "@/lib/security/guard";
 import { checkRateLimit } from "@/lib/security/rate-limit";
@@ -38,8 +35,8 @@ export async function POST(request: Request) {
   }
 
   const userId = guard.identity.userId;
-  // Trip is optional — connection test only needs an event row.
-  const tripId = await pickTripForAutomationTest(userId);
+  // 서버 확인은 여행과 무관해요. 날짜를 무시하고 아무 여행에 붙이지 않고 tripId 는 항상 null.
+  // 이 결과는 "폰 연결됨" 표시에 쓰지 않아요(source "sim" 은 연결 확인에서 제외).
 
   const bucket = new Date().toISOString().slice(0, 16);
   const idempotencyKey = createHash("sha256")
@@ -48,7 +45,7 @@ export async function POST(request: Request) {
 
   const outcome = await runIngest({
     userId,
-    tripId,
+    tripId: null,
     source: "sim",
     kind: "text",
     payload: {

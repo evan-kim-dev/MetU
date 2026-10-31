@@ -42,7 +42,7 @@ describe("ConnectHub", () => {
 
     expect(screen.getByRole("link", { name: "연동 가이드 보기" })).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "여행 가계부에서 따로 연결" })
+      screen.getByRole("link", { name: "가계부에서 따로 연결" })
     ).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "직접 붙여넣기로 기록" })

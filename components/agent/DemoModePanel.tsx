@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { isDemoModeEnabled } from "@/lib/demo/mode";
+
 type SeedResponse = {
   tripId: string;
   memberIds: string[];
@@ -22,7 +24,7 @@ type NotifyResponse = {
 
 type LastNotify = NotifyResponse & { polled?: string };
 
-const DEMO_ENABLED = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
+const DEMO_ENABLED = isDemoModeEnabled();
 const STEPS = [1, 2, 3, 4] as const;
 
 export function DemoModePanel() {

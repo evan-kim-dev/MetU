@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const guardApi = vi.fn();
 const runIngest = vi.fn();
@@ -47,6 +47,7 @@ describe("POST /api/agent/demo/notify", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "1");
     checkRateLimit.mockReturnValue({ ok: true });
     guardApi.mockResolvedValue({
       identity: { kind: "user", userId: "user-1" },
@@ -58,6 +59,24 @@ describe("POST /api/agent/demo/notify", () => {
       tripId: "trip-demo",
       scheduled: true,
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("데모 모드가 꺼져 있으면 404 이고 아무 것도 실행하지 않아요", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "");
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("http://localhost/api/agent/demo/notify", {
+        method: "POST",
+        body: JSON.stringify({ step: 1 }),
+      })
+    );
+    expect(res.status).toBe(404);
+    expect(guardApi).not.toHaveBeenCalled();
+    expect(runIngest).not.toHaveBeenCalled();
   });
 
   it("rejects guest", async () => {

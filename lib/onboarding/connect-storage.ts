@@ -49,6 +49,16 @@ function isSnapshot(value: unknown): value is ConnectSnapshot {
   if (!Array.isArray(v.selectedApps)) return false;
   if (typeof v.serverOk !== "boolean") return false;
   if (typeof v.deviceOk !== "boolean") return false;
+  if (typeof v.realOk !== "undefined" && typeof v.realOk !== "boolean") {
+    return false;
+  }
+  if (
+    typeof v.verifyStartedAt !== "undefined" &&
+    (typeof v.verifyStartedAt !== "string" ||
+      !Number.isFinite(Date.parse(v.verifyStartedAt)))
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -68,6 +78,10 @@ export function loadSnapshot(): ConnectSnapshot | null {
       ),
       serverOk: parsed.serverOk,
       deviceOk: parsed.deviceOk,
+      ...(typeof parsed.realOk === "boolean" ? { realOk: parsed.realOk } : {}),
+      ...(typeof parsed.verifyStartedAt === "string"
+        ? { verifyStartedAt: parsed.verifyStartedAt }
+        : {}),
     };
   } catch {
     return null;
@@ -84,6 +98,12 @@ export function saveSnapshot(snapshot: ConnectSnapshot): void {
       selectedApps: snapshot.selectedApps,
       serverOk: snapshot.serverOk,
       deviceOk: snapshot.deviceOk,
+      ...(typeof snapshot.realOk === "boolean"
+        ? { realOk: snapshot.realOk }
+        : {}),
+      ...(snapshot.verifyStartedAt
+        ? { verifyStartedAt: snapshot.verifyStartedAt }
+        : {}),
     };
     const json = JSON.stringify(safe);
     if (/metu-|mtu_/i.test(json)) {

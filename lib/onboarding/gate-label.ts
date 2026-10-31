@@ -11,7 +11,7 @@ export function gateLabel(path: string): string | null {
   if (noQuery === "/") return "홈";
   if (noQuery === "/trips") return "내 여행";
   if (noQuery === "/trips/new") return "여행 만들기";
-  if (noQuery === "/agent") return "자동 기록";
-  if (/^\/trips\/[^/]+\/ledger\/?$/.test(noQuery)) return "가계부";
+  if (noQuery === "/agent") return "가계부";
+  if (/^\/trips\/[^/]+\/ledger\/?$/.test(noQuery)) return "여행 가계부";
   return "원래 보려던 화면";
 }
