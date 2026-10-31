@@ -333,3 +333,45 @@ describe("decide — tripMatchRule (날짜 매칭이 느슨하면 자동 저장 
     expect(r.reasonCode).toBeUndefined();
   });
 });
+
+describe("decide — 환율 확정 실패 (fx_unresolved)", () => {
+  const foreign = { currency: "JPY", amount: 1200 };
+
+  it("환율 미확정 → review + reasonCode fx_unresolved", () => {
+    const r = decide(
+      draft({ ...foreign, fxResolved: false }),
+      signals({ tripMatchRule: "exact" }),
+      baseEnv
+    );
+    expect(r.decision).toBe("review");
+    expect(r.reasonCode).toBe("fx_unresolved");
+  });
+
+  it("폴백 환율도 review + fx_unresolved", () => {
+    const r = decide(
+      draft({ ...foreign, fxResolved: true, fxIsFallback: true }),
+      signals({ tripMatchRule: "exact" }),
+      baseEnv
+    );
+    expect(r.decision).toBe("review");
+    expect(r.reasonCode).toBe("fx_unresolved");
+  });
+
+  it("환율이 확정이면 사유 코드가 없어요", () => {
+    const r = decide(
+      draft({ ...foreign, fxResolved: true, fxIsFallback: false }),
+      signals({ tripMatchRule: "exact" }),
+      baseEnv
+    );
+    expect(r.reasonCode).toBeUndefined();
+  });
+
+  it("여행 불확실이 먼저면 trip_match_uncertain 을 유지해요", () => {
+    const r = decide(
+      draft({ ...foreign, fxResolved: false }),
+      signals({ tripMatchRule: "near" }),
+      baseEnv
+    );
+    expect(r.reasonCode).toBe("trip_match_uncertain");
+  });
+});

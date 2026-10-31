@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  AGENT_REASON_MESSAGES,
+  agentEventReasonLine,
   agentEventStatusLabel,
   agentEventStatusLabelForUi,
+  agentReasonMessage,
   formatRelativeKo,
   formatTripRangeShort,
   unassignedNote,
@@ -101,5 +104,122 @@ describe("unassignedNote", () => {
         "여행이 없어서"
       );
     }
+  });
+});
+
+describe("사유(reason) → 한국어 한 줄", () => {
+  const KNOWN = [
+    "no_trips",
+    "no_dates",
+    "outside_window",
+    "trip_match_uncertain",
+    "no-owner-member",
+    "fx_unresolved",
+    "commit-failed",
+  ] as const;
+
+  it("알려진 사유는 전부 한국어 문구가 있어요", () => {
+    for (const code of KNOWN) {
+      const message = agentReasonMessage(code);
+      expect(message, code).toBeTruthy();
+      expect(message, code).toMatch(/[가-힣]/);
+    }
+    expect(Object.keys(AGENT_REASON_MESSAGES).sort()).toEqual([...KNOWN].sort());
+  });
+
+  it("'여행이 없어서' 는 no_trips 에만 나와요", () => {
+    for (const code of KNOWN) {
+      const has = agentReasonMessage(code)!.includes("여행이 없어서");
+      expect(has, code).toBe(code === "no_trips");
+    }
+  });
+
+  it("unassigned: result.reason 으로 문구를 골라요", () => {
+    for (const reason of ["no_trips", "no_dates", "outside_window"] as const) {
+      expect(agentEventReasonLine({ status: "unassigned", reason })).toBe(
+        AGENT_REASON_MESSAGES[reason]
+      );
+    }
+  });
+
+  it("failed: error 코드로 문구를 골라요 (no-owner-member 등)", () => {
+    expect(
+      agentEventReasonLine({ status: "failed", error: "no-owner-member" })
+    ).toBe(AGENT_REASON_MESSAGES["no-owner-member"]);
+    expect(
+      agentEventReasonLine({ status: "failed", error: "commit-failed" })
+    ).toBe(AGENT_REASON_MESSAGES["commit-failed"]);
+  });
+
+  it("needs_review: reasonCode 로 문구를 골라요 (여행 불확실, 환율)", () => {
+    expect(
+      agentEventReasonLine({
+        status: "needs_review",
+        reasonCode: "trip_match_uncertain",
+      })
+    ).toBe(AGENT_REASON_MESSAGES.trip_match_uncertain);
+    expect(
+      agentEventReasonLine({ status: "needs_review", reasonCode: "fx_unresolved" })
+    ).toBe(AGENT_REASON_MESSAGES.fx_unresolved);
+  });
+
+  it("reasonCode > reason > error 순서로 알아보는 코드를 써요", () => {
+    expect(
+      agentEventReasonLine({
+        status: "failed",
+        reasonCode: "fx_unresolved",
+        reason: "no_dates",
+        error: "no-owner-member",
+      })
+    ).toBe(AGENT_REASON_MESSAGES.fx_unresolved);
+    expect(
+      agentEventReasonLine({
+        status: "failed",
+        reason: "mystery",
+        error: "no-owner-member",
+      })
+    ).toBe(AGENT_REASON_MESSAGES["no-owner-member"]);
+  });
+
+  it("모르는 사유는 상태별 일반 문구로 (원문 코드를 노출하지 않아요)", () => {
+    const unassigned = agentEventReasonLine({
+      status: "unassigned",
+      reason: "mystery",
+    });
+    const failed = agentEventReasonLine({
+      status: "failed",
+      error: "TypeError: x is undefined",
+    });
+    const review = agentEventReasonLine({
+      status: "needs_review",
+      reasonCode: "mystery",
+    });
+    expect(unassigned).toBe("수신함에 보관했어요. 여행에 붙여 주세요");
+    expect(failed).toBe("처리하지 못했어요. 다시 처리해 주세요");
+    expect(review).toBe("확인이 필요해요");
+    expect(unassigned).not.toContain("mystery");
+    expect(failed).not.toContain("TypeError");
+    expect(unassigned).not.toContain("여행이 없어서");
+  });
+
+  it("prototype 키 같은 이상한 코드는 알려진 사유로 오해하지 않아요", () => {
+    for (const code of ["constructor", "__proto__", "toString", ""]) {
+      expect(agentReasonMessage(code), code).toBeNull();
+    }
+    expect(agentReasonMessage(null)).toBeNull();
+    expect(agentReasonMessage(undefined)).toBeNull();
+  });
+
+  it("done/ignored/received 와 연결 테스트는 사유 줄이 없어요", () => {
+    for (const status of ["done", "ignored", "received", "processing"]) {
+      expect(agentEventReasonLine({ status, reason: "no_trips" })).toBeNull();
+    }
+    expect(
+      agentEventReasonLine({
+        status: "unassigned",
+        reason: "no_trips",
+        isTest: true,
+      })
+    ).toBeNull();
   });
 });

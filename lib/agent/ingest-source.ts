@@ -1,3 +1,4 @@
+import { agentEventReasonLine } from "@/lib/agent/event-status";
 import type { AgentEventSource } from "@/lib/agent/ingest";
 
 const ALLOWED: ReadonlySet<string> = new Set([
@@ -40,17 +41,12 @@ export function ingestStatusMessage(
         ? "여행에 붙였어요. 날짜가 정확하지 않아 수신함에서 확인해 주세요"
         : "여행에 붙여 처리 중이에요";
     case "unassigned":
-      // "여행이 없어서" 는 정말 여행이 없을 때만 쓴다.
-      switch (detail?.reason) {
-        case "no_trips":
-          return "여행이 없어서 수신함에 보관했어요";
-        case "no_dates":
-          return "여행 날짜를 넣으면 자동으로 붙어요. 수신함에 보관했어요";
-        case "outside_window":
-          return "여행 날짜와 달라서 수신함에 보관했어요. 수신함에서 붙일 수 있어요";
-        default:
-          return "수신함에 보관했어요. 여행에 붙여 주세요";
-      }
+      // 수신함·연결 확인과 같은 사유 표(lib/agent/event-status.ts)를 쓴다.
+      // "여행이 없어서" 는 no_trips 일 때만 나온다.
+      return (
+        agentEventReasonLine({ status: "unassigned", reason: detail?.reason }) ??
+        "수신함에 보관했어요"
+      );
     case "ignored":
       return "연결 테스트로 기록했어요 (지출 아님)";
     default:

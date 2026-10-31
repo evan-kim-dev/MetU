@@ -65,6 +65,8 @@ export type PolicyResult = {
 };
 
 export const TRIP_MATCH_UNCERTAIN = "trip_match_uncertain";
+/** 외화인데 환율을 확정하지 못했거나 폴백 환율일 때 (사유 문구: lib/agent/event-status.ts) */
+export const FX_UNRESOLVED = "fx_unresolved";
 
 /** 날짜 규칙으로 붙었지만 exact 가 아닌 경우 */
 export function isTripMatchUncertain(
@@ -178,6 +180,7 @@ export function decide(
   }
 
   const needsReview: string[] = [];
+  let fxUnresolved = false;
 
   if (priced.origin !== "rule" && priced.origin !== "receipt") {
     needsReview.push("규칙으로 읽지 못한 입력이에요");
@@ -205,6 +208,7 @@ export function decide(
 
   if (!isKrw(priced.currency)) {
     if (!priced.fxResolved || priced.fxIsFallback) {
+      fxUnresolved = true;
       needsReview.push("환율을 확실히 못 구했어요");
     } else {
       reasons.push("환율이 준비됐어요");
@@ -246,7 +250,11 @@ export function decide(
   }
 
   if (needsReview.length > 0) {
-    return { decision: "review", reasons: needsReview };
+    return {
+      decision: "review",
+      reasons: needsReview,
+      ...(fxUnresolved ? { reasonCode: FX_UNRESOLVED } : {}),
+    };
   }
 
   reasons.push("조건이 맞아 자동으로 저장해요");

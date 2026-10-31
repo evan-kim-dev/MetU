@@ -50,6 +50,7 @@ vi.mock("@/components/layout/MobileShell", () => ({
 }));
 
 import { AgentInbox } from "@/components/agent/AgentInbox";
+import { AGENT_REASON_MESSAGES } from "@/lib/agent/event-status";
 
 function chainQuery(result: {
   data: unknown;
@@ -513,4 +514,99 @@ describe("AgentInbox", () => {
       ).toBeTruthy();
       expect(screen.getByRole("combobox")).toBeTruthy();
     });
-  });});
+
+    function eventWith(over: Record<string, unknown>) {
+      return {
+        id: "e9",
+        trip_id: "t1",
+        source: "sms_shortcut",
+        kind: "text",
+        status: "failed",
+        payload: { text: "결제 12,500원 스타벅스" },
+        result: null,
+        error: null,
+        created_at: "2026-07-21T03:00:00Z",
+        processed_at: "2026-07-21T03:00:05Z",
+        ...over,
+      };
+    }
+
+    it("failed / no-owner-member → 같은 사유 표의 한국어 문구 (원문 코드 노출 없음)", async () => {
+      setup([eventWith({ error: "no-owner-member" })], [tokyo]);
+      render(<AgentInbox />);
+      expect(
+        await screen.findByText(AGENT_REASON_MESSAGES["no-owner-member"]!)
+      ).toBeTruthy();
+      expect(screen.queryByText(/no-owner-member/)).toBeNull();
+    });
+
+    it("failed + 모르는 오류는 일반 문구로 보여줘요", async () => {
+      setup([eventWith({ error: "TypeError: x is undefined" })], [tokyo]);
+      render(<AgentInbox />);
+      expect(
+        await screen.findByText("처리하지 못했어요. 다시 처리해 주세요")
+      ).toBeTruthy();
+      expect(screen.queryByText(/TypeError/)).toBeNull();
+    });
+
+    it("needs_review: reasonCode 가 있으면 사유 표 문구를 써요 (trip_match_uncertain, fx_unresolved)", async () => {
+      setup(
+        [
+          eventWith({
+            id: "r1",
+            status: "needs_review",
+            result: {
+              items: [
+                {
+                  ref: 0,
+                  decision: "review",
+                  reasons: ["여행 날짜가 정확히 맞지 않아 확인이 필요해요"],
+                  reasonCode: "trip_match_uncertain",
+                },
+              ],
+            },
+          }),
+          eventWith({
+            id: "r2",
+            status: "needs_review",
+            created_at: "2026-07-21T02:00:00Z",
+            result: {
+              items: [
+                {
+                  ref: 0,
+                  decision: "review",
+                  reasons: ["환율을 확실히 못 구했어요"],
+                  reasonCode: "fx_unresolved",
+                },
+              ],
+            },
+          }),
+        ],
+        [tokyo]
+      );
+      render(<AgentInbox />);
+      expect(
+        await screen.findByText(AGENT_REASON_MESSAGES.trip_match_uncertain!)
+      ).toBeTruthy();
+      expect(screen.getByText(AGENT_REASON_MESSAGES.fx_unresolved!)).toBeTruthy();
+    });
+
+    it("needs_review: reasonCode 가 없으면 서버가 준 reasons 를 그대로 써요", async () => {
+      setup(
+        [
+          eventWith({
+            status: "needs_review",
+            result: {
+              items: [
+                { ref: 0, decision: "review", reasons: ["비슷한 지출이 이미 있어요"] },
+              ],
+            },
+          }),
+        ],
+        [tokyo]
+      );
+      render(<AgentInbox />);
+      expect(await screen.findByText("비슷한 지출이 이미 있어요")).toBeTruthy();
+    });
+  });
+});

@@ -7,7 +7,10 @@ import { ConnectError } from "@/components/onboarding/connect/ConnectError";
 import { RecentEvents } from "@/components/onboarding/connect/RecentEvents";
 import { StickyActionBar } from "@/components/onboarding/connect/StickyActionBar";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
-import { agentEventStatusLabelForUi } from "@/lib/agent/event-status";
+import {
+  agentEventReasonLine,
+  agentEventStatusLabelForUi,
+} from "@/lib/agent/event-status";
 import type { UserFacingError } from "@/lib/errors/user-message";
 import { formatRelativeTime } from "@/lib/format/relative-time";
 import type { AutomationStatusEvent } from "@/lib/hooks/useAutomationStatus";
@@ -223,6 +226,20 @@ export function StepVerify({
                 isTest: realEvent.isTest,
               })}
             </p>
+            {realEvent.status === "unassigned" ||
+            realEvent.status === "failed" ? (
+              <p
+                data-testid="real-event-reason"
+                className="mt-1 text-sm text-ink-body"
+              >
+                {agentEventReasonLine({
+                  status: realEvent.status,
+                  reason: realEvent.reason,
+                  error: realEvent.error,
+                  isTest: realEvent.isTest,
+                })}
+              </p>
+            ) : null}
             {!attached ? (
               <Link
                 href="/agent/inbox"
