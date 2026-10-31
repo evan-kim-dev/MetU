@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CardProfileSettings } from "@/components/ledger/CardProfileSettings";
 import { CashRateSettings } from "@/components/ledger/CashRateSettings";
 import { ExpenseConfirmSheet } from "@/components/ledger/ExpenseConfirmSheet";
@@ -28,8 +29,38 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 type Props = { tripId: string };
 
+/** 가계부 탭에서 넘어오는 ?add= / ?settings= 값. 알 수 없는 값은 무시한다. */
+type EntryIntent = "manual" | "receipt" | "voice" | "settings-fx";
+
+function readEntryIntent(params: URLSearchParams): EntryIntent | null {
+  const add = params.get("add");
+  if (add === "manual" || add === "receipt" || add === "voice") return add;
+  if (params.get("settings") === "fx") return "settings-fx";
+  return null;
+}
+
+function newManualDraft(): ExpenseDraftInput {
+  return {
+    source: "manual",
+    origin: "manual",
+    merchant: "",
+    amount: null,
+    currency: "KRW",
+    spentOn: new Date().toISOString().slice(0, 10),
+    category: "기타",
+    paymentMethod: "card",
+    kind: "approval",
+  };
+}
+
 export function LedgerShell({ tripId }: Props) {
   const { user, provider } = useAuth();
+  const searchParams = useSearchParams();
+  const intent = readEntryIntent(searchParams);
+  const handledIntent = useRef<string | null>(null);
+  const receiptRef = useRef<HTMLDivElement>(null);
+  const voiceRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const [members, setMembers] = useState<TripMember[]>([]);
   const [expenses, setExpenses] = useState<LedgerExpenseRow[]>([]);
   const [profiles, setProfiles] = useState<
@@ -104,6 +135,28 @@ export function LedgerShell({ tripId }: Props) {
     setQueueIndex(0);
   }
 
+  // 가계부 탭의 바로가기: manual 은 확인 시트를 열고, 나머지는 해당 섹션으로
+  // 스크롤 + 첫 버튼에 포커스만 준다. 파일 선택창은 사용자 제스처가 필요해서 열지 않는다.
+  const canEnter = !loading && members.length > 0;
+  useEffect(() => {
+    if (!intent || !canEnter || handledIntent.current === intent) return;
+    handledIntent.current = intent;
+    if (intent === "manual") {
+      setQueue([newManualDraft()]);
+      setQueueIndex(0);
+      return;
+    }
+    const target =
+      intent === "receipt"
+        ? receiptRef.current
+        : intent === "voice"
+          ? voiceRef.current
+          : settingsRef.current;
+    if (!target) return;
+    target.scrollIntoView?.({ block: "center" });
+    target.querySelector<HTMLElement>("button, input, select")?.focus();
+  }, [intent, canEnter]);
+
   if (loading) {
     return (
       <div className="h-48 animate-pulse rounded-2xl bg-surface-soft" aria-busy />
@@ -152,21 +205,7 @@ export function LedgerShell({ tripId }: Props) {
             <button
               type="button"
               className="rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white"
-              onClick={() =>
-                openDrafts([
-                  {
-                    source: "manual",
-                    origin: "manual",
-                    merchant: "",
-                    amount: null,
-                    currency: "KRW",
-                    spentOn: new Date().toISOString().slice(0, 10),
-                    category: "기타",
-                    paymentMethod: "card",
-                    kind: "approval",
-                  },
-                ])
-              }
+              onClick={() => openDrafts([newManualDraft()])}
             >
               직접 입력
             </button>
@@ -177,14 +216,18 @@ export function LedgerShell({ tripId }: Props) {
             onDrafts={openDrafts}
             onCancelNotice={setCancelNotice}
           />
-          <ReceiptUploader
-            tripId={tripId}
-            onDraft={(d) => openDrafts([d])}
-          />
-          <VoiceInputButton
-            tripId={tripId}
-            onDrafts={openDrafts}
-          />
+          <div ref={receiptRef}>
+            <ReceiptUploader
+              tripId={tripId}
+              onDraft={(d) => openDrafts([d])}
+            />
+          </div>
+          <div ref={voiceRef}>
+            <VoiceInputButton
+              tripId={tripId}
+              onDrafts={openDrafts}
+            />
+          </div>
 
           <LedgerDashboard
             expenses={expenses}
@@ -259,16 +302,18 @@ export function LedgerShell({ tripId }: Props) {
             </ul>
           </section>
 
-          {user ? (
-            <CardProfileSettings
-              userId={user.id}
-              profiles={profiles}
-              onChange={setProfiles}
-            />
-          ) : null}
-          {me ? (
-            <CashRateSettings tripId={tripId} memberId={me.id} />
-          ) : null}
+          <div ref={settingsRef} className="flex flex-col gap-4">
+            {user ? (
+              <CardProfileSettings
+                userId={user.id}
+                profiles={profiles}
+                onChange={setProfiles}
+              />
+            ) : null}
+            {me ? (
+              <CashRateSettings tripId={tripId} memberId={me.id} />
+            ) : null}
+          </div>
         </>
       )}
 
