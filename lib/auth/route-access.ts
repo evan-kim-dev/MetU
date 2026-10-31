@@ -1,6 +1,6 @@
 import { safeNextPath } from "@/lib/security/safe-next";
 
-const PUBLIC_PATH_PREFIXES = ["/login", "/legal"] as const;
+const PUBLIC_PATH_PREFIXES = ["/login", "/legal", "/about"] as const;
 
 const STATIC_PUBLIC_EXACT = new Set([
   "/sw.js",
@@ -40,6 +40,7 @@ export function isGateExempt(pathname: string): boolean {
   if (pathname.startsWith("/onboarding/")) return true;
   if (pathname === "/login" || pathname.startsWith("/auth/")) return true;
   if (pathname.startsWith("/legal")) return true;
+  if (pathname === "/about" || pathname.startsWith("/about/")) return true;
   if (pathname.startsWith("/join/")) return true;
   if (pathname.startsWith("/share-target")) return true;
   if (pathname.startsWith("/api/")) return true;

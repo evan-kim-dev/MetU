@@ -20,6 +20,12 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/auth/callback")).toBe(true);
   });
 
+  it("allows the public about page", () => {
+    expect(isPublicPath("/about")).toBe(true);
+    expect(isPublicPath("/about/")).toBe(true);
+    expect(isPublicPath("/aboutx")).toBe(false);
+  });
+
   it("does not treat trips as public", () => {
     expect(isPublicPath("/trips")).toBe(false);
   });
@@ -35,6 +41,11 @@ describe("isGateExempt", () => {
   it("exempts join and inbox", () => {
     expect(isGateExempt("/join/abc")).toBe(true);
     expect(isGateExempt("/agent/inbox")).toBe(true);
+  });
+
+  it("exempts the public about page", () => {
+    expect(isGateExempt("/about")).toBe(true);
+    expect(isGateExempt("/aboutx")).toBe(false);
   });
 
   it("gates trip detail", () => {
