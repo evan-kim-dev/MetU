@@ -145,15 +145,24 @@ async function buildTarget(
   const code = normalizeCurrencyCode(currencyCode) ?? "USD";
   const { symbol, label } = currencyDisplayMeta(code);
   let unit = 1;
+  let rateOk = false;
   try {
     const rate = await resolveLiveKrwRate(code);
     if (rate && rate.krw > 0) {
       unit = computeFxDisplayUnit(rate.krw);
+      rateOk = true;
     }
   } catch (err) {
     console.error("[fx] unit-rate", err);
   }
-  return { code, symbol, label, unit, resolved };
+  // 통화 매핑은 됐지만 환율을 못 구하면 UI가 통화 선택을 다시 유도하도록.
+  return {
+    code,
+    symbol,
+    label,
+    unit,
+    resolved: resolved && rateOk,
+  };
 }
 
 /**

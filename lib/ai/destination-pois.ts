@@ -260,7 +260,7 @@ export function buildDynamicPoiSchedule(
           title: a3.name,
           detail:
             a3.detail ||
-            `${a3.name}에서 해 지기 전까지 둘러보고, 근처에서 짧게 쉬어도 좋아요아요.`,
+            `${a3.name}에서 해 지기 전까지 둘러보고, 근처에서 짧게 쉬어도 좋아요.`,
           kind: "activity",
         },
         {

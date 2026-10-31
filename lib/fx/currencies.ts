@@ -14,11 +14,6 @@ export interface FxTarget {
 
 const CURRENCY_CODE_RE = /^[A-Z]{3}$/;
 
-/** ISO 4217 3자리 대문자 코드인지 검증. */
-export function isCurrencyCode(code: string): boolean {
-  return CURRENCY_CODE_RE.test(code.trim().toUpperCase());
-}
-
 export function normalizeCurrencyCode(code: string): string | null {
   const upper = code.trim().toUpperCase();
   return CURRENCY_CODE_RE.test(upper) ? upper : null;
