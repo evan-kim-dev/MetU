@@ -21,16 +21,36 @@ export function normalizeIngestSource(
   return "sms_shortcut";
 }
 
+export type IngestStatusDetail = {
+  /** unassigned 사유 (lib/onboarding/trip-match.ts). 없으면 일반 문구. */
+  reason?: "no_trips" | "no_dates" | "outside_window" | null;
+  /** received 일 때 여행을 붙인 규칙. exact 가 아니면 확인이 필요하다고 알린다. */
+  rule?: "exact" | "near" | "single" | "none" | null;
+};
+
 export function ingestStatusMessage(
   status: "received" | "unassigned" | "ignored",
-  duplicate?: boolean
+  duplicate?: boolean,
+  detail?: IngestStatusDetail
 ): string {
   if (duplicate) return "이미 받은 알림이에요 (중복)";
   switch (status) {
     case "received":
-      return "여행에 붙여 처리 중이에요";
+      return detail?.rule === "near" || detail?.rule === "single"
+        ? "여행에 붙였어요. 날짜가 정확하지 않아 수신함에서 확인해 주세요"
+        : "여행에 붙여 처리 중이에요";
     case "unassigned":
-      return "여행이 없어서 수신함에 보관했어요";
+      // "여행이 없어서" 는 정말 여행이 없을 때만 쓴다.
+      switch (detail?.reason) {
+        case "no_trips":
+          return "여행이 없어서 수신함에 보관했어요";
+        case "no_dates":
+          return "여행 날짜를 넣으면 자동으로 붙어요. 수신함에 보관했어요";
+        case "outside_window":
+          return "여행 날짜와 달라서 수신함에 보관했어요. 수신함에서 붙일 수 있어요";
+        default:
+          return "수신함에 보관했어요. 여행에 붙여 주세요";
+      }
     case "ignored":
       return "연결 테스트로 기록했어요 (지출 아님)";
     default:

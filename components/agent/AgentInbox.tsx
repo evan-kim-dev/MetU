@@ -9,8 +9,16 @@ import {
   agentEventStatusLabelForUi,
   formatRelativeKo,
   formatSmsPreviewLabel,
+  unassignedNote,
   type SmsParsePreviewLabel,
+  type UnassignedSuggestInfo,
 } from "@/lib/agent/event-status";
+import {
+  buildTripSuggest,
+  matchTripForEvent,
+  resolveTripDatesForReceivedAt,
+} from "@/lib/onboarding/trip-match";
+import { parseReceivedAtMs } from "@/lib/onboarding/trip-window";
 import { toUserFacingError } from "@/lib/errors/user-message";
 import { useAutomationStatus } from "@/lib/hooks/useAutomationStatus";
 import { formatKRW } from "@/lib/shared/format";
@@ -38,10 +46,12 @@ type AgentEventRow = {
   source: string;
   kind: string;
   status: string;
-  payload: { text?: string } | null;
+  payload: { text?: string; received_at?: string; receivedAt?: string } | null;
   result: {
     items?: ResultItem[];
     reason?: string;
+    /** 서버가 ingest/재매칭 때 계산한 "이 여행에 붙일까요?" 제안 */
+    suggest?: UnassignedSuggestInfo & { tripId: string };
     /** 서버가 만든 한국어 사유 (reason 은 내부 코드) */
     message?: string;
     preview?: SmsParsePreviewLabel & { confidence?: number; kind?: string };
@@ -53,12 +63,24 @@ type AgentEventRow = {
 
 type TripOption = { id: string; label: string };
 
+type Suggestion = UnassignedSuggestInfo & { tripId: string };
+
+/** result.reason 에 들어가는 매칭 실패 코드는 미리보기 문구로 쓰지 않는다. */
+const MATCH_REASON_CODES = new Set([
+  "unassigned",
+  "no_trips",
+  "no_dates",
+  "outside_window",
+]);
+
 function previewText(event: AgentEventRow): string {
   const text =
     typeof event.payload?.text === "string" ? event.payload.text.trim() : "";
   if (text) return text.length > 120 ? `${text.slice(0, 120)}…` : text;
   if (event.result?.message) return event.result.message;
-  if (event.result?.reason) return event.result.reason;
+  if (event.result?.reason && !MATCH_REASON_CODES.has(event.result.reason)) {
+    return event.result.reason;
+  }
   return event.kind === "image" ? "영수증 이미지" : "자동 수집 이벤트";
 }
 
@@ -127,6 +149,13 @@ export function AgentInbox({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [bulk, setBulk] = useState<{
+    tripId: string;
+    done: number;
+    total: number;
+    failed: number;
+    running: boolean;
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (isGuest) {
@@ -277,6 +306,85 @@ export function AgentInbox({
     };
   }, [events, filterUnassigned]);
 
+  // 미배정 알림마다 "어느 여행에 붙일까" 제안을 현재 여행 목록으로 계산한다
+  // (서버 매처와 같은 순수 함수). 계산이 안 되면 서버가 저장한 제안을 쓴다.
+  const suggestions = useMemo(() => {
+    const out: Record<string, Suggestion | null> = {};
+    const tripIds = new Set(trips.map((t) => t.id));
+    for (const e of events) {
+      if (e.status !== "unassigned") continue;
+      const receivedAtMs = parseReceivedAtMs(e.payload, e.created_at);
+      const candidates = activeTrips.map((t) => {
+        const dates = resolveTripDatesForReceivedAt(
+          {
+            startDate: t.startDate,
+            endDate: t.endDate,
+            dateRange: t.dateRange,
+          },
+          receivedAtMs
+        );
+        return {
+          id: t.id,
+          startDate: dates?.startDate ?? null,
+          endDate: dates?.endDate ?? null,
+          destination: t.destination,
+          status: t.status,
+        };
+      });
+      const match = matchTripForEvent({
+        receivedAtMs,
+        nowMs: Date.now(),
+        candidates,
+      });
+      const computed = buildTripSuggest(match, candidates);
+      const stored = e.result?.suggest;
+      out[e.id] =
+        computed ??
+        (stored && tripIds.has(stored.tripId) ? stored : null);
+    }
+    return out;
+  }, [events, activeTrips, trips]);
+
+  // 같은 여행으로 붙일 미배정이 2건 이상이면 한 번에 붙이기를 제안한다.
+  const bulkGroups = useMemo(() => {
+    const byTrip = new Map<string, { name: string; ids: string[] }>();
+    for (const e of groups.unassignedCards) {
+      const s = suggestions[e.id];
+      if (!s) continue;
+      const name =
+        s.destination?.trim() ||
+        activeTrips.find((t) => t.id === s.tripId)?.destination ||
+        "이 여행";
+      const g = byTrip.get(s.tripId) ?? { name, ids: [] };
+      g.ids.push(e.id);
+      byTrip.set(s.tripId, g);
+    }
+    return [...byTrip.entries()]
+      .filter(([, g]) => g.ids.length >= 2)
+      .map(([tripId, g]) => ({ tripId, ...g }));
+  }, [groups.unassignedCards, suggestions, activeTrips]);
+
+  async function attachAll(tripId: string, ids: string[]) {
+    if (bulk?.running) return;
+    let failed = 0;
+    setBulk({ tripId, done: 0, total: ids.length, failed: 0, running: true });
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        await post(`/api/agent/events/${ids[i]}/assign`, { tripId });
+      } catch {
+        failed += 1;
+      }
+      setBulk({
+        tripId,
+        done: i + 1,
+        total: ids.length,
+        failed,
+        running: i + 1 < ids.length,
+      });
+    }
+    await load();
+  }
+
   async function post(path: string, body?: unknown) {
     const res = await fetch(path, {
       method: "POST",
@@ -319,49 +427,72 @@ export function AgentInbox({
   function renderAssign(event: AgentEventRow) {
     if (event.status !== "unassigned" && event.trip_id != null) return null;
     if (trips.length === 0) {
+      // 안내 문구("여행을 만들면 자동으로 붙어요")는 카드 상단 note 에 있다.
       return (
-        <p className="mt-2 text-xs text-ink-body">
-          여행이 없어요. 만들면 기간이 맞는 알림이 자동으로 붙어요.{" "}
-          <button
-            type="button"
-            className="font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            onClick={() => setSheetOpen(true)}
-          >
-            여행 만들기
-          </button>
-        </p>
+        <button
+          type="button"
+          className="mt-2 inline-flex min-h-11 items-center rounded-lg bg-brand px-3 text-xs font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          onClick={() => setSheetOpen(true)}
+        >
+          여행 만들기
+        </button>
       );
     }
+    const suggestion = suggestions[event.id] ?? null;
+    const suggestName =
+      suggestion?.destination?.trim() ||
+      activeTrips.find((t) => t.id === suggestion?.tripId)?.destination ||
+      "이 여행";
     return (
-      <label className="mt-2 flex flex-col gap-1 text-xs">
-        <span className="font-bold text-ink-heading">여행에 배정</span>
-        <select
-          className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm"
-          defaultValue=""
-          disabled={busyId === event.id}
-          onChange={(e) => {
-            const next = e.target.value;
-            if (!next) return;
-            void withBusy(event.id, () =>
-              post(`/api/agent/events/${event.id}/assign`, {
-                tripId: next === "__none__" ? null : next,
-              })
-            );
-          }}
-        >
-          <option value="" disabled>
-            여행 선택
-          </option>
-          {trips.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.label}
+      <>
+        {suggestion ? (
+          <button
+            type="button"
+            disabled={busyId === event.id || bulk?.running === true}
+            className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-brand px-3 py-2 text-sm font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            onClick={() =>
+              void withBusy(event.id, () =>
+                post(`/api/agent/events/${event.id}/assign`, {
+                  tripId: suggestion.tripId,
+                })
+              )
+            }
+          >
+            {suggestName} 여행에 붙이기
+          </button>
+        ) : null}
+        <label className="mt-2 flex flex-col gap-1 text-xs">
+          <span className="font-bold text-ink-heading">
+            {suggestion ? "다른 여행에 배정" : "여행에 배정"}
+          </span>
+          <select
+            className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm"
+            defaultValue=""
+            disabled={busyId === event.id}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (!next) return;
+              void withBusy(event.id, () =>
+                post(`/api/agent/events/${event.id}/assign`, {
+                  tripId: next === "__none__" ? null : next,
+                })
+              );
+            }}
+          >
+            <option value="" disabled>
+              여행 선택
             </option>
-          ))}
-          {event.trip_id != null ? (
-            <option value="__none__">미할당으로 되돌리기</option>
-          ) : null}
-        </select>
-      </label>
+            {trips.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+            {event.trip_id != null ? (
+              <option value="__none__">미할당으로 되돌리기</option>
+            ) : null}
+          </select>
+        </label>
+      </>
     );
   }
 
@@ -537,8 +668,13 @@ export function AgentInbox({
         </div>
         {event.status === "unassigned" ? (
           <p className="mt-2 text-xs leading-relaxed text-amber-900">
-            여행이 없어 보관 중이에요. 기간이 맞는 여행을 만들면 자동으로
-            붙어요.
+            {
+              unassignedNote({
+                hasTrips: trips.length > 0,
+                reason: event.result?.reason,
+                suggest: suggestions[event.id] ?? null,
+              }).message
+            }
           </p>
         ) : null}
         <p className="mt-2 text-sm font-semibold text-ink-heading">
@@ -692,6 +828,46 @@ export function AgentInbox({
                     <h2 className="text-sm font-extrabold text-ink-heading">
                       미할당
                     </h2>
+                    {bulkGroups.map((g) => (
+                      <div
+                        key={g.tripId}
+                        className="rounded-2xl border border-brand/20 bg-brand/5 p-3"
+                      >
+                        <button
+                          type="button"
+                          disabled={bulk?.running === true}
+                          className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-brand px-3 py-2 text-sm font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                          onClick={() => void attachAll(g.tripId, g.ids)}
+                        >
+                          {g.ids.length}건 모두 {g.name}에 붙이기
+                        </button>
+                        {bulk && bulk.tripId === g.tripId ? (
+                          bulk.running ? (
+                            <p
+                              role="status"
+                              className="mt-2 text-xs text-ink-body"
+                            >
+                              붙이는 중이에요 ({bulk.done}/{bulk.total})
+                            </p>
+                          ) : bulk.failed > 0 ? (
+                            <p
+                              role="alert"
+                              className="mt-2 text-xs font-semibold text-danger"
+                            >
+                              {bulk.total}건 중 {bulk.failed}건을 붙이지
+                              못했어요. 다시 시도해 주세요.
+                            </p>
+                          ) : (
+                            <p
+                              role="status"
+                              className="mt-2 text-xs font-semibold text-emerald-800"
+                            >
+                              {bulk.total}건을 모두 붙였어요
+                            </p>
+                          )
+                        ) : null}
+                      </div>
+                    ))}
                     {groups.unassignedCards.map((e) => (
                       <EventCard
                         key={e.id}

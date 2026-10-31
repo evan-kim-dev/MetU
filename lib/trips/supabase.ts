@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { TABLES } from "@/lib/constants";
+import { suggestTripDates } from "@/lib/ledger/trip-dates";
+import { seoulDateIso } from "@/lib/onboarding/trip-window";
 import type { Trip, TripUpdate } from "./types";
 
 interface TripRow {
@@ -9,6 +11,8 @@ interface TripRow {
   country: string;
   origin: string;
   date_range: string;
+  start_date?: string | null;
+  end_date?: string | null;
   d_day: number;
   budget: number;
   spent: number;
@@ -31,6 +35,8 @@ const TRIP_LIST_COLUMNS = [
   "country",
   "origin",
   "date_range",
+  "start_date",
+  "end_date",
   "d_day",
   "budget",
   "spent",
@@ -40,6 +46,38 @@ const TRIP_LIST_COLUMNS = [
   "memo",
   "status",
 ].join(", ");
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * trips.start_date / end_date 로 저장할 값.
+ * 확정된 ISO(startDate)가 있으면 그것을, 없으면 date_range 에서 추정한다.
+ * 해석에 실패하면 둘 다 null (틀린 날짜를 지어내지 않는다).
+ * "오늘" 은 Asia/Seoul 기준이다 (서버/브라우저 UTC 에 흔들리지 않게).
+ */
+export function tripDateColumns(
+  input: {
+    dateRange: string;
+    startDate?: string | null;
+    endDate?: string | null;
+  },
+  today: string = seoulDateIso(new Date())
+): { start_date: string | null; end_date: string | null } {
+  const explicitStart =
+    input.startDate && ISO_DATE.test(input.startDate) ? input.startDate : null;
+  if (explicitStart) {
+    const explicitEnd =
+      input.endDate &&
+      ISO_DATE.test(input.endDate) &&
+      input.endDate >= explicitStart
+        ? input.endDate
+        : explicitStart;
+    return { start_date: explicitStart, end_date: explicitEnd };
+  }
+  const suggested = suggestTripDates(input.dateRange, today);
+  if (!suggested) return { start_date: null, end_date: null };
+  return { start_date: suggested.startDate, end_date: suggested.endDate };
+}
 
 /** Detail / mutate responses — full trip document */
 const TRIP_DETAIL_COLUMNS = [
@@ -57,6 +95,8 @@ function rowToTrip(row: TripRow): Trip {
     country: row.country,
     origin: row.origin,
     dateRange: row.date_range,
+    startDate: row.start_date ?? null,
+    endDate: row.end_date ?? null,
     dDay: row.d_day,
     budget: Number(row.budget),
     spent: Number(row.spent),
@@ -72,7 +112,10 @@ function rowToTrip(row: TripRow): Trip {
   };
 }
 
-function tripToRow(trip: Trip, userId: string): Omit<TripRow, "id"> & { id?: string } {
+export function tripToRow(
+  trip: Trip,
+  userId: string
+): Omit<TripRow, "id"> & { id?: string } {
   return {
     id: trip.id,
     user_id: userId,
@@ -80,6 +123,7 @@ function tripToRow(trip: Trip, userId: string): Omit<TripRow, "id"> & { id?: str
     country: trip.country,
     origin: trip.origin,
     date_range: trip.dateRange,
+    ...tripDateColumns(trip),
     d_day: trip.dDay,
     budget: trip.budget,
     spent: trip.spent,
@@ -95,12 +139,25 @@ function tripToRow(trip: Trip, userId: string): Omit<TripRow, "id"> & { id?: str
   };
 }
 
-function updateToRow(update: TripUpdate): Partial<TripRow> {
+export function updateToRow(update: TripUpdate): Partial<TripRow> {
   const row: Partial<TripRow> = {};
   if (update.destination !== undefined) row.destination = update.destination;
   if (update.country !== undefined) row.country = update.country;
   if (update.origin !== undefined) row.origin = update.origin;
   if (update.dateRange !== undefined) row.date_range = update.dateRange;
+  if (update.dateRange !== undefined || update.startDate !== undefined) {
+    // 날짜 라벨이 바뀌면 컬럼도 같이 갱신 (해석 실패 시 null — 낡은 날짜를 남기지 않는다).
+    const cols = tripDateColumns({
+      dateRange: update.dateRange ?? "",
+      startDate: update.startDate,
+      endDate: update.endDate,
+    });
+    row.start_date = cols.start_date;
+    row.end_date = cols.end_date;
+  } else if (update.endDate !== undefined) {
+    row.end_date =
+      update.endDate && ISO_DATE.test(update.endDate) ? update.endDate : null;
+  }
   if (update.dDay !== undefined) row.d_day = update.dDay;
   if (update.budget !== undefined) row.budget = update.budget;
   if (update.spent !== undefined) row.spent = update.spent;

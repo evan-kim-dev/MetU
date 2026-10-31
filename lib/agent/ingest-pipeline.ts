@@ -19,6 +19,8 @@ export type RunIngestInput = {
   payload: Record<string, unknown>;
   idempotencyKey: string;
   status?: AgentEventStatus;
+  /** Optional result JSON (e.g. trip match rule / suggestion). */
+  result?: Record<string, unknown> | null;
   /** When true (default), schedule processEvent if trip is set and insert is fresh. */
   processIfTrip?: boolean;
 };
@@ -47,6 +49,7 @@ export async function runIngest(
     payload: input.payload,
     idempotencyKey: input.idempotencyKey,
     status,
+    ...(input.result != null ? { result: input.result } : {}),
   });
 
   const shouldProcess =

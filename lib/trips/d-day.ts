@@ -28,9 +28,15 @@ export function resolveTripStartIso(
   const label = dateRange.trim();
   if (!label) return null;
 
-  const isoMatch = label.match(/(\d{4})-(\d{2})-(\d{2})/);
+  // 2026-07-20 / 2026.07.20 / 2026/7/20
+  const isoMatch = label.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
   if (isoMatch) {
-    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+    const month = Number(isoMatch[2]);
+    const day = Number(isoMatch[3]);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return toIso(Number(isoMatch[1]), month, day);
+    }
+    return null;
   }
 
   const yearMonthMatch = label.match(/(\d{4})년\s*(\d{1,2})월/);

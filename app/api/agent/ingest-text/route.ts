@@ -9,7 +9,11 @@ import {
 import { runIngest } from "@/lib/agent/ingest-pipeline";
 import { assertTripMember } from "@/lib/agent/membership";
 import { apiInternalError } from "@/lib/api/respond";
-import { pickTripForReceivedAt } from "@/lib/onboarding/agent-context";
+import {
+  pickTripForReceivedAt,
+  type TripPick,
+} from "@/lib/onboarding/agent-context";
+import { tripPickToResult } from "@/lib/onboarding/trip-match";
 import { guardApi } from "@/lib/security/guard";
 
 export const maxDuration = 60;
@@ -50,6 +54,7 @@ export async function POST(request: Request) {
 
   let tripId: string | null =
     parsed.data.tripId === undefined ? null : parsed.data.tripId;
+  let pick: TripPick | null = null;
 
   if (tripId) {
     const member = await assertTripMember(userId, tripId);
@@ -57,7 +62,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
   } else {
-    tripId = await pickTripForReceivedAt(userId, receivedAt);
+    pick = await pickTripForReceivedAt(userId, receivedAt);
+    tripId = pick.tripId;
   }
 
   const outcome = await runIngest({
@@ -68,6 +74,8 @@ export async function POST(request: Request) {
     payload,
     idempotencyKey: `${userId}:${idempotencyKey}`,
     status: tripId ? "received" : "unassigned",
+    // 날짜 규칙으로 붙인 경우만 match.rule 저장 (명시한 tripId 는 확정으로 본다).
+    ...(pick ? { result: tripPickToResult(pick) } : {}),
   });
 
   if (!outcome.result.ok) {
