@@ -38,6 +38,69 @@ export function agentEventStatusLabel(status: string): string {
   return AGENT_EVENT_STATUS_LABELS[status] ?? status;
 }
 
+// ---------------------------------------------------------------------------
+// 사유(reason) → 한국어 한 줄. 수신함 / 연결 확인 / 인제스트 응답이 같은 표를 쓴다.
+// ---------------------------------------------------------------------------
+
+/**
+ * 사유 코드 → 한국어 문구 (해요체).
+ * 코드의 출처:
+ * - unassigned: result.reason (lib/onboarding/trip-match.ts) — no_trips / no_dates / outside_window
+ * - needs_review: result.items[].reasonCode (lib/agent/policy.ts) — trip_match_uncertain / fx_unresolved
+ * - failed: agent_events.error (lib/agent/run.ts) — no-owner-member / commit-failed
+ * "여행이 없어서" 는 no_trips 에만 쓴다.
+ */
+export const AGENT_REASON_MESSAGES: Readonly<Record<string, string>> = {
+  no_trips: "여행이 없어서 수신함에 보관했어요",
+  no_dates: "여행 날짜를 넣으면 자동으로 붙어요. 수신함에 보관했어요",
+  outside_window:
+    "여행 날짜와 달라서 수신함에 보관했어요. 수신함에서 붙일 수 있어요",
+  trip_match_uncertain: "여행 날짜가 정확히 맞지 않아 확인이 필요해요",
+  "no-owner-member":
+    "이 여행의 멤버로 확인되지 않아 처리하지 못했어요. 여행을 확인한 뒤 다시 처리해 주세요",
+  fx_unresolved: "환율을 확실히 구하지 못해서 확인이 필요해요",
+  "commit-failed": "가계부에 저장하지 못했어요. 다시 처리해 주세요",
+};
+
+/** 상태별 일반 문구 — 모르는 사유일 때만 쓴다. */
+const GENERIC_REASON_BY_STATUS: Readonly<Record<string, string>> = {
+  unassigned: "수신함에 보관했어요. 여행에 붙여 주세요",
+  needs_review: "확인이 필요해요",
+  failed: "처리하지 못했어요. 다시 처리해 주세요",
+};
+
+/** 알려진 사유 코드면 문구, 아니면 null. */
+export function agentReasonMessage(
+  code: string | null | undefined
+): string | null {
+  if (!code) return null;
+  return Object.prototype.hasOwnProperty.call(AGENT_REASON_MESSAGES, code)
+    ? AGENT_REASON_MESSAGES[code]!
+    : null;
+}
+
+/**
+ * 이벤트 한 건의 사유를 한국어 한 줄로. unassigned / needs_review / failed 만 대상이다.
+ * 우선순위: reasonCode(정책 사유) → reason(매칭 사유) → error(처리 오류).
+ * 아무 코드도 못 알아보면 상태별 일반 문구. 그 외 상태나 연결 테스트는 null.
+ */
+export function agentEventReasonLine(args: {
+  status: string;
+  reason?: string | null;
+  reasonCode?: string | null;
+  error?: string | null;
+  isTest?: boolean;
+}): string | null {
+  if (args.isTest) return null;
+  const generic = GENERIC_REASON_BY_STATUS[args.status];
+  if (!generic) return null;
+  for (const code of [args.reasonCode, args.reason, args.error]) {
+    const known = agentReasonMessage(code);
+    if (known) return known;
+  }
+  return generic;
+}
+
 /** UI label; test/sim events show as 연결 테스트 (F-33/F-34). */
 export function agentEventStatusLabelForUi(args: {
   status: string;

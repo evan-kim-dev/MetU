@@ -1,6 +1,9 @@
 "use client";
 
-import { agentEventStatusLabelForUi } from "@/lib/agent/event-status";
+import {
+  agentEventReasonLine,
+  agentEventStatusLabelForUi,
+} from "@/lib/agent/event-status";
 import { formatRelativeTime } from "@/lib/format/relative-time";
 import type { AutomationStatusEvent } from "@/lib/hooks/useAutomationStatus";
 
@@ -47,6 +50,16 @@ export function RecentEvents({ events, loading, max = 5 }: Props) {
                 })}
               </span>
             </div>
+            {e.status === "unassigned" || e.status === "failed" ? (
+              <p className="mt-1 text-xs text-ink-body">
+                {agentEventReasonLine({
+                  status: e.status,
+                  reason: e.reason,
+                  error: e.error,
+                  isTest: e.isTest,
+                })}
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>
