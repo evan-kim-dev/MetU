@@ -8,7 +8,7 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { DestinationImage } from "@/components/ui/DestinationImage";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { formatKRW } from "@/lib/mock/home";
+import { formatKRW } from "@/lib/shared/format";
 import { STYLE_LABELS } from "@/lib/trips/data";
 import {
   buildSharedTripUrl,

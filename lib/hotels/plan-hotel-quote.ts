@@ -16,6 +16,7 @@ export interface PlanHotelQuote {
 }
 
 function buildEstimateQuote(plan: TripRecommendation): PlanHotelQuote {
+  // Agoda city id 없으면 Google 호텔 검색 URL로 폴백 (buildAgodaHotelUrlFromPlan)
   const agodaUrl = buildAgodaHotelUrlFromPlan(plan) ?? "";
   return {
     priceKrw: plan.hotel.total,

@@ -1,3 +1,4 @@
+/** mock 아님: 기본값/필터 */
 import type { CommunityPost, PostCategory, WritablePostCategory } from "@/lib/community/types";
 
 export type { CommunityPost, PostCategory, WritablePostCategory };

@@ -6,6 +6,7 @@ import { Counter } from "@/components/ui/Counter";
 import { DateField } from "@/components/ui/DateField";
 import {
   buildAgodaHotelSearchUrl,
+  buildGoogleHotelSearchUrl,
   resolveHotelStayDates,
 } from "@/lib/hotels/agoda-url";
 import { resolveAgodaCityId } from "@/lib/hotels/agoda-cities";
@@ -34,9 +35,11 @@ export function HotelChecklistContent() {
   const [adults, setAdults] = useState(2);
   const [rooms, setRooms] = useState(1);
 
-  const agodaUrl = useMemo(() => {
+  const hotelSearchUrl = useMemo(() => {
+    if (!destination.trim()) return null;
     const cityId = resolveAgodaCityId(destination);
-    if (!cityId || !checkIn || !checkOut) return null;
+    if (!cityId) return buildGoogleHotelSearchUrl(destination);
+    if (!checkIn || !checkOut) return null;
     const fakeForm = {
       dateType: "specific",
       startDate: checkIn,
@@ -129,17 +132,19 @@ export function HotelChecklistContent() {
       </div>
 
       <a
-        href={agodaUrl ?? undefined}
+        href={hotelSearchUrl ?? undefined}
         target="_blank"
         rel="noopener noreferrer"
-        aria-disabled={!agodaUrl}
+        aria-disabled={!hotelSearchUrl}
         className={`flex h-touch items-center justify-center gap-2 rounded-2xl text-sm font-bold ${
-          agodaUrl
+          hotelSearchUrl
             ? "bg-ink-heading text-white active:opacity-90"
             : "pointer-events-none bg-surface-muted text-ink-caption opacity-60"
         }`}
       >
-        Agoda에서 검색
+        {hotelSearchUrl?.includes("google.com")
+          ? "Google에서 검색"
+          : "Agoda에서 검색"}
         <ExternalLink className="h-4 w-4" aria-hidden />
       </a>
 

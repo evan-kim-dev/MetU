@@ -1,3 +1,4 @@
+/** mock 아님: 기본값/필터 */
 import type { TravelStyle } from "@/components/onboarding/types";
 
 export interface ProfileUser {

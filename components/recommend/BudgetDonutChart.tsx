@@ -1,4 +1,4 @@
-import { formatKRW } from "@/lib/mock/home";
+import { formatKRW } from "@/lib/shared/format";
 import type { BudgetAllocation } from "@/lib/ai/types";
 
 interface BudgetDonutChartProps {

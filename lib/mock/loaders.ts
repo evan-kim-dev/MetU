@@ -1,3 +1,4 @@
+/** mock 아님: 기본값/필터 */
 import { cache } from "react";
 import type { DealPlace } from "@/lib/deals/data";
 
