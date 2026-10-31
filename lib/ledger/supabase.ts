@@ -111,6 +111,138 @@ export async function listExpenses(
   );
 }
 
+/** 취소(void)된 지출 id. 정산 계산에서 제외해야 서버 자동 정산과 기준이 같다. 실패하면 null. */
+export async function listVoidedExpenseIds(
+  supabase: SupabaseClient,
+  tripId: string
+): Promise<Set<string> | null> {
+  const { data, error } = await supabase
+    .from(TABLES.tripExpenses)
+    .select("id")
+    .eq("trip_id", tripId)
+    .eq("status", "voided");
+  if (error) {
+    console.error("[listVoidedExpenseIds]", error.message);
+    return null;
+  }
+  return new Set((data ?? []).map((r) => String((r as { id: string }).id)));
+}
+
+export type SettlementStatus = "open" | "stale" | "completed" | "superseded";
+
+export interface SettlementTransfer {
+  id: string;
+  from: string;
+  to: string;
+  krw: number;
+  status: "pending" | "paid";
+}
+
+export interface SettlementSnapshot {
+  id: string;
+  version: number;
+  status: SettlementStatus;
+  origin: "manual" | "auto";
+  basisHash: string;
+  shareToken: string | null;
+  transfers: SettlementTransfer[];
+}
+
+interface SettlementRowDb {
+  id: string;
+  version: number | string;
+  status: string;
+  origin?: string | null;
+  basis_hash: string;
+  share_token: string | null;
+}
+
+interface SettlementTransferRowDb {
+  id: string;
+  from_member: string;
+  to_member: string;
+  krw: number | string;
+  status: string;
+}
+
+const SETTLEMENT_COLS = "id, version, status, origin, basis_hash, share_token";
+const SETTLEMENT_TRANSFER_COLS = "id, from_member, to_member, krw, status";
+
+/** DB 행 → 앱 타입. 결정적 순서(보내는 사람, 받는 사람, 금액)로 정렬한다. */
+export function settlementFromRows(
+  row: SettlementRowDb,
+  transferRows: SettlementTransferRowDb[]
+): SettlementSnapshot {
+  const transfers: SettlementTransfer[] = transferRows
+    .map((t) => ({
+      id: t.id,
+      from: t.from_member,
+      to: t.to_member,
+      krw: Number(t.krw),
+      status: t.status === "paid" ? ("paid" as const) : ("pending" as const),
+    }))
+    .sort((a, b) => {
+      if (a.from !== b.from) return a.from < b.from ? -1 : 1;
+      if (a.to !== b.to) return a.to < b.to ? -1 : 1;
+      return a.krw - b.krw;
+    });
+
+  return {
+    id: row.id,
+    version: Number(row.version),
+    status: row.status as SettlementStatus,
+    origin: row.origin === "auto" ? "auto" : "manual",
+    basisHash: row.basis_hash,
+    shareToken: row.share_token ?? null,
+    transfers,
+  };
+}
+
+export type LatestSettlementResult =
+  | { ok: true; settlement: SettlementSnapshot | null }
+  | { ok: false };
+
+/**
+ * 가장 최근(superseded 제외) 정산과 송금 목록을 읽는다. RLS: 여행 멤버만 조회 가능.
+ * 자동 정산(origin='auto')도 같은 테이블이라 함께 읽힌다.
+ */
+export async function fetchLatestSettlement(
+  supabase: SupabaseClient,
+  tripId: string
+): Promise<LatestSettlementResult> {
+  const { data: row, error } = await supabase
+    .from(TABLES.tripSettlements)
+    .select(SETTLEMENT_COLS)
+    .eq("trip_id", tripId)
+    .neq("status", "superseded")
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error("[fetchLatestSettlement]", error.message);
+    return { ok: false };
+  }
+  if (!row) return { ok: true, settlement: null };
+
+  const settlementRow = row as SettlementRowDb;
+  const { data: transferRows, error: transferErr } = await supabase
+    .from(TABLES.tripSettlementTransfers)
+    .select(SETTLEMENT_TRANSFER_COLS)
+    .eq("settlement_id", settlementRow.id);
+  if (transferErr) {
+    console.error("[fetchLatestSettlement:transfers]", transferErr.message);
+    return { ok: false };
+  }
+
+  return {
+    ok: true,
+    settlement: settlementFromRows(
+      settlementRow,
+      (transferRows ?? []) as SettlementTransferRowDb[]
+    ),
+  };
+}
+
 export async function fetchLedger(
   supabase: SupabaseClient,
   tripId: string
