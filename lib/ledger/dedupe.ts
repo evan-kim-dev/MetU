@@ -11,13 +11,26 @@ export type DedupeDraft = DedupeInput & {
   krwAmount?: number;
   fxRateToKrw?: number;
   kind?: "approval" | "cancel" | "unknown";
+  /** "receipt" 이면 영수증↔카드알림 강한 병합 규칙이 적용된다. */
+  source?: string | null;
+  /** 시각을 추정했으면(영수증에 시간 없음) 시각 비교에서 제외한다. */
+  timeIsEstimated?: boolean;
 };
 
 export type DedupeExisting = DedupeInput & {
   id: string;
   krwAmount: number;
   paidAt?: string | null;
+  /** trip_expenses.source (receipt|sms|manual|voice) */
+  source?: string | null;
 };
+
+/** 영수증 강한 후보 reason (정책·병합 로직이 이 값으로 strong 을 판별한다). */
+export const RECEIPT_STRONG_REASON = "receipt_amount_time_match";
+/** strong 후보 최소 점수 */
+export const RECEIPT_STRONG_MIN_SCORE = 0.8;
+/** 영수증 시각과 결제 시각이 이 안이면 같은 결제로 본다. */
+export const RECEIPT_TIME_WINDOW_MS = 30 * 60 * 1000;
 
 export type DuplicateCandidate = {
   expenseId: string;
@@ -183,6 +196,55 @@ function scorePair(
   };
 }
 
+/**
+ * 영수증 ↔ 카드알림: 같은 통화·금액이고 시각이 가까우면(±30분, 시각을 모르면 같은 날)
+ * 상호가 달라도(ローソン vs LAWSON ENT) 강한 후보로 본다.
+ * 시간창을 좁게 유지해 같은 날 두 번째 커피 오탐을 막는다. 상호가 비슷하면 가산.
+ */
+function receiptStrongPair(
+  draft: DedupeDraft,
+  existing: DedupeExisting
+): DuplicateCandidate | null {
+  if (draft.id && draft.id === existing.id) return null;
+  if (draft.source !== "receipt" && existing.source !== "receipt") return null;
+  if (!sameAmountCurrency(draft, existing)) return null;
+
+  const dPaid = draft.timeIsEstimated ? "" : (draft.paidAt?.trim() ?? "");
+  const ePaid = existing.paidAt?.trim() ?? "";
+
+  const reasons: string[] = [RECEIPT_STRONG_REASON, "same_amount_currency"];
+  let base = RECEIPT_STRONG_MIN_SCORE;
+
+  if (dPaid && ePaid) {
+    const diff = Math.abs(new Date(dPaid).getTime() - new Date(ePaid).getTime());
+    if (!Number.isFinite(diff) || diff > RECEIPT_TIME_WINDOW_MS) return null;
+    reasons.push("within_30min");
+    base += 0.05;
+  } else if (draft.spentOn.trim() && draft.spentOn.trim() === existing.spentOn.trim()) {
+    reasons.push("same_spent_on", "time_unknown");
+  } else {
+    return null;
+  }
+
+  const merchantSim = merchantBigramSimilarity(draft.merchant, existing.merchant);
+  if (merchantSim >= 0.5) reasons.push("merchant_similar");
+  const score = Math.min(1, base + 0.15 * merchantSim);
+
+  return {
+    expenseId: existing.id,
+    score: Math.round(score * 1000) / 1000,
+    reasons,
+  };
+}
+
+/** 후보가 영수증 strong 규칙으로 잡힌 것인지 */
+export function isReceiptStrongCandidate(c: DuplicateCandidate): boolean {
+  return (
+    c.reasons.includes(RECEIPT_STRONG_REASON) &&
+    c.score >= RECEIPT_STRONG_MIN_SCORE
+  );
+}
+
 function cancelCandidates(
   draft: DedupeDraft,
   existing: DedupeExisting[]
@@ -215,8 +277,13 @@ export function findDuplicateCandidates(
 
   const scored: DuplicateCandidate[] = [];
   for (const row of existing) {
-    const hit = scorePair(draft, row);
-    if (hit) scored.push(hit);
+    const strong = receiptStrongPair(draft, row);
+    const soft = strong ? null : scorePair(draft, row);
+    if (strong) {
+      scored.push(strong);
+    } else if (soft) {
+      scored.push(soft);
+    }
   }
   return scored.sort((a, b) => b.score - a.score).slice(0, 3);
 }

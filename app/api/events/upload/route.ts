@@ -7,11 +7,13 @@ import { runIngest } from "@/lib/agent/ingest-pipeline";
 import { assertTripMember } from "@/lib/agent/membership";
 import { getAgentAdmin } from "@/lib/agent/admin";
 import { apiInternalError } from "@/lib/api/respond";
+import {
+  MULTIPART_OVERHEAD_BYTES,
+  receiptMaxImageBytes,
+} from "@/lib/ledger/image-limits";
 import { guardApi } from "@/lib/security/guard";
 
 export const maxDuration = 60;
-
-const MAX_BYTES = 4 * 1024 * 1024;
 
 const FieldsSchema = z.object({
   tripId: z.string().uuid(),
@@ -26,8 +28,12 @@ export async function POST(request: Request) {
   }
 
   const declared = Number(request.headers.get("content-length") ?? "NaN");
-  // multipart overhead + 4MB file
-  if (Number.isFinite(declared) && declared > MAX_BYTES + 256_000) {
+  const maxBytes = receiptMaxImageBytes();
+  // multipart overhead + file
+  if (
+    Number.isFinite(declared) &&
+    declared > maxBytes + MULTIPART_OVERHEAD_BYTES
+  ) {
     return NextResponse.json({ error: "payload-too-large" }, { status: 413 });
   }
 
@@ -58,7 +64,7 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "file-required" }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
+  if (file.size > maxBytes) {
     return NextResponse.json({ error: "payload-too-large" }, { status: 413 });
   }
 
