@@ -15,6 +15,7 @@ import {
   UserPlus,
   Wallet,
 } from "lucide-react";
+import { DemoModePanel } from "@/components/agent/DemoModePanel";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -114,6 +115,8 @@ export function AgentHubContent() {
             )}
           </section>
         ) : null}
+
+        {!isGuest ? <DemoModePanel /> : null}
 
         <section className="rounded-2xl bg-gradient-to-br from-brand/12 via-brand-mid/8 to-transparent p-4">
           <div className="flex items-start gap-2">
