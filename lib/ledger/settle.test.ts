@@ -167,6 +167,36 @@ describe("computeBalances / minimizeTransfers", () => {
   });
 });
 
+describe("integer KRW settlement (indivisible amounts)", () => {
+  it("keeps every balance and transfer an integer and nets to zero", () => {
+    // 10001원을 3명이 나누면 1원 단위로 딱 떨어지지 않는다.
+    const shares = splitEqual(10001, ["a", "b", "c"]);
+    expect(Object.values(shares).reduce((s, v) => s + v, 0)).toBe(10001);
+    const expenses: LedgerExpense[] = [
+      { id: "1", paidBy: "a", krwAmount: 10001, shares },
+      {
+        id: "2",
+        paidBy: "b",
+        krwAmount: 7,
+        shares: splitEqual(7, ["a", "b", "c"]),
+      },
+    ];
+    const bal = computeBalances(["a", "b", "c"], expenses);
+    for (const v of Object.values(bal)) expect(Number.isInteger(v)).toBe(true);
+    expect(Object.values(bal).reduce((s, v) => s + v, 0)).toBe(0);
+
+    const transfers = minimizeTransfers(bal);
+    for (const t of transfers) {
+      expect(Number.isInteger(t.krw)).toBe(true);
+      expect(t.krw).toBeGreaterThan(0);
+    }
+    const positive = Object.values(bal)
+      .filter((v) => v > 0)
+      .reduce((s, v) => s + v, 0);
+    expect(transfers.reduce((s, t) => s + t.krw, 0)).toBe(positive);
+  });
+});
+
 describe("basisHash", () => {
   it("order independent, amount sensitive", async () => {
     const a: LedgerExpense[] = [
