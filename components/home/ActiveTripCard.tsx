@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CalendarDays, MapPin } from "lucide-react";
-import { formatKRW } from "@/lib/mock/home";
+import { formatKRW } from "@/lib/shared/format";
 import type { Trip } from "@/lib/trips/types";
 import { computeTripDDay, formatTripDDayLabel } from "@/lib/trips/d-day";
 import { DestinationImage } from "@/components/ui/DestinationImage";

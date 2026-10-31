@@ -1,12 +1,11 @@
 import type { OnboardingForm } from "@/lib/onboarding/types";
 import type { TripRecommendation } from "@/lib/ai/types";
 import { resolveTripFlightDates } from "@/lib/flights/agoda-url";
+import { AGODA_CID, AGODA_TAG } from "@/lib/hotels/affiliate";
 import { resolveAgodaCityId } from "@/lib/hotels/agoda-cities";
 import { addDays } from "@/lib/shared/dates";
 
 const AGODA_HOTEL_BASE = "https://www.agoda.com/ko-kr/search";
-const AGODA_CID = "1922887";
-const AGODA_TAG = "f7739694-dbb7-41bd-aa27-be7c942ce354";
 
 export function resolveHotelStayDates(
   form: OnboardingForm,
@@ -24,6 +23,14 @@ export function resolveHotelStayDates(
 function resolveRooms(adults: number): number {
   if (adults <= 2) return 1;
   return Math.min(4, Math.ceil(adults / 2));
+}
+
+/** Agoda city id 가 없을 때 Google 호텔 검색으로 폴백한다. */
+export function buildGoogleHotelSearchUrl(destination: string): string {
+  const city = destination.trim() || "호텔";
+  const url = new URL("https://www.google.com/travel/search");
+  url.searchParams.set("q", `${city} 호텔`);
+  return url.toString();
 }
 
 export function buildAgodaHotelSearchUrl(params: {
@@ -49,14 +56,19 @@ export function buildAgodaHotelSearchUrl(params: {
   return url.toString();
 }
 
-/** AI 추천 결과를 Agoda 숙소 검색 URL로 변환한다. */
+/**
+ * AI 추천 결과를 숙소 검색 URL로 변환한다.
+ * Agoda city id 가 없으면 Google 호텔 검색으로 폴백한다.
+ */
 export function buildAgodaHotelUrlFromPlan(
   plan: TripRecommendation
 ): string | null {
   const destination =
     plan.destination || plan.form.destination || plan.hotel.area;
+  if (!destination?.trim()) return null;
+
   const cityId = resolveAgodaCityId(destination);
-  if (!cityId) return null;
+  if (!cityId) return buildGoogleHotelSearchUrl(destination);
 
   const nights = plan.hotel.nights || plan.nights;
   const { checkIn, checkOut, los } = resolveHotelStayDates(plan.form, nights);

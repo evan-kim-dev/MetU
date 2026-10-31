@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { buildAgodaFlightSearchUrl } from "@/lib/flights/agoda-url";
 import { buildGoogleFlightsSearchUrl } from "@/lib/flights/google-flights-url";
 import { buildNaverFlightsUrl } from "@/lib/flights/naver-flights-url";
-import { buildAgodaHotelSearchUrl } from "@/lib/hotels/agoda-url";
+import {
+  buildAgodaHotelSearchUrl,
+  buildAgodaHotelUrlFromPlan,
+  buildGoogleHotelSearchUrl,
+} from "@/lib/hotels/agoda-url";
 import { searchAirportPlaces } from "@/lib/airports/data";
 import { fetchPlanFlightQuote } from "@/lib/flights/plan-flight-quote";
 import { fetchPlanHotelQuote } from "@/lib/hotels/plan-hotel-quote";
@@ -95,5 +99,30 @@ describe("travel deeplinks", () => {
     expect(hotel.source).toBe("estimate");
     expect(fetchMock).toHaveBeenCalledTimes(0);
     vi.unstubAllGlobals();
+  });
+
+  it("known hotel city uses Agoda; unknown falls back to Google travel search", () => {
+    const danangPlan = {
+      ...plan,
+      destination: "다낭",
+      form: { ...plan.form, destination: "다낭" },
+      hotel: { ...plan.hotel, area: "다낭" },
+    } as unknown as TripRecommendation;
+    const danangUrl = buildAgodaHotelUrlFromPlan(danangPlan);
+    expect(danangUrl).toContain("agoda.com");
+    expect(danangUrl).toContain("city=16440");
+
+    const portoPlan = {
+      ...plan,
+      destination: "포르투",
+      form: { ...plan.form, destination: "포르투" },
+      hotel: { ...plan.hotel, area: "포르투" },
+    } as unknown as TripRecommendation;
+    const portoUrl = buildAgodaHotelUrlFromPlan(portoPlan);
+    expect(portoUrl).toContain("google.com/travel/search");
+    expect(new URL(portoUrl!).searchParams.get("q")).toBe("포르투 호텔");
+    expect(buildGoogleHotelSearchUrl("포르투")).toContain(
+      "google.com/travel/search"
+    );
   });
 });
