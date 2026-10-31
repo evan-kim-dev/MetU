@@ -8,6 +8,7 @@ import {
   buildGoogleFlightsSearchUrl,
   buildGoogleFlightsUrlFromPlan,
 } from "@/lib/flights/google-flights-url";
+import { resolveLiveKrwRate } from "@/lib/fx/server";
 import { normalizePriceToKrw } from "@/lib/shared/format";
 
 export interface PlanFlightQuote {
@@ -24,12 +25,34 @@ export interface PlanFlightQuote {
   budgetCap?: number;
 }
 
-function buildEstimateQuote(plan: TripRecommendation): PlanFlightQuote | null {
+async function estimatePriceKrw(raw: number): Promise<number> {
+  const rounded = normalizePriceToKrw(raw);
+  // AI가 소액(대개 USD)으로 준 경우만 라이브 USD→KRW 적용. 이미 KRW면 그대로.
+  if (rounded > 0 && rounded < 10_000) {
+    try {
+      const rate = await resolveLiveKrwRate("USD");
+      if (rate && rate.krw > 0) {
+        return Math.round(rounded * rate.krw);
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return rounded;
+}
+
+/** Estimate-only quote (live flight search removed in P1-A). */
+export async function fetchPlanFlightQuote(
+  plan: TripRecommendation
+): Promise<PlanFlightQuote | null> {
   const originCode = resolveIataCode(plan.form.origin || plan.origin);
   const destCode = resolveIataCode(plan.form.destination || plan.destination);
   if (!originCode || !destCode) return null;
 
-  const { departDate, returnDate } = resolveTripFlightDates(plan.form, plan.nights);
+  const { departDate, returnDate } = resolveTripFlightDates(
+    plan.form,
+    plan.nights
+  );
   const googleFlightsUrl =
     buildGoogleFlightsUrlFromPlan(plan) ??
     buildGoogleFlightsSearchUrl({
@@ -40,7 +63,7 @@ function buildEstimateQuote(plan: TripRecommendation): PlanFlightQuote | null {
       adults: plan.people,
     });
 
-  const priceKrw = normalizePriceToKrw(plan.flight.price);
+  const priceKrw = await estimatePriceKrw(plan.flight.price);
   return {
     priceKrw,
     priceLabel: priceKrw.toLocaleString("ko-KR"),
@@ -51,11 +74,4 @@ function buildEstimateQuote(plan: TripRecommendation): PlanFlightQuote | null {
     source: "estimate",
     budgetCap: flightBudgetCap(plan.totalBudget),
   };
-}
-
-/** Estimate-only quote (live flight search removed in P1-A). */
-export async function fetchPlanFlightQuote(
-  plan: TripRecommendation
-): Promise<PlanFlightQuote | null> {
-  return buildEstimateQuote(plan);
 }
