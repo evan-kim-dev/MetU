@@ -22,7 +22,7 @@ import {
   type LedgerExpense,
 } from "@/lib/ledger/settle";
 import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
-import { resolveFxTarget } from "@/lib/fx/currencies";
+import { useFxTarget } from "@/lib/fx/useFxTarget";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import type { TripDaySchedule } from "@/lib/trips/types";
 
@@ -40,6 +40,10 @@ export function useLedger(
   const [expenses, setExpenses] = useState<LedgerExpenseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { target: fxTarget, loading: fxTargetLoading } = useFxTarget(
+    options?.country,
+    options?.destination
+  );
 
   const reload = useCallback(async () => {
     const supabase = getBrowserSupabase();
@@ -109,11 +113,9 @@ export function useLedger(
     return { balances, transfers };
   }, [expenses, memberIds]);
 
-  const defaultCurrency = useMemo(
-    () =>
-      resolveFxTarget(options?.country, options?.destination).code,
-    [options?.country, options?.destination]
-  );
+  // 로딩 중에는 빈 문자열 — USD 깜빡임 방지. 해석 실패(resolved:false)여도
+  // 코드는 오되 폼에서 직접 바꿀 수 있음.
+  const defaultCurrency = fxTargetLoading && !fxTarget ? "" : (fxTarget?.code ?? "");
 
   const placeOptions = useMemo(() => {
     const out: Array<{ id: string; title: string; dayIndex?: number }> = [];
