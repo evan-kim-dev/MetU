@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FxAttribution } from "@/components/fx/FxAttribution";
 import { SettleExplainSheet } from "@/components/ledger/SettleExplainSheet";
 import { SettlementHistory } from "@/components/ledger/SettlementHistory";
+import { SplitPatchBox } from "@/components/ledger/SplitPatchBox";
 import { useSettleReference } from "@/components/ledger/useSettleReference";
 import { useClipboardCopy } from "@/components/onboarding/connect/useClipboardCopy";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -403,11 +404,7 @@ export default function LedgerSettlePage() {
         ) : null}
       </section>
 
-      {/*
-        K7 mount point — SplitPatchBox
-        자연어 분담 수정(preview → confirm → undo) UI는 여기(잔액/"왜 이 금액?" 아래,
-        자동 정산 안내 위)에 붙이세요. K8(이 브랜치)에서는 SplitPatchBox를 구현하지 않아요.
-      */}
+      {loaded ? <SplitPatchBox tripId={tripId} onChanged={reload} /> : null}
 
       {settlement?.origin === "auto" && !completed ? (
         <div className="rounded-xl bg-surface-soft px-3 py-2 text-xs font-semibold text-ink-body">
