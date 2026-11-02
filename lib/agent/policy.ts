@@ -1,3 +1,5 @@
+import type { FxMergeCandidate, FxMergeDecision } from "@/lib/ledger/fx-merge";
+
 export type DraftOrigin = "rule" | "llm" | "receipt" | "manual";
 
 export type DraftKind = "approval" | "cancel" | "other" | "unknown";
@@ -42,6 +44,11 @@ export type PolicySignals = {
    * 생략 = 사용자/토큰이 명시한 여행. "exact" 가 아니면(near/single) 자동 저장 금지.
    */
   tripMatchRule?: "exact" | "near" | "single" | "none";
+  /**
+   * K1: 외화 지출 ↔ 해외 원화 청구 문자 병합 판단 (lib/ledger/fx-merge.ts 순수 결과).
+   * 생략 = 병합 경로 아님(같은 통화 병합·일반 저장은 기존 규칙 그대로).
+   */
+  fxMerge?: FxMergeDecision;
 };
 
 export type PolicyEnv = {
@@ -53,11 +60,18 @@ export type PolicyEnv = {
 
 export type PolicyDecision = "auto_commit" | "review" | "ignore" | "merge";
 
+/** receipt_attach: 영수증 사진만 붙임 / billed_krw: 해외 원화 청구액을 외화 지출에 합침(K1) */
+export type MergeKind = "receipt_attach" | "billed_krw";
+
 export type PolicyResult = {
   decision: PolicyDecision;
   reasons: string[];
-  /** decision=merge: 새 지출 없이 영수증을 붙일 기존 지출 */
+  /** decision=merge(또는 합치기 후보 review): 병합 종류 */
+  mergeKind?: MergeKind;
+  /** decision=merge: 새 지출 없이 영수증/청구액을 붙일 기존 지출 */
   mergeExpenseId?: string;
+  /** mergeKind=billed_krw 인 review: 합칠 후보 (수신함 선택용) */
+  fxMergeCandidates?: FxMergeCandidate[];
   /** review 이면서 같은 결제로 보이는 기존 지출 (수신함 합치기 선택용) */
   duplicateOfExpenseId?: string;
   /** review 사유 코드 (기계 판독용, 예: "trip_match_uncertain") */
@@ -67,6 +81,18 @@ export type PolicyResult = {
 export const TRIP_MATCH_UNCERTAIN = "trip_match_uncertain";
 /** 외화인데 환율을 확정하지 못했거나 폴백 환율일 때 (사유 문구: lib/agent/event-status.ts) */
 export const FX_UNRESOLVED = "fx_unresolved";
+/** 외화 지출과 해외 원화 청구가 같은 결제로 보이지만 자동 병합 조건은 못 채웠을 때 */
+export const FX_MERGE_REVIEW = "fx_merge_review";
+
+const FX_MERGE_REVIEW_REASONS = {
+  multiple:
+    "같은 해외 결제로 보이는 지출이 여러 건이에요 — 합칠 지출을 골라 주세요",
+  time_unknown:
+    "금액은 비슷한데 결제 시각을 몰라서 확인이 필요해요 — 같은 결제면 합쳐 주세요",
+  time_outside:
+    "금액은 비슷한데 결제 시각이 30분 넘게 차이 나요 — 같은 결제인지 확인해 주세요",
+  low_score: "같은 해외 결제인지 확실하지 않아요 — 확인해 주세요",
+} as const;
 
 /** 날짜 규칙으로 붙었지만 exact 가 아닌 경우 */
 export function isTripMatchUncertain(
@@ -127,6 +153,29 @@ export function decide(
     };
   }
 
+  // K1: 외화 지출 ↔ 해외 원화 청구. 후보 1건 + 시각 ±30분일 때만 자동 병합, 아니면 사람이 확인.
+  // 후보가 없으면(none) 아래 기존 규칙 그대로 진행한다.
+  const fx = signals.fxMerge;
+  if (fx?.kind === "auto") {
+    return {
+      decision: "merge",
+      mergeKind: "billed_krw",
+      reasons: ["같은 해외 결제라서 원화 청구액을 합쳐요"],
+      mergeExpenseId: fx.target.id,
+    };
+  }
+  if (fx?.kind === "review") {
+    const first = fx.candidates[0];
+    return {
+      decision: "review",
+      mergeKind: "billed_krw",
+      reasons: [FX_MERGE_REVIEW_REASONS[fx.reason]],
+      reasonCode: FX_MERGE_REVIEW,
+      fxMergeCandidates: fx.candidates,
+      ...(first ? { duplicateOfExpenseId: first.id } : {}),
+    };
+  }
+
   // Receipt vs existing payment: never create a second expense for the same
   // payment. Attach to the existing one when it is unambiguous, else review.
   if (priced.origin === "receipt") {
@@ -148,11 +197,13 @@ export function decide(
         return {
           decision: "review",
           reasons: ["이미 같은 결제가 있어요 — 합치기/별개로 저장"],
+          mergeKind: "receipt_attach",
           duplicateOfExpenseId: only.expenseId,
         };
       }
       return {
         decision: "merge",
+        mergeKind: "receipt_attach",
         reasons: ["이미 같은 결제가 있어서 영수증만 붙여요"],
         mergeExpenseId: only.expenseId,
       };

@@ -46,7 +46,7 @@ export function agentEventStatusLabel(status: string): string {
  * 사유 코드 → 한국어 문구 (해요체).
  * 코드의 출처:
  * - unassigned: result.reason (lib/onboarding/trip-match.ts) — no_trips / no_dates / outside_window
- * - needs_review: result.items[].reasonCode (lib/agent/policy.ts) — trip_match_uncertain / fx_unresolved
+ * - needs_review: result.items[].reasonCode (lib/agent/policy.ts) — trip_match_uncertain / fx_unresolved / fx_merge_review
  * - failed: agent_events.error (lib/agent/run.ts) — no-owner-member / commit-failed
  * "여행이 없어서" 는 no_trips 에만 쓴다.
  */
@@ -59,6 +59,8 @@ export const AGENT_REASON_MESSAGES: Readonly<Record<string, string>> = {
   "no-owner-member":
     "이 여행의 멤버로 확인되지 않아 처리하지 못했어요. 여행을 확인한 뒤 다시 처리해 주세요",
   fx_unresolved: "환율을 확실히 구하지 못해서 확인이 필요해요",
+  fx_merge_review:
+    "같은 해외 결제로 보이는 지출이 있어요. 합칠지 확인해 주세요",
   "commit-failed": "가계부에 저장하지 못했어요. 다시 처리해 주세요",
 };
 

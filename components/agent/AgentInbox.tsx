@@ -36,6 +36,8 @@ type ResultItem = {
   reasonCode?: string;
   /** 같은 결제로 보이는 기존 지출 (영수증 합치기 후보) */
   mergeInto?: string;
+  /** receipt_attach | billed_krw */
+  mergeKind?: string;
   draft?: {
     merchant?: string | null;
     amount?: number | null;
@@ -509,7 +511,9 @@ export function AgentInbox({
       return renderAssign(event);
     }
     if (event.status === "needs_review") {
-      const canMerge = reviewItems(event).some((it) => it.mergeInto);
+      const reviews = reviewItems(event);
+      const canMerge = reviews.some((it) => it.mergeInto);
+      const billedMerge = reviews.some((it) => it.mergeKind === "billed_krw");
       return (
         <div className="mt-2 flex flex-wrap gap-2">
           {canMerge ? (
@@ -525,7 +529,7 @@ export function AgentInbox({
                 )
               }
             >
-              기존 지출에 합치기
+              {billedMerge ? "같은 결제로 청구액 합치기" : "기존 지출에 합치기"}
             </button>
           ) : null}
           <button

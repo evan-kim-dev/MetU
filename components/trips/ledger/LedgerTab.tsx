@@ -41,6 +41,8 @@ interface LedgerTabProps {
     parseMeta?: ExpenseParseItemOut
   ) => Promise<boolean>;
   onDeleteExpense?: (id: string) => Promise<boolean>;
+  /** 청구액 반영·되돌리기 후 목록 갱신 */
+  onExpenseFxChanged?: () => void;
 }
 
 export function LedgerTab({
@@ -60,6 +62,7 @@ export function LedgerTab({
   onRemoveMember,
   onSaveExpense,
   onDeleteExpense,
+  onExpenseFxChanged,
 }: LedgerTabProps) {
   const [mode, setMode] = useState<"list" | "manual" | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -235,7 +238,7 @@ export function LedgerTab({
                   </>
                 ) : null}
               </div>
-              <ExpenseFxLine expense={exp} />
+              <ExpenseFxLine expense={exp} onChanged={onExpenseFxChanged} />
               </div>
             )
           )

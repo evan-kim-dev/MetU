@@ -64,6 +64,16 @@ export interface LedgerExpenseRow {
   items?: LedgerItem[];
   note?: string | null;
   dedupeHash?: string | null;
+  /** 실제 청구 원화(해외 청구 문자·수동 입력). 있으면 정산 KRW 는 이 값. */
+  billedKrw?: number | null;
+  billedSource?: "sms" | "manual" | null;
+  billedEventId?: string | null;
+  /** 병합 스냅샷·메타 (되돌리기용). */
+  fxMerge?: Record<string, unknown> | null;
+  /** agent_reasons.flags 등에서 읽은 표시용 플래그. */
+  flags?: {
+    overseas?: boolean;
+  } | null;
 }
 
 export interface ExpenseRowDb {
@@ -100,6 +110,11 @@ export interface ExpenseRowDb {
   split_type: string;
   dedupe_hash?: string | null;
   note?: string | null;
+  billed_krw?: number | string | null;
+  billed_source?: string | null;
+  billed_event_id?: string | null;
+  fx_merge?: unknown;
+  agent_reasons?: unknown;
 }
 
 export interface ShareRowDb {
@@ -143,6 +158,27 @@ export function rowToExpense(
   const merchant = (row.merchant ?? row.label ?? "").toString();
   const fx = num(row.fx_rate ?? row.fx_rate_to_krw, 1);
   const split = row.split_type as SplitType;
+  const billedRaw = row.billed_krw;
+  const billedKrw =
+    billedRaw == null || billedRaw === ""
+      ? null
+      : num(billedRaw);
+  const billedSource =
+    row.billed_source === "sms" || row.billed_source === "manual"
+      ? row.billed_source
+      : null;
+  const reasons =
+    row.agent_reasons &&
+    typeof row.agent_reasons === "object" &&
+    !Array.isArray(row.agent_reasons)
+      ? (row.agent_reasons as Record<string, unknown>)
+      : null;
+  const flagsRaw =
+    reasons?.flags &&
+    typeof reasons.flags === "object" &&
+    !Array.isArray(reasons.flags)
+      ? (reasons.flags as Record<string, unknown>)
+      : null;
 
   return {
     id: row.id,
@@ -178,6 +214,16 @@ export function rowToExpense(
     items: Array.isArray(row.items) ? (row.items as LedgerItem[]) : [],
     note: row.note ?? null,
     dedupeHash: row.dedupe_hash ?? null,
+    billedKrw: billedKrw != null && billedKrw > 0 ? billedKrw : null,
+    billedSource,
+    billedEventId: row.billed_event_id ?? null,
+    fxMerge:
+      row.fx_merge && typeof row.fx_merge === "object"
+        ? (row.fx_merge as Record<string, unknown>)
+        : null,
+    flags: flagsRaw
+      ? { overseas: flagsRaw.overseas === true }
+      : null,
   };
 }
 

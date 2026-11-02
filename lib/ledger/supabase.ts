@@ -40,7 +40,7 @@ function memberFromRow(row: MemberRow): TripMember {
 
 const MEMBER_COLS = "id, trip_id, display_name, is_owner, role, user_id";
 const EXPENSE_COLS =
-  "id, trip_id, created_by, paid_by, label, merchant, merchant_ko, category, amount, currency, payment_method, card_profile_id, card_label, fx_rate_to_krw, fx_rate, fx_rate_date, fx_source, fx_is_fallback, fee_rate, fee_flat_krw, krw_base, fee_krw, krw_amount, source, items, place_id, spent_on, paid_at, day_index, split_type, dedupe_hash, note";
+  "id, trip_id, created_by, paid_by, label, merchant, merchant_ko, category, amount, currency, payment_method, card_profile_id, card_label, fx_rate_to_krw, fx_rate, fx_rate_date, fx_source, fx_is_fallback, fee_rate, fee_flat_krw, krw_base, fee_krw, krw_amount, source, items, place_id, spent_on, paid_at, day_index, split_type, dedupe_hash, note, billed_krw, billed_source, billed_event_id, fx_merge, agent_reasons";
 
 export type LedgerSnapshot = {
   members: TripMember[];
@@ -484,26 +484,65 @@ export async function updateExpense(
   const shares = resolveShares(input, memberIds);
   const merchant = input.label;
 
+  // K1: billed 가 있으면 금액·통화가 같으면 청구 병합을 보존하고,
+  // 금액·통화가 바뀌면 병합을 해제한다 (fee_krw:0 / krw_base=krwAmount 덮어쓰기 방지).
+  const { data: before, error: beforeErr } = await supabase
+    .from(TABLES.tripExpenses)
+    .select(
+      "amount, currency, billed_krw, billed_source, billed_event_id, fx_merge, krw_base, fee_krw, krw_amount"
+    )
+    .eq("id", expenseId)
+    .maybeSingle();
+  if (beforeErr || !before) return null;
+
+  const hadBilled =
+    before.billed_krw != null && Number(before.billed_krw) > 0;
+  const amountSame = Number(before.amount) === Number(input.amount);
+  const currencySame =
+    String(before.currency ?? "").toUpperCase() ===
+    String(input.currency ?? "").toUpperCase();
+  const preserveBilled = hadBilled && amountSame && currencySame;
+  const clearBilled = hadBilled && !(amountSame && currencySame);
+
+  const patch: Record<string, unknown> = {
+    paid_by: input.paidBy,
+    label: merchant,
+    merchant,
+    category: input.category,
+    amount: input.amount,
+    currency: input.currency,
+    fx_rate_to_krw: input.fxRateToKrw,
+    fx_rate: input.fxRateToKrw,
+    place_id: input.placeId ?? null,
+    spent_on: input.spentOn ?? null,
+    day_index: input.dayIndex ?? null,
+    split_type: input.splitType === "custom" ? "fixed" : input.splitType,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (preserveBilled) {
+    patch.krw_base = before.krw_base;
+    patch.fee_krw = before.fee_krw;
+    patch.krw_amount = before.krw_amount;
+    patch.billed_krw = before.billed_krw;
+    patch.billed_source = before.billed_source;
+    patch.billed_event_id = before.billed_event_id;
+    patch.fx_merge = before.fx_merge;
+  } else {
+    patch.krw_base = input.krwAmount;
+    patch.fee_krw = 0;
+    patch.krw_amount = input.krwAmount;
+    if (clearBilled) {
+      patch.billed_krw = null;
+      patch.billed_source = null;
+      patch.billed_event_id = null;
+      patch.fx_merge = null;
+    }
+  }
+
   const { data: expense, error: expErr } = await supabase
     .from(TABLES.tripExpenses)
-    .update({
-      paid_by: input.paidBy,
-      label: merchant,
-      merchant,
-      category: input.category,
-      amount: input.amount,
-      currency: input.currency,
-      fx_rate_to_krw: input.fxRateToKrw,
-      fx_rate: input.fxRateToKrw,
-      krw_base: input.krwAmount,
-      fee_krw: 0,
-      krw_amount: input.krwAmount,
-      place_id: input.placeId ?? null,
-      spent_on: input.spentOn ?? null,
-      day_index: input.dayIndex ?? null,
-      split_type: input.splitType === "custom" ? "fixed" : input.splitType,
-      updated_at: new Date().toISOString(),
-    })
+    .update(patch)
     .eq("id", expenseId)
     .select(EXPENSE_COLS)
     .single();
