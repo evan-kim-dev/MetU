@@ -137,6 +137,42 @@ describe("buildShareText", () => {
     expect(r.ok).toBe(true);
   });
 
+  it("adds a reference conversion only when asked (default off)", () => {
+    const off = buildShareText({ names, transfers, balances });
+    const nul = buildShareText({ names, transfers, balances, conversion: null });
+    if (!off.ok || !nul.ok) throw new Error("expected ok");
+    expect(off.text).not.toContain("약 ");
+    expect(off.text).not.toContain("참고:");
+    expect(nul.text).toBe(off.text);
+
+    const on = buildShareText({
+      names,
+      transfers,
+      balances,
+      conversion: { currency: "JPY", rate: 9 },
+    });
+    if (!on.ok) throw new Error("expected ok");
+    expect(on.text).toContain("• 지영 → 민수 ₩12,000 (약 1,333 JPY)");
+    expect(on.text).toContain("• 도현 → 민수 ₩3,500 (약 389 JPY) (송금 완료)");
+    expect(on.text).toContain("총 ₩15,500");
+    expect(on.text).toContain(
+      "참고: 1 JPY = 9원 기준 환산이에요. 송금은 원화 기준이에요."
+    );
+    expect(on.totalKrw).toBe(15500);
+  });
+
+  it("ignores an invalid conversion instead of breaking the share text", () => {
+    const base = buildShareText({ names, transfers, balances });
+    const bad = buildShareText({
+      names,
+      transfers,
+      balances,
+      conversion: { currency: "JPY", rate: 0 },
+    });
+    if (!base.ok || !bad.ok) throw new Error("expected ok");
+    expect(bad.text).toBe(base.text);
+  });
+
   it("contains no account-number-like digit runs", () => {
     const r = buildShareText({ names, transfers, balances });
     if (!r.ok) throw new Error("expected ok");

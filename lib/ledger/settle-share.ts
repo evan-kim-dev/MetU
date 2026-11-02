@@ -1,3 +1,8 @@
+import {
+  convertTransfers,
+  formatConvertedAmount,
+  formatRateText,
+} from "@/lib/ledger/settle-currency";
 import { formatKRW } from "@/lib/shared/format";
 
 /**
@@ -68,6 +73,11 @@ export interface BuildShareTextInput {
   shareUrl?: string | null;
   /** 마지막 확인 환율을 쓴 지출 건수 */
   fxFallbackCount?: number;
+  /**
+   * 참고용 통화 환산(기본 꺼짐). 주면 송금 줄 뒤에 "(약 556 JPY)" 와 환율 안내를 붙인다.
+   * rate 는 외화 1단위당 원화. 송금 기준은 계속 원화이고 환율은 호출부가 넘긴다.
+   */
+  conversion?: { currency: string; rate: number } | null;
 }
 
 export type BuildShareTextResult =
@@ -94,14 +104,28 @@ export function buildShareText(input: BuildShareTextInput): BuildShareTextResult
     "",
   ];
 
-  for (const t of input.transfers) {
+  // 환산이 잘못된 입력이면 조용히 끄고 원화 문구만 만든다(기본 동작과 동일).
+  const converted = input.conversion
+    ? convertTransfers(input.transfers, input.conversion)
+    : null;
+  const conv = converted?.ok ? converted : null;
+
+  input.transfers.forEach((t, i) => {
     const paid = t.status === "paid" ? " (송금 완료)" : "";
+    const ref = conv
+      ? ` (약 ${formatConvertedAmount(conv.items[i]!.amount, conv.currency)})`
+      : "";
     lines.push(
-      `• ${input.names[t.from]} → ${input.names[t.to]} ${formatKRW(t.krw)}${paid}`
+      `• ${input.names[t.from]} → ${input.names[t.to]} ${formatKRW(t.krw)}${ref}${paid}`
     );
-  }
+  });
 
   lines.push("", `총 ${formatKRW(check.totalKrw)}`);
+  if (conv) {
+    lines.push(
+      `참고: ${formatRateText(conv.currency, conv.rate)} 기준 환산이에요. 송금은 원화 기준이에요.`
+    );
+  }
 
   if (input.shareUrl) lines.push(`자세히 보기: ${input.shareUrl}`);
 
