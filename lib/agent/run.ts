@@ -24,6 +24,13 @@ import {
   isReceiptStrongCandidate,
   type DuplicateCandidate,
 } from "@/lib/ledger/dedupe";
+import {
+  decideFxMerge,
+  findBilledForForeign,
+  findForeignForBilled,
+  fxMergeBandFromEnv,
+  type FxMergeDecision,
+} from "@/lib/ledger/fx-merge";
 import { receiptDraftToExpenseDraft } from "@/lib/ledger/receipt-client";
 import { computeKrw } from "@/lib/ledger/money";
 import { getDailyFxQuote } from "@/lib/ledger/fx-server";
@@ -332,7 +339,12 @@ async function commitExpense(args: {
     p_status: args.status,
     p_event_id: args.eventId,
     p_index: args.index,
-    p_reasons: { reasons: args.reasons },
+    p_reasons: {
+      reasons: args.reasons,
+      ...(args.draft.overseas
+        ? { flags: { overseas: true } }
+        : {}),
+    },
   });
 
   if (error) {
@@ -360,6 +372,57 @@ async function commitExpense(args: {
 type AttachResult =
   | { ok: true; attached: boolean; reason?: string }
   | { ok: false; error: string };
+
+type ApplyBilledResult =
+  | { ok: true; applied: boolean; already?: boolean }
+  | { ok: false; error: string };
+
+function readOverseasFlag(reasons: unknown): boolean {
+  if (!reasons || typeof reasons !== "object" || Array.isArray(reasons)) {
+    return false;
+  }
+  const flags = (reasons as { flags?: unknown }).flags;
+  if (!flags || typeof flags !== "object" || Array.isArray(flags)) return false;
+  return (flags as { overseas?: unknown }).overseas === true;
+}
+
+/** 외화 지출에 해외 원화 청구액을 붙이거나, 해외 원화 지출을 외화 지출로 바꾼다. */
+async function applyBilledKrw(args: {
+  actorId: string;
+  expenseId: string;
+  billedKrw: number;
+  source: "sms" | "manual";
+  eventId: string | null;
+  foreign?: {
+    amount: number;
+    currency: string;
+    fx_rate: number;
+    fx_rate_date?: string | null;
+    fx_is_fallback?: boolean;
+    krw_base: number;
+    items?: unknown;
+    merchant_ko?: string | null;
+    billed_event_id?: string | null;
+  } | null;
+}): Promise<ApplyBilledResult> {
+  const admin = getAgentAdmin();
+  if (!admin) return { ok: false, error: "server-misconfigured" };
+  const { data, error } = await admin.rpc("agent_apply_billed_krw", {
+    p_actor: args.actorId,
+    p_expense_id: args.expenseId,
+    p_billed_krw: Math.round(args.billedKrw),
+    p_source: args.source,
+    p_event_id: args.eventId,
+    p_foreign: args.foreign ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  const row = (data ?? {}) as { applied?: boolean; already?: boolean };
+  return {
+    ok: true,
+    applied: row.applied === true,
+    already: row.already === true,
+  };
+}
 
 /**
  * 기존/신규 지출에 영수증 경로를 붙인다 (agent_attach_receipt, 기존 값 덮어쓰기 없음).
@@ -711,7 +774,7 @@ export async function processEvent(eventId: string): Promise<void> {
     const { data: existingRows } = await admin
       .from("trip_expenses")
       .select(
-        "id, currency, amount, merchant, spent_on, krw_amount, paid_at, status, source, receipt_path, source_event_id"
+        "id, currency, amount, merchant, spent_on, krw_amount, krw_base, billed_krw, paid_at, status, source, receipt_path, source_event_id, agent_reasons, fx_rate, fx_rate_date, fx_is_fallback, items, merchant_ko"
       )
       .eq("trip_id", event.trip_id)
       .neq("status", "voided")
@@ -727,16 +790,47 @@ export async function processEvent(eventId: string): Promise<void> {
         .filter((e) => typeof e.receipt_path === "string" && e.receipt_path)
         .map((e) => e.id as string)
     );
-    const existing = priorRows.map((e) => ({
+    type ExistingExpense = {
+      id: string;
+      currency: string;
+      amount: number;
+      merchant: string;
+      spentOn: string;
+      krwAmount: number;
+      krwBase: number;
+      billedKrw: number | null;
+      paidAt: string | null;
+      source: string | null;
+      overseas: boolean;
+      fxRate: number;
+      fxRateDate: string | null;
+      fxIsFallback: boolean;
+      items: unknown;
+      merchantKo: string | null;
+    };
+    const existing: ExistingExpense[] = priorRows.map((e) => ({
       id: e.id as string,
       currency: String(e.currency ?? "KRW"),
       amount: Number(e.amount ?? 0),
       merchant: String(e.merchant ?? ""),
       spentOn: String(e.spent_on ?? ""),
       krwAmount: Number(e.krw_amount ?? 0),
+      krwBase: Number(e.krw_base ?? e.krw_amount ?? 0),
+      billedKrw:
+        e.billed_krw != null && Number(e.billed_krw) > 0
+          ? Number(e.billed_krw)
+          : null,
       paidAt: (e.paid_at as string | null) ?? null,
       source: (e.source as string | null) ?? null,
+      overseas: readOverseasFlag(e.agent_reasons),
+      fxRate: Number(e.fx_rate ?? 1),
+      fxRateDate: (e.fx_rate_date as string | null) ?? null,
+      fxIsFallback: Boolean(e.fx_is_fallback),
+      items: e.items ?? null,
+      merchantKo: (e.merchant_ko as string | null) ?? null,
     }));
+    const fxBand = fxMergeBandFromEnv();
+    const tripId = event.trip_id as string;
 
     let autoCountToday = await countAutoToday(event.user_id, event.trip_id);
     const env = policyEnvFromProcess(ctx.ownerMember.id);
@@ -809,12 +903,74 @@ export async function processEvent(eventId: string): Promise<void> {
         existing
       );
 
+      // K1: 해외 원화 청구 문자 → 기존 외화 지출 / 외화 영수증 → 기존 해외 원화 지출
+      let fxMergeSignal: FxMergeDecision | undefined;
+      const draftCcy = priced.currency.trim().toUpperCase();
+      const isOverseasKrw = draft.overseas === true && draftCcy === "KRW";
+      const isForeignDraft = draftCcy !== "KRW";
+      if (isOverseasKrw) {
+        const candidates = findForeignForBilled(
+          {
+            tripId,
+            currency: "KRW",
+            krwAmount: priced.krwAmount,
+            overseas: true,
+            paidAt: draft.paidAt ?? null,
+            merchant: priced.__merchant ?? draft.merchant ?? null,
+          },
+          existing
+            .filter((e) => e.currency.toUpperCase() !== "KRW")
+            .map((e) => ({
+              id: e.id,
+              tripId,
+              currency: e.currency,
+              marketKrw: e.krwBase > 0 ? e.krwBase : e.krwAmount,
+              billedKrw: e.billedKrw,
+              paidAt: e.paidAt,
+              merchant: e.merchant,
+            })),
+          fxBand
+        );
+        fxMergeSignal = decideFxMerge(candidates);
+      } else if (isForeignDraft) {
+        const marketKrw = priced.__krwBase ?? priced.krwAmount;
+        const candidates = findBilledForForeign(
+          {
+            tripId,
+            currency: priced.currency,
+            marketKrw,
+            billedKrw: null,
+            paidAt: draft.paidAt ?? null,
+            merchant: priced.__merchant ?? draft.merchant ?? null,
+          },
+          existing
+            .filter(
+              (e) =>
+                e.currency.toUpperCase() === "KRW" &&
+                e.overseas &&
+                e.billedKrw == null
+            )
+            .map((e) => ({
+              id: e.id,
+              tripId,
+              currency: "KRW",
+              krwAmount: e.krwAmount,
+              overseas: true,
+              paidAt: e.paidAt,
+              merchant: e.merchant,
+            })),
+          fxBand
+        );
+        fxMergeSignal = decideFxMerge(candidates);
+      }
+
       const decision = decide(
         priced,
         {
           duplicateCandidates: duplicateSignals(dupes, existing, receiptAttached),
           autoCountToday,
           tripMatchRule,
+          ...(fxMergeSignal ? { fxMerge: fxMergeSignal } : {}),
         },
         env
       );
@@ -842,8 +998,101 @@ export async function processEvent(eventId: string): Promise<void> {
 
       let reviewReasons = decision.reasons;
       let mergeInto: string | undefined = decision.duplicateOfExpenseId;
+      const mergeKind = decision.mergeKind;
 
-      if (decision.decision === "merge") {
+      if (decision.decision === "merge" && mergeKind === "billed_krw") {
+        const target = decision.mergeExpenseId;
+        const tMerge = Date.now();
+        let applied: ApplyBilledResult = {
+          ok: false,
+          error: "no-target",
+        };
+        if (target && isOverseasKrw) {
+          // K 문자 → F 외화 지출에 청구액 붙이기
+          applied = await applyBilledKrw({
+            actorId: event.user_id,
+            expenseId: target,
+            billedKrw: priced.krwAmount,
+            source: "sms",
+            eventId: event.id,
+          });
+        } else if (target && isForeignDraft) {
+          // F 영수증/문자 → 기존 해외 원화 지출(K)을 외화로 전환
+          const kRow = existing.find((e) => e.id === target);
+          applied = await applyBilledKrw({
+            actorId: event.user_id,
+            expenseId: target,
+            billedKrw: kRow?.krwAmount ?? priced.krwAmount,
+            source: "sms",
+            eventId: event.id,
+            foreign: {
+              amount: priced.amount,
+              currency: priced.currency,
+              fx_rate: priced.__fxRate ?? 1,
+              fx_rate_date: priced.__fxDate ?? null,
+              fx_is_fallback: priced.fxIsFallback,
+              krw_base: priced.__krwBase ?? priced.krwAmount,
+              items: draft.items ?? null,
+              merchant_ko: draft.merchantKo ?? null,
+              billed_event_id: null,
+            },
+          });
+          if (applied.ok && receiptPath) {
+            const attached = await attachReceipt({
+              actorId: event.user_id,
+              expenseId: target,
+              receiptPath,
+              eventId: event.id,
+              draft,
+            });
+            if (attached.ok && attached.attached) {
+              receiptAttached.add(target);
+            }
+          }
+        }
+        await recordStep(
+          event.id,
+          ++seq,
+          "applyBilledKrw",
+          { index: i, expenseId: target ?? null },
+          applied.ok
+            ? { applied: applied.applied, already: applied.already ?? false }
+            : { ok: false, error: applied.error },
+          Date.now() - tMerge,
+          applied.ok
+        );
+        if (applied.ok && target) {
+          const idx = existing.findIndex((e) => e.id === target);
+          if (idx >= 0) {
+            const prev = existing[idx]!;
+            existing[idx] = {
+              ...prev,
+              billedKrw: isOverseasKrw
+                ? priced.krwAmount
+                : prev.krwAmount,
+              krwAmount: isOverseasKrw
+                ? priced.krwAmount
+                : prev.krwAmount,
+              currency: isForeignDraft ? priced.currency : prev.currency,
+              amount: isForeignDraft ? priced.amount : prev.amount,
+              overseas: true,
+            };
+          }
+          items.push({
+            ref: i,
+            decision: "merged",
+            mergeKind: "billed_krw",
+            expenseId: target,
+            reasons: decision.reasons,
+          });
+          continue;
+        }
+        console.error("[processEvent] apply billed failed", applied);
+        reviewReasons = [
+          "청구액을 합치지 못했어요 — 합치기/별개로 저장을 골라 주세요",
+        ];
+        mergeInto = target;
+      } else if (decision.decision === "merge") {
         // Same payment already recorded: attach the receipt, never create a 2nd expense.
         const target = decision.mergeExpenseId;
         const tMerge = Date.now();
@@ -873,6 +1122,7 @@ export async function processEvent(eventId: string): Promise<void> {
           items.push({
             ref: i,
             decision: "merged",
+            mergeKind: "receipt_attach",
             expenseId: target,
             reasons: decision.reasons,
           });
@@ -919,8 +1169,16 @@ export async function processEvent(eventId: string): Promise<void> {
           merchant: priced.__merchant ?? draft.merchant ?? "",
           spentOn: draft.spentOn ?? "",
           krwAmount: priced.krwAmount,
+          krwBase: priced.__krwBase ?? priced.krwAmount,
+          billedKrw: null,
           paidAt: draft.paidAt ?? null,
           source: draft.source === "receipt" ? "receipt" : "sms",
+          overseas: draft.overseas === true,
+          fxRate: priced.__fxRate ?? 1,
+          fxRateDate: priced.__fxDate ?? null,
+          fxIsFallback: priced.fxIsFallback,
+          items: draft.items ?? null,
+          merchantKo: draft.merchantKo ?? null,
         });
         if (receiptPath) receiptAttached.add(expenseId);
 
@@ -961,6 +1219,7 @@ export async function processEvent(eventId: string): Promise<void> {
         decision: "review",
         reasons: reviewReasons,
         ...(decision.reasonCode ? { reasonCode: decision.reasonCode } : {}),
+        ...(mergeKind ? { mergeKind } : {}),
         ...(mergeInto ? { mergeInto } : {}),
         draft,
         priced: {
@@ -1022,6 +1281,8 @@ type ResultItem = {
   reasons?: string[];
   /** 같은 결제로 보이는 기존 지출 (영수증 합치기 후보) */
   mergeInto?: string;
+  mergeKind?: "receipt_attach" | "billed_krw";
+  priced?: { krwAmount?: number; currency?: string; amount?: number };
 };
 
 /**
@@ -1093,7 +1354,100 @@ export async function confirmEventReviews(
 
     if (input?.mode === "merge") {
       const target = existing?.mergeInto;
-      if (!target || !receiptPath) continue;
+      if (!target) continue;
+
+      if (existing?.mergeKind === "billed_krw") {
+        const draft = existing.draft;
+        const draftCcy = (draft?.currency ?? existing.priced?.currency ?? "")
+          .toString()
+          .toUpperCase();
+        const isKrwDraft = draftCcy === "KRW" || draft?.overseas === true;
+
+        let applied: ApplyBilledResult;
+        if (isKrwDraft) {
+          const billedKrw =
+            typeof existing.priced?.krwAmount === "number" &&
+            existing.priced.krwAmount > 0
+              ? existing.priced.krwAmount
+              : typeof draft?.amount === "number"
+                ? draft.amount
+                : null;
+          if (billedKrw == null) continue;
+          applied = await applyBilledKrw({
+            actorId,
+            expenseId: target,
+            billedKrw,
+            source: "sms",
+            eventId,
+          });
+        } else {
+          // 외화 초안 → 기존 해외 원화 지출(K)에 외화 정보 얹기. 청구액은 K 의 krw_amount.
+          const { data: kRow } = await admin
+            .from("trip_expenses")
+            .select("krw_amount")
+            .eq("id", target)
+            .maybeSingle();
+          const billedKrw = Number(kRow?.krw_amount ?? 0);
+          if (!(billedKrw > 0)) continue;
+
+          const priced = draft
+            ? ((await priceDraft(
+                draft,
+                ctx.ownerMember.id,
+                ctx.members
+              )) as PricedWithMeta | null)
+            : null;
+          if (!priced) continue;
+
+          applied = await applyBilledKrw({
+            actorId,
+            expenseId: target,
+            billedKrw,
+            source: "sms",
+            eventId,
+            foreign: {
+              amount: priced.amount,
+              currency: priced.currency,
+              fx_rate: priced.__fxRate ?? 1,
+              fx_rate_date: priced.__fxDate ?? null,
+              fx_is_fallback: priced.fxIsFallback,
+              krw_base: priced.__krwBase ?? priced.krwAmount,
+              items: draft?.items ?? null,
+              merchant_ko: draft?.merchantKo ?? null,
+            },
+          });
+          if (applied.ok && receiptPath) {
+            await attachReceipt({
+              actorId,
+              expenseId: target,
+              receiptPath,
+              eventId,
+              draft,
+            });
+          }
+        }
+        if (!applied.ok) {
+          console.error(
+            "[confirmEventReviews] apply billed failed",
+            applied.error
+          );
+          continue;
+        }
+        expenseIds.push(target);
+        const mergedPos = items.findIndex((it) => Number(it.ref) === idx);
+        const merged: ResultItem = {
+          ref: idx,
+          decision: "merged",
+          mergeKind: "billed_krw",
+          expenseId: target,
+          reasons: ["사용자가 같은 해외 결제로 청구액을 합쳤어요"],
+        };
+        if (mergedPos >= 0) items[mergedPos] = merged;
+        else items.push(merged);
+        continue;
+      }
+
+      if (!receiptPath) continue;
       const attached = await attachReceipt({
         actorId,
         expenseId: target,
@@ -1111,6 +1465,7 @@ export async function confirmEventReviews(
       const merged: ResultItem = {
         ref: idx,
         decision: "merged",
+        mergeKind: "receipt_attach",
         expenseId: target,
         reasons: ["사용자가 같은 결제로 합쳤어요"],
       };

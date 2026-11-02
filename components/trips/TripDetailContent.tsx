@@ -377,6 +377,9 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
             onAddMember={canEdit ? ledger.addMember : undefined}
             onRemoveMember={canEdit ? ledger.removeMember : undefined}
             onDeleteExpense={ledger.removeExpense}
+            onExpenseFxChanged={() => {
+              void ledger.reload();
+            }}
             onSaveExpense={async (
               draft: ExpenseDraft,
               expenseId?: string,

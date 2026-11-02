@@ -375,3 +375,94 @@ describe("decide — 환율 확정 실패 (fx_unresolved)", () => {
     expect(r.reasonCode).toBe("trip_match_uncertain");
   });
 });
+describe("decide — K1 외화↔해외 원화 청구 병합 (mergeKind=billed_krw)", () => {
+  const cand = {
+    id: "f1",
+    score: 0.9,
+    reasons: ["amount_in_band", "within_30min"],
+    timeKnown: true,
+    withinWindow: true,
+    diffRatio: 0.03,
+  };
+
+  it("auto → merge + billed_krw + 대상 id", () => {
+    const r = decide(
+      draft(),
+      signals({ fxMerge: { kind: "auto", target: cand } }),
+      baseEnv
+    );
+    expect(r.decision).toBe("merge");
+    expect(r.mergeKind).toBe("billed_krw");
+    expect(r.mergeExpenseId).toBe("f1");
+  });
+
+  it.each(["multiple", "time_unknown", "time_outside", "low_score"] as const)(
+    "review(%s) → 자동 병합 금지, 후보를 돌려줌",
+    (reason) => {
+      const r = decide(
+        draft(),
+        signals({
+          fxMerge: {
+            kind: "review",
+            reason,
+            candidates: [cand, { ...cand, id: "f2", score: 0.4 }],
+          },
+        }),
+        baseEnv
+      );
+      expect(r.decision).toBe("review");
+      expect(r.mergeKind).toBe("billed_krw");
+      expect(r.reasonCode).toBe("fx_merge_review");
+      expect(r.mergeExpenseId).toBeUndefined();
+      expect(r.duplicateOfExpenseId).toBe("f1");
+      expect(r.fxMergeCandidates).toHaveLength(2);
+    }
+  );
+
+  it("none 이면 기존 규칙 그대로 (자동 저장)", () => {
+    const r = decide(draft(), signals({ fxMerge: { kind: "none" } }), baseEnv);
+    expect(r.decision).toBe("auto_commit");
+    expect(r.mergeKind).toBeUndefined();
+  });
+
+  it("취소·환불은 병합하지 않고 review", () => {
+    const r = decide(
+      draft({ kind: "cancel" }),
+      signals({ fxMerge: { kind: "auto", target: cand } }),
+      baseEnv
+    );
+    expect(r.decision).toBe("review");
+    expect(r.mergeKind).toBeUndefined();
+  });
+
+  it("여행이 불확실하면 병합보다 trip_match_uncertain 이 먼저", () => {
+    const r = decide(
+      draft(),
+      signals({ tripMatchRule: "near", fxMerge: { kind: "auto", target: cand } }),
+      baseEnv
+    );
+    expect(r.decision).toBe("review");
+    expect(r.reasonCode).toBe("trip_match_uncertain");
+  });
+
+  it("영수증 첨부 merge 는 mergeKind=receipt_attach", () => {
+    const r = decide(
+      draft({ origin: "receipt", confidence: 0.95 }),
+      signals({
+        duplicateCandidates: [
+          {
+            expenseId: "e1",
+            score: 0.95,
+            strong: true,
+            timeKnown: true,
+            merchantSimilar: false,
+            receiptAttached: false,
+          },
+        ],
+      }),
+      baseEnv
+    );
+    expect(r.decision).toBe("merge");
+    expect(r.mergeKind).toBe("receipt_attach");
+  });
+});
