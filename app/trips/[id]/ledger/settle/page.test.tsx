@@ -16,6 +16,7 @@ const fetchSettlementHistory = vi.fn();
 const listMembers = vi.fn();
 const listExpenses = vi.fn();
 const listVoidedExpenseIds = vi.fn();
+const getFxRateToKrw = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "trip-1" }),
@@ -39,6 +40,9 @@ vi.mock("@/lib/auth/AuthProvider", () => ({
 }));
 vi.mock("@/lib/supabase/browser", () => ({
   getBrowserSupabase: () => ({}),
+}));
+vi.mock("@/lib/ledger/fx", () => ({
+  getFxRateToKrw: (...a: unknown[]) => getFxRateToKrw(...a),
 }));
 vi.mock("@/lib/ledger/supabase", () => ({
   fetchLatestSettlement: (...a: unknown[]) => fetchLatestSettlement(...a),
@@ -296,5 +300,131 @@ describe("LedgerSettlePage — 이전 정산(공유 이력)", () => {
       screen.queryByRole("button", { name: "정산 다시 계산하기" })
     ).toBeNull();
     expect(screen.getByText(/여행을 만든 분만 만들 수 있어요/)).toBeTruthy();
+  });
+});
+
+describe("LedgerSettlePage — 왜 이 금액?", () => {
+  it("낸 돈 − 쓴 몫 = 잔액을 보여주고 송금 이유를 템플릿으로 설명한다", async () => {
+    fetchLatestSettlement.mockResolvedValue({
+      ok: true,
+      settlement: await settlement(),
+    });
+    render(<LedgerSettlePage />);
+    await screen.findByText(/지영 → 민수/);
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "왜 이 금액?" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "왜 이 금액이에요?" });
+    expect(dialog.textContent).toContain(
+      "낸 돈 ₩10,000 − 쓴 몫 ₩5,000 = +₩5,000 (받을 돈)"
+    );
+    expect(dialog.textContent).toContain(
+      "낸 돈 ₩0 − 쓴 몫 ₩5,000 = -₩5,000 (보낼 돈)"
+    );
+    expect(dialog.textContent).toContain("지영님이 민수님에게 ₩5,000 보내요.");
+    expect(dialog.textContent).toContain("점심");
+    expect(getFxRateToKrw).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("통화를 고르면 환율을 가져와 참고 환산을 보여주고, 고정 환율이 우선한다", async () => {
+    getFxRateToKrw.mockResolvedValue({ krw: 9, source: "live" });
+    listExpenses.mockResolvedValue([{ ...expenseRow, currency: "JPY" }]);
+    fetchLatestSettlement.mockResolvedValue({
+      ok: true,
+      settlement: await settlement(),
+    });
+    render(<LedgerSettlePage />);
+    await screen.findByText(/지영 → 민수/);
+    fireEvent.click(screen.getByRole("button", { name: "왜 이 금액?" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "JPY" }));
+    await waitFor(() => expect(getFxRateToKrw).toHaveBeenCalledWith("JPY"));
+    expect((await screen.findByTestId("reference-rate")).textContent).toContain(
+      "1 JPY = 9원"
+    );
+    // 5,000 / 9 = 555.55 → 556
+    expect(screen.getByRole("dialog").textContent).toContain("약 556 JPY");
+
+    fireEvent.change(screen.getByLabelText(/내 환율로 고정하기/), {
+      target: { value: "10" },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("reference-rate").textContent).toContain(
+        "1 JPY = 10원 · 내가 고정한 환율"
+      )
+    );
+    expect(screen.getByRole("dialog").textContent).toContain("약 500 JPY");
+
+    // 자릿수 오타는 막고 지금 환율로 되돌아간다
+    fireEvent.change(screen.getByLabelText(/내 환율로 고정하기/), {
+      target: { value: "1000" },
+    });
+    expect(
+      await screen.findByText("지금 환율과 너무 달라요. 자릿수를 다시 확인해 주세요.")
+    ).toBeTruthy();
+    expect(screen.getByTestId("reference-rate").textContent).toContain(
+      "1 JPY = 9원 · 지금 환율"
+    );
+  });
+
+  it("환율을 못 가져오면 안내하고 환산 없이 원화만 보여준다", async () => {
+    getFxRateToKrw.mockResolvedValue(null);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    listExpenses.mockResolvedValue([{ ...expenseRow, currency: "JPY" }]);
+    fetchLatestSettlement.mockResolvedValue({
+      ok: true,
+      settlement: await settlement(),
+    });
+    render(<LedgerSettlePage />);
+    await screen.findByText(/지영 → 민수/);
+    fireEvent.click(screen.getByRole("button", { name: "왜 이 금액?" }));
+    fireEvent.click(await screen.findByRole("button", { name: "JPY" }));
+
+    expect(await screen.findByText(/환율을 가져오지 못했어요/)).toBeTruthy();
+    expect(screen.queryByTestId("reference-rate")).toBeNull();
+    expect(screen.getByRole("dialog").textContent).not.toContain("약 ");
+    consoleError.mockRestore();
+  });
+
+  it("공유 문구의 환산은 기본으로 꺼져 있고, 체크하면 들어간다", async () => {
+    getFxRateToKrw.mockResolvedValue({ krw: 9, source: "live" });
+    listExpenses.mockResolvedValue([{ ...expenseRow, currency: "JPY" }]);
+    fetchLatestSettlement.mockResolvedValue({
+      ok: true,
+      settlement: await settlement(),
+    });
+    render(<LedgerSettlePage />);
+    await screen.findByText(/지영 → 민수/);
+
+    fireEvent.click(screen.getByRole("button", { name: "왜 이 금액?" }));
+    fireEvent.click(await screen.findByRole("button", { name: "JPY" }));
+    await screen.findByTestId("reference-rate");
+
+    fireEvent.click(screen.getByRole("button", { name: "문구 복사" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(String(writeText.mock.calls[0]![0])).not.toContain("JPY");
+
+    fireEvent.click(screen.getByLabelText("공유 문구에도 환산 금액을 넣을게요"));
+    // 첫 복사 직후라 버튼 이름이 "복사했어요 ✓" 로 바뀌어 있다.
+    fireEvent.click(screen.getByRole("button", { name: /복사했어요/ }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    expect(String(writeText.mock.calls[1]![0])).toContain("(약 556 JPY)");
+  });
+
+  it("지출이 바뀐 정산은 송금 설명 대신 안내만 보여준다", async () => {
+    fetchLatestSettlement.mockResolvedValue({
+      ok: true,
+      settlement: await settlement({ basisHash: "old-hash" }),
+    });
+    render(<LedgerSettlePage />);
+    await screen.findByText(/정산 후 지출이 바뀌었어요/);
+    fireEvent.click(screen.getByRole("button", { name: "왜 이 금액?" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("정산을 다시 계산한 뒤에 볼 수 있어요");
+    expect(dialog.textContent).not.toContain("보내요.");
   });
 });

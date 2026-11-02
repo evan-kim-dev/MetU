@@ -4,9 +4,12 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FxAttribution } from "@/components/fx/FxAttribution";
+import { SettleExplainSheet } from "@/components/ledger/SettleExplainSheet";
 import { SettlementHistory } from "@/components/ledger/SettlementHistory";
+import { useSettleReference } from "@/components/ledger/useSettleReference";
 import { useClipboardCopy } from "@/components/onboarding/connect/useClipboardCopy";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { explainSettlement } from "@/lib/ledger/explain";
 import {
   basisHash,
   computeBalances,
@@ -64,6 +67,9 @@ export default function LedgerSettlePage() {
   const [expenses, setExpenses] = useState<LedgerExpense[]>([]);
   const [fxFallbackCount, setFxFallbackCount] = useState(0);
   const [hasForeign, setHasForeign] = useState(false);
+  const [expenseLabels, setExpenseLabels] = useState<Record<string, string>>({});
+  const [tripCurrencies, setTripCurrencies] = useState<string[]>([]);
+  const [explainOpen, setExplainOpen] = useState(false);
   const [settlement, setSettlement] = useState<SettlementSnapshot | null>(null);
   const [history, setHistory] = useState<SettlementHistoryItem[]>([]);
   const [basisState, setBasisState] = useState<{
@@ -81,6 +87,7 @@ export default function LedgerSettlePage() {
   const linkCopy = useClipboardCopy();
   const amountCopy = useClipboardCopy();
   const payCleanup = useRef<(() => void) | null>(null);
+  const reference = useSettleReference();
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -124,6 +131,20 @@ export default function LedgerSettlePage() {
     setFxFallbackCount(active.filter((row) => row.fxIsFallback).length);
     setHasForeign(
       active.some((row) => row.currency.trim().toUpperCase() !== "KRW")
+    );
+    setExpenseLabels(
+      Object.fromEntries(
+        active.map((row) => [row.id, row.merchant || row.label || ""])
+      )
+    );
+    setTripCurrencies(
+      [
+        ...new Set(
+          active
+            .map((row) => row.currency.trim().toUpperCase())
+            .filter((c) => c && c !== "KRW")
+        ),
+      ].sort()
     );
     await loadSettlement();
     setLoaded(true);
@@ -192,8 +213,36 @@ export default function LedgerSettlePage() {
       balances,
       shareUrl: shareUrl || null,
       fxFallbackCount,
+      conversion: reference.shareConversion,
     });
-  }, [settlement, transfers, names, balances, shareUrl, fxFallbackCount]);
+  }, [
+    settlement,
+    transfers,
+    names,
+    balances,
+    shareUrl,
+    fxFallbackCount,
+    reference.shareConversion,
+  ]);
+
+  // 지출이 바뀐 뒤에는 저장된 송금표가 현재 지출과 달라서 잔액 설명만 보여준다.
+  const explainResult = useMemo(
+    () =>
+      explainSettlement({
+        members: members.map((m) => ({ id: m.id, name: m.displayName })),
+        expenses: expenses.map((e) => ({
+          id: e.id,
+          label: expenseLabels[e.id] ?? "",
+          paidBy: e.paidBy,
+          krwAmount: e.krwAmount,
+          shares: e.shares,
+        })),
+        transfers: stale
+          ? []
+          : transfers.map((t) => ({ from: t.from, to: t.to, krw: t.krw })),
+      }),
+    [members, expenses, expenseLabels, transfers, stale]
+  );
 
   const shareText = !stale && shareResult?.ok ? shareResult.text : null;
   const shareBlockedMessage = stale
@@ -343,7 +392,22 @@ export default function LedgerSettlePage() {
             );
           })}
         </ul>
+        {loaded && members.length > 0 ? (
+          <button
+            type="button"
+            className="mt-2 min-h-[44px] w-full rounded-lg border border-brand text-xs font-bold text-brand"
+            onClick={() => setExplainOpen(true)}
+          >
+            왜 이 금액?
+          </button>
+        ) : null}
       </section>
+
+      {/*
+        K7 mount point — SplitPatchBox
+        자연어 분담 수정(preview → confirm → undo) UI는 여기(잔액/"왜 이 금액?" 아래,
+        자동 정산 안내 위)에 붙이세요. K8(이 브랜치)에서는 SplitPatchBox를 구현하지 않아요.
+      */}
 
       {settlement?.origin === "auto" && !completed ? (
         <div className="rounded-xl bg-surface-soft px-3 py-2 text-xs font-semibold text-ink-body">
@@ -508,6 +572,15 @@ export default function LedgerSettlePage() {
       />
 
       {msg ? <p className="text-xs text-ink-muted">{msg}</p> : null}
+
+      <SettleExplainSheet
+        open={explainOpen}
+        onClose={() => setExplainOpen(false)}
+        result={explainResult}
+        stale={stale}
+        tripCurrencies={tripCurrencies}
+        reference={reference}
+      />
 
       <footer className="flex flex-col gap-1 text-[10px] leading-snug text-ink-muted">
         <p>
