@@ -8,7 +8,10 @@ import {
 } from "@/lib/agent/domain-followup";
 import { extractTextDrafts } from "@/lib/agent/extract-text";
 import { detectImageMime } from "@/lib/agent/image-magic";
-import { extractReceiptFromImage } from "@/lib/agent/receipt-vision";
+import {
+  extractReceiptFromImage,
+  type ReceiptTripContext,
+} from "@/lib/agent/receipt-vision";
 import { preferSmsParseText } from "@/lib/agent/sms-text";
 import { notifyUsers } from "@/lib/agent/notify";
 import { detectDcc, detectDupCharge } from "@/lib/ledger/dcc";
@@ -496,6 +499,7 @@ async function readReceiptImage(args: {
   tripId: string;
   payload: Record<string, unknown>;
   tripCurrency: string | null | undefined;
+  tripContext: ReceiptTripContext;
 }): Promise<ReceiptImageOutcome> {
   const admin = getAgentAdmin();
   const unreadable = (reason: string): ReceiptImageOutcome => ({
@@ -529,6 +533,7 @@ async function readReceiptImage(args: {
     userId: args.userId,
     tripId: args.tripId,
     hintCurrency: args.tripCurrency,
+    tripContext: args.tripContext,
   });
 
   if (!vision.ok) {
@@ -735,6 +740,11 @@ export async function processEvent(eventId: string): Promise<void> {
         tripId: event.trip_id,
         payload,
         tripCurrency: ctx.trip.local_currency,
+        tripContext: {
+          startDate: ctx.trip.start_date,
+          endDate: ctx.trip.end_date,
+          localCurrency: ctx.trip.local_currency,
+        },
       });
       await recordStep(
         event.id,
