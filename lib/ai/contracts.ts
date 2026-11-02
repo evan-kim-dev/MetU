@@ -554,6 +554,17 @@ export type ReceiptItemOut = {
   amount: number | null;
 };
 
+export type ReceiptSecondaryAmountOut = {
+  label: string;
+  amount: number;
+  currency: string | null;
+};
+
+export type ReceiptTaxFreeOut = {
+  eligible: boolean | null;
+  evidence: string | null;
+};
+
 export type ReceiptOut = {
   isReceipt: boolean;
   merchant: string | null;
@@ -565,6 +576,9 @@ export type ReceiptOut = {
   tax: number | null;
   tip: number | null;
   items: ReceiptItemOut[];
+  /** 영수증에 함께 인쇄된 다른 금액(다른 통화 병기 등). 환산값이 아니라 인쇄값만. */
+  secondaryAmounts: ReceiptSecondaryAmountOut[];
+  taxFree: ReceiptTaxFreeOut;
   category: ExpenseCategoryOut;
   paymentMethod: "card" | "cash" | "transfer" | null;
   language: string | null;
@@ -657,6 +671,8 @@ export function parseReceiptOut(content: string): ReceiptOut | null {
           ? null
           : Number(root.tip),
     items,
+    secondaryAmounts: [],
+    taxFree: { eligible: null, evidence: null },
     category,
     paymentMethod:
       pm === "card" || pm === "cash" || pm === "transfer" ? pm : null,

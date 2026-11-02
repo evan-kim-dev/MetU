@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ReceiptVisionResult } from "@/lib/agent/receipt-vision";
+import type {
+  ExtractReceiptArgs,
+  ReceiptVisionResult,
+} from "@/lib/agent/receipt-vision";
+import { setGeminiClientForTests } from "@/lib/ai/gemini";
+import type { GeminiInteractionsClient } from "@/lib/ai/gemini";
+import {
+  __resetMemoryUsageSinkForTests,
+  resetUsageSinkForTests,
+} from "@/lib/ai/usage";
 
 // --- fakes ---------------------------------------------------------------
 
@@ -34,7 +43,10 @@ const rpcCalls: Array<{ name: string; args: Row }> = [];
 const eventUpdates: Row[] = [];
 let expenseRows: Row[] = [];
 
-const extractReceiptFromImage = vi.fn<() => Promise<ReceiptVisionResult>>();
+const extractReceiptFromImage =
+  vi.fn<(args: ExtractReceiptArgs) => Promise<ReceiptVisionResult>>();
+/** true 면 실제 receipt-vision 을 쓰고 Gemini 클라이언트만 모킹한다. */
+let useRealVision = false;
 
 function makeChain(table: string): Chain {
   const result = (): Result => {
@@ -46,7 +58,7 @@ function makeChain(table: string): Chain {
             user_id: USER,
             start_date: "2026-10-28",
             end_date: "2026-11-02",
-            currency: "JPY",
+            local_currency: "JPY",
           },
           error: null,
         };
@@ -116,9 +128,18 @@ const admin = {
 };
 
 vi.mock("@/lib/agent/admin", () => ({ getAgentAdmin: () => admin }));
-vi.mock("@/lib/agent/receipt-vision", () => ({
-  extractReceiptFromImage: () => extractReceiptFromImage(),
-}));
+vi.mock("@/lib/agent/receipt-vision", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("@/lib/agent/receipt-vision")
+  >();
+  return {
+    ...actual,
+    extractReceiptFromImage: (args: ExtractReceiptArgs) =>
+      useRealVision
+        ? actual.extractReceiptFromImage(args)
+        : extractReceiptFromImage(args),
+  };
+});
 vi.mock("@/lib/ledger/fx-server", () => ({
   getDailyFxQuote: async () => ({
     rate: 9.3,
@@ -176,6 +197,8 @@ function visionOk(over: Partial<{ paymentMethod: "card" | null }> = {}) {
       tax: null,
       tip: null,
       items: draft.items,
+      secondaryAmounts: [],
+      taxFree: { eligible: null, evidence: null },
       category: "식비",
       paymentMethod: null,
       language: "ja",
@@ -213,14 +236,54 @@ beforeEach(() => {
   eventUpdates.length = 0;
   expenseRows = [];
   extractReceiptFromImage.mockReset();
+  useRealVision = false;
+  __resetMemoryUsageSinkForTests();
+  resetUsageSinkForTests();
   delete process.env.AGENT_AUTO_RECEIPT;
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
+  setGeminiClientForTests(null);
+  useRealVision = false;
   vi.restoreAllMocks();
   delete process.env.AGENT_AUTO_RECEIPT;
 });
+
+// 합성 데이터만 사용한다. Gemini 클라이언트만 모킹하고 receipt-vision 은 실제 코드를 탄다.
+const GEMINI_RECEIPT = {
+  is_receipt: true,
+  merchant: "ローソン",
+  merchant_ko: "로손",
+  paid_at: "2026-10-30T14:05",
+  currency: "JPY",
+  total: 1200,
+  subtotal: 1091,
+  tax: 109,
+  tip: null,
+  items: [
+    { name: "おにぎり", name_ko: "주먹밥", qty: 2, unit_price: 600, amount: 1200 },
+  ],
+  secondary_amounts: [],
+  tax_free: { eligible: null, evidence: null },
+  payment_method: null,
+  category: "식비",
+  confidence: 0.95,
+  warnings: [],
+};
+
+function geminiReturning(text: string) {
+  const create = vi.fn().mockResolvedValue({
+    id: "i1",
+    output_text: text,
+    usage: { total_input_tokens: 10, total_output_tokens: 10 },
+  });
+  setGeminiClientForTests({
+    interactions: { create },
+  } as GeminiInteractionsClient);
+  useRealVision = true;
+  return create;
+}
 
 // --- tests ---------------------------------------------------------------
 
@@ -332,6 +395,60 @@ describe("processEvent — image (receipt)", () => {
     expect(calls("agent_save_expense")).toHaveLength(0);
     const upd = lastEventUpdate();
     expect(upd.status).toBe("needs_review");
+    expect((upd.result as Row).message).toBe("영수증을 읽지 못했어요");
+  });
+
+  it("여행 맥락(기간·현지 통화)을 readReceiptImage → vision 으로 넘긴다", async () => {
+    extractReceiptFromImage.mockResolvedValue(visionOk());
+    const { processEvent } = await import("@/lib/agent/run");
+    await processEvent(EVENT);
+
+    expect(extractReceiptFromImage).toHaveBeenCalledTimes(1);
+    const args = extractReceiptFromImage.mock.calls[0]![0];
+    expect(args.userId).toBe(USER);
+    expect(args.tripId).toBe(TRIP);
+    expect(args.hintCurrency).toBe("JPY");
+    expect(args.tripContext).toEqual({
+      startDate: "2026-10-28",
+      endDate: "2026-11-02",
+      localCurrency: "JPY",
+    });
+  });
+
+  it("Gemini 구조화 응답(모킹) → 실제 vision 을 거쳐 review 초안이 된다", async () => {
+    const create = geminiReturning(JSON.stringify(GEMINI_RECEIPT));
+    const { processEvent } = await import("@/lib/agent/run");
+    await processEvent(EVENT);
+
+    expect(create).toHaveBeenCalledTimes(1);
+    const params = create.mock.calls[0]![0] as {
+      input: Array<{ type: string; text?: string }>;
+    };
+    const text = params.input.find((p) => p.type === "text")!.text!;
+    expect(text).toContain("trip_start_date=2026-10-28");
+    expect(text).toContain("trip_local_currency=JPY");
+
+    expect(calls("agent_save_expense")).toHaveLength(0);
+    const upd = lastEventUpdate();
+    expect(upd.status).toBe("needs_review");
+    const item = (upd.result as { items: Row[] }).items[0]!;
+    expect(item.decision).toBe("review");
+    expect((item.draft as Row).origin).toBe("receipt");
+    expect((item.draft as Row).amount).toBe(1200);
+  });
+
+  it("Gemini 응답이 스키마에 안 맞으면 needs_review (vision_invalid), 지출은 만들지 않는다", async () => {
+    const { secondary_amounts: _s, ...legacy } = GEMINI_RECEIPT;
+    process.env.AGENT_AUTO_RECEIPT = "1";
+    geminiReturning(JSON.stringify(legacy));
+    const { processEvent } = await import("@/lib/agent/run");
+    await processEvent(EVENT);
+
+    expect(calls("agent_save_expense")).toHaveLength(0);
+    expect(calls("agent_attach_receipt")).toHaveLength(0);
+    const upd = lastEventUpdate();
+    expect(upd.status).toBe("needs_review");
+    expect((upd.result as Row).reason).toBe("receipt_vision_invalid");
     expect((upd.result as Row).message).toBe("영수증을 읽지 못했어요");
   });
 
