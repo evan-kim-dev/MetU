@@ -19,6 +19,8 @@ export type ExpenseDraftInput = {
   confidence?: number;
   warnings?: string[];
   kind?: "approval" | "cancel" | "unknown";
+  /** 카드 문자에 "해외"가 있으면 true (통화와 무관). */
+  overseas?: boolean;
   items?: Array<{
     name: string;
     nameKo?: string | null;

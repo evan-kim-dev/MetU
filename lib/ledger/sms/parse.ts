@@ -25,6 +25,8 @@ export interface ParsedSms {
     | "unknown";
   kind: "approval" | "cancel" | "unknown";
   domestic: boolean;
+  /** 문자에 "해외"가 포함되면 true (통화가 KRW여도 유지). */
+  overseas: boolean;
   merchant: string | null;
   currency: string | null;
   amount: number | null;
@@ -65,6 +67,7 @@ function empty(partial: Partial<ParsedSms> = {}): ParsedSms {
     issuer: "unknown",
     kind: "unknown",
     domestic: false,
+    overseas: false,
     merchant: null,
     currency: null,
     amount: null,
@@ -324,6 +327,20 @@ function tryShinhan(text: string): Extracted | null {
       domestic: false,
     };
   }
+  // 해외인데 원화 청구액만 찍힌 문자 (VERIFY: 실문자 포맷 미확인)
+  m = text.match(
+    /해외승인[^\d]*([\d,]+)원\s*(?:일시불|할부\d*개월?)?\s*(?:(\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2})\s*)?(.+?)(?:\s*누적|$)/
+  );
+  if (m) {
+    return {
+      amount: parseAmountToken(m[1]!),
+      currencyToken: "원",
+      merchant: cleanMerchant(
+        [m[3], m[2]].filter(Boolean).join(" ").replace(/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2}/g, "")
+      ),
+      domestic: false,
+    };
+  }
   // 국내: (날짜 앞/뒤 무관) 승인 N원 일시불|할부 가맹점 누적…
   m = text.match(
     /승인[^\d]*([\d,]+)원\s*(?:일시불|할부\d*개월?)?\s*(.+?)(?:\s*누적|$)/
@@ -349,6 +366,18 @@ function trySamsung(text: string): Extracted | null {
       amount: parseAmountToken(m[2]!),
       currencyToken: m[1]!,
       merchant: cleanMerchant(m[4]),
+      domestic: false,
+    };
+  }
+  // 해외승인 … N원 (VERIFY: 실문자 포맷 미확인)
+  m = text.match(
+    /해외승인[^\d]*([\d,]+)원[^\d]*(?:(\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2})\s+)?(.+?)(?:\s*누적|$)/
+  );
+  if (m) {
+    return {
+      amount: parseAmountToken(m[1]!),
+      currencyToken: "원",
+      merchant: cleanMerchant(m[3]),
       domestic: false,
     };
   }
@@ -506,7 +535,10 @@ function tryFlexibleCard(text: string): Extracted | null {
     .replace(/(?:누적|잔액)\s*(?:\[가림\]|\d[\d,.]*\s*원?)/g, " ")
     .trim();
   const overseas = /해외/.test(flat);
-  const hit = overseas ? findOverseasAmount(flat) : findKrwAmount(flat);
+  // 해외 문자는 외화 금액을 먼저 보고, 없으면 원화 청구액(해외승인 … N원)도 허용.
+  const hit = overseas
+    ? findOverseasAmount(flat) ?? findKrwAmount(flat)
+    : findKrwAmount(flat);
   if (!hit) return null;
   const amount = parseAmountToken(hit.amount);
   if (amount == null) return null;
@@ -525,6 +557,7 @@ function tryFlexibleCard(text: string): Extracted | null {
     amount,
     currencyToken: hit.token,
     merchant,
+    // 통화가 KRW여도 "해외"면 domestic=false로 두고, finalize에서 overseas 플래그로 보존.
     domestic: !overseas,
   };
 }
@@ -568,12 +601,15 @@ function finalizeParse(
   // 취소는 되돌릴 수 없는 성격이라 상한을 둔다.
   const cap = kind === "cancel" ? 0.9 : 1;
 
+  const overseas = /해외/.test(raw);
   return {
     ok,
     confidence: Math.min(cap, ok ? Math.max(confidence, 0.55) : confidence),
     issuer,
     kind,
-    domestic: extracted.domestic || currency === "KRW",
+    // 기존: KRW면 domestic. 해외 원화 청구는 overseas=true로 구분한다.
+    domestic: overseas ? false : extracted.domestic || currency === "KRW",
+    overseas,
     merchant: extracted.merchant,
     currency,
     amount: extracted.amount,
@@ -610,7 +646,8 @@ export function parseCardSms(text: string, ctx: SmsContext): ParsedSms {
       confidence: amount != null ? 0.9 : 0.3,
       issuer,
       kind: "cancel",
-      domestic: true,
+      domestic: !/해외/.test(raw),
+      overseas: /해외/.test(raw),
       merchant: cleanMerchant(
         raw.replace(/\[.*?\]/g, " ").replace(/취소.*$/, "").trim()
       ),
