@@ -115,6 +115,7 @@ describe("사유(reason) → 한국어 한 줄", () => {
     "trip_match_uncertain",
     "no-owner-member",
     "fx_unresolved",
+    "fx_merge_review",
     "commit-failed",
   ] as const;
 
