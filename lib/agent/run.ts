@@ -11,6 +11,7 @@ import { detectImageMime } from "@/lib/agent/image-magic";
 import { extractReceiptFromImage } from "@/lib/agent/receipt-vision";
 import { preferSmsParseText } from "@/lib/agent/sms-text";
 import { notifyUsers } from "@/lib/agent/notify";
+import { detectDcc, detectDupCharge } from "@/lib/ledger/dcc";
 import {
   decide,
   policyEnvFromProcess,
@@ -250,6 +251,16 @@ type PricedWithMeta = PricedDraft & {
   __category?: string;
 };
 
+function draftLooksOverseas(draft: ExpenseDraftInput): boolean {
+  if ((draft as { overseas?: boolean }).overseas === true) return true;
+  const raw = draft.rawInput;
+  if (raw && typeof raw === "object" && "text" in raw) {
+    const text = (raw as { text?: unknown }).text;
+    if (typeof text === "string" && /해외/.test(text)) return true;
+  }
+  return false;
+}
+
 async function commitExpense(args: {
   actorId: string;
   tripId: string;
@@ -261,6 +272,7 @@ async function commitExpense(args: {
   status: "auto" | "confirmed";
   /** agent-uploads 경로 (영수증 출처일 때만) */
   receiptPath?: string | null;
+  flags?: Record<string, unknown>;
 }): Promise<string | null> {
   const admin = getAgentAdmin();
   if (!admin) return null;
@@ -341,9 +353,11 @@ async function commitExpense(args: {
     p_index: args.index,
     p_reasons: {
       reasons: args.reasons,
-      ...(args.draft.overseas
-        ? { flags: { overseas: true } }
-        : {}),
+      ...(args.flags
+        ? { flags: args.flags }
+        : args.draft.overseas
+          ? { flags: { overseas: true } }
+          : {}),
     },
   });
 
@@ -985,6 +999,52 @@ export async function processEvent(eventId: string): Promise<void> {
         true
       );
 
+      const overseas = draftLooksOverseas(draft);
+      const dcc = detectDcc({
+        tripLocalCurrency: ctx.trip.local_currency,
+        draftCurrency: priced.currency,
+        overseas,
+        merchant: priced.__merchant ?? draft.merchant,
+        foreignAmount: priced.currency !== "KRW" ? priced.amount : null,
+        foreignCurrency: priced.currency !== "KRW" ? priced.currency : null,
+        marketRate:
+          priced.currency !== "KRW" && priced.__fxRate
+            ? priced.__fxRate
+            : null,
+      });
+      const paidAtMs = draft.paidAt
+        ? Date.parse(draft.paidAt)
+        : Number.NaN;
+      const dupCharge =
+        Number.isFinite(paidAtMs) &&
+        detectDupCharge(
+          {
+            merchant: priced.__merchant ?? draft.merchant ?? "",
+            amount: priced.amount,
+            currency: priced.currency,
+            paidAtMs,
+            exactResend: decision.reasons.some((r) =>
+              /이미 받은 같은 문자/.test(r)
+            ),
+          },
+          existing
+            .filter((e) => e.paidAt)
+            .map((e) => ({
+              merchant: e.merchant,
+              amount: e.amount,
+              currency: e.currency,
+              paidAtMs: Date.parse(e.paidAt!),
+            }))
+        );
+      const expenseFlags: Record<string, unknown> = {};
+      if (overseas) expenseFlags.overseas = true;
+      if (dcc.level !== "none") expenseFlags.dcc = dcc;
+      if (dupCharge) expenseFlags.dupCharge = true;
+      const reasonCodes = [
+        ...decision.reasons,
+        ...(dupCharge ? ["possible_double_charge"] : []),
+      ];
+
       if (decision.decision === "ignore") {
         items.push({
           ref: i,
@@ -996,7 +1056,7 @@ export async function processEvent(eventId: string): Promise<void> {
 
       allIgnore = false;
 
-      let reviewReasons = decision.reasons;
+      let reviewReasons = reasonCodes;
       let mergeInto: string | undefined = decision.duplicateOfExpenseId;
       const mergeKind = decision.mergeKind;
 
@@ -1144,9 +1204,10 @@ export async function processEvent(eventId: string): Promise<void> {
           index: i,
           priced,
           draft,
-          reasons: decision.reasons,
+          reasons: reasonCodes,
           status: "auto",
           receiptPath,
+          flags: expenseFlags,
         });
 
         if (!expenseId) {
@@ -1186,7 +1247,8 @@ export async function processEvent(eventId: string): Promise<void> {
           ref: i,
           decision: "auto_commit",
           expenseId,
-          reasons: decision.reasons,
+          reasons: reasonCodes,
+          flags: expenseFlags,
         });
 
         const domainCreated = await createEvent({
@@ -1210,6 +1272,20 @@ export async function processEvent(eventId: string): Promise<void> {
           },
           dedupeKey: `expense_added:${expenseId}`,
         });
+        if (dcc.level !== "none") {
+          await notifyUsers({
+            userIds: [event.user_id],
+            type: "expense_dcc",
+            tripId: event.trip_id,
+            actorId: event.user_id,
+            payload: {
+              expenseId,
+              krwAmount: priced.krwAmount,
+              merchant: priced.__merchant ?? draft.merchant,
+            },
+            dedupeKey: `expense_dcc:${expenseId}`,
+          });
+        }
         continue;
       }
 

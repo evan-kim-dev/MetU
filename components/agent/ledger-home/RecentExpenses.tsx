@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { SkeletonBlock } from "@/components/ui/PageSkeleton";
+import { ExpenseFlags } from "@/components/trips/ledger/ExpenseFlags";
 import { ExpenseFxLine } from "@/components/trips/ledger/ExpenseFxLine";
 import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
 import { formatKRW } from "@/lib/shared/format";
@@ -106,6 +107,7 @@ export function RecentExpenses({
                   </p>
                 </div>
                 <ExpenseFxLine expense={e} />
+                <ExpenseFlags flags={e.flags} />
               </li>
             );
           })}

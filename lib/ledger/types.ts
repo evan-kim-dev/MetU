@@ -30,6 +30,17 @@ export interface LedgerItem {
 }
 
 /** Step 5-C / L-7 호환 앱 타입. merchant 가 있으면 label 로도 노출. */
+/** agent_reasons.flags 중 UI에 노출하는 부분집합만. 원문 reasons는 전달하지 않는다. */
+export type ExpenseFlags = {
+  overseas?: boolean;
+  dcc?: {
+    level: "none" | "suspected" | "confirmed";
+    markupPct: number | null;
+    markupKrw: number | null;
+  };
+  dupCharge?: boolean;
+};
+
 export interface LedgerExpenseRow {
   id: string;
   tripId: string;
@@ -70,10 +81,8 @@ export interface LedgerExpenseRow {
   billedEventId?: string | null;
   /** 병합 스냅샷·메타 (되돌리기용). */
   fxMerge?: Record<string, unknown> | null;
-  /** agent_reasons.flags 등에서 읽은 표시용 플래그. */
-  flags?: {
-    overseas?: boolean;
-  } | null;
+  /** agent_reasons.flags 중 UI에 노출하는 부분집합. */
+  flags?: ExpenseFlags | null;
 }
 
 export interface ExpenseRowDb {
@@ -143,6 +152,40 @@ function num(v: number | string | null | undefined, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** agent_reasons JSON에서 UI용 flags만 추출. 원문 reasons는 노출하지 않는다. */
+export function flagsFromAgentReasons(raw: unknown): ExpenseFlags | null {
+  if (!raw || typeof raw !== "object") return null;
+  const flags = (raw as { flags?: unknown }).flags;
+  if (!flags || typeof flags !== "object") return null;
+  const f = flags as Record<string, unknown>;
+  const out: ExpenseFlags = {};
+  if (f.overseas === true) out.overseas = true;
+  if (f.dupCharge === true) out.dupCharge = true;
+  const dcc = f.dcc;
+  if (dcc && typeof dcc === "object") {
+    const d = dcc as Record<string, unknown>;
+    const level =
+      d.level === "confirmed" || d.level === "suspected" || d.level === "none"
+        ? d.level
+        : null;
+    if (level) {
+      out.dcc = {
+        level,
+        markupPct:
+          typeof d.markupPct === "number" && Number.isFinite(d.markupPct)
+            ? d.markupPct
+            : null,
+        markupKrw:
+          typeof d.markupKrw === "number" && Number.isFinite(d.markupKrw)
+            ? Math.round(d.markupKrw)
+            : null,
+      };
+    }
+  }
+  if (!out.overseas && !out.dupCharge && !out.dcc) return null;
+  return out;
+}
+
 export function rowToExpense(
   row: ExpenseRowDb,
   shareRows: ShareRowDb[] = []
@@ -166,18 +209,6 @@ export function rowToExpense(
   const billedSource =
     row.billed_source === "sms" || row.billed_source === "manual"
       ? row.billed_source
-      : null;
-  const reasons =
-    row.agent_reasons &&
-    typeof row.agent_reasons === "object" &&
-    !Array.isArray(row.agent_reasons)
-      ? (row.agent_reasons as Record<string, unknown>)
-      : null;
-  const flagsRaw =
-    reasons?.flags &&
-    typeof reasons.flags === "object" &&
-    !Array.isArray(reasons.flags)
-      ? (reasons.flags as Record<string, unknown>)
       : null;
 
   return {
@@ -221,9 +252,7 @@ export function rowToExpense(
       row.fx_merge && typeof row.fx_merge === "object"
         ? (row.fx_merge as Record<string, unknown>)
         : null,
-    flags: flagsRaw
-      ? { overseas: flagsRaw.overseas === true }
-      : null,
+    flags: flagsFromAgentReasons(row.agent_reasons),
   };
 }
 

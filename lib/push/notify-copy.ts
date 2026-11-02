@@ -45,6 +45,21 @@ export function pushPayloadForNotification(args: {
         url: inbox,
         tag,
       };
+    case "expense_dcc": {
+      const merchant =
+        typeof payload.merchant === "string" ? payload.merchant.trim() : "";
+      const krw = fmtWon(payload.krwAmount);
+      const body =
+        merchant && krw
+          ? `${merchant} · ${krw}`
+          : krw || merchant || "다음 결제는 현지통화로 선택해 보세요.";
+      return {
+        title: "원화로 결제됐을 수 있어요",
+        body,
+        url: ledger,
+        tag,
+      };
+    }
     case "settlement_ready":
       return {
         title: "정산이 준비됐어요",

@@ -4,6 +4,7 @@ import { Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import { FxAttribution } from "@/components/fx/FxAttribution";
 import { CurrencyTotals } from "@/components/ledger/CurrencyTotals";
+import { ExpenseFlags } from "@/components/trips/ledger/ExpenseFlags";
 import { ExpenseFxLine } from "@/components/trips/ledger/ExpenseFxLine";
 import { MemberManager } from "@/components/trips/ledger/MemberManager";
 import { TripInvitePanel } from "@/components/trips/ledger/TripInvitePanel";
@@ -239,6 +240,7 @@ export function LedgerTab({
                 ) : null}
               </div>
               <ExpenseFxLine expense={exp} onChanged={onExpenseFxChanged} />
+              <ExpenseFlags flags={exp.flags} />
               </div>
             )
           )
