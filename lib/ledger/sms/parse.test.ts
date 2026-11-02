@@ -85,12 +85,51 @@ describe("parseCardSms fixtures", () => {
     const r = parseCardSms(SYNTHETIC_SMS.dollarUnknown.text, ctx);
     expect(r.warnings.some((w) => w.includes("달러"))).toBe(true);
     expect(r.currency).toBe("USD");
+    expect(r.overseas).toBe(true);
   });
 
   it("nonsense fails softly", () => {
     const r = parseCardSms("오늘 날씨 좋아요", ctx);
     expect(r.ok).toBe(false);
   });
+
+  it("overseas foreign keeps overseas=true", () => {
+    const r = parseCardSms(SYNTHETIC_SMS.shinhanCreditOverseas.text, ctx);
+    expect(r.overseas).toBe(true);
+    expect(r.domestic).toBe(false);
+    expect(r.currency).toBe("USD");
+  });
+});
+
+describe("parseCardSms overseas KRW billed", () => {
+  const ctxKrw = { today: "2026-11-03" };
+  const cases: {
+    key: keyof typeof SYNTHETIC_SMS;
+    issuer: string;
+    amount: number;
+    merchant: RegExp;
+  }[] = [
+    { key: "shinhanOverseasKrw", issuer: "shinhan", amount: 92300, merchant: /LAWSON/i },
+    { key: "samsungOverseasKrw", issuer: "samsung", amount: 45600, merchant: /SEVEN/i },
+    { key: "lotteOverseasKrw", issuer: "lotte", amount: 12800, merchant: /STARBUCKS/i },
+    { key: "nhOverseasKrw", issuer: "nh", amount: 8900, merchant: /DONKI/i },
+  ];
+
+  for (const c of cases) {
+    it(`${String(c.key)}: overseas+KRW amount/time`, () => {
+      const r = parseCardSms(SYNTHETIC_SMS[c.key].text, ctxKrw);
+      expect(r.ok).toBe(true);
+      expect(r.kind).toBe("approval");
+      expect(r.issuer).toBe(c.issuer);
+      expect(r.overseas).toBe(true);
+      expect(r.domestic).toBe(false);
+      expect(r.currency).toBe("KRW");
+      expect(r.amount).toBe(c.amount);
+      expect(r.merchant).toMatch(c.merchant);
+      expect(r.spentOn).toBe("2026-11-03");
+      expect(r.paidAt).toMatch(/T\d{2}:\d{2}/);
+    });
+  }
 });
 
 const ctxP2 = { today: "2026-03-10" };

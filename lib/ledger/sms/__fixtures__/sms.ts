@@ -136,6 +136,24 @@ export const SYNTHETIC_SMS = {
     text: "[현대카드] 승인 홍*동님 240,000원 6개월 03/06 15:20 하이마트",
   },
 
+  // --- 해외승인인데 금액이 원화 (VERIFY: 실문자 포맷 미확인, 합성) ---
+  shinhanOverseasKrw: {
+    label: "synthetic-shinhan-overseas-krw",
+    text: "신한(1234)해외승인 홍*동 92,300원 일시불 11/03 14:20 LAWSON",
+  },
+  samsungOverseasKrw: {
+    label: "synthetic-samsung-overseas-krw",
+    text: "삼성5678해외승인 홍*동 45,600원 11/03 15:10 SEVEN-ELEVEN",
+  },
+  lotteOverseasKrw: {
+    label: "synthetic-lotte-overseas-krw",
+    text: "[Web발신] 롯데카드(1234) 해외승인 홍*동 12,800원 일시불 11/03 16:05 STARBUCKS JP",
+  },
+  nhOverseasKrw: {
+    label: "synthetic-nh-overseas-krw",
+    text: "[Web발신] NH농협카드 1234 해외승인 홍*동 8,900원 일시불 11/03 17:30 DONKI",
+  },
+
   // --- 비승인 문자 (파싱되면 안 됨) ---
   negativeOtp: {
     label: "synthetic-negative-otp",
