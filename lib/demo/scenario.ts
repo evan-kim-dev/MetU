@@ -86,7 +86,7 @@ export function buildDemoScenario(now: Date = new Date()): DemoScenarioStep[] {
   }> = [
     {
       step: 1,
-      label: "오사카 호텔 해외승인",
+      label: "오사카 호텔 해외승인(외화)",
       fixtureKey: "demoHotelJpy",
       spentOn: day0,
       hhmm: "21:40",
