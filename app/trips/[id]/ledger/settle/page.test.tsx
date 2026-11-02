@@ -44,9 +44,6 @@ vi.mock("@/lib/supabase/browser", () => ({
 vi.mock("@/lib/ledger/fx", () => ({
   getFxRateToKrw: (...a: unknown[]) => getFxRateToKrw(...a),
 }));
-vi.mock("@/lib/ledger/fx", () => ({
-  getFxRateToKrw: (...a: unknown[]) => getFxRateToKrw(...a),
-}));
 vi.mock("@/lib/ledger/supabase", () => ({
   fetchLatestSettlement: (...a: unknown[]) => fetchLatestSettlement(...a),
   fetchSettlementHistory: (...a: unknown[]) => fetchSettlementHistory(...a),

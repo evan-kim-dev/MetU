@@ -403,6 +403,12 @@ export default function LedgerSettlePage() {
         ) : null}
       </section>
 
+      {/*
+        K7 mount point — SplitPatchBox
+        자연어 분담 수정(preview → confirm → undo) UI는 여기(잔액/"왜 이 금액?" 아래,
+        자동 정산 안내 위)에 붙이세요. K8(이 브랜치)에서는 SplitPatchBox를 구현하지 않아요.
+      */}
+
       {settlement?.origin === "auto" && !completed ? (
         <div className="rounded-xl bg-surface-soft px-3 py-2 text-xs font-semibold text-ink-body">
           자동으로 만든 정산 제안이에요. 금액을 확인하고 직접 송금해 주세요.
