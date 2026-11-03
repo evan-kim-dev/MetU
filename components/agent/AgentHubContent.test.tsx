@@ -255,7 +255,7 @@ describe("AgentHubContent", () => {
   it("여행 목록에서 다른 여행을 고르면 선택이 저장돼요", async () => {
     render(<AgentHubContent />);
     await enterTokyoHome();
-    fireEvent.click(screen.getByRole("button", { name: /여행 목록/ }));
+    fireEvent.click(screen.getByRole("button", { name: /목록으로/ }));
     expect(await screen.findByTestId("ledger-trip-picker")).toBeTruthy();
     const osakaCards = screen.getAllByRole("button", { name: /오사카/ });
     fireEvent.click(osakaCards[osakaCards.length - 1]!);
@@ -270,11 +270,18 @@ describe("AgentHubContent", () => {
     expect(window.localStorage.getItem(STORAGE_KEYS.ledgerSelectedTrip)).toBe(OSAKA.id);
   });
 
-  it("여행이 1개여도 목록으로 돌아갈 수 있어요", async () => {
+  it("여행이 1개면 바로 홈으로 들어가고 목록으로 돌아갈 수 있어요", async () => {
     useTrips.mockReturnValue({ trips: [TOKYO], activeTrips: [TOKYO], isReady: true });
     render(<AgentHubContent />);
-    await enterTokyoHome();
-    expect(screen.getByRole("button", { name: /여행 목록/ })).toBeTruthy();
+    await totalShown();
+    expect(screen.getByRole("button", { name: /목록으로/ })).toBeTruthy();
+  });
+
+  it("마지막 선택을 복원하면 피커를 건너뛰어요", async () => {
+    window.localStorage.setItem(STORAGE_KEYS.ledgerSelectedTrip, OSAKA.id);
+    render(<AgentHubContent />);
+    expect(await screen.findByRole("heading", { name: "오사카" })).toBeTruthy();
+    expect(screen.queryByTestId("ledger-trip-picker")).toBeNull();
   });
 
   it("지출 섹션만 실패해도 나머지는 보이고 다시 시도하면 불러와요", async () => {

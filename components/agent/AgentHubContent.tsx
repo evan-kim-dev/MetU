@@ -1,7 +1,7 @@
 "use client";
 
 import { MoreHorizontal } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DemoModePanel } from "@/components/agent/DemoModePanel";
 import { LedgerHomeEmpty } from "@/components/agent/ledger-home/LedgerHomeEmpty";
 import { LedgerHomeGuest } from "@/components/agent/ledger-home/LedgerHomeGuest";
@@ -19,12 +19,13 @@ import { useSelectedTrip } from "@/components/agent/ledger-home/useSelectedTrip"
 import { MobileShell } from "@/components/layout/MobileShell";
 import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { STORAGE_KEYS } from "@/lib/constants";
 import { useAutomationStatus } from "@/lib/hooks/useAutomationStatus";
 import { useTrips } from "@/lib/trips/TripProvider";
 
 /**
  * 가계부 탭(/agent).
- * 진입 시 여행 카드로 한눈에 고르고, 고른 여행의 가계부 홈으로 들어가요.
+ * 최근 선택·여행 1개면 바로 홈, 아니면 카드로 골라 들어가요.
  */
 export function AgentHubContent() {
   const { isReady: authReady, isLoggedIn, provider, isAnonymous } = useAuth();
@@ -34,11 +35,32 @@ export function AgentHubContent() {
   const { selectedTrip, select, ready } = useSelectedTrip(trips, isReady);
   /** pick = 여행 고르기, home = 선택한 여행 가계부 */
   const [phase, setPhase] = useState<"pick" | "home">("pick");
+  const [phaseBooted, setPhaseBooted] = useState(false);
   /** 가계부 홈 데이터는 들어간 뒤에만 불러요 */
   const tripId =
     phase === "home" && selectedTrip ? selectedTrip.id : null;
   /** 더보기 메뉴는 목록에서도 기본/최근 여행 기준으로 열어요 */
   const moreTripId = selectedTrip?.id ?? null;
+
+  useEffect(() => {
+    if (!ready || phaseBooted || isGuest) return;
+    setPhaseBooted(true);
+    if (trips.length === 0) return;
+    if (trips.length === 1) {
+      setPhase("home");
+      return;
+    }
+    try {
+      const stored = window.localStorage.getItem(
+        STORAGE_KEYS.ledgerSelectedTrip
+      );
+      if (stored && trips.some((t) => t.id === stored)) {
+        setPhase("home");
+      }
+    } catch {
+      // 목록부터 보여 줘요
+    }
+  }, [ready, phaseBooted, isGuest, trips]);
 
   const automation = useAutomationStatus({
     enabled: authReady && isLoggedIn && !isGuest,

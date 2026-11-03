@@ -58,7 +58,7 @@ export function ActiveTripSmartTips() {
   if (!isReady) {
     return (
       <div className="flex flex-col gap-3">
-        <SectionHeader title="AI Tip" ai />
+        <SectionHeader title="AI 팁" ai />
         <div className="flex gap-3 overflow-hidden" aria-busy="true">
           <div className="h-28 w-60 shrink-0 animate-pulse rounded-2xl bg-surface-soft" />
           <div className="h-28 w-60 shrink-0 animate-pulse rounded-2xl bg-surface-soft" />
@@ -67,9 +67,9 @@ export function ActiveTripSmartTips() {
     );
   }
 
-  const title = primaryTrip
-    ? `AI Tip · ${primaryTrip.destination}`
-    : "AI Tip · 여행 준비";
+  if (!primaryTrip) return null;
+
+  const title = `AI 팁 · ${primaryTrip.destination}`;
 
   return (
     <div className="relative flex flex-col gap-2">

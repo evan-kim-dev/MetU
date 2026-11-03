@@ -62,7 +62,7 @@ export default async function HomePage() {
         {/* 진행 중인 여행 */}
         <Suspense
           fallback={
-            <SectionSkeleton title="계획 중인 여행" heightClass="h-52" />
+            <SectionSkeleton title="진행·예정 여행" heightClass="h-52" />
           }
         >
           <SectionErrorBoundary fallbackTitle="여행 정보를 불러오지 못했어요">

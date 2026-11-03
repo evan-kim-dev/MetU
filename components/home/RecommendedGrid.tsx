@@ -44,7 +44,7 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
           setItems(data.places);
           setRefreshFailed(false);
         } else {
-          setItems([]);
+          // 빈 응답이면 SSR·캐시 목록을 지우지 않아요.
           setRefreshFailed(true);
         }
       })

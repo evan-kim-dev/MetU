@@ -14,7 +14,7 @@ interface SmartTipsProps {
  * AI 스마트 팁.
  * overflow-x-auto 로 수평 스크롤되는 카드 목록.
  */
-export function SmartTips({ tips, title = "AI Tip" }: SmartTipsProps) {
+export function SmartTips({ tips, title = "AI 팁" }: SmartTipsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollByCard = useCallback((direction: "left" | "right") => {

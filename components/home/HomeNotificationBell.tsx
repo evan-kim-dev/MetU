@@ -53,7 +53,7 @@ export function HomeNotificationBell() {
     <Link
       href="/notifications"
       aria-label={unread > 0 ? `알림 ${unread}개` : "알림"}
-      className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full text-ink-heading transition-colors active:bg-surface-soft"
+      className="relative z-10 flex min-h-11 min-w-11 items-center justify-center rounded-full text-ink-heading transition-colors active:bg-surface-soft"
     >
       <Bell className="h-5 w-5" strokeWidth={2.2} />
       {unread > 0 ? (

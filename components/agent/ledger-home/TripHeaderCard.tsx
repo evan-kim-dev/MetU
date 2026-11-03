@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, List } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { CurrencyTotals } from "@/components/ledger/CurrencyTotals";
 import { SkeletonBlock } from "@/components/ui/PageSkeleton";
@@ -68,8 +68,8 @@ export function TripHeaderCard({
             onClick={onSwitch}
             className="inline-flex min-h-tap shrink-0 items-center gap-1 rounded-full bg-surface-soft px-3 text-xs font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
-            여행 목록
-            <ChevronDown className="h-4 w-4" aria-hidden />
+            <List className="h-4 w-4" aria-hidden />
+            목록으로
           </button>
         ) : null}
       </div>
