@@ -719,6 +719,33 @@ export async function listCardProfiles(supabase: SupabaseClient) {
   return data ?? [];
 }
 
+/** 호스트 전용. 금액·분담 불변, RPC만. */
+export async function setExpensePayer(
+  supabase: SupabaseClient,
+  expenseId: string,
+  memberId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.rpc("set_expense_payer", {
+    p_expense_id: expenseId,
+    p_member_id: memberId,
+  });
+  if (!error) return { ok: true };
+  const msg = error.message ?? "";
+  if (msg.includes("forbidden")) {
+    return { ok: false, error: "호스트만 바꿀 수 있어요." };
+  }
+  if (msg.includes("voided")) {
+    return { ok: false, error: "취소된 지출은 바꿀 수 없어요." };
+  }
+  if (msg.includes("bad-member")) {
+    return { ok: false, error: "이 여행의 멤버가 아니에요." };
+  }
+  if (msg.includes("not-found")) {
+    return { ok: false, error: "지출을 찾지 못했어요." };
+  }
+  return { ok: false, error: "결제자를 바꾸지 못했어요." };
+}
+
 export async function upsertCardProfile(
   supabase: SupabaseClient,
   profile: {

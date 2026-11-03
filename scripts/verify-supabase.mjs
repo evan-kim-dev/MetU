@@ -33,8 +33,8 @@ const TABLES = [
   { name: "post_likes", select: "post_id" },
   { name: "party_members", select: "post_id" },
   { name: "party_chat_messages", select: "id" },
-  { name: "trip_plans", select: "id" },
-  { name: "budget_insight_logs", select: "id" },
+  { name: "trip_expense_proposals", select: "id" },
+  { name: "trip_expenses", select: "id" },
 ];
 
 const env = loadBackendEnv();
