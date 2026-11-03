@@ -23,6 +23,9 @@ vi.mock("@/lib/ledger/supabase", () => ({
   listExpenses: (...a: unknown[]) => listExpenses(...a),
   listCardProfiles: (...a: unknown[]) => listCardProfiles(...a),
   ensureOwnerMember: (...a: unknown[]) => ensureOwnerMember(...a),
+  fetchLatestSettlement: vi.fn(async () => ({ ok: true, settlement: null })),
+  fetchSettlementHistory: vi.fn(async () => []),
+  listVoidedExpenseIds: vi.fn(async () => new Set()),
 }));
 vi.mock("@/lib/supabase/browser", () => ({
   getBrowserSupabase: () => getBrowserSupabase(),

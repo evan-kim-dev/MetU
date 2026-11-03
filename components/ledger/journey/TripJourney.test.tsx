@@ -10,6 +10,8 @@ const useAuth = vi.fn();
 const listMembers = vi.fn();
 const listExpenses = vi.fn();
 const fetchLatestSettlement = vi.fn();
+const fetchSettlementHistory = vi.fn();
+const listVoidedExpenseIds = vi.fn();
 const getBrowserSupabase = vi.fn();
 const useAutomationStatus = vi.fn();
 
@@ -27,6 +29,8 @@ vi.mock("@/lib/ledger/supabase", () => ({
   listCardProfiles: vi.fn(async () => []),
   ensureOwnerMember: vi.fn(),
   fetchLatestSettlement: (...a: unknown[]) => fetchLatestSettlement(...a),
+  fetchSettlementHistory: (...a: unknown[]) => fetchSettlementHistory(...a),
+  listVoidedExpenseIds: (...a: unknown[]) => listVoidedExpenseIds(...a),
 }));
 vi.mock("@/lib/supabase/browser", () => ({
   getBrowserSupabase: () => getBrowserSupabase(),
@@ -84,6 +88,7 @@ beforeEach(() => {
     provider: "kakao",
     isReady: true,
     isLoggedIn: true,
+    isAnonymous: false,
   });
   useAutomationStatus.mockReturnValue({
     data: { hasActiveToken: true },
@@ -95,9 +100,24 @@ beforeEach(() => {
     { id: "m2", tripId: "t1", displayName: "다라", isOwner: false, userId: "u2" },
   ]);
   listExpenses.mockResolvedValue([
-    { id: "e1", krwAmount: 1000, merchant: "카페", label: "카페" },
+    {
+      id: "e1",
+      tripId: "t1",
+      paidBy: "m1",
+      krwAmount: 1000,
+      amount: 1000,
+      currency: "KRW",
+      fxRateToKrw: 1,
+      merchant: "카페",
+      label: "카페",
+      category: "식비",
+      splitType: "equal",
+      shares: { m1: 500, m2: 500 },
+    },
   ]);
   fetchLatestSettlement.mockResolvedValue({ ok: true, settlement: null });
+  fetchSettlementHistory.mockResolvedValue([]);
+  listVoidedExpenseIds.mockResolvedValue(new Set());
   const chain = {
     select: () => chain,
     eq: () => chain,
@@ -126,8 +146,28 @@ describe("TripJourney", () => {
     search = "step=hack";
     render(<TripJourney tripId="t1" />);
     await screen.findByRole("navigation", { name: "정산 단계" });
-    // CTA for settle default
-    expect(screen.getByRole("button", { name: "정산 화면 열기" })).toBeTruthy();
+    // settle 기본 → SettleStep 이 CTA 소유 (로드 후 버튼 등장)
+    expect(
+      await screen.findByRole("heading", { name: "이 금액으로 정산해요" })
+    ).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: "정산 계산하기" })
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "정산 화면 열기" })).toBeNull();
+  });
+
+  it("?step=settle 은 SettleStep 을 보여 주고 TripJourney CTA 는 없어요", async () => {
+    search = "step=settle";
+    render(<TripJourney tripId="t1" />);
+    expect(
+      await screen.findByRole("heading", { name: "이 금액으로 정산해요" })
+    ).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: "분담 수정하기" })
+    ).toBeTruthy();
+    expect(
+      await screen.findAllByRole("button", { name: "정산 계산하기" })
+    ).toHaveLength(1);
   });
 
   it("칸 탭 시 step 쿼리를 push해요", async () => {
