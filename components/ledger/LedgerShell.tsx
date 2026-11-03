@@ -10,12 +10,10 @@ import { ExpenseConfirmSheet } from "@/components/ledger/ExpenseConfirmSheet";
 import { ExpenseChipSplit } from "@/components/ledger/ExpenseChipSplit";
 import { GuestExpenseSlot } from "@/components/ledger/GuestExpenseSlot";
 import { LedgerDashboard } from "@/components/ledger/LedgerDashboard";
-import { PasteExpenseBox } from "@/components/ledger/PasteExpenseBox";
-import { ReceiptUploader } from "@/components/ledger/ReceiptUploader";
 import { SplitBatchBox } from "@/components/ledger/SplitBatchBox";
-import { VoiceInputButton } from "@/components/ledger/VoiceInputButton";
 import { ConnectStep } from "@/components/ledger/journey/host/ConnectStep";
 import { InviteStep } from "@/components/ledger/journey/host/InviteStep";
+import { RecordStep } from "@/components/ledger/journey/host/RecordStep";
 import { Sheet } from "@/components/ds/Sheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { TABLES } from "@/lib/constants";
@@ -199,6 +197,28 @@ export function LedgerShell({
   const showAdjust = step === "adjust";
   const showSettleLink = step === "settle" || step === "pay";
 
+  const dashboard = (
+    <LedgerDashboard
+      expenses={expenses}
+      members={members}
+      budget={budget || Math.max(total, 1)}
+      insight={insight}
+      insightLoading={insightLoading}
+      onRefreshInsight={() => {
+        setInsightLoading(true);
+        try {
+          const stats = computeLedgerStats({
+            expenses,
+            budget: budget || Math.max(total, 1),
+          });
+          setInsight(buildLocalInsight(stats));
+        } finally {
+          setInsightLoading(false);
+        }
+      }}
+    />
+  );
+
   const expenseList = (
     <section className="rounded-2xl bg-surface-white p-4 shadow-sm">
       <h2 className="text-sm font-extrabold text-ink-heading">지출 목록</h2>
@@ -295,86 +315,32 @@ export function LedgerShell({
                 <p className="text-xs text-ink-muted">
                   호스트가 승인하면 정산에 들어가요.
                 </p>
-              ) : (
-                <>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="min-h-[44px] rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white"
-                      onClick={() => openDrafts([newManualDraft()])}
-                    >
-                      직접 입력
-                    </button>
-                  </div>
-
-                  <PasteExpenseBox
-                    tripId={tripId}
-                    onDrafts={openDrafts}
-                    onCancelNotice={setCancelNotice}
-                  />
-                  <div ref={receiptRef}>
-                    <ReceiptUploader
-                      tripId={tripId}
-                      onDraft={(d) => openDrafts([d])}
-                    />
-                  </div>
-                  <div ref={voiceRef}>
-                    <VoiceInputButton tripId={tripId} onDrafts={openDrafts} />
-                  </div>
-                </>
-              )}
-
-              <LedgerDashboard
-                expenses={expenses}
-                members={members}
-                budget={budget || Math.max(total, 1)}
-                insight={insight}
-                insightLoading={insightLoading}
-                onRefreshInsight={() => {
-                  setInsightLoading(true);
-                  try {
-                    const stats = computeLedgerStats({
-                      expenses,
-                      budget: budget || Math.max(total, 1),
-                    });
-                    setInsight(buildLocalInsight(stats));
-                  } finally {
-                    setInsightLoading(false);
-                  }
-                }}
-              />
-
-              <div className="flex flex-wrap gap-3 text-xs font-bold text-brand">
-                {!guestReadonly ? (
-                  <Link href={`/trips/${tripId}/ledger/inbox`}>
-                    인박스{inboxCount > 0 ? ` (${inboxCount})` : ""}
-                  </Link>
-                ) : null}
-                {!guestReadonly ? (
-                  <Link href={`/trips/${tripId}/ledger/connect`}>자동 수집</Link>
-                ) : null}
-                <Link href={`/trips/${tripId}/ledger/settle`}>정산</Link>
-                <Link href={`/trips/${tripId}/ledger/report`}>리포트</Link>
-              </div>
-
-              {cancelNotice && !guestReadonly ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs">
-                  <p className="font-bold text-amber-900">취소 문자예요</p>
-                  <p className="text-amber-800">
-                    {cancelNotice.merchant ?? "가맹점"} · {cancelNotice.amount}{" "}
-                    {cancelNotice.currency}
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-1 min-h-[44px] font-bold text-amber-900 underline"
-                    onClick={() => setCancelNotice(null)}
-                  >
-                    닫기
-                  </button>
-                </div>
               ) : null}
 
-              {expenseList}
+              {guestReadonly ? (
+                <>
+                  {dashboard}
+                  <div className="flex flex-wrap gap-3 text-xs font-bold text-brand">
+                    <Link href={`/trips/${tripId}/ledger/settle`}>정산</Link>
+                    <Link href={`/trips/${tripId}/ledger/report`}>리포트</Link>
+                  </div>
+                  {expenseList}
+                </>
+              ) : (
+                <RecordStep
+                  tripId={tripId}
+                  inboxCount={inboxCount}
+                  cancelNotice={cancelNotice}
+                  onDismissCancel={() => setCancelNotice(null)}
+                  onCancelNotice={setCancelNotice}
+                  onManual={() => openDrafts([newManualDraft()])}
+                  onDrafts={openDrafts}
+                  receiptRef={receiptRef}
+                  voiceRef={voiceRef}
+                  dashboard={dashboard}
+                  expenseList={expenseList}
+                />
+              )}
             </>
           ) : null}
 
