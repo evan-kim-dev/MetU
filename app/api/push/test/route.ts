@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { sendPush } from "@/lib/push/send";
-import { guardApi } from "@/lib/security/guard";
+import { guardApi, rejectAnonymousWrite } from "@/lib/security/guard";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(request: Request) {
@@ -10,6 +10,8 @@ export async function POST(request: Request) {
   if (guard.identity.kind !== "user") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const anon = rejectAnonymousWrite(guard.identity);
+  if (anon) return anon;
 
   const rate = checkRateLimit(`push-test:${guard.clientKey}`, {
     limit: 3,

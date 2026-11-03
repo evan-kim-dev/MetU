@@ -5,7 +5,7 @@ import { readBodyLimited } from "@/lib/agent/body-limit";
 import { getAgentEventForUser } from "@/lib/agent/event-access";
 import { confirmEventReviews } from "@/lib/agent/run";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
-import { guardApi } from "@/lib/security/guard";
+import { guardApi, rejectAnonymousWrite } from "@/lib/security/guard";
 
 export const maxDuration = 60;
 
@@ -31,6 +31,8 @@ export async function POST(
   if (guard.identity.kind !== "user") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const anon = rejectAnonymousWrite(guard.identity);
+  if (anon) return anon;
 
   const { id: eventId } = await context.params;
   if (!IdSchema.safeParse(eventId).success) {

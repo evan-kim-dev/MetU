@@ -4,7 +4,9 @@ import { z } from "zod";
 import {
   SplitPatchSchema,
   applySplitPatch,
+  chipToPatch,
   currentParticipants,
+  guestMayApply,
   sharesDigest,
   splitPatchReasonMessage,
   type SplitPatch,
@@ -386,5 +388,94 @@ describe("helpers", () => {
 
   it("모든 실패 사유에 한국어 메시지가 있다", () => {
     expect(splitPatchReasonMessage("no-change")).toMatch(/요/);
+  });
+});
+
+describe("guestMayApply", () => {
+  it("본인 exclude 는 허용", () => {
+    expect(
+      guestMayApply({
+        patch: patch({ exclude: [A] }),
+        requesterMemberId: A,
+      })
+    ).toEqual({ ok: true });
+  });
+
+  it("타인 exclude 는 거부", () => {
+    expect(
+      guestMayApply({
+        patch: patch({ exclude: [B] }),
+        requesterMemberId: A,
+      })
+    ).toEqual({ ok: false, code: "guest-self-only" });
+  });
+
+  it("weights·only 는 거부", () => {
+    expect(
+      guestMayApply({
+        patch: patch({ weights: [{ memberId: A, weight: 2 }] }),
+        requesterMemberId: A,
+      }).ok
+    ).toBe(false);
+    expect(
+      guestMayApply({
+        patch: patch({ only: [A, B] }),
+        requesterMemberId: A,
+      }).ok
+    ).toBe(false);
+  });
+
+  it("itemExclusions 는 요청자만", () => {
+    expect(
+      guestMayApply({
+        patch: patch({
+          itemExclusions: [{ memberId: A, itemIndex: 0 }],
+        }),
+        requesterMemberId: A,
+      }).ok
+    ).toBe(true);
+    expect(
+      guestMayApply({
+        patch: patch({
+          itemExclusions: [{ memberId: B, itemIndex: 0 }],
+        }),
+        requesterMemberId: A,
+      }).ok
+    ).toBe(false);
+  });
+});
+
+describe("chipToPatch", () => {
+  it("exclude → exclude 패치", () => {
+    const r = chipToPatch({
+      expenseId: EXP,
+      memberId: A,
+      action: "exclude",
+      currentParticipants: [A, B, C],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.patch.exclude).toEqual([A]);
+  });
+
+  it("include → only 패치", () => {
+    const r = chipToPatch({
+      expenseId: EXP,
+      memberId: A,
+      action: "include",
+      currentParticipants: [B, C],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.patch.only).toEqual([B, C, A]);
+  });
+
+  it("마지막 한 명 제외는 nobody-left", () => {
+    expect(
+      chipToPatch({
+        expenseId: EXP,
+        memberId: A,
+        action: "exclude",
+        currentParticipants: [A],
+      })
+    ).toEqual({ ok: false, reason: "nobody-left" });
   });
 });

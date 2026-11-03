@@ -299,7 +299,9 @@ describe("LedgerSettlePage — 이전 정산(공유 이력)", () => {
     expect(
       screen.queryByRole("button", { name: "정산 다시 계산하기" })
     ).toBeNull();
-    expect(screen.getByText(/여행을 만든 분만 만들 수 있어요/)).toBeTruthy();
+    expect(
+      screen.getByText(/정산표는 여행을 만든 분만 만들 수 있어요/)
+    ).toBeTruthy();
   });
 });
 

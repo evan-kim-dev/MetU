@@ -10,7 +10,8 @@ type Props = {
   trips: Trip[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onCreate: () => void;
+  /** 없으면 "새 여행 만들기"를 숨긴다(익명 게스트 등). */
+  onCreate?: () => void;
   returnFocusRef?: React.RefObject<HTMLElement | null>;
 };
 
@@ -83,17 +84,19 @@ export function TripSwitcherSheet({
           );
         })}
       </ul>
-      <button
-        type="button"
-        onClick={() => {
-          onClose();
-          onCreate();
-        }}
-        className="mt-1 inline-flex min-h-tap items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-      >
-        <Plus className="h-4 w-4" aria-hidden />
-        새 여행 만들기
-      </button>
+      {onCreate ? (
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            onCreate();
+          }}
+          className="mt-1 inline-flex min-h-tap items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          새 여행 만들기
+        </button>
+      ) : null}
     </BottomSheet>
   );
 }

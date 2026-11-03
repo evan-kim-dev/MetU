@@ -3,6 +3,8 @@
 import { Loader2 } from "lucide-react";
 import { useCallback, useId, useState } from "react";
 
+import { SplitPreviewSheet } from "@/components/ledger/SplitPreviewSheet";
+import type { SplitPreviewPayload } from "@/components/ledger/split-preview-types";
 import {
   SPLIT_PATCH_TEXT_MAX,
   type SplitPatch,
@@ -14,18 +16,7 @@ import {
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
-type ShareRow = { memberId: string; name: string; krw: number };
-
-type PreviewPayload = {
-  expenseId: string;
-  label: string;
-  kind: string;
-  before: ShareRow[];
-  after: ShareRow[];
-  beforeDigest: string;
-  krwAmount?: number;
-  splitType?: string;
-};
+type PreviewPayload = SplitPreviewPayload;
 
 type ExpenseOption = { id: string; label: string; krwAmount: number };
 
@@ -33,13 +24,6 @@ type Props = {
   tripId: string;
   /** 적용·되돌리기 성공 후 정산/잔액을 다시 읽게 한다. */
   onChanged?: () => void | Promise<void>;
-};
-
-const KIND_LABEL: Record<string, string> = {
-  exclude: "일부 제외",
-  only: "특정 멤버만",
-  weights: "비율 조정",
-  itemExclusions: "품목별 제외",
 };
 
 function newIdempotencyKey(): string {
@@ -121,7 +105,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
 
   async function runPreview() {
     const trimmed = text.trim();
-    if (!expenseId || !trimmed || busy) return;
+    if (!trimmed || busy) return;
     setBusy("preview");
     setError("");
     setClarify("");
@@ -130,10 +114,12 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
     setHistoryId(null);
     setDoneMsg("");
     try {
+      const payload: Record<string, string> = { text: trimmed, tripId };
+      if (expenseId) payload.expenseId = expenseId;
       const res = await fetch("/api/ledger/split-patch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ expenseId, text: trimmed }),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -141,20 +127,26 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
         message?: string;
         patch?: SplitPatch;
         preview?: PreviewPayload;
+        target?: { expenseId: string; label: string };
         error?: string;
       };
       if (!res.ok) {
         setError(
           data.message ??
-            (res.status === 401
-              ? "로그인이 필요해요."
-              : res.status === 429
-                ? "오늘은 AI 사용 한도를 다 썼어요. 내일 다시 시도해 주세요."
-                : res.status === 503
-                  ? "AI를 잠시 쓸 수 없어요. 잠시 후 다시 시도해 주세요."
-                  : "미리보기에 실패했어요. 다시 시도해 주세요.")
+            (data.error === "guest-self-only"
+              ? "다른 사람의 분담은 호스트만 바꿀 수 있어요."
+              : res.status === 401
+                ? "로그인이 필요해요."
+                : res.status === 429
+                  ? "오늘은 AI 사용 한도를 다 썼어요. 내일 다시 시도해 주세요."
+                  : res.status === 503
+                    ? "AI를 잠시 쓸 수 없어요. 잠시 후 다시 시도해 주세요."
+                    : "미리보기에 실패했어요. 다시 시도해 주세요.")
         );
         return;
+      }
+      if (data.target?.expenseId) {
+        setExpenseId(data.target.expenseId);
       }
       if (data.needsClarification) {
         setClarify(data.message ?? "요청을 정확히 이해하지 못했어요.");
@@ -276,7 +268,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
       {open ? (
         <div className="mt-3 flex flex-col gap-2 border-t border-line-soft pt-3">
           <p className="font-normal text-ink-muted">
-            예: &ldquo;민수는 빼고&rdquo;, &ldquo;지영이랑 나만&rdquo;
+            예: &ldquo;저는 술 안 마셨어요&rdquo;, &ldquo;민수는 빼고&rdquo;
           </p>
 
           {loadingList ? (
@@ -329,7 +321,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                 <textarea
                   id={textFieldId}
                   className="min-h-[88px] w-full resize-y rounded-lg border border-line bg-surface-white px-3 py-2 text-sm font-normal"
-                  placeholder="예: 민수는 빼고 나눠 주세요"
+                  placeholder="저는 술 안 마셨어요"
                   value={text}
                   maxLength={SPLIT_PATCH_TEXT_MAX}
                   disabled={Boolean(busy) || Boolean(historyId)}
@@ -347,10 +339,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                 <button
                   type="button"
                   disabled={
-                    Boolean(busy) ||
-                    !expenseId ||
-                    !text.trim() ||
-                    Boolean(historyId)
+                    Boolean(busy) || !text.trim() || Boolean(historyId)
                   }
                   className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-brand px-3 text-xs font-bold text-white disabled:opacity-40"
                   onClick={() => void runPreview()}
@@ -397,43 +386,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
           ) : null}
 
           {preview ? (
-            <div className="rounded-lg bg-surface-white p-3 ring-1 ring-line">
-              <p className="font-bold text-ink-heading">
-                {preview.label || "지출"}
-                {preview.kind
-                  ? ` · ${KIND_LABEL[preview.kind] ?? preview.kind}`
-                  : ""}
-              </p>
-              {typeof preview.krwAmount === "number" ? (
-                <p className="mt-1 text-ink-muted">
-                  합계 {formatKRW(preview.krwAmount)} · 적용 전에 확인해 주세요
-                </p>
-              ) : (
-                <p className="mt-1 text-ink-muted">적용 전에 확인해 주세요</p>
-              )}
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <div>
-                  <p className="font-semibold text-ink-muted">지금</p>
-                  <ul className="mt-1 space-y-0.5">
-                    {preview.before.map((r) => (
-                      <li key={`b-${r.memberId}`}>
-                        {r.name} <span>{formatKRW(r.krw)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="font-semibold text-brand">바꾼 뒤</p>
-                  <ul className="mt-1 space-y-0.5">
-                    {preview.after.map((r) => (
-                      <li key={`a-${r.memberId}`}>
-                        {r.name} <span>{formatKRW(r.krw)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
+            <SplitPreviewSheet preview={preview} showActions={false} />
           ) : null}
 
           {doneMsg ? (

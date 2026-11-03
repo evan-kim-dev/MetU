@@ -11,7 +11,7 @@ import {
   MULTIPART_OVERHEAD_BYTES,
   receiptMaxImageBytes,
 } from "@/lib/ledger/image-limits";
-import { guardApi } from "@/lib/security/guard";
+import { guardApi, rejectAnonymousWrite } from "@/lib/security/guard";
 
 export const maxDuration = 60;
 
@@ -26,6 +26,8 @@ export async function POST(request: Request) {
   if (guard.identity.kind !== "user") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const anon = rejectAnonymousWrite(guard.identity);
+  if (anon) return anon;
 
   const declared = Number(request.headers.get("content-length") ?? "NaN");
   const maxBytes = receiptMaxImageBytes();

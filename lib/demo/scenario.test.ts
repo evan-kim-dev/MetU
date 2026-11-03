@@ -5,7 +5,10 @@ import { tripWindowBounds } from "@/lib/onboarding/trip-window";
 
 import {
   buildDemoScenario,
+  buildMinglingScenario,
   demoTripDates,
+  MINGLING_COMPANION_NAMES,
+  MINGLING_TRIP_MEMO_TAG,
   stampSmsDate,
 } from "./scenario";
 
@@ -51,6 +54,24 @@ describe("demo scenario", () => {
       } else {
         expect(parsed.kind).toBe("approval");
       }
+    }
+  });
+
+  it("mingling scenario has 2 approval steps and claimable companion slots", () => {
+    const now = new Date("2026-10-31T12:00:00+09:00");
+    const dates = demoTripDates(now);
+    const scenario = buildMinglingScenario(now);
+    expect(scenario).toHaveLength(2);
+    expect(MINGLING_TRIP_MEMO_TAG).toBe("[metu-demo:mingling]");
+    expect([...MINGLING_COMPANION_NAMES]).toEqual(["민수", "지아"]);
+    for (const step of scenario) {
+      const parsed = parseCardSms(step.text, {
+        today: dates.today,
+        tripStart: dates.startDate,
+        tripEnd: dates.endDate,
+      });
+      expect(parsed.ok).toBe(true);
+      expect(parsed.kind).toBe("approval");
     }
   });
 });

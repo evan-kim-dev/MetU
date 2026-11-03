@@ -27,10 +27,20 @@ const SPLIT_PATCH_SYSTEM = [
   "- only: 이번 지출을 나눌 멤버만 (예: 'A랑 B만')",
   "- weights: 비율 (예: 'A는 두 배' → A 의 weight 2, 말하지 않은 사람은 서버가 1 로 봐요)",
   "- itemExclusions: 특정 품목에서 빠지는 멤버 (예: 'A는 맥주 빼고' → [품목] 번호의 itemIndex)",
+  "1인칭(저는·나는·내 몫·제가·나)은 반드시 [요청자]의 memberId 로 해석하세요.",
+  "술·맥주·주류·와인·소주처럼 범주 표현은 [품목] 이름에 들어 있는 항목의 itemIndex 로 itemExclusions 를 만드세요.",
+  "범주에 맞는 품목이 없으면 네 배열을 비우고 clarification 에 '대상 품목을 찾지 못했어요. 지출 전체에서 빠질까요?'처럼 되물으세요.",
   "memberId 는 [멤버] 목록의 id 를 그대로 쓰세요. 이름이 목록에 없거나 모호하거나 한 가지 patch 로 표현할 수 없으면,",
   "네 배열을 모두 비우고 clarification 에 한국어 해요체로 짧게 되물으세요. 그 밖에는 clarification 을 null 로 두세요.",
   "expenseId 는 입력의 값을 그대로 쓰세요. JSON만 출력하세요.",
 ].join("\n");
+
+export type SplitContextMember = {
+  id: string;
+  displayName: string;
+  userId: string | null;
+  isOwner: boolean;
+};
 
 export type SplitContext = {
   tripId: string;
@@ -39,7 +49,7 @@ export type SplitContext = {
   splitType: string;
   expense: SplitPatchExpense;
   itemNames: string[];
-  members: Array<{ id: string; displayName: string }>;
+  members: SplitContextMember[];
 };
 
 export type LoadSplitContextResult =
@@ -88,7 +98,7 @@ export async function loadSplitContext(
       .eq("expense_id", expenseId),
     supabase
       .from(TABLES.tripMembers)
-      .select("id, display_name")
+      .select("id, display_name, user_id, is_owner, role")
       .eq("trip_id", tripId),
   ]);
   if (sharesRes.error || membersRes.error) {
@@ -103,10 +113,18 @@ export async function loadSplitContext(
   for (const s of sharesRes.data ?? []) {
     shares[String(s.member_id)] = Number(s.share_krw);
   }
-  const members = (membersRes.data ?? []).map((m) => ({
-    id: String(m.id),
-    displayName: String(m.display_name),
-  }));
+  const members = (membersRes.data ?? []).map((m) => {
+    const role = String((m as { role?: string }).role ?? "");
+    const isOwner =
+      role === "owner" || Boolean((m as { is_owner?: boolean }).is_owner);
+    const uid = (m as { user_id?: string | null }).user_id;
+    return {
+      id: String(m.id),
+      displayName: String(m.display_name),
+      userId: uid ? String(uid) : null,
+      isOwner,
+    };
+  });
 
   const krwAmount = Number(row.krw_amount);
   const items = parseItems(row.items);
@@ -129,12 +147,51 @@ export async function loadSplitContext(
   };
 }
 
+export function findRequesterMember(
+  members: readonly SplitContextMember[],
+  userId: string
+): SplitContextMember | null {
+  return members.find((m) => m.userId === userId) ?? null;
+}
+
+/**
+ * trip 의 최근 지출(voided 제외). 원화 확정(정수 krw)을 우선하고 created_at 내림차순.
+ */
+export async function resolveLatestExpenseId(
+  supabase: SupabaseClient,
+  tripId: string
+): Promise<{ ok: true; expenseId: string } | { ok: false; error: "not-found" | "load-failed" }> {
+  const { data, error } = await supabase
+    .from(TABLES.tripExpenses)
+    .select("id, krw_amount, status, created_at")
+    .eq("trip_id", tripId)
+    .neq("status", "voided")
+    .order("created_at", { ascending: false })
+    .limit(40);
+  if (error) {
+    console.error("[split-patch] latest expense", error.message);
+    return { ok: false, error: "load-failed" };
+  }
+  const rows = data ?? [];
+  if (rows.length === 0) return { ok: false, error: "not-found" };
+  const preferred = rows.find((r) => {
+    const n = Number(r.krw_amount);
+    return Number.isInteger(n) && n > 0;
+  });
+  const pick = preferred ?? rows[0];
+  if (!pick) return { ok: false, error: "not-found" };
+  return { ok: true, expenseId: String(pick.id) };
+}
+
 export function buildSplitPatchInput(args: {
   text: string;
   ctx: SplitContext;
+  requesterMemberId: string;
 }): string {
-  const { ctx } = args;
+  const { ctx, requesterMemberId } = args;
   const names = new Map(ctx.members.map((m) => [m.id, m.displayName]));
+  const requester =
+    ctx.members.find((m) => m.id === requesterMemberId) ?? null;
   const participants = currentParticipants(
     ctx.expense.shares,
     ctx.members.map((m) => m.id)
@@ -149,6 +206,7 @@ export function buildSplitPatchInput(args: {
 
   return [
     `expenseId=${ctx.expense.id}`,
+    `[요청자] id=${requesterMemberId} 이름=${requester?.displayName ?? ""}`,
     "[멤버]",
     ...ctx.members.map((m) => `id=${m.id} 이름=${m.displayName}`),
     `[지출] ${ctx.label}`,
@@ -166,11 +224,16 @@ export async function interpretSplitPatch(args: {
   text: string;
   ctx: SplitContext;
   userId: string;
+  requesterMemberId: string;
 }): Promise<GeminiResult<SplitPatch>> {
   return geminiStructured({
     model: "fast",
     system: SPLIT_PATCH_SYSTEM,
-    input: buildSplitPatchInput({ text: args.text, ctx: args.ctx }),
+    input: buildSplitPatchInput({
+      text: args.text,
+      ctx: args.ctx,
+      requesterMemberId: args.requesterMemberId,
+    }),
     schema: SplitPatchSchema,
     purpose: SPLIT_PATCH_PURPOSE,
     userId: args.userId,

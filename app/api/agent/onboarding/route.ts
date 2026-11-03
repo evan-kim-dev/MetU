@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { readJsonLimited } from "@/lib/agent/body-limit";
 import { apiInternalError } from "@/lib/api/respond";
-import { guardApi } from "@/lib/security/guard";
+import { guardApi, rejectAnonymousWrite } from "@/lib/security/guard";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export const maxDuration = 30;
@@ -23,6 +23,8 @@ export async function POST(request: Request) {
   if (guard.identity.kind !== "user") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const anon = rejectAnonymousWrite(guard.identity);
+  if (anon) return anon;
 
   const limited = await readJsonLimited(request, 4_096);
   if (!limited.ok) return limited.response;

@@ -51,8 +51,9 @@ export function CommunityListPage({
   showPostList = true,
 }: CommunityListPageProps) {
   const router = useRouter();
-  const { user, provider, isReady: isAuthReady } = useAuth();
+  const { user, provider, isReady: isAuthReady, isAnonymous } = useAuth();
   const { friends, isReady: friendsReady } = useFriends();
+  const canWritePost = !isAnonymous && provider !== "guest";
   const gated =
     isAuthReady && requiresCommunityLogin(user, provider);
   const {
@@ -107,7 +108,7 @@ export function CommunityListPage({
             <h1 className="text-heading font-bold tracking-tight text-ink-heading">
               {postManageMode ? "게시글 관리" : heading}
             </h1>
-            {showPostList && !gated ? (
+            {showPostList && !gated && canWritePost ? (
               postManageMode ? (
                 <button
                   type="button"
@@ -535,7 +536,7 @@ export function CommunityListPage({
         listBody
       )}
 
-      {showPostList && !gated && !postManageMode ? (
+      {showPostList && !gated && !postManageMode && canWritePost ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.75rem+env(safe-area-inset-bottom))] z-30 flex justify-center">
           <div className="pointer-events-none w-full max-w-mobile px-5">
             <div className="pointer-events-none flex justify-end">
@@ -553,7 +554,7 @@ export function CommunityListPage({
         </div>
       ) : null}
 
-      {!gated ? (
+      {!gated && canWritePost ? (
         <WritePostSheet
           open={writeOpen}
           initialCategory={writeCategory}

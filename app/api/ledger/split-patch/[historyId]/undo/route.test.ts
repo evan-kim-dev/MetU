@@ -7,6 +7,10 @@ const rpc = vi.fn();
 
 vi.mock("@/lib/security/guard", () => ({
   guardApi: (...a: unknown[]) => guardApi(...a),
+  rejectAnonymousWrite: (identity: { kind?: string; isAnonymous?: boolean }) =>
+    identity.kind === "user" && identity.isAnonymous === true
+      ? Response.json({ error: "guest-readonly" }, { status: 403 })
+      : null,
 }));
 vi.mock("@/lib/agent/admin", () => ({
   getAgentAdmin: () => ({ rpc }),
