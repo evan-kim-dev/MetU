@@ -58,6 +58,20 @@ vi.mock("@/components/trips/ledger/TripInvitePanel", () => ({
 vi.mock("@/components/ui/OfflineBanner", () => ({
   OfflineBanner: () => null,
 }));
+vi.mock("@/components/ledger/SplitBatchBox", () => ({
+  SplitBatchBox: () => <div>한 줄 분담</div>,
+}));
+vi.mock("@/components/ledger/GuestExpenseSlot", () => ({
+  GuestExpenseSlot: () => <div>내가 냈어요 슬롯</div>,
+}));
+vi.mock("@/components/ledger/ExpenseChipSplit", () => ({
+  ExpenseChipSplit: ({ expense }: { expense: { merchant: string } }) => (
+    <li>칩 {expense.merchant}</li>
+  ),
+}));
+vi.mock("@/components/ledger/MyShareCard", () => ({
+  MyShareCard: () => <div>내 몫 카드</div>,
+}));
 
 import { TripJourney } from "./TripJourney";
 
@@ -141,5 +155,59 @@ describe("TripJourney", () => {
       )
     );
     expect(await screen.findByText("영수증 촬영하기")).toBeTruthy();
+  });
+
+  describe("게스트(익명)", () => {
+    beforeEach(() => {
+      useAuth.mockReturnValue({
+        user: { id: "u2", is_anonymous: true, user_metadata: {} },
+        provider: "supabase",
+        isReady: true,
+        isLoggedIn: true,
+      });
+    });
+
+    it("?step=adjust 에 머물고 조정 도구를 보여 줘요", async () => {
+      search = "step=adjust";
+      render(<TripJourney tripId="t1" />);
+      expect(await screen.findByText("한 줄로 내 몫 바꾸기")).toBeTruthy();
+      expect(screen.getByText("한 줄 분담")).toBeTruthy();
+      expect(screen.getByText("내가 냈어요 슬롯")).toBeTruthy();
+      expect(await screen.findByText("칩 카페")).toBeTruthy();
+      expect(replace).not.toHaveBeenCalled();
+    });
+
+    it("?step=pay 에도 머물러요", async () => {
+      search = "step=pay";
+      render(<TripJourney tripId="t1" />);
+      await screen.findByRole("navigation", { name: "정산 단계" });
+      await waitFor(() => expect(listMembers).toHaveBeenCalled());
+      expect(replace).not.toHaveBeenCalled();
+    });
+
+    it("호스트 전용 단계(?step=record)는 게스트 기본 단계로 바꿔요", async () => {
+      search = "step=record";
+      render(<TripJourney tripId="t1" />);
+      await waitFor(() =>
+        expect(replace).toHaveBeenCalledWith(
+          expect.stringContaining("step=share"),
+          { scroll: false }
+        )
+      );
+    });
+
+    it("게스트 칸 탭은 게스트 키만 push 해요", async () => {
+      search = "step=share";
+      render(<TripJourney tripId="t1" />);
+      const nav = await screen.findByRole("navigation", { name: "정산 단계" });
+      const adjustBtn = Array.from(nav.querySelectorAll("button")).find((b) =>
+        (b.getAttribute("aria-label") ?? "").startsWith("조정")
+      );
+      fireEvent.click(adjustBtn!);
+      expect(push).toHaveBeenCalledWith(
+        expect.stringContaining("step=adjust"),
+        { scroll: false }
+      );
+    });
   });
 });
