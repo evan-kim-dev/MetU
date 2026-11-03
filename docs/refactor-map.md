@@ -19,8 +19,8 @@
 | U1 | `feat/ux-step-connect-invite` | 완료(PR #78) | #78 | ConnectStep · InviteStep · useTripInvite |
 | U2 | `feat/ux-step-record` | 완료(PR #79) | #79 | RecordStep · AddExpenseSheet · ?add= 시트 |
 | U3 | `feat/ux-step-adjust` | 완료(PR #80) | #80 | AdjustStep |
-| U4 | `feat/ux-step-settle` | 진행 |  | SettleStep 추출 · SplitPatchBox→분담 링크 |
-| U5 | `feat/ux-step-pay` | 대기 |  |  |
+| U4 | `feat/ux-step-settle` | 완료(PR #81) | #81 | SettleStep · CurrencyTotals · FeeLeakCard |
+| U5 | `feat/ux-step-pay` | 진행 |  | PayStep 추출 |
 | U6 | `feat/ux-guest-journey-complete` | 대기 |  |  |
 | U7 | `feat/ux-entry-points` | 대기 |  |  |
 | U8 | `feat/ux-onboarding-steps` | 대기 |  |  |
@@ -82,7 +82,7 @@
 | `app/trips/[id]/ledger/page.tsx` | U1~U5·U10 · D3 | 대기 |
 | `app/trips/[id]/ledger/recap/page.tsx` | F1 · D3 | 대기 |
 | `app/trips/[id]/ledger/report/page.tsx` | F1 · D3 | 대기 |
-| `app/trips/[id]/ledger/settle/page.tsx` | U4 · D3 | U4 진행(얇은 래퍼) |
+| `app/trips/[id]/ledger/settle/page.tsx` | U4 · U5 · D3 | SettleStep+PayStep 조합 |
 | `app/trips/[id]/ledger/wallet/page.tsx` | F1 · D3 | 대기 |
 | `app/trips/[id]/page.tsx` | U9 · D4 | 대기 |
 | `app/trips/page.tsx` | U9 · D4 | 대기 |
@@ -1042,3 +1042,13 @@
 **다음 세션(U5) 인계**
 - 송금 목록·페이앱·완료 표시를 `PayStep` 으로 추출. settle 의 송금 UI 이전. `?step=pay` 링크 카드 교체.
 - SettleStep 줄 수·소부품(`components/ledger/settle/*`) 추가 분해는 O7 과 조율.
+
+### 2026-11-04 (KST) · U5 · `feat/ux-step-pay`
+
+**한 일**
+- `PayStep`: ProgressRing · 송금 목록(앱·완료) · 공유 · 이전 정산(journey=시트 / page=인라인) · CTA 「정산 현황 공유하기」/「리캡 보기」.
+- `SettleStep` 에서 송금 UI 제거. `?step=pay` → PayStep. settle URL 은 SettleStep+PayStep 조합(참고 환율 상태 공유).
+- GuestPay 딥링크를 `?step=pay` 로.
+
+**다음 세션(U6) 인계**
+- 게스트 여정 완성(GuestShare/Adjust/Pay/Done 감사·보강).

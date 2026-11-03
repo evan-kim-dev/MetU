@@ -139,7 +139,8 @@ describe("LedgerSettlePage", () => {
     expect(screen.getByText(/자동으로 만든 정산 제안/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "정산 다시 계산하기" })).toBeTruthy();
     expect(screen.queryByText(/정산 후 지출이 바뀌었어요/)).toBeNull();
-    expect(fetchLatestSettlement).toHaveBeenCalledTimes(1);
+    // SettleStep + PayStep 이 각각 최신 정산을 읽어요.
+    expect(fetchLatestSettlement).toHaveBeenCalledTimes(2);
   });
 
   it("highlights own row and shows signed balances", async () => {

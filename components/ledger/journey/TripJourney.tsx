@@ -43,9 +43,9 @@ const HOST_CTA: Record<
   invite: { label: "다음: 지출 기록", next: "record" },
   record: { label: "다음: 분담 조정", next: "adjust" },
   adjust: { label: "다음: 정산하기", next: "settle" },
-  // settle 은 SettleStep 이 BottomCTA 소유. pay 는 U5 전까지 정산 URL 로.
+  // settle·pay 는 각 Step 이 BottomCTA 소유.
   settle: { label: "정산 계산하기", href: "settle" },
-  pay: { label: "정산 화면 열기", href: "settle" },
+  pay: { label: "정산 현황 공유하기", next: undefined },
 };
 
 export function TripJourney({ tripId }: Props) {
@@ -220,8 +220,13 @@ export function TripJourney({ tripId }: Props) {
 
   const cta = (() => {
     if (!hostStep) return null;
-    // 기록·분담·정산 단계는 각 Step 이 BottomCTA 를 직접 그려요.
-    if (hostStep === "record" || hostStep === "adjust" || hostStep === "settle")
+    // 기록·분담·정산·송금 단계는 각 Step 이 BottomCTA 를 직접 그려요.
+    if (
+      hostStep === "record" ||
+      hostStep === "adjust" ||
+      hostStep === "settle" ||
+      hostStep === "pay"
+    )
       return null;
     if (hostStep === "connect" && automationState === "connected") {
       return { label: "다음: 멤버 초대", next: "invite" as HostStepKey };

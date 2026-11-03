@@ -170,6 +170,15 @@ describe("TripJourney", () => {
     ).toHaveLength(1);
   });
 
+  it("?step=pay 는 PayStep 을 보여 주고 TripJourney CTA 는 없어요", async () => {
+    search = "step=pay";
+    render(<TripJourney tripId="t1" />);
+    expect(
+      await screen.findByText("먼저 정산을 계산해요")
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "정산 화면 열기" })).toBeNull();
+  });
+
   it("칸 탭 시 step 쿼리를 push해요", async () => {
     search = "step=settle";
     render(<TripJourney tripId="t1" />);
