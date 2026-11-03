@@ -32,6 +32,9 @@ export default function LedgerReportPage() {
           <Link href={`/trips/${tripId}/ledger`} className="text-brand">
             가계부
           </Link>
+          <Link href={`/trips/${tripId}/ledger/recap`} className="text-brand">
+            리캡 카드
+          </Link>
           <button
             type="button"
             className="text-ink-body"
