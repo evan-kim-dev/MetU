@@ -47,15 +47,15 @@ if (!dbPassword) {
   process.exit(1);
 }
 
-const dbHost = env.DB_HOST || "aws-1-ap-northeast-2.pooler.supabase.com";
+const dbHost = env.DB_HOST || "aws-0-ap-northeast-2.pooler.supabase.com";
 const dbPort = env.DB_PORT || "5432";
 const dbName = env.DB_NAME || "postgres";
 const dbUser = env.DB_USER || `postgres.${PROJECT_REF}`;
 
 const connectionUrls = [
   `postgresql://${dbUser}:${encodeURIComponent(dbPassword)}@${dbHost}:${dbPort}/${dbName}`,
-  `postgresql://postgres.${PROJECT_REF}:${encodeURIComponent(dbPassword)}@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres`,
   `postgresql://postgres.${PROJECT_REF}:${encodeURIComponent(dbPassword)}@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres`,
+  `postgresql://postgres.${PROJECT_REF}:${encodeURIComponent(dbPassword)}@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres`,
   `postgresql://postgres.${PROJECT_REF}:${encodeURIComponent(dbPassword)}@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres`,
 ];
 
@@ -64,22 +64,26 @@ const files = readdirSync(migrationsDir)
   .sort();
 
 async function connect() {
-  let lastError;
+  /** @type {Error[]} */
+  const errors = [];
   for (const url of connectionUrls) {
     const client = new pg.Client({
       connectionString: url,
       ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10_000,
     });
     try {
       await client.connect();
-      console.log(`Connected via ${url.replace(dbPassword, "***")}`);
+      const host = new URL(url).host;
+      console.log(`Connected via ${host} as ${dbUser}`);
       return client;
     } catch (error) {
-      lastError = error;
+      errors.push(error instanceof Error ? error : new Error(String(error)));
       await client.end().catch(() => undefined);
     }
   }
-  throw lastError;
+  const auth = errors.find((e) => /password authentication failed/i.test(e.message));
+  throw auth ?? errors[errors.length - 1] ?? new Error("db-connect-failed");
 }
 
 async function main() {
