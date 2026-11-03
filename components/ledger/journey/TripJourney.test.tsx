@@ -157,6 +157,22 @@ describe("TripJourney", () => {
     expect(await screen.findByText("영수증 촬영하기")).toBeTruthy();
   });
 
+  it("?step=connect 딥링크는 연결 단계 화면을 보여 줘요", async () => {
+    search = "step=connect";
+    render(<TripJourney tripId="t1" />);
+    expect(await screen.findByRole("heading", { name: "자동 수집이 켜져 있어요" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "다음: 멤버 초대" })).toBeTruthy();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("?step=invite 딥링크는 초대 단계 화면(참여 현황)을 보여 줘요", async () => {
+    search = "step=invite";
+    render(<TripJourney tripId="t1" />);
+    expect(await screen.findByRole("heading", { name: "참여한 사람" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "동행자를 초대해요" })).toBeTruthy();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   describe("게스트(익명)", () => {
     beforeEach(() => {
       useAuth.mockReturnValue({
