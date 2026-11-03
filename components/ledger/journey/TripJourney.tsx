@@ -23,6 +23,7 @@ import {
   type JourneySettlement,
   type JourneyStepKey,
 } from "@/lib/ledger/journey-state";
+import { computeBalances } from "@/lib/ledger/settle";
 import {
   fetchLatestSettlement,
   listExpenses,
@@ -60,6 +61,7 @@ export function TripJourney({ tripId }: Props) {
   const [expenseCount, setExpenseCount] = useState(0);
   const [pendingReviewCount, setPendingReviewCount] = useState(0);
   const [settlement, setSettlement] = useState<JourneySettlement | null>(null);
+  const [settlementStale, setSettlementStale] = useState(false);
   const [myShareKrw, setMyShareKrw] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
@@ -88,6 +90,20 @@ export function TripJourney({ tripId }: Props) {
       setExpenseCount(expenses.length);
       setPendingReviewCount(pendingRes.count ?? 0);
       const me = members.find((m) => m.userId === user.id);
+      const liveBalances = computeBalances(
+        members.map((m) => m.id),
+        expenses.map((e) => ({
+          id: e.id,
+          paidBy: e.paidBy,
+          krwAmount: e.krwAmount,
+          shares: e.shares ?? {},
+        }))
+      );
+      if (me) {
+        setMyShareKrw(liveBalances[me.id] ?? 0);
+      } else {
+        setMyShareKrw(null);
+      }
       if (latest.ok && latest.settlement) {
         const s = latest.settlement;
         const transfersTotal = s.transfers.length;
@@ -99,20 +115,10 @@ export function TripJourney({ tripId }: Props) {
           transfersTotal,
           transfersPaid,
         });
-        if (me) {
-          const mineOut = s.transfers
-            .filter((t) => t.from === me.id)
-            .reduce((sum, t) => sum + t.krw, 0);
-          const mineIn = s.transfers
-            .filter((t) => t.to === me.id)
-            .reduce((sum, t) => sum + t.krw, 0);
-          setMyShareKrw(mineIn - mineOut);
-        } else {
-          setMyShareKrw(null);
-        }
+        setSettlementStale(s.status === "stale");
       } else {
         setSettlement(null);
-        setMyShareKrw(null);
+        setSettlementStale(false);
       }
       setReady(true);
     })();
@@ -259,6 +265,7 @@ export function TripJourney({ tripId }: Props) {
           tripId={tripId}
           myShareKrw={myShareKrw}
           settlementReady={Boolean(settlement)}
+          stale={settlementStale}
           onGoPay={() => goStep("pay")}
           onGoAdjust={() => goStep("adjust")}
           onRefresh={() => setReloadTick((n) => n + 1)}
