@@ -465,6 +465,18 @@ export function LedgerShell({
             >
               리포트
             </Link>
+            <Link
+              href={`/trips/${tripId}/ledger/wallet`}
+              className="text-sm font-bold text-brand"
+            >
+              면세 지갑
+            </Link>
+            <Link
+              href={`/trips/${tripId}/ledger/recap`}
+              className="text-sm font-bold text-brand"
+            >
+              리캡
+            </Link>
           </div>
         </Sheet>
       ) : null}
