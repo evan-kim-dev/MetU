@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useAutomationStatus } from "@/lib/hooks/useAutomationStatus";
 import {
   deriveJourney,
+  isGuestStepKey,
   isHostStepKey,
   resolveStepParam,
   type GuestStepKey,
@@ -29,6 +30,7 @@ import {
   listExpenses,
   listMembers,
 } from "@/lib/ledger/supabase";
+import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 type Props = { tripId: string };
@@ -59,6 +61,8 @@ export function TripJourney({ tripId }: Props) {
 
   const [memberCount, setMemberCount] = useState(1);
   const [expenseCount, setExpenseCount] = useState(0);
+  const [memberRows, setMemberRows] = useState<TripMember[]>([]);
+  const [expenseRows, setExpenseRows] = useState<LedgerExpenseRow[]>([]);
   const [pendingReviewCount, setPendingReviewCount] = useState(0);
   const [settlement, setSettlement] = useState<JourneySettlement | null>(null);
   const [settlementStale, setSettlementStale] = useState(false);
@@ -88,6 +92,8 @@ export function TripJourney({ tripId }: Props) {
       if (cancelled) return;
       setMemberCount(Math.max(1, members.length));
       setExpenseCount(expenses.length);
+      setMemberRows(members);
+      setExpenseRows(expenses);
       setPendingReviewCount(pendingRes.count ?? 0);
       const me = members.find((m) => m.userId === user.id);
       const liveBalances = computeBalances(
@@ -167,7 +173,7 @@ export function TripJourney({ tripId }: Props) {
 
   useEffect(() => {
     if (!ready) return;
-    if (role === "guest" && rawStep && isHostStepKey(rawStep)) {
+    if (role === "guest" && rawStep && !isGuestStepKey(rawStep)) {
       const q = new URLSearchParams(searchParams.toString());
       q.set("step", String(journey.defaultStep));
       router.replace(`?${q.toString()}`, { scroll: false });
@@ -197,12 +203,7 @@ export function TripJourney({ tripId }: Props) {
   const goStep = useCallback(
     (key: string) => {
       if (role === "host" && !isHostStepKey(key)) return;
-      if (
-        role === "guest" &&
-        !["share", "adjust", "pay", "done"].includes(key)
-      ) {
-        return;
-      }
+      if (role === "guest" && !isGuestStepKey(key)) return;
       const q = new URLSearchParams(searchParams.toString());
       q.set("step", key);
       q.delete("add");
@@ -211,12 +212,10 @@ export function TripJourney({ tripId }: Props) {
     [router, searchParams, role]
   );
 
-  const hostStep = isHostStepKey(currentStep) ? currentStep : null;
-  const guestStep = (
-    ["share", "adjust", "pay", "done"] as GuestStepKey[]
-  ).includes(currentStep as GuestStepKey)
-    ? (currentStep as GuestStepKey)
-    : null;
+  const hostStep =
+    role === "host" && isHostStepKey(currentStep) ? currentStep : null;
+  const guestStep: GuestStepKey | null =
+    role === "guest" && isGuestStepKey(currentStep) ? currentStep : null;
 
   const cta = (() => {
     if (!hostStep) return null;
@@ -272,9 +271,16 @@ export function TripJourney({ tripId }: Props) {
         />
       );
     } else if (guestStep === "adjust") {
-      body = (
-        <GuestAdjust tripId={tripId} onBack={() => goStep("share")} />
-      );
+      body = user ? (
+        <GuestAdjust
+          tripId={tripId}
+          userId={user.id}
+          members={memberRows}
+          expenses={expenseRows}
+          onChanged={() => setReloadTick((n) => n + 1)}
+          onBack={() => goStep("share")}
+        />
+      ) : null;
     } else if (guestStep === "pay") {
       body = (
         <GuestPay

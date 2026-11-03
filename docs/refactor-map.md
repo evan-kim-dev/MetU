@@ -10,8 +10,9 @@
 | 세션 | 브랜치 | 상태 | PR | 메모 |
 |---|---|---|---|---|
 | C0 | `chore/claude-code-setup` | 완료(PR #71) | #71 | CLAUDE.md · .claude/settings.json · 이 파일 |
-| V0a | ix/guest-journey-blockers | 대기 |  | V0 차단 X2·X3 + I1 (끼워 넣은 세션) |
-| V0b | ix/guest-claim-trigger | 대기 |  | V0 차단 X1 — 새 마이그레이션만, DB 적용은 Evan |
+| V0 | `chore/baseline-audit` | 완료(PR #72) | #72 | docs/audit/baseline-2026-11.md · 차단 3건 |
+| V0a | `fix/guest-journey-blockers` | 완료(PR #73) | #73 | V0 차단 X2·X3 + I1 해결 |
+| V0b | `fix/guest-claim-trigger` | 대기 |  | V0 차단 X1 — 새 마이그레이션만, DB 적용은 Evan |
 | B1 | `chore/dead-code-symbols` | 대기 |  |  |
 | B2 | `chore/dead-routes-env-docs` | 대기 |  |  |
 | B3 | `docs/db-orphans-report` | 대기 |  |  |
@@ -164,7 +165,7 @@
 | `app/api/ledger/parse/route.ts` | U2 | 대기 |
 | `app/api/ledger/receipt-url/route.ts` | F1 (확인 필요: 호출처 0, 삭제 금지) | 대기 |
 | `app/api/ledger/receipt/route.ts` | U2 | 대기 |
-| `app/api/ledger/split-patch/[historyId]/undo/route.ts` | U3 | 검증(V0, 2026-11-03, PR #72) |
+| `app/api/ledger/split-patch/[historyId]/undo/route.ts` | U3 | 검증(V0, 2026-11-03, PR #72) · 수정(V0a, 2026-11-03, PR #73) |
 | `app/api/ledger/split-patch/apply/route.ts` | U3 | 검증(V0, 2026-11-03, PR #72) |
 | `app/api/ledger/split-patch/batch/route.ts` | U3 | 검증(V0, 2026-11-03, PR #72) |
 | `app/api/ledger/split-patch/route.ts` | U3 | 검증(V0, 2026-11-03, PR #72) |
@@ -287,8 +288,8 @@
 | `components/ledger/SplitPatchBox.tsx` | U3 | 대기 |
 | `components/ledger/SplitPreviewSheet.tsx` | U3 | 대기 |
 | `components/ledger/VoiceInputButton.tsx` | U2 | 대기 |
-| `components/ledger/journey/TripJourney.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
-| `components/ledger/journey/guest/GuestAdjust.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ledger/journey/TripJourney.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) · 수정(V0a, 2026-11-03, PR #73) |
+| `components/ledger/journey/guest/GuestAdjust.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) · 수정(V0a, 2026-11-03, PR #73) |
 | `components/ledger/journey/guest/GuestDone.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ledger/journey/guest/GuestPay.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ledger/journey/guest/GuestShare.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
@@ -527,7 +528,7 @@
 | `lib/ledger/fx.ts` | U1~U6 | 대기 |
 | `lib/ledger/image-limits.ts` | U1~U6 | 대기 |
 | `lib/ledger/image.ts` | U1~U6 | 대기 |
-| `lib/ledger/journey-state.ts` | U1~U6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/ledger/journey-state.ts` | U1~U6 | 검증(V0, 2026-11-03, PR #72) · 수정(V0a, 2026-11-03, PR #73) |
 | `lib/ledger/jp-tax-refund.ts` | U1~U6 | 대기 |
 | `lib/ledger/money.ts` | U1~U6 | 대기 |
 | `lib/ledger/my-share.ts` | U1~U6 | 대기 |
@@ -854,3 +855,21 @@
 - 디자인 위반 수(기본 팔레트 182 · 레거시 2,679 · ai-gradient/glow 30 · `[#hex]` 7 · 10px 이하 39)는 D0 래칫 기준이에요.
 - ds 중 Button·ExpenseRow·MemberChip·Skeleton·StepHeader·useToast 는 앱 사용처 0 → B1 은 **지우지 말 것**(런북 B-2).
 - `TripSwitcherSheet` 는 여전히 테스트에서만 사용(U7 결정).
+
+### 2026-11-03 (KST) · V0a · `fix/guest-journey-blockers` · PR #73
+
+**한 일** (V0 차단 X2·X3 + 중요 I1)
+- `lib/ledger/journey-state.ts`: `isGuestStepKey` 추가.
+- `TripJourney.tsx`: 게스트 step 검증을 `isGuestStepKey` 로(호스트 키와 겹치는 adjust·pay 가 되돌려지던 문제), `goStep`·본문 분기도 역할별 판정. 멤버·지출 행을 state 로 들고 게스트 조정 화면에 넘김.
+- `GuestAdjust.tsx`: 안내 화면 → 실제 도구(한 줄 분담 `SplitBatchBox` · 「내가 냈어요」 `GuestExpenseSlot` · 지출별 칩 `ExpenseChipSplit` 본인만). 멤버가 아니면 EmptyState.
+- 분담 되돌리기 라우트: 익명은 history `actor` 가 본인일 때만, 아니면 422 `guest-self-only`.
+
+**명령 결과**
+- typecheck 통과 · lint 통과 · `npm test` 184 파일 / 1328 tests (+13) · build 통과(`/trips/[id]/ledger` 254→255 kB)
+
+**남은 일 / 확인 필요**
+- Evan: 게스트 실기기로 내 몫 → 조정 → 확정·제안 흐름 확인(PR 체크리스트).
+- 조정 화면 디자인·승인 대기 상태는 U6, 하위 컴포넌트 팔레트는 D3.
+
+**다음 세션(V0b) 인계**
+- X1 은 `trip_members_guest_guard` 트리거가 `join_trip` 의 claim(user_id null → 게스트 uid)까지 막는 문제. 새 마이그레이션으로 트리거 함수만 바꾸고, 기존 마이그레이션은 건드리지 않아요. DB 적용은 Evan.
