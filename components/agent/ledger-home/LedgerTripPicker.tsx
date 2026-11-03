@@ -11,6 +11,8 @@ type Props = {
   trips: Trip[];
   onSelect: (tripId: string) => void;
   onCreate?: () => void;
+  /** 마지막으로 본 여행 — 한 번에 이어서 들어가기 */
+  continueTrip?: Trip | null;
 };
 
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -154,7 +156,12 @@ function Section({
 }
 
 /** 가계부 탭 진입: 여행 카드로 한눈에 고르고 들어가요. */
-export function LedgerTripPicker({ trips, onSelect, onCreate }: Props) {
+export function LedgerTripPicker({
+  trips,
+  onSelect,
+  onCreate,
+  continueTrip,
+}: Props) {
   const { ongoing, upcoming, completed } = groupTripsForLedgerPicker(trips);
   const hasFeatured = ongoing.length > 0;
   const hasOthers = upcoming.length + completed.length > 0;
@@ -168,6 +175,16 @@ export function LedgerTripPicker({ trips, onSelect, onCreate }: Props) {
         <p className="text-xs text-ink-caption">
           이전 여행부터 지금까지 한눈에 볼 수 있어요
         </p>
+        {continueTrip ? (
+          <button
+            type="button"
+            onClick={() => onSelect(continueTrip.id)}
+            className="mt-2 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl bg-brand/10 px-3 text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <span className="truncate">이어서 · {continueTrip.destination}</span>
+            <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+          </button>
+        ) : null}
       </header>
 
       {hasFeatured ? (

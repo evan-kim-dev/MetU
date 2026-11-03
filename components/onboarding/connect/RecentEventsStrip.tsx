@@ -23,7 +23,7 @@ export function RecentEventsStrip({
       <h3 className="text-sm font-bold text-ink-heading">최근 받은 알림</h3>
       {arrived ? (
         <p role="status" className="text-sm font-semibold text-ink-heading">
-          알림이 도착했어요 🎉
+          알림이 도착했어요
         </p>
       ) : null}
       {rows.length === 0 ? (

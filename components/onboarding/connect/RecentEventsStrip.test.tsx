@@ -34,6 +34,6 @@ describe("RecentEventsStrip", () => {
         announceArrival
       />
     );
-    expect(screen.getByText("알림이 도착했어요 🎉")).toBeTruthy();
+    expect(screen.getByText("알림이 도착했어요")).toBeTruthy();
   });
 });

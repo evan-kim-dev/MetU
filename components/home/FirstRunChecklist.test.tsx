@@ -121,7 +121,7 @@ describe("FirstRunChecklist", () => {
     });
     render(<FirstRunChecklist />);
     expect(
-      screen.getByText("준비 끝! 이제 알림이 오면 자동으로 기록돼요. 🎉")
+      screen.getByText("준비 끝! 이제 알림이 오면 자동으로 기록돼요.")
     ).toBeTruthy();
     expect(localStorage.getItem(FIRST_RUN_DONE_KEY)).toBe("1");
   });

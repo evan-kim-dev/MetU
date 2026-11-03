@@ -8,6 +8,7 @@ import {
   MessagesSquare,
   Mic,
   Receipt,
+  Scale,
   Share2,
   UserPlus,
   type LucideIcon,
@@ -67,10 +68,17 @@ function buildItems(tripId: string | null): { global: Item[]; trip: Item[] } {
     trip: [
       {
         key: "invite",
-        href: t,
+        href: `${t}?step=invite`,
         title: "동행자 초대",
         desc: "동행자를 추가하고 초대 링크를 보내요",
         icon: UserPlus,
+      },
+      {
+        key: "settle",
+        href: `${t}/settle`,
+        title: "정산",
+        desc: "서로 주고받을 금액을 계산해요",
+        icon: Scale,
       },
       {
         key: "fx",
