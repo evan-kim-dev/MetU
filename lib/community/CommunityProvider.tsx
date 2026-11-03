@@ -68,9 +68,6 @@ interface CommunityActionContextValue {
   isPartyFull: (post: CommunityPost) => boolean;
 }
 
-export type CommunityContextValue = CommunityStateContextValue &
-  CommunityActionContextValue;
-
 const CommunityStateContext = createContext<CommunityStateContextValue | null>(null);
 const CommunityActionContext = createContext<CommunityActionContextValue | null>(null);
 
@@ -628,10 +625,4 @@ export function useCommunityActions() {
     throw new Error("useCommunityActions must be used within CommunityProvider");
   }
   return actions;
-}
-
-export function useCommunity() {
-  const state = useCommunityState();
-  const actions = useCommunityActions();
-  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
 }

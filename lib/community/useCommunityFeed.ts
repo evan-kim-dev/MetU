@@ -19,7 +19,7 @@ import { isSeedCommunityPost } from "@/lib/mock/community";
 import { STORAGE_KEYS } from "@/lib/constants";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
-export function needsCommunityImmediately(pathname: string) {
+function needsCommunityImmediately(pathname: string) {
   return (
     pathname.startsWith("/board") ||
     pathname.startsWith("/opod") ||

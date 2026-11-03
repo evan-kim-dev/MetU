@@ -1,6 +1,6 @@
 import type { ExpenseCategoryOut, ReceiptOut } from "@/lib/ai/contracts";
 
-export type ReceiptLineItem = {
+type ReceiptLineItem = {
   name: string;
   nameKo: string | null;
   qty: number | null;

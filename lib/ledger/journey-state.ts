@@ -16,7 +16,7 @@ export type GuestStepKey = "share" | "adjust" | "pay" | "done";
 
 export type JourneyStepKey = HostStepKey | GuestStepKey;
 
-export type JourneyStepStatus = "done" | "current" | "todo" | "attention";
+type JourneyStepStatus = "done" | "current" | "todo" | "attention";
 
 export type JourneySettlement = {
   status: "open" | "stale" | "completed" | "superseded";
@@ -34,7 +34,7 @@ export type DeriveJourneyInput = {
   settlement: JourneySettlement | null;
 };
 
-export type JourneyStep = {
+type JourneyStep = {
   key: JourneyStepKey;
   label: string;
   status: JourneyStepStatus;
@@ -46,7 +46,7 @@ export type DeriveJourneyResult = {
   steps: JourneyStep[];
 };
 
-export const HOST_STEP_KEYS: HostStepKey[] = [
+const HOST_STEP_KEYS: HostStepKey[] = [
   "connect",
   "invite",
   "record",
@@ -55,7 +55,7 @@ export const HOST_STEP_KEYS: HostStepKey[] = [
   "pay",
 ];
 
-export const HOST_STEP_LABELS: Record<HostStepKey, string> = {
+const HOST_STEP_LABELS: Record<HostStepKey, string> = {
   connect: "연결",
   invite: "초대",
   record: "기록",
@@ -64,14 +64,14 @@ export const HOST_STEP_LABELS: Record<HostStepKey, string> = {
   pay: "송금",
 };
 
-export const GUEST_STEP_KEYS: GuestStepKey[] = [
+const GUEST_STEP_KEYS: GuestStepKey[] = [
   "share",
   "adjust",
   "pay",
   "done",
 ];
 
-export const GUEST_STEP_LABELS: Record<GuestStepKey, string> = {
+const GUEST_STEP_LABELS: Record<GuestStepKey, string> = {
   share: "내 몫",
   adjust: "조정",
   pay: "송금",

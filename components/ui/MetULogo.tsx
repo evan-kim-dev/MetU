@@ -1,4 +1,4 @@
-export type MetULogoVariant = "appbar" | "hero";
+type MetULogoVariant = "appbar" | "hero";
 
 interface MetULogoProps {
   variant?: MetULogoVariant;

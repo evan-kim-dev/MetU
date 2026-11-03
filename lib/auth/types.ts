@@ -1,5 +1,5 @@
 /** Supabase User 와 호환되는 최소 인증 사용자 */
-export interface AuthUserMetadata {
+interface AuthUserMetadata {
   name?: string;
   full_name?: string;
   nickname?: string;

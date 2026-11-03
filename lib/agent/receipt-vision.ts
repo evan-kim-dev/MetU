@@ -10,7 +10,7 @@ import {
 } from "@/lib/ledger/receipt-postprocess";
 import { redactSms } from "@/lib/ledger/sms/parse";
 
-export type ReceiptVisionError =
+type ReceiptVisionError =
   | "no_api_key"
   | "image_too_large"
   | "vision_failed"
@@ -63,7 +63,7 @@ function redactNullable(value: string | null): string | null {
 }
 
 /** 모델 출력 안의 텍스트 필드에서 민감 번호를 제거한다. 숫자 필드는 그대로. */
-export function redactReceiptOut(extract: ReceiptOut): ReceiptOut {
+function redactReceiptOut(extract: ReceiptOut): ReceiptOut {
   return {
     ...extract,
     merchant: redactNullable(extract.merchant),
@@ -92,7 +92,7 @@ export type ReceiptTripContext = {
   localCurrency?: string | null;
 };
 
-export type ReceiptExifHint = {
+type ReceiptExifHint = {
   takenAt?: string;
   lat?: number;
   lng?: number;

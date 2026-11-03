@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const CHECKLIST_DOCS_BUCKET = "checklist-docs";
+const CHECKLIST_DOCS_BUCKET = "checklist-docs";
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_LOCAL_FALLBACK_BYTES = 2 * 1024 * 1024;
 
@@ -12,7 +12,7 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/pdf",
 ]);
 
-export function isChecklistDocFile(file: File): boolean {
+function isChecklistDocFile(file: File): boolean {
   if (file.type && ALLOWED_MIME_TYPES.has(file.type)) return true;
   return /\.(jpe?g|png|gif|webp|pdf)$/i.test(file.name);
 }

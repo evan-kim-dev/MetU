@@ -24,7 +24,7 @@ export function formatSmsPreviewLabel(
   return `${parts.join(" · ")} (미리보기)`;
 }
 
-export const AGENT_EVENT_STATUS_LABELS: Record<string, string> = {
+const AGENT_EVENT_STATUS_LABELS: Record<string, string> = {
   received: "처리 대기",
   processing: "처리 중",
   done: "가계부 저장됨",

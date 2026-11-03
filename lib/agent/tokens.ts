@@ -27,10 +27,6 @@ export function hashIngestToken(plain: string): string {
   return createHash("sha256").update(`${plain}${p}`, "utf8").digest("hex");
 }
 
-export async function hashIngestTokenAsync(plain: string): Promise<string> {
-  return hashIngestToken(plain);
-}
-
 function encodeCrockford16(bytes: Buffer): string {
   if (bytes.length !== 10) {
     throw new Error("crockford-bytes");

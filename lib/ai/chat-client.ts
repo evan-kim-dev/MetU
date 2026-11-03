@@ -14,7 +14,7 @@ export type AiChatResult = {
   cached: boolean;
 };
 
-export class AiChatError extends Error {
+class AiChatError extends Error {
   readonly code: "unavailable" | "http" | "empty" | "fallback" | "input";
 
   constructor(code: AiChatError["code"], message: string) {
@@ -24,7 +24,7 @@ export class AiChatError extends Error {
   }
 }
 
-export async function aiChat(params: {
+async function aiChat(params: {
   mode: AiMode;
   system?: string;
   prompt: string;

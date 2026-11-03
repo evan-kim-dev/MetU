@@ -9,7 +9,7 @@ function toIso(year: number, month: number, day: number): string {
 }
 
 /** 오늘(로컬) 정오 기준 대상일까지 남은 일수 (음수면 지난 날짜) */
-export function daysUntilIso(isoDate: string, today = todayIsoDate()): number {
+function daysUntilIso(isoDate: string, today = todayIsoDate()): number {
   const target = new Date(`${isoDate}T12:00:00`);
   const base = new Date(`${today}T12:00:00`);
   return Math.round((target.getTime() - base.getTime()) / 86_400_000);

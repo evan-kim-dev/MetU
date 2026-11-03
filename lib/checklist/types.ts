@@ -1,10 +1,10 @@
-export type ChecklistItemType =
+type ChecklistItemType =
   | "FLIGHT"
   | "HOTEL"
   | "DOCUMENT"
   | "EXTRA";
 
-export type ChecklistItemStatus =
+type ChecklistItemStatus =
   | "NOT_STARTED"
   | "SEARCHED"
   | "SELECTED"

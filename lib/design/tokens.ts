@@ -37,7 +37,7 @@ export const MU_RADIUS = {
   xl: 20,
 } as const;
 
-export const MU_MOTION = {
+const MU_MOTION = {
   fastMs: 150,
   baseMs: 200,
   slowMs: 250,

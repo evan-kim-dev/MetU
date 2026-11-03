@@ -9,7 +9,7 @@ import type { ReceiptItemOut, ReceiptOut } from "@/lib/ai/contracts";
  * - 변환(transform)은 스키마 밖: z.toJSONSchema 가 만드는 JSON Schema 와 어귷날 수 있음.
  */
 
-export const RECEIPT_CATEGORIES = [
+const RECEIPT_CATEGORIES = [
   "식비",
   "교통",
   "숙소",
@@ -18,7 +18,7 @@ export const RECEIPT_CATEGORIES = [
   "기타",
 ] as const;
 
-export const RECEIPT_PAYMENT_METHODS = ["card", "cash", "transfer"] as const;
+const RECEIPT_PAYMENT_METHODS = ["card", "cash", "transfer"] as const;
 
 const nullableText = z.string().nullable();
 const nullableAmount = z.number().nonnegative().nullable();
@@ -26,7 +26,7 @@ const nullableAmount = z.number().nonnegative().nullable();
 /** ISO 4217 통화 3글자. 소문자는 허용하되 toOut 에서 대문자화. */
 const currencyCode = z.string().regex(/^[A-Za-z]{3}$/);
 
-export const receiptItemSchema = z.object({
+const receiptItemSchema = z.object({
   name: z.string(),
   name_ko: nullableText,
   qty: z.number().nonnegative().nullable(),
@@ -35,14 +35,14 @@ export const receiptItemSchema = z.object({
 });
 
 /** 영수증에 함께 인쇄된 다른 금액 (예: 다른 통화 병기, 세금/팁 인쇄 값만). */
-export const receiptSecondaryAmountSchema = z.object({
+const receiptSecondaryAmountSchema = z.object({
   label: z.string(),
   amount: z.number().nonnegative(),
   currency: currencyCode.nullable(),
 });
 
 /** 면세(택스 리퍼드) 안내가 영수증에 보일 때만 eligible 을 채운다. */
-export const receiptTaxFreeSchema = z.object({
+const receiptTaxFreeSchema = z.object({
   eligible: z.boolean().nullable(),
   evidence: nullableText,
 });

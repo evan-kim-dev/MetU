@@ -1,5 +1,5 @@
 /** 카카오 REST API 키 (앱 관리 > 앱 키). 브라우저 로그아웃 URL에만 사용됩니다. */
-export function tryGetKakaoRestApiKey(): string | null {
+function tryGetKakaoRestApiKey(): string | null {
   const key = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY?.trim();
   return key || null;
 }

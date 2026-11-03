@@ -131,7 +131,7 @@ export async function listVoidedExpenseIds(
 
 export type SettlementStatus = "open" | "stale" | "completed" | "superseded";
 
-export interface SettlementTransfer {
+interface SettlementTransfer {
   id: string;
   from: string;
   to: string;

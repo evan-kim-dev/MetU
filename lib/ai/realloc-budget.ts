@@ -1,8 +1,8 @@
 import type { BudgetAllocation } from "@/lib/ai/types";
 
 /** 총예산 대비 항공·숙소 상한 (밴드) */
-export const FLIGHT_BUDGET_RATIO = 0.45;
-export const HOTEL_BUDGET_RATIO = 0.4;
+const FLIGHT_BUDGET_RATIO = 0.45;
+const HOTEL_BUDGET_RATIO = 0.4;
 
 const FLEXIBLE_IDS = new Set(["food", "transport", "activity"]);
 
@@ -12,31 +12,6 @@ export function flightBudgetCap(totalBudget: number): number {
 
 export function hotelBudgetCap(totalBudget: number): number {
   return Math.max(0, Math.round(totalBudget * HOTEL_BUDGET_RATIO));
-}
-
-/**
- * 예산 밴드 안 최저가 우선. 없으면 전체 최저가 + withinBand=false.
- */
-export function pickCheapestInBand<T>(
-  items: T[],
-  getPrice: (item: T) => number,
-  maxPrice: number
-): { item: T; price: number; withinBand: boolean } | null {
-  const priced = items
-    .map((item) => ({ item, price: getPrice(item) }))
-    .filter((row) => Number.isFinite(row.price) && row.price > 0);
-
-  if (priced.length === 0) return null;
-
-  const inBand = priced.filter((row) => row.price <= maxPrice);
-  const pool = inBand.length > 0 ? inBand : priced;
-  const best = pool.reduce((a, b) => (a.price <= b.price ? a : b));
-
-  return {
-    item: best.item,
-    price: best.price,
-    withinBand: best.price <= maxPrice,
-  };
 }
 
 /**

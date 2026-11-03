@@ -25,7 +25,7 @@ export type CuratedDealsResult = {
 type CachedDealsPayload = { places: DealPlace[] };
 
 /** KST calendar YYYY-MM-DD */
-export function kstYmd(now = Date.now()): string {
+function kstYmd(now = Date.now()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
     year: "numeric",
@@ -34,7 +34,7 @@ export function kstYmd(now = Date.now()): string {
   }).format(now);
 }
 
-export function dealsCacheKey(now = Date.now()): string {
+function dealsCacheKey(now = Date.now()): string {
   return `deals:v1:${kstYmd(now)}`;
 }
 

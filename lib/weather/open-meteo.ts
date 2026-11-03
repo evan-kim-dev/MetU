@@ -1,4 +1,4 @@
-export interface WeatherDay {
+interface WeatherDay {
   date: string;
   label: string;
   maxC: number;
@@ -43,7 +43,7 @@ function formatDayLabel(isoDate: string): string {
   });
 }
 
-export type TripWeatherSource = "forecast" | "climate";
+type TripWeatherSource = "forecast" | "climate";
 
 export interface TripWeatherDay extends WeatherDay {
   source: TripWeatherSource;

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const COMMUNITY_POST_BUCKET = "community-posts";
+const COMMUNITY_POST_BUCKET = "community-posts";
 export const MAX_POST_IMAGES = 5;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -11,7 +11,7 @@ const IMAGE_MIME_TYPES = new Set([
   "image/gif",
 ]);
 
-export function isCommunityPostImage(file: File): boolean {
+function isCommunityPostImage(file: File): boolean {
   if (file.type && IMAGE_MIME_TYPES.has(file.type)) return true;
   return /\.(jpe?g|png|gif|webp)$/i.test(file.name);
 }

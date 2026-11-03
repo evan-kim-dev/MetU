@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 /** Next.js App Router 히스토리에 이전 페이지가 있는지 확인 */
-export function canNavigateBack(): boolean {
+function canNavigateBack(): boolean {
   if (typeof window === "undefined") return false;
   const idx = window.history.state?.idx;
   return typeof idx === "number" && idx > 0;

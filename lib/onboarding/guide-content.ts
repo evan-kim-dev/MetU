@@ -1,6 +1,6 @@
 export type GuidePlatform = "ios" | "android";
 
-export type GuidePartId = "A" | "B" | "C" | "D";
+type GuidePartId = "A" | "B" | "C" | "D";
 
 export interface GuideMistake {
   text: string;
@@ -38,7 +38,7 @@ export interface GuideIntro {
   difficultyChip: string;
 }
 
-export interface GuidePartMeta {
+interface GuidePartMeta {
   id: GuidePartId;
   title: string;
 }

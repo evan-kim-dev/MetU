@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 export type CurrencyOption = { code: string; label: string };
 
 /** 인기 통화 — SSR/하이드레이션 공통 정적 목록 (상단 고정). */
-export const POPULAR_CURRENCY_CODES = [
+const POPULAR_CURRENCY_CODES = [
   "KRW",
   "USD",
   "JPY",
@@ -35,7 +35,7 @@ function labelFor(code: string): string {
   }
 }
 
-export function getPopularCurrencyOptions(): CurrencyOption[] {
+function getPopularCurrencyOptions(): CurrencyOption[] {
   return POPULAR_CURRENCY_CODES.map((code) => ({
     code,
     label: labelFor(code),
@@ -46,7 +46,7 @@ export function getPopularCurrencyOptions(): CurrencyOption[] {
  * Intl.supportedValuesOf('currency') 기반 전체 목록.
  * 인기 통화를 상단에 고정하고 나머지는 코드 순.
  */
-export function getAllCurrencyOptions(): CurrencyOption[] {
+function getAllCurrencyOptions(): CurrencyOption[] {
   const popular = new Set<string>(POPULAR_CURRENCY_CODES);
   const pinned = getPopularCurrencyOptions();
 

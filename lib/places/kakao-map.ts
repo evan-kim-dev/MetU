@@ -24,7 +24,7 @@ const GROUP_TO_KIND: Record<string, PlaceKind> = {
   CS2: "shopping",
 };
 
-export function mapKakaoKind(
+function mapKakaoKind(
   categoryGroupCode: string | undefined,
   categoryName: string | undefined
 ): PlaceKind {

@@ -29,7 +29,7 @@ function timeToMinutes(time: string): number {
 }
 
 /** 일정 항목을 HH:MM 기준 오름차순 정렬 */
-export function sortScheduleItemsByTime<T extends { time: string }>(
+function sortScheduleItemsByTime<T extends { time: string }>(
   items: T[]
 ): T[] {
   return [...items].sort(

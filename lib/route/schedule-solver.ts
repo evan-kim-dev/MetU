@@ -26,7 +26,7 @@ export interface DayConstraints {
   dinnerWindow: [string, string];
 }
 
-export type Violation =
+type Violation =
   | "closed"
   | "after-day-end"
   | "meal-outside-window"
@@ -51,7 +51,7 @@ export interface DayPlan {
 }
 
 /** kind 별 기본 영업 가정 — 소프트 패널티용, 하드 closed 아님 */
-export const DEFAULT_HOURS: Record<
+const DEFAULT_HOURS: Record<
   PlaceKind,
   { open: string; close: string }
 > = {
@@ -64,7 +64,7 @@ export const DEFAULT_HOURS: Record<
   other: { open: "09:00", close: "21:00" },
 };
 
-export const PENALTY = {
+const PENALTY = {
   closed: 1000,
   "fixed-missed": 1000,
   "after-day-end": 200,
@@ -72,7 +72,7 @@ export const PENALTY = {
   softHours: 30,
 } as const;
 
-export const DEFAULT_DURATION: Record<PlaceKind, number> = {
+const DEFAULT_DURATION: Record<PlaceKind, number> = {
   food: 60,
   attraction: 90,
   cafe: 45,

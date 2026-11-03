@@ -1,6 +1,6 @@
 import type { FxMergeCandidate, FxMergeDecision } from "@/lib/ledger/fx-merge";
 
-export type DraftOrigin = "rule" | "llm" | "receipt" | "manual";
+type DraftOrigin = "rule" | "llm" | "receipt" | "manual";
 
 export type DraftKind = "approval" | "cancel" | "other" | "unknown";
 
@@ -22,7 +22,7 @@ export type PricedDraft = {
   exactResend?: boolean;
 };
 
-export type DuplicateSignal = {
+type DuplicateSignal = {
   expenseId: string;
   score: number;
   spentOn?: string | null;
@@ -58,10 +58,10 @@ export type PolicyEnv = {
   ownerMemberId: string;
 };
 
-export type PolicyDecision = "auto_commit" | "review" | "ignore" | "merge";
+type PolicyDecision = "auto_commit" | "review" | "ignore" | "merge";
 
 /** receipt_attach: 영수증 사진만 붙임 / billed_krw: 해외 원화 청구액을 외화 지출에 합침(K1) */
-export type MergeKind = "receipt_attach" | "billed_krw";
+type MergeKind = "receipt_attach" | "billed_krw";
 
 export type PolicyResult = {
   decision: PolicyDecision;
@@ -78,11 +78,11 @@ export type PolicyResult = {
   reasonCode?: string;
 };
 
-export const TRIP_MATCH_UNCERTAIN = "trip_match_uncertain";
+const TRIP_MATCH_UNCERTAIN = "trip_match_uncertain";
 /** 외화인데 환율을 확정하지 못했거나 폴백 환율일 때 (사유 문구: lib/agent/event-status.ts) */
-export const FX_UNRESOLVED = "fx_unresolved";
+const FX_UNRESOLVED = "fx_unresolved";
 /** 외화 지출과 해외 원화 청구가 같은 결제로 보이지만 자동 병합 조건은 못 채웠을 때 */
-export const FX_MERGE_REVIEW = "fx_merge_review";
+const FX_MERGE_REVIEW = "fx_merge_review";
 
 const FX_MERGE_REVIEW_REASONS = {
   multiple:
@@ -95,7 +95,7 @@ const FX_MERGE_REVIEW_REASONS = {
 } as const;
 
 /** 날짜 규칙으로 붙었지만 exact 가 아닌 경우 */
-export function isTripMatchUncertain(
+function isTripMatchUncertain(
   rule: PolicySignals["tripMatchRule"]
 ): boolean {
   return rule === "near" || rule === "single" || rule === "none";

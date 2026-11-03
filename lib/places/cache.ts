@@ -14,7 +14,7 @@ import { getServiceSupabase } from "@/lib/supabase/admin";
  * 약관 확인 전 보수적 가정 — Google Service Specific Terms,
  * Kakao 이용약관/운영정책의 저장 허용 범위를 직접 확인할 것.
  */
-export const PLACES_CACHE_TTL_DAYS = {
+const PLACES_CACHE_TTL_DAYS = {
   google: 30,
   kakao: 7,
 } as const;

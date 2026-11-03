@@ -24,17 +24,6 @@ export function hasDogBuddyInBio(bio: string | null | undefined): boolean {
   return includesAny(bio?.trim() ?? "", DOG_KEYS);
 }
 
-/** @deprecated 커서+카드 통합 감지 — 호환용 */
-export function detectPetBuddiesFromBio(bio: string | null | undefined): PetBuddyKind[] {
-  const text = bio?.trim() ?? "";
-  if (!text) return [];
-
-  const pets: PetBuddyKind[] = [];
-  if (includesAny(text, CAT_KEYS)) pets.push("cat");
-  if (includesAny(text, DOG_KEYS)) pets.push("dog");
-  return pets;
-}
-
 export const PET_BUDDY_SRC: Record<PetBuddyKind, string> = {
   cat: "/easter/cat.gif",
   dog: "/easter/dog.gif",

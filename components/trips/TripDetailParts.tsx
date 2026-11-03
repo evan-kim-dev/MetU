@@ -2,7 +2,7 @@
 
 import { Check, Trash2, X } from "lucide-react";
 
-export type ExpenseFormState = {
+type ExpenseFormState = {
   label: string;
   category: string;
   amount: string;

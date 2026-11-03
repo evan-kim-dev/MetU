@@ -18,7 +18,7 @@ import { buildQuickTrip } from "@/lib/trips/quick-trip";
 import { useTrips } from "@/lib/trips/TripProvider";
 import type { Trip } from "@/lib/trips/types";
 
-export type QuickTripSheetReason = "first-run" | "inbox" | "hub";
+type QuickTripSheetReason = "first-run" | "inbox" | "hub";
 
 type Props = {
   open: boolean;
