@@ -14,7 +14,8 @@ import { PasteExpenseBox } from "@/components/ledger/PasteExpenseBox";
 import { ReceiptUploader } from "@/components/ledger/ReceiptUploader";
 import { SplitBatchBox } from "@/components/ledger/SplitBatchBox";
 import { VoiceInputButton } from "@/components/ledger/VoiceInputButton";
-import { TripInvitePanel } from "@/components/trips/ledger/TripInvitePanel";
+import { ConnectStep } from "@/components/ledger/journey/host/ConnectStep";
+import { InviteStep } from "@/components/ledger/journey/host/InviteStep";
 import { Sheet } from "@/components/ds/Sheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { TABLES } from "@/lib/constants";
@@ -266,51 +267,18 @@ export function LedgerShell({
       ) : (
         <>
           {showConnect && !guestReadonly ? (
-            <section className="rounded-2xl border border-line-soft bg-surface-white p-4">
-              <h2 className="text-sm font-extrabold text-ink-heading">
-                알림을 연결해요
-              </h2>
-              <p className="mt-1 text-xs text-ink-muted">
-                결제 알림이 오면 지출이 자동으로 쌓여요
-              </p>
-              <Link
-                href={`/trips/${tripId}/ledger/connect`}
-                className="mt-3 inline-flex min-h-tap items-center text-sm font-bold text-brand"
-              >
-                연결 관리
-              </Link>
-              <button
-                type="button"
-                className="mt-2 block text-xs font-semibold text-ink-muted underline"
-                onClick={() => onNavigate?.("invite")}
-              >
-                나중에 직접 입력할게요
-              </button>
-            </section>
+            <ConnectStep
+              tripId={tripId}
+              onLater={() => onNavigate?.("invite")}
+            />
           ) : null}
 
           {showInvite && !guestReadonly ? (
-            <>
-              <TripInvitePanel
-                tripId={tripId}
-                members={members}
-                canInvite={Boolean(me?.isOwner && me.userId === user?.id)}
-              />
-              <ul className="rounded-2xl bg-surface-white p-4 text-sm">
-                <li className="mb-2 text-xs font-bold text-ink-muted">멤버</li>
-                {members.map((m) => (
-                  <li
-                    key={m.id}
-                    className="flex items-center justify-between py-2 text-ink-heading"
-                  >
-                    <span>{m.displayName}</span>
-                    <span className="text-xs text-ink-muted">
-                      {m.isOwner ? "호스트" : "멤버"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </>
+            <InviteStep
+              tripId={tripId}
+              members={members}
+              canInvite={Boolean(me?.isOwner && me.userId === user?.id)}
+            />
           ) : null}
 
           {showRecord ? (
