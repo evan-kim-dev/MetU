@@ -58,9 +58,11 @@ type DetailTab = "schedule" | "ledger";
 
 export function TripDetailContent({ tripId }: TripDetailContentProps) {
   const router = useRouter();
-  const { user, provider } = useAuth();
+  const { user, provider, isAnonymous } = useAuth();
   const { updateTrip } = useTrips();
   const isGuest = !user || provider === "guest";
+  /** UI 숨김. 쓰기는 서버·RLS가 최종 방어. */
+  const ledgerReadOnly = isAnonymous;
   const [detailTab, setDetailTab] = useState<DetailTab>("schedule");
   const {
     trip,
@@ -360,7 +362,8 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
         {!isGuest && detailTab === "ledger" ? (
           <LedgerTab
             tripId={tripId}
-            canInvite={canEdit}
+            readOnly={ledgerReadOnly}
+            canInvite={canEdit && !ledgerReadOnly}
             loading={ledger.loading}
             error={ledger.error}
             members={ledger.members}
@@ -374,13 +377,26 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
               ledger.members[0]?.id
             }
             settlement={ledger.settlement}
-            onAddMember={canEdit ? ledger.addMember : undefined}
-            onRemoveMember={canEdit ? ledger.removeMember : undefined}
-            onDeleteExpense={ledger.removeExpense}
-            onExpenseFxChanged={() => {
-              void ledger.reload();
-            }}
-            onSaveExpense={async (
+            onAddMember={
+              canEdit && !ledgerReadOnly ? ledger.addMember : undefined
+            }
+            onRemoveMember={
+              canEdit && !ledgerReadOnly ? ledger.removeMember : undefined
+            }
+            onDeleteExpense={
+              ledgerReadOnly ? undefined : ledger.removeExpense
+            }
+            onExpenseFxChanged={
+              ledgerReadOnly
+                ? undefined
+                : () => {
+                    void ledger.reload();
+                  }
+            }
+            onSaveExpense={
+              ledgerReadOnly
+                ? undefined
+                : async (
               draft: ExpenseDraft,
               expenseId?: string,
               parseMeta?: ExpenseParseItemOut

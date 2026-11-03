@@ -27,8 +27,9 @@ import { useTrips } from "@/lib/trips/TripProvider";
  * 동작·API·DB·돈 계산은 그대로이고 화면 구성만 바뀌었어요.
  */
 export function AgentHubContent() {
-  const { isReady: authReady, isLoggedIn, provider } = useAuth();
+  const { isReady: authReady, isLoggedIn, provider, isAnonymous } = useAuth();
   const isGuest = provider === "guest" || (authReady && !isLoggedIn);
+  const canCreateTrip = !isGuest && !isAnonymous;
   const { trips, isReady, activeTrips } = useTrips();
   const { selectedTrip, select, ready } = useSelectedTrip(trips, isReady);
   const tripId = selectedTrip?.id ?? null;
@@ -89,11 +90,15 @@ export function AgentHubContent() {
   } else if (!ready) {
     body = <LedgerHomeSkeleton />;
   } else if (!selectedTrip) {
-    body = (
+    body = canCreateTrip ? (
       <LedgerHomeEmpty
         onCreate={() => setQuickOpen(true)}
         showConnectHint={automationOff}
       />
+    ) : (
+      <p className="rounded-xl bg-surface-soft px-3 py-4 text-center text-sm text-ink-muted">
+        합류한 여행이 없어요. 초대 링크로 들어와 주세요.
+      </p>
     );
   } else {
     body = (
@@ -158,15 +163,17 @@ export function AgentHubContent() {
         trips={trips}
         selectedId={tripId}
         onSelect={select}
-        onCreate={() => setQuickOpen(true)}
+        onCreate={canCreateTrip ? () => setQuickOpen(true) : undefined}
         returnFocusRef={switchButtonRef}
       />
-      <QuickTripSheet
-        open={quickOpen}
-        onClose={() => setQuickOpen(false)}
-        onCreated={(trip) => select(trip.id)}
-        reason="hub"
-      />
+      {canCreateTrip ? (
+        <QuickTripSheet
+          open={quickOpen}
+          onClose={() => setQuickOpen(false)}
+          onCreated={(trip) => select(trip.id)}
+          reason="hub"
+        />
+      ) : null}
     </MobileShell>
   );
 }

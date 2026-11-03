@@ -9,7 +9,7 @@ import {
   ensureOwnerMemberAdmin,
 } from "@/lib/agent/membership";
 import { processEvent } from "@/lib/agent/run";
-import { guardApi } from "@/lib/security/guard";
+import { guardApi, rejectAnonymousWrite } from "@/lib/security/guard";
 
 export const maxDuration = 60;
 
@@ -32,6 +32,8 @@ export async function POST(request: Request) {
   if (guard.identity.kind !== "user") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const anon = rejectAnonymousWrite(guard.identity);
+  if (anon) return anon;
 
   const limited = await readJsonLimited(request, 4_096);
   if (!limited.ok) return limited.response;

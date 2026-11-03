@@ -6,7 +6,7 @@ import { getAgentAdmin } from "@/lib/agent/admin";
 import { runIngest } from "@/lib/agent/ingest-pipeline";
 import { touchServerTestAt } from "@/lib/onboarding/agent-context";
 import { apiInternalError } from "@/lib/api/respond";
-import { guardApi } from "@/lib/security/guard";
+import { guardApi, rejectAnonymousWrite } from "@/lib/security/guard";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const maxDuration = 30;
@@ -17,6 +17,8 @@ export async function POST(request: Request) {
   if (guard.identity.kind !== "user") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const anon = rejectAnonymousWrite(guard.identity);
+  if (anon) return anon;
 
   const rate = checkRateLimit(
     `onboarding-test:${guard.identity.userId}`,

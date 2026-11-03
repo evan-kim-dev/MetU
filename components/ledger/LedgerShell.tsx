@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CardProfileSettings } from "@/components/ledger/CardProfileSettings";
 import { CashRateSettings } from "@/components/ledger/CashRateSettings";
 import { ExpenseConfirmSheet } from "@/components/ledger/ExpenseConfirmSheet";
+import { GuestExpenseSlot } from "@/components/ledger/GuestExpenseSlot";
 import { LedgerDashboard } from "@/components/ledger/LedgerDashboard";
 import { PasteExpenseBox } from "@/components/ledger/PasteExpenseBox";
 import { ReceiptUploader } from "@/components/ledger/ReceiptUploader";
@@ -54,9 +55,11 @@ function newManualDraft(): ExpenseDraftInput {
 }
 
 export function LedgerShell({ tripId }: Props) {
-  const { user, provider } = useAuth();
+  const { user, provider, isAnonymous } = useAuth();
   const searchParams = useSearchParams();
   const intent = readEntryIntent(searchParams);
+  /** UI 숨김만. 권한은 서버 라우트·RLS가 최종 방어. */
+  const guestReadonly = isAnonymous;
   const handledIntent = useRef<string | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
   const voiceRef = useRef<HTMLDivElement>(null);
@@ -95,7 +98,7 @@ export function LedgerShell({ tripId }: Props) {
     }
     setError("");
     let m = await listMembers(supabase, tripId);
-    if (m.length === 0) {
+    if (m.length === 0 && !isAnonymous) {
       await ensureOwnerMember(
         supabase,
         tripId,
@@ -121,7 +124,7 @@ export function LedgerShell({ tripId }: Props) {
     setProfiles(p as typeof profiles);
     setInboxCount(pendingRes.count ?? 0);
     setLoading(false);
-  }, [tripId, user, provider]);
+  }, [tripId, user, provider, isAnonymous]);
 
   useEffect(() => {
     void reload();
@@ -137,7 +140,7 @@ export function LedgerShell({ tripId }: Props) {
 
   // 가계부 탭의 바로가기: manual 은 확인 시트를 열고, 나머지는 해당 섹션으로
   // 스크롤 + 첫 버튼에 포커스만 준다. 파일 선택창은 사용자 제스처가 필요해서 열지 않는다.
-  const canEnter = !loading && members.length > 0;
+  const canEnter = !loading && members.length > 0 && !guestReadonly;
   useEffect(() => {
     if (!intent || !canEnter || handledIntent.current === intent) return;
     handledIntent.current = intent;
@@ -171,20 +174,22 @@ export function LedgerShell({ tripId }: Props) {
           <p className="text-xs text-ink-muted">합계 {formatKRW(total)}</p>
         </div>
         <div className="flex items-center gap-3">
-          <Link
-            href={`/trips/${tripId}/ledger/inbox`}
-            className="relative text-xs font-bold text-brand"
-          >
-            인박스
-            {inboxCount > 0 ? (
-              <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-extrabold text-white">
-                {inboxCount > 9 ? "9+" : inboxCount}
-              </span>
-            ) : null}
-          </Link>
+          {!guestReadonly ? (
+            <Link
+              href={`/trips/${tripId}/ledger/inbox`}
+              className="relative min-h-[44px] text-xs font-bold text-brand"
+            >
+              인박스
+              {inboxCount > 0 ? (
+                <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-extrabold text-white">
+                  {inboxCount > 9 ? "9+" : inboxCount}
+                </span>
+              ) : null}
+            </Link>
+          ) : null}
           <Link
             href={`/trips/${tripId}`}
-            className="text-xs font-bold text-brand"
+            className="min-h-[44px] text-xs font-bold text-brand"
           >
             여행으로
           </Link>
@@ -201,33 +206,36 @@ export function LedgerShell({ tripId }: Props) {
         <p className="text-sm text-ink-body">동행자를 먼저 추가해 주세요.</p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white"
-              onClick={() => openDrafts([newManualDraft()])}
-            >
-              직접 입력
-            </button>
-          </div>
+          {guestReadonly ? (
+            <GuestExpenseSlot />
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="min-h-[44px] rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white"
+                  onClick={() => openDrafts([newManualDraft()])}
+                >
+                  직접 입력
+                </button>
+              </div>
 
-          <PasteExpenseBox
-            tripId={tripId}
-            onDrafts={openDrafts}
-            onCancelNotice={setCancelNotice}
-          />
-          <div ref={receiptRef}>
-            <ReceiptUploader
-              tripId={tripId}
-              onDraft={(d) => openDrafts([d])}
-            />
-          </div>
-          <div ref={voiceRef}>
-            <VoiceInputButton
-              tripId={tripId}
-              onDrafts={openDrafts}
-            />
-          </div>
+              <PasteExpenseBox
+                tripId={tripId}
+                onDrafts={openDrafts}
+                onCancelNotice={setCancelNotice}
+              />
+              <div ref={receiptRef}>
+                <ReceiptUploader
+                  tripId={tripId}
+                  onDraft={(d) => openDrafts([d])}
+                />
+              </div>
+              <div ref={voiceRef}>
+                <VoiceInputButton tripId={tripId} onDrafts={openDrafts} />
+              </div>
+            </>
+          )}
 
           <LedgerDashboard
             expenses={expenses}
@@ -250,21 +258,27 @@ export function LedgerShell({ tripId }: Props) {
           />
 
           <div className="flex flex-wrap gap-3 text-xs font-bold text-brand">
-            <Link href={`/trips/${tripId}/ledger/inbox`}>
-              인박스{inboxCount > 0 ? ` (${inboxCount})` : ""}
-            </Link>
-            <Link href={`/trips/${tripId}/ledger/connect`}>자동 수집</Link>
+            {!guestReadonly ? (
+              <Link href={`/trips/${tripId}/ledger/inbox`}>
+                인박스{inboxCount > 0 ? ` (${inboxCount})` : ""}
+              </Link>
+            ) : null}
+            {!guestReadonly ? (
+              <Link href={`/trips/${tripId}/ledger/connect`}>자동 수집</Link>
+            ) : null}
             <Link href={`/trips/${tripId}/ledger/settle`}>정산</Link>
             <Link href={`/trips/${tripId}/ledger/report`}>리포트</Link>
           </div>
 
-          <TripInvitePanel
-            tripId={tripId}
-            members={members}
-            canInvite={Boolean(me?.isOwner && me.userId === user?.id)}
-          />
+          {!guestReadonly ? (
+            <TripInvitePanel
+              tripId={tripId}
+              members={members}
+              canInvite={Boolean(me?.isOwner && me.userId === user?.id)}
+            />
+          ) : null}
 
-          {cancelNotice ? (
+          {cancelNotice && !guestReadonly ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs">
               <p className="font-bold text-amber-900">취소 문자예요</p>
               <p className="text-amber-800">
@@ -273,7 +287,7 @@ export function LedgerShell({ tripId }: Props) {
               </p>
               <button
                 type="button"
-                className="mt-1 font-bold text-amber-900 underline"
+                className="mt-1 min-h-[44px] font-bold text-amber-900 underline"
                 onClick={() => setCancelNotice(null)}
               >
                 닫기
@@ -302,22 +316,24 @@ export function LedgerShell({ tripId }: Props) {
             </ul>
           </section>
 
-          <div ref={settingsRef} className="flex flex-col gap-4">
-            {user ? (
-              <CardProfileSettings
-                userId={user.id}
-                profiles={profiles}
-                onChange={setProfiles}
-              />
-            ) : null}
-            {me ? (
-              <CashRateSettings tripId={tripId} memberId={me.id} />
-            ) : null}
-          </div>
+          {!guestReadonly ? (
+            <div ref={settingsRef} className="flex flex-col gap-4">
+              {user ? (
+                <CardProfileSettings
+                  userId={user.id}
+                  profiles={profiles}
+                  onChange={setProfiles}
+                />
+              ) : null}
+              {me ? (
+                <CashRateSettings tripId={tripId} memberId={me.id} />
+              ) : null}
+            </div>
+          ) : null}
         </>
       )}
 
-      {queue.length > 0 ? (
+      {queue.length > 0 && !guestReadonly ? (
         <ExpenseConfirmSheet
           tripId={tripId}
           members={members}

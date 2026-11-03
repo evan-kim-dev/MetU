@@ -63,7 +63,7 @@ function balanceLabel(value: number): string {
 
 export default function LedgerSettlePage() {
   const { id: tripId } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, isAnonymous } = useAuth();
   const [members, setMembers] = useState<TripMember[]>([]);
   const [expenses, setExpenses] = useState<LedgerExpense[]>([]);
   const [fxFallbackCount, setFxFallbackCount] = useState(0);
@@ -340,6 +340,8 @@ export default function LedgerSettlePage() {
   }
 
   const isOwner = Boolean(me?.isOwner);
+  /** UI 숨김. 정산 생성은 서버 RPC·RLS가 최종 방어. */
+  const canCreateSettlement = isOwner && !isAnonymous;
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 py-6">
@@ -424,7 +426,7 @@ export default function LedgerSettlePage() {
         </div>
       ) : null}
 
-      {isOwner ? (
+      {canCreateSettlement ? (
         <button
           type="button"
           className="min-h-[44px] rounded-xl bg-brand py-3 text-sm font-extrabold text-white"
@@ -434,8 +436,9 @@ export default function LedgerSettlePage() {
         </button>
       ) : loaded ? (
         <p className="text-xs text-ink-muted">
-          정산표는 여행을 만든 분만 만들 수 있어요. 내 송금은 아래에서 표시할 수
-          있어요.
+          {isAnonymous
+            ? "호스트가 정산을 계산해요. 내 송금은 아래에서 표시할 수 있어요."
+            : "정산표는 여행을 만든 분만 만들 수 있어요. 내 송금은 아래에서 표시할 수 있어요."}
         </p>
       ) : null}
 

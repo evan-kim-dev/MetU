@@ -5,6 +5,10 @@ const resolveTripCurrency = vi.fn();
 
 vi.mock("@/lib/security/guard", () => ({
   guardApi: (...args: unknown[]) => guardApi(...args),
+  rejectAnonymousWrite: (identity: { kind?: string; isAnonymous?: boolean }) =>
+    identity.kind === "user" && identity.isAnonymous === true
+      ? Response.json({ error: "guest-readonly" }, { status: 403 })
+      : null,
 }));
 
 vi.mock("@/lib/fx/resolve-trip-currency", () => ({

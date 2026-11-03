@@ -61,7 +61,11 @@ const scrollIntoView = vi.fn();
 
 beforeEach(() => {
   search = "";
-  useAuth.mockReturnValue({ user: { id: "u1", user_metadata: {} }, provider: "kakao" });
+  useAuth.mockReturnValue({
+    user: { id: "u1", user_metadata: {} },
+    provider: "kakao",
+    isAnonymous: false,
+  });
   listMembers.mockResolvedValue([
     { id: "m1", tripId: "t1", displayName: "가나", isOwner: true, userId: "u1" },
   ]);
@@ -144,5 +148,38 @@ describe("LedgerShell 바로가기 쿼리", () => {
     await loaded();
     expect(screen.queryByTestId("confirm-sheet")).toBeNull();
     expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+});
+
+describe("LedgerShell 익명 게스트 읽기 전용", () => {
+  it("직접 입력·업로더·설정이 없고 안내 슬롯만 보여요", async () => {
+    useAuth.mockReturnValue({
+      user: { id: "anon", user_metadata: {}, is_anonymous: true },
+      provider: "supabase",
+      isAnonymous: true,
+    });
+    render(<LedgerShell tripId="t1" />);
+    await loaded();
+    expect(screen.queryByRole("button", { name: "직접 입력" })).toBeNull();
+    expect(screen.queryByText("영수증 촬영하기")).toBeNull();
+    expect(screen.queryByText("음성 입력")).toBeNull();
+    expect(screen.queryByText("붙여넣기 분석")).toBeNull();
+    expect(screen.queryByText("카드 수수료 추가")).toBeNull();
+    expect(screen.getByText("내가 낸 지출")).toBeTruthy();
+    expect(
+      screen.getByText(/호스트가 승인하면 정산에 들어가요/)
+    ).toBeTruthy();
+  });
+
+  it("익명이면 ?add=manual 바로가기도 열지 않아요", async () => {
+    useAuth.mockReturnValue({
+      user: { id: "anon", user_metadata: {}, is_anonymous: true },
+      provider: "supabase",
+      isAnonymous: true,
+    });
+    search = "add=manual";
+    render(<LedgerShell tripId="t1" />);
+    await loaded();
+    expect(screen.queryByTestId("confirm-sheet")).toBeNull();
   });
 });

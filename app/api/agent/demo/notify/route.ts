@@ -15,7 +15,7 @@ import {
   demoScenarioStepCount,
   getDemoStep,
 } from "@/lib/demo/scenario";
-import { guardApi } from "@/lib/security/guard";
+import { guardApi, rejectAnonymousWrite } from "@/lib/security/guard";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -56,6 +56,8 @@ export async function POST(request: Request) {
   if (guard.identity.kind !== "user") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const anon = rejectAnonymousWrite(guard.identity);
+  if (anon) return anon;
 
   const userId = guard.identity.userId;
   const rate = checkRateLimit(`demo-notify:${userId}`, {
