@@ -40,7 +40,7 @@ function memberFromRow(row: MemberRow): TripMember {
 
 const MEMBER_COLS = "id, trip_id, display_name, is_owner, role, user_id";
 const EXPENSE_COLS =
-  "id, trip_id, created_by, paid_by, label, merchant, merchant_ko, category, amount, currency, payment_method, card_profile_id, card_label, fx_rate_to_krw, fx_rate, fx_rate_date, fx_source, fx_is_fallback, fee_rate, fee_flat_krw, krw_base, fee_krw, krw_amount, source, items, place_id, spent_on, paid_at, day_index, split_type, dedupe_hash, note, billed_krw, billed_source, billed_event_id, fx_merge, agent_reasons";
+  "id, trip_id, created_by, paid_by, label, merchant, merchant_ko, category, amount, currency, payment_method, card_profile_id, card_label, fx_rate_to_krw, fx_rate, fx_rate_date, fx_source, fx_is_fallback, fee_rate, fee_flat_krw, krw_base, fee_krw, krw_amount, source, items, place_id, spent_on, paid_at, day_index, split_type, dedupe_hash, note, billed_krw, billed_source, billed_event_id, fx_merge, agent_reasons, tax_free, tax_excl_amount, receipt_path";
 
 export type LedgerSnapshot = {
   members: TripMember[];

@@ -83,6 +83,12 @@ export interface LedgerExpenseRow {
   fxMerge?: Record<string, unknown> | null;
   /** agent_reasons.flags 중 UI에 노출하는 부분집합. */
   flags?: ExpenseFlags | null;
+  /** 일본 면세(택스리펀드) 대상 표시 */
+  taxFree?: boolean;
+  /** 원통화 세별도 금액 (환급액 아님) */
+  taxExclAmount?: number | null;
+  /** 영수증 스토리지 경로 존재 여부만 (경로는 노출하지 않음) */
+  hasReceipt?: boolean;
 }
 
 export interface ExpenseRowDb {
@@ -124,6 +130,9 @@ export interface ExpenseRowDb {
   billed_event_id?: string | null;
   fx_merge?: unknown;
   agent_reasons?: unknown;
+  tax_free?: boolean | null;
+  tax_excl_amount?: number | string | null;
+  receipt_path?: string | null;
 }
 
 export interface ShareRowDb {
@@ -253,6 +262,12 @@ export function rowToExpense(
         ? (row.fx_merge as Record<string, unknown>)
         : null,
     flags: flagsFromAgentReasons(row.agent_reasons),
+    taxFree: Boolean(row.tax_free),
+    taxExclAmount:
+      row.tax_excl_amount == null || row.tax_excl_amount === ""
+        ? null
+        : num(row.tax_excl_amount),
+    hasReceipt: Boolean(row.receipt_path),
   };
 }
 
