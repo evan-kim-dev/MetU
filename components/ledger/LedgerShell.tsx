@@ -14,6 +14,7 @@ import { AdjustStep } from "@/components/ledger/journey/host/AdjustStep";
 import { ConnectStep } from "@/components/ledger/journey/host/ConnectStep";
 import { InviteStep } from "@/components/ledger/journey/host/InviteStep";
 import { RecordStep } from "@/components/ledger/journey/host/RecordStep";
+import { SettleStep } from "@/components/ledger/journey/host/SettleStep";
 import {
   AddExpenseSheet,
   type AddExpenseTab,
@@ -204,7 +205,8 @@ export function LedgerShell({
   const showInvite = step === "invite";
   const showRecord = step === "record";
   const showAdjust = step === "adjust";
-  const showSettleLink = step === "settle" || step === "pay";
+  const showSettle = step === "settle";
+  const showPayLink = step === "pay";
 
   const dashboard = (
     <LedgerDashboard
@@ -365,13 +367,21 @@ export function LedgerShell({
             />
           ) : null}
 
-          {showSettleLink ? (
+          {showSettle ? (
+            <SettleStep
+              tripId={tripId}
+              mode="journey"
+              onAdjust={() => onNavigate?.("adjust")}
+            />
+          ) : null}
+
+          {showPayLink ? (
             <section className="rounded-2xl border border-line-soft bg-surface-white p-4">
               <h2 className="text-sm font-extrabold text-ink-heading">
-                {step === "pay" ? "송금을 챙겨요" : "이 금액으로 정산해요"}
+                송금을 챙겨요
               </h2>
               <p className="mt-1 text-xs text-ink-muted">
-                정산·송금은 기존 정산 화면에서 이어서 해요
+                송금은 정산 화면에서 이어서 해요 (U5 에서 PayStep 으로 옮길 예정)
               </p>
               <Link
                 href={`/trips/${tripId}/ledger/settle`}

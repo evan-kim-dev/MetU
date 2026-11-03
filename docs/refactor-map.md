@@ -19,7 +19,7 @@
 | U1 | `feat/ux-step-connect-invite` | 완료(PR #78) | #78 | ConnectStep · InviteStep · useTripInvite |
 | U2 | `feat/ux-step-record` | 완료(PR #79) | #79 | RecordStep · AddExpenseSheet · ?add= 시트 |
 | U3 | `feat/ux-step-adjust` | 완료(PR #80) | #80 | AdjustStep |
-| U4 | `feat/ux-step-settle` | 대기 |  |  |
+| U4 | `feat/ux-step-settle` | 진행 |  | SettleStep 추출 · SplitPatchBox→분담 링크 |
 | U5 | `feat/ux-step-pay` | 대기 |  |  |
 | U6 | `feat/ux-guest-journey-complete` | 대기 |  |  |
 | U7 | `feat/ux-entry-points` | 대기 |  |  |
@@ -82,7 +82,7 @@
 | `app/trips/[id]/ledger/page.tsx` | U1~U5·U10 · D3 | 대기 |
 | `app/trips/[id]/ledger/recap/page.tsx` | F1 · D3 | 대기 |
 | `app/trips/[id]/ledger/report/page.tsx` | F1 · D3 | 대기 |
-| `app/trips/[id]/ledger/settle/page.tsx` | U4 · D3 | 대기 |
+| `app/trips/[id]/ledger/settle/page.tsx` | U4 · D3 | U4 진행(얇은 래퍼) |
 | `app/trips/[id]/ledger/wallet/page.tsx` | F1 · D3 | 대기 |
 | `app/trips/[id]/page.tsx` | U9 · D4 | 대기 |
 | `app/trips/page.tsx` | U9 · D4 | 대기 |
@@ -266,12 +266,12 @@
 | `components/layout/MobileShell.tsx` | D1 | 대기 |
 | `components/ledger/CardProfileSettings.tsx` | D3 | 대기 |
 | `components/ledger/CashRateSettings.tsx` | D3 | 대기 |
-| `components/ledger/CurrencyTotals.tsx` | U4/U5 | 대기 |
+| `components/ledger/CurrencyTotals.tsx` | U4/U5 | U4 사용 |
 | `components/ledger/ExpenseChipSplit.tsx` | U3 | 대기 |
 | `components/ledger/ExpenseConfirmSheet.tsx` | D3 | 대기 |
 | `components/ledger/ExpenseMemberChips.tsx` | U3 | 대기 |
 | `components/ledger/ExpensePayerSheet.tsx` | U3 | 대기 |
-| `components/ledger/FeeLeakCard.tsx` | U4/U5 | 대기 |
+| `components/ledger/FeeLeakCard.tsx` | U4/U5 | U4 사용 |
 | `components/ledger/GuestExpenseEntry.tsx` | U6 | 대기 |
 | `components/ledger/GuestExpenseSlot.tsx` | U6 | 대기 |
 | `components/ledger/LedgerDashboard.tsx` | D3 | 대기 |
@@ -1024,3 +1024,21 @@
 **다음 세션(U4) 인계**
 - 정산 페이지 `app/trips/[id]/ledger/settle/page.tsx`(690줄)를 `SettleStep` 으로 해체. 그 안의 `SplitPatchBox` 는 「분담 수정하기」(→ `?step=adjust`) 링크로 대체.
 - 호스트 단계 BottomCTA 소유: connect·invite·settle·pay = TripJourney, record·adjust = 단계 컴포넌트.
+
+### 2026-11-04 (KST) · U4 · `feat/ux-step-settle`
+
+**한 일**
+- `components/ledger/journey/host/SettleStep.tsx`: 멤버 잔액 · CurrencyTotals · FeeLeakCard · 「분담 수정하기」(→ adjust) · 정산 생성 CTA · 공유·이력·SettleExplainSheet. 송금 UI 는 U5 까지 유지.
+- `app/trips/[id]/ledger/settle/page.tsx` 얇은 래퍼. `LedgerShell` `?step=settle` → SettleStep. TripJourney settle CTA 숨김.
+- `SplitPatchBox` 정산 화면에서 제거.
+
+**명령 결과**
+- typecheck · lint · `npm test` 190 파일 / 1365 tests(+5) 통과.
+
+**결정**
+- BottomCTA 소유: record·adjust·settle = 단계 컴포넌트. pay 는 U5 전까지 TripJourney「정산 화면 열기」.
+- 새 금액 계산 없음(기존 settle 순수 함수·RPC만).
+
+**다음 세션(U5) 인계**
+- 송금 목록·페이앱·완료 표시를 `PayStep` 으로 추출. settle 의 송금 UI 이전. `?step=pay` 링크 카드 교체.
+- SettleStep 줄 수·소부품(`components/ledger/settle/*`) 추가 분해는 O7 과 조율.
