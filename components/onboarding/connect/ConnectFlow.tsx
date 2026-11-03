@@ -12,7 +12,6 @@ import {
 
 import { ConnectError } from "@/components/onboarding/connect/ConnectError";
 import { ConnectHub } from "@/components/onboarding/connect/ConnectHub";
-import { ConnectStepCards } from "@/components/onboarding/connect/ConnectStepCards";
 import { GateNotice } from "@/components/onboarding/connect/GateNotice";
 import { RecentEventsStrip } from "@/components/onboarding/connect/RecentEventsStrip";
 import { StepAutomation } from "@/components/onboarding/connect/StepAutomation";
@@ -22,6 +21,7 @@ import { StepShortcut } from "@/components/onboarding/connect/StepShortcut";
 import { StepVerify } from "@/components/onboarding/connect/StepVerify";
 import { UnsupportedHandoff } from "@/components/onboarding/connect/UnsupportedHandoff";
 import { useClipboardCopy } from "@/components/onboarding/connect/useClipboardCopy";
+import { Stepper, type StepItem } from "@/components/ds/Stepper";
 import { apiFetchJson } from "@/lib/api/fetch-json";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { resolvePostOnboardingPath } from "@/lib/auth/post-login-path";
@@ -33,11 +33,14 @@ import { detectPlatform } from "@/lib/onboarding/automation";
 import { shouldEnterConnectHub } from "@/lib/onboarding/connect-entry";
 import {
   connectReducer,
+  connectStepCards,
   initialConnectState,
   pickVerifyArrival,
   showConnectStepper,
+  stepLabel,
   toSnapshot,
   type ConnectErrorState,
+  type ConnectStepPhase,
 } from "@/lib/onboarding/connect-machine";
 import {
   eventsSince,
@@ -450,6 +453,17 @@ export function ConnectFlow() {
   const showLater =
     showConnectStepper(state) && state.issueMode === "wizard";
 
+  const stepperItems: StepItem[] = connectStepCards(state).map((card) => ({
+    key: card.phase,
+    label: card.label,
+    status:
+      card.status === "upcoming"
+        ? "todo"
+        : card.status === "done"
+          ? "done"
+          : "current",
+  }));
+
   const sinceEvents = eventsSince(
     status.data?.recentEvents ?? [],
     state.verifyStartedAt
@@ -484,26 +498,41 @@ export function ConnectFlow() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {showConnectStepper(state) ? (
-            <ConnectStepCards
-              state={state}
-              onGoTo={(phase) => dispatch({ type: "GO_TO_STEP", phase })}
-            />
-          ) : null}
+      {showConnectStepper(state) ? (
+        <div className="-mx-5">
+          <Stepper
+            steps={stepperItems}
+            currentKey={state.phase}
+            title={stepLabel(state)}
+            navAriaLabel="연결 단계"
+            onSelect={(key) =>
+              dispatch({
+                type: "GO_TO_STEP",
+                phase: key as ConnectStepPhase,
+              })
+            }
+          />
         </div>
+      ) : null}
+      <div className="flex items-start justify-between gap-3">
         {showLater ? (
-          <button
-            type="button"
-            className="min-h-11 shrink-0 px-2 text-sm font-semibold text-ink-body underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            disabled={state.busy === "skip"}
-            aria-busy={state.busy === "skip"}
-            onClick={() => void skip()}
-          >
-            나중에 하기
-          </button>
-        ) : null}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-ink-body">
+              연결은 나중에 해도 돼요
+            </p>
+            <button
+              type="button"
+              className="min-h-11 px-1 text-sm font-semibold text-ink-body underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              disabled={state.busy === "skip"}
+              aria-busy={state.busy === "skip"}
+              onClick={() => void skip()}
+            >
+              나중에 하기
+            </button>
+          </div>
+        ) : (
+          <span className="flex-1" />
+        )}
         {state.phase !== "hub" &&
         state.issueMode !== "wizard" &&
         state.phase !== "done" &&

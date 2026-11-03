@@ -60,8 +60,17 @@ export function UnsupportedHandoff({
           이 방법은 iOS 27 이상에서 쓸 수 있어요
         </h2>
         <p className="text-sm leading-relaxed text-ink-body">
-          iPhone을 업데이트한 뒤 다시 연결해 주세요. 지금은 건너뛰어도 괜찮아요.
+          iPhone을 업데이트한 뒤 다시 연결해 주세요. 연결은 나중에 해도 돼요.
         </p>
+        <p className="text-sm leading-relaxed text-ink-body">
+          지금은 영수증·문자를 직접 올려도 기록할 수 있어요.
+        </p>
+        <Link
+          href="/share-target"
+          className="inline-flex min-h-11 items-center text-sm font-semibold text-mu-accent underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
+        >
+          직접 기록하러 가기
+        </Link>
         <StickyActionBar>
           <button
             type="button"
@@ -124,9 +133,18 @@ export function UnsupportedHandoff({
       </PrimaryButton>
       {status === "copied" ? (
         <p role="status" className="text-sm text-ink-body">
-          복사했어요 ✓
+          복사했어요
         </p>
       ) : null}
+      <p className="text-sm leading-relaxed text-ink-body">
+        휴대폰이 없어도 영수증·문자를 직접 올릴 수 있어요.
+      </p>
+      <Link
+        href="/share-target"
+        className="inline-flex min-h-11 items-center text-sm font-semibold text-mu-accent underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
+      >
+        직접 기록하러 가기
+      </Link>
       <DevCurlFold />
       <StickyActionBar>
         <button

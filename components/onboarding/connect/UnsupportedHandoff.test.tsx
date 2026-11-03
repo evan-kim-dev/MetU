@@ -99,6 +99,15 @@ describe("UnsupportedHandoff", () => {
     ).toBe("/");
   });
 
+  it("직접 기록 링크로 막다른 길을 피해요", () => {
+    render(
+      <UnsupportedHandoff reason="desktop" skipBusy={false} onSkip={vi.fn()} />
+    );
+    expect(
+      screen.getByRole("link", { name: "직접 기록하러 가기" }).getAttribute("href")
+    ).toBe("/share-target");
+  });
+
   it("iOS 27 미만은 QR 을 만들지 않아요", () => {
     render(
       <UnsupportedHandoff reason="ios-low" skipBusy={false} onSkip={vi.fn()} />
