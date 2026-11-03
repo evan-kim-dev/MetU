@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sample-001",
+    "file": "sample-001.jpg",
+    "total": 12800,
+    "currency": "KRW",
+    "date": "2026-10-01",
+    "merchantNorm": "카페예시",
+    "itemCount": 2,
+    "tax": null,
+    "tip": null
+  }
+]

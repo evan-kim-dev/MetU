@@ -9,6 +9,7 @@ import { PasteExpenseBox } from "@/components/ledger/PasteExpenseBox";
 import { ReceiptUploader } from "@/components/ledger/ReceiptUploader";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
+import { appendExifFields, readReceiptExif } from "@/lib/ledger/exif";
 import { resizeImageToJpeg } from "@/lib/ledger/image";
 import { receiptResponseToDraft } from "@/lib/ledger/receipt-client";
 import {
@@ -183,6 +184,7 @@ export default function ShareTargetPage() {
       setProcessError("");
       try {
         if (shareFile && tripId) {
+          const exif = await readReceiptExif(shareFile);
           let resized: File;
           try {
             resized = await resizeImageToJpeg(shareFile);
@@ -192,6 +194,7 @@ export default function ShareTargetPage() {
           const fd = new FormData();
           fd.set("tripId", tripId);
           fd.set("image", resized);
+          appendExifFields(fd, exif);
           const res = await fetch("/api/ledger/receipt", { method: "POST", body: fd });
           if (cancelled) return;
           if (!res.ok) {

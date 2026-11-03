@@ -5,6 +5,7 @@ import { Camera, ImagePlus, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toUserFacingError } from "@/lib/errors/user-message";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
+import { appendExifFields, readReceiptExif } from "@/lib/ledger/exif";
 import { resizeImageToJpeg } from "@/lib/ledger/image";
 import { receiptResponseToDraft } from "@/lib/ledger/receipt-client";
 import {
@@ -112,12 +113,14 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
   }
 
   async function uploadToInbox(file: File) {
+    const exif = await readReceiptExif(file);
     const resized = await resize(file);
     if (!resized) return;
     const fd = new FormData();
     fd.set("tripId", tripId);
     fd.set("file", resized);
     fd.set("source", "upload");
+    appendExifFields(fd, exif);
     const res = await fetch("/api/events/upload", { method: "POST", body: fd });
     if (!res.ok) {
       await failFromResponse(res);

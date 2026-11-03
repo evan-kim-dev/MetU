@@ -26,3 +26,8 @@ supabase/.temp/
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+
+# Receipt eval private assets (K4)
+/eval/receipts/images/
+/eval/receipts/labels.json
+/eval/receipts/report.md

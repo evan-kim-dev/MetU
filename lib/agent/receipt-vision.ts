@@ -92,6 +92,12 @@ export type ReceiptTripContext = {
   localCurrency?: string | null;
 };
 
+export type ReceiptExifHint = {
+  takenAt?: string;
+  lat?: number;
+  lng?: number;
+};
+
 export type ExtractReceiptArgs = {
   base64: string;
   mime: string;
@@ -99,6 +105,8 @@ export type ExtractReceiptArgs = {
   tripId: string;
   hintCurrency?: string | null;
   tripContext?: ReceiptTripContext | null;
+  /** 업로드 전 EXIF. 영수증에 시각이 없을 때만 힌트. */
+  exif?: ReceiptExifHint | null;
 };
 
 function contextValue(value: string | null | undefined): string {
@@ -109,9 +117,10 @@ function contextValue(value: string | null | undefined): string {
 
 function buildReceiptUserText(
   hint: string,
-  tripContext: ReceiptTripContext | null | undefined
+  tripContext: ReceiptTripContext | null | undefined,
+  exif?: ReceiptExifHint | null
 ): string {
-  return [
+  const lines = [
     "첨부된 영수증 이미지를 스키마에 맞춰 구조화해요.",
     "<trip_context>",
     `hint_currency=${contextValue(hint)}`,
@@ -120,7 +129,25 @@ function buildReceiptUserText(
     `trip_end_date=${contextValue(tripContext?.endDate)}`,
     "locale=ko-KR",
     "</trip_context>",
-  ].join("\n");
+  ];
+  if (exif?.takenAt || (exif?.lat != null && exif?.lng != null)) {
+    lines.push("<exif_hint>");
+    if (exif.takenAt) {
+      lines.push(
+        `taken_at=${contextValue(exif.takenAt)}`,
+        "taken_at은 영수증에 결제 시각이 없을 때만 참고하세요."
+      );
+    }
+    if (exif.lat != null && exif.lng != null) {
+      // GPS는 소수점 2자리로 거칠게 (프라이버시)
+      lines.push(
+        `approx_lat=${(Math.round(exif.lat * 100) / 100).toFixed(2)}`,
+        `approx_lng=${(Math.round(exif.lng * 100) / 100).toFixed(2)}`
+      );
+    }
+    lines.push("</exif_hint>");
+  }
+  return lines.join("\n");
 }
 
 /**
@@ -140,7 +167,7 @@ export async function extractReceiptFromImage(
     userId: args.userId,
     tripId: args.tripId,
     system: buildInsightSystem("receipt_vision", RECEIPT_VISION_SYSTEM),
-    text: buildReceiptUserText(hint, args.tripContext),
+    text: buildReceiptUserText(hint, args.tripContext, args.exif),
     images: [{ mimeType: args.mime, base64: args.base64 }],
     schema: receiptSchema,
   });
@@ -166,5 +193,18 @@ export async function extractReceiptFromImage(
   }
 
   const { draft, rawExtract } = postprocessReceiptExtract(safe, hint);
+  if (
+    args.exif?.takenAt &&
+    (!draft.paidAt || draft.timeIsEstimated) &&
+    !safe.paidAt
+  ) {
+    const iso = args.exif.takenAt;
+    draft.paidAt = iso.slice(0, 16);
+    draft.spentOn = iso.slice(0, 10);
+    draft.timeIsEstimated = true;
+    draft.timeSource = "exif";
+  } else if (draft.paidAt) {
+    draft.timeSource = "receipt";
+  }
   return { ok: true, extract: rawExtract, draft };
 }

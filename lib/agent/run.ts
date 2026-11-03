@@ -527,6 +527,16 @@ async function readReceiptImage(args: {
   const mime = detectImageMime(bytes);
   if (!mime) return unreadable("receipt_unsupported_image");
 
+  const rawExif = args.payload.exif;
+  const exif =
+    rawExif && typeof rawExif === "object"
+      ? (rawExif as {
+          takenAt?: string;
+          lat?: number;
+          lng?: number;
+        })
+      : undefined;
+
   const vision = await extractReceiptFromImage({
     base64: Buffer.from(bytes).toString("base64"),
     mime,
@@ -534,6 +544,7 @@ async function readReceiptImage(args: {
     tripId: args.tripId,
     hintCurrency: args.tripCurrency,
     tripContext: args.tripContext,
+    exif,
   });
 
   if (!vision.ok) {
