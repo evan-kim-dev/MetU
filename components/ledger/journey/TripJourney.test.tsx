@@ -173,6 +173,16 @@ describe("TripJourney", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("?step=adjust 는 분담 단계를 보여 주고, CTA 는 AdjustStep 의 「문제없어요, 정산할게요」 하나예요", async () => {
+    search = "step=adjust";
+    render(<TripJourney tripId="t1" />);
+    expect(
+      await screen.findByRole("heading", { name: "정산 전에 안 맞는 게 있나요?" })
+    ).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "문제없어요, 정산할게요" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "다음: 정산하기" })).toBeNull();
+  });
+
   describe("게스트(익명)", () => {
     beforeEach(() => {
       useAuth.mockReturnValue({
