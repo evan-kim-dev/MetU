@@ -10,7 +10,8 @@
 | 세션 | 브랜치 | 상태 | PR | 메모 |
 |---|---|---|---|---|
 | C0 | `chore/claude-code-setup` | 완료(PR #71) | #71 | CLAUDE.md · .claude/settings.json · 이 파일 |
-| V0 | `chore/baseline-audit` | 완료(PR #72) | #72 | docs/audit/baseline-2026-11.md · 차단 3건 |
+| V0a | ix/guest-journey-blockers | 대기 |  | V0 차단 X2·X3 + I1 (끼워 넣은 세션) |
+| V0b | ix/guest-claim-trigger | 대기 |  | V0 차단 X1 — 새 마이그레이션만, DB 적용은 Evan |
 | B1 | `chore/dead-code-symbols` | 대기 |  |  |
 | B2 | `chore/dead-routes-env-docs` | 대기 |  |  |
 | B3 | `docs/db-orphans-report` | 대기 |  |  |
