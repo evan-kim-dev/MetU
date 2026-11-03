@@ -1,22 +1,17 @@
 {
-  "_comment": "D0 래칫 기준선. 디렉터리별 금지 스타일 히트 수. 줄이기만 가능(components/ds=0 고정). 갱신: 2026-11-04 D1 design-shell.",
+  "_comment": "D0 래칫 기준선. 디렉터리별 금지 스타일 히트 수. 줄이기만 가능(components/ds=0 고정). 갱신: 2026-11-04 D3 design-ledger-rest.",
   "app/_root": 22,
   "app/about": 21,
   "app/auth": 2,
   "app/checklist": 1,
-  "app/join": 14,
   "app/onboarding": 15,
-  "app/s": 25,
   "app/share-target": 18,
-  "app/trips": 32,
   "components/agent": 309,
   "components/auth": 106,
   "components/checklist": 107,
   "components/community": 334,
-  "components/ds": 0,
   "components/fx": 2,
   "components/home": 157,
-  "components/ledger": 285,
   "components/map": 11,
   "components/notifications": 16,
   "components/onboarding": 445,
@@ -24,5 +19,6 @@
   "components/pwa": 18,
   "components/recommend": 144,
   "components/trips": 526,
-  "components/ui": 148
+  "components/ui": 148,
+  "components/ds": 0
 }

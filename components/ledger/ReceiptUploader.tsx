@@ -192,7 +192,7 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
 
   return (
     <div
-      className="flex flex-col gap-2 rounded-xl bg-surface-soft p-3"
+      className="flex flex-col gap-2 rounded-xl bg-mu-sunken p-3"
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -200,7 +200,7 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
         if (f) void upload(f);
       }}
     >
-      <p className="text-xs font-bold text-ink-heading">영수증 사진</p>
+      <p className="text-xs font-bold text-mu-fg">영수증 사진</p>
       <input
         ref={cameraRef}
         type="file"
@@ -220,7 +220,7 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
         <button
           type="button"
           disabled={busy}
-          className="inline-flex min-h-11 items-center gap-1 rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="inline-flex min-h-11 items-center gap-1 rounded-lg bg-mu-accent px-3 py-2 text-xs font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
           onClick={() => cameraRef.current?.click()}
         >
           {busy ? (
@@ -233,7 +233,7 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
         <button
           type="button"
           disabled={busy}
-          className="inline-flex min-h-11 items-center gap-1 rounded-lg bg-surface-white px-3 py-2 text-xs font-bold text-ink-heading ring-1 ring-line disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="inline-flex min-h-11 items-center gap-1 rounded-lg bg-mu-card px-3 py-2 text-xs font-bold text-mu-fg ring-1 ring-line disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
           onClick={() => galleryRef.current?.click()}
         >
           <ImagePlus className="h-3.5 w-3.5" />
@@ -244,7 +244,7 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
         type="button"
         aria-pressed={instant}
         disabled={busy}
-        className="inline-flex min-h-11 items-center self-start text-[11px] font-semibold text-ink-muted underline-offset-2 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="inline-flex min-h-11 items-center self-start text-[11px] font-semibold text-mu-fg-3 underline-offset-2 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
         onClick={() => setInstant((v) => !v)}
       >
         {instant
@@ -252,12 +252,12 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
           : "수신함 없이 바로 확인할래요"}
       </button>
       {phase === "uploading" ? (
-        <p role="status" className="text-xs font-semibold text-ink-muted">
+        <p role="status" className="text-xs font-semibold text-mu-fg-3">
           올리는 중이에요
         </p>
       ) : null}
       {phase === "reading" ? (
-        <p role="status" className="text-xs font-semibold text-ink-muted">
+        <p role="status" className="text-xs font-semibold text-mu-fg-3">
           읽는 중이에요
         </p>
       ) : null}
@@ -266,22 +266,22 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
           role="status"
           className={`text-xs font-semibold ${
             done === "failed" || done === "not_receipt"
-              ? "text-danger"
-              : "text-emerald-800"
+              ? "text-mu-err"
+              : "text-mu-ok"
           }`}
         >
           {DONE_TEXT[done]}{" "}
           {done === "saved" || done === "merged" ? (
             <Link
               href={`/trips/${tripId}/ledger`}
-              className="inline-flex min-h-11 items-center font-bold text-brand"
+              className="inline-flex min-h-11 items-center font-bold text-mu-accent"
             >
               가계부 보기
             </Link>
           ) : done === "review" || done === "failed" ? (
             <Link
               href={`/trips/${tripId}/ledger/inbox`}
-              className="inline-flex min-h-11 items-center font-bold text-brand"
+              className="inline-flex min-h-11 items-center font-bold text-mu-accent"
             >
               수신함 열기
             </Link>
@@ -289,11 +289,11 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
         </p>
       ) : null}
       {timedOut ? (
-        <p role="status" className="text-xs font-semibold text-ink-muted">
+        <p role="status" className="text-xs font-semibold text-mu-fg-3">
           아직 읽는 중이에요. 잠시 뒤{" "}
           <Link
             href={`/trips/${tripId}/ledger/inbox`}
-            className="inline-flex min-h-11 items-center font-bold text-brand"
+            className="inline-flex min-h-11 items-center font-bold text-mu-accent"
           >
             수신함
           </Link>
@@ -301,7 +301,7 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="text-xs font-semibold text-danger">
+        <p role="alert" className="text-xs font-semibold text-mu-err">
           {error}
         </p>
       ) : null}

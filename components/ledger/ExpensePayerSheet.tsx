@@ -52,21 +52,21 @@ export function ExpensePayerSheet({
 
   return (
     <Sheet open={open} onClose={onClose} title="결제자 바꾸기">
-      <p className="text-xs text-ink-muted">
+      <p className="text-xs text-mu-fg-3">
         결제한 사람만 바꿔요. 금액과 분담은 그대로예요. 카드 수수료는 다시
         계산하지 않아요.
       </p>
       <ul className="mt-3 flex flex-col gap-1">
         {members.map((m) => (
           <li key={m.id}>
-            <label className="flex min-h-[44px] items-center gap-3 rounded-lg px-2 hover:bg-surface-soft">
+            <label className="flex min-h-[44px] items-center gap-3 rounded-lg px-2 hover:bg-mu-sunken">
               <input
                 type="radio"
                 name="payer"
                 checked={selected === m.id}
                 onChange={() => setSelected(m.id)}
               />
-              <span className="text-sm font-bold text-ink-heading">
+              <span className="text-sm font-bold text-mu-fg">
                 {m.displayName}
                 {m.id === currentPayerId ? " (현재)" : ""}
               </span>
@@ -75,14 +75,14 @@ export function ExpensePayerSheet({
         ))}
       </ul>
       {error ? (
-        <p role="alert" className="mt-2 text-xs font-semibold text-danger">
+        <p role="alert" className="mt-2 text-xs font-semibold text-mu-err">
           {error}
         </p>
       ) : null}
       <button
         type="button"
         disabled={busy}
-        className="mt-3 min-h-[44px] w-full rounded-xl bg-brand text-sm font-bold text-white disabled:opacity-60"
+        className="mt-3 min-h-[44px] w-full rounded-xl bg-mu-accent text-sm font-bold text-white disabled:opacity-60"
         onClick={() => void save()}
       >
         저장

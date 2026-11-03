@@ -190,14 +190,14 @@ export function ExpenseChipSplit({
   const hasShares = Object.keys(expense.shares ?? {}).length > 0;
 
   return (
-    <li className="rounded-xl bg-surface-soft px-3 py-3 text-xs">
+    <li className="rounded-xl bg-mu-sunken px-3 py-3 text-xs">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate font-semibold text-ink-heading">
+          <p className="truncate font-semibold text-mu-fg">
             {expense.merchant || expense.label}
           </p>
           {payerName ? (
-            <p className="mt-0.5 text-ink-muted">결제 {payerName}</p>
+            <p className="mt-0.5 text-mu-fg-3">결제 {payerName}</p>
           ) : null}
         </div>
         <span className="shrink-0 font-bold">{formatKRW(expense.krwAmount)}</span>
@@ -237,7 +237,7 @@ export function ExpenseChipSplit({
           <button
             type="button"
             disabled={Boolean(busy)}
-            className="inline-flex min-h-[44px] items-center rounded-lg border border-amber-600 px-3 text-xs font-bold text-amber-800 disabled:opacity-40"
+            className="inline-flex min-h-[44px] items-center rounded-lg border border-mu-warn px-3 text-xs font-bold text-mu-warn disabled:opacity-40"
             onClick={() => void onUndo()}
           >
             되돌리기
@@ -246,19 +246,19 @@ export function ExpenseChipSplit({
       ) : null}
 
       {!preview && error ? (
-        <p role="alert" className="mt-2 font-semibold text-danger">
+        <p role="alert" className="mt-2 font-semibold text-mu-err">
           {error}
         </p>
       ) : null}
       {!preview && doneMsg ? (
-        <p role="status" className="mt-2 font-semibold text-emerald-800">
+        <p role="status" className="mt-2 font-semibold text-mu-ok">
           {doneMsg}
         </p>
       ) : null}
       {isOwner && !isAnonymous ? (
         <button
           type="button"
-          className="mt-2 inline-flex min-h-[44px] items-center font-bold text-brand underline"
+          className="mt-2 inline-flex min-h-[44px] items-center font-bold text-mu-accent underline"
           onClick={() => setPayerOpen(true)}
         >
           결제자 바꾸기
@@ -266,9 +266,9 @@ export function ExpenseChipSplit({
       ) : null}
 
       {staleSettle && isOwner && settleHref ? (
-        <p className="mt-2 text-ink-muted">
+        <p className="mt-2 text-mu-fg-3">
           정산이 오래됐어요.{" "}
-          <a href={settleHref} className="font-bold text-brand underline">
+          <a href={settleHref} className="font-bold text-mu-accent underline">
             정산 화면
           </a>
           에서 다시 계산해 주세요.

@@ -91,16 +91,16 @@ export function VoiceInputButton({ tripId, onDrafts }: Props) {
   }
 
   return (
-    <div className="rounded-xl bg-surface-soft p-3">
-      <p className="text-xs font-bold text-ink-heading">음성 입력</p>
-      <p className="mt-1 text-[10px] text-ink-muted">
+    <div className="rounded-xl bg-mu-sunken p-3">
+      <p className="text-xs font-bold text-mu-fg">음성 입력</p>
+      <p className="mt-1 text-xs text-mu-fg-3">
         Chrome 계열은 음성이 브라우저 제공자 서버로 전송될 수 있어요. HTTPS
         필요.
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white"
+          className="inline-flex items-center gap-1 rounded-lg bg-mu-accent px-3 py-2 text-xs font-bold text-white"
           onClick={listen}
           disabled={listening}
         >
@@ -114,20 +114,20 @@ export function VoiceInputButton({ tripId, onDrafts }: Props) {
         <button
           type="button"
           disabled={busy || !text.trim()}
-          className="rounded-lg bg-surface-white px-3 py-2 text-xs font-bold ring-1 ring-line disabled:opacity-40"
+          className="rounded-lg bg-mu-card px-3 py-2 text-xs font-bold ring-1 ring-line disabled:opacity-40"
           onClick={() => void analyze()}
         >
           분석
         </button>
       </div>
       <textarea
-        className="mt-2 min-h-[64px] w-full rounded-lg border border-line px-2 py-1.5 text-sm"
+        className="mt-2 min-h-[64px] w-full rounded-lg border border-mu-line px-2 py-1.5 text-sm"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="인식된 문장을 여기서 수정할 수 있어요"
       />
       {error ? (
-        <p className="mt-1 text-xs font-semibold text-danger">{error}</p>
+        <p className="mt-1 text-xs font-semibold text-mu-err">{error}</p>
       ) : null}
     </div>
   );

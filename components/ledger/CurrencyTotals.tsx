@@ -19,15 +19,15 @@ export function CurrencyTotals({
 
   return (
     <div
-      className={className ?? "rounded-xl bg-surface-soft px-3 py-2"}
+      className={className ?? "rounded-xl bg-mu-sunken px-3 py-2"}
       data-testid="currency-totals"
     >
-      <p className="text-xs font-bold text-ink-heading">통화별 지출</p>
+      <p className="text-xs font-bold text-mu-fg">통화별 지출</p>
       <ul className="mt-1 flex flex-col gap-1">
         {totals.map((t) => (
           <li
             key={t.currency}
-            className="flex items-baseline justify-between gap-2 text-xs text-ink-body"
+            className="flex items-baseline justify-between gap-2 text-xs text-mu-fg-2"
             aria-label={`${t.currency} ${t.count}건, ${formatOriginalAmount(
               t.amount,
               t.currency
@@ -35,15 +35,15 @@ export function CurrencyTotals({
           >
             <span>
               {formatOriginalAmount(t.amount, t.currency)}
-              <span className="text-ink-caption"> · {t.count}건</span>
+              <span className="text-mu-fg-3"> · {t.count}건</span>
             </span>
-            <span className="font-bold text-ink-heading">{formatKRW(t.krw)}</span>
+            <span className="font-bold text-mu-fg">{formatKRW(t.krw)}</span>
           </li>
         ))}
       </ul>
-      <div className="mt-1.5 flex items-baseline justify-between border-t border-line-soft pt-1.5 text-xs">
-        <span className="font-bold text-ink-heading">원화 합계</span>
-        <span className="font-extrabold text-ink-heading">
+      <div className="mt-1.5 flex items-baseline justify-between border-t border-mu-line pt-1.5 text-xs">
+        <span className="font-bold text-mu-fg">원화 합계</span>
+        <span className="font-extrabold text-mu-fg">
           {formatKRW(totalKrw)}
         </span>
       </div>

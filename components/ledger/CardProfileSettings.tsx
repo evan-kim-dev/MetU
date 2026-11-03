@@ -58,15 +58,15 @@ export function CardProfileSettings({ userId, profiles, onChange }: Props) {
   }
 
   return (
-    <div className="rounded-xl bg-surface-soft p-3">
-      <p className="text-xs font-bold text-ink-heading">카드 프로필</p>
-      <p className="mt-1 text-[11px] text-ink-muted">
+    <div className="rounded-xl bg-mu-sunken p-3">
+      <p className="text-xs font-bold text-mu-fg">카드 프로필</p>
+      <p className="mt-1 text-[11px] text-mu-fg-3">
         카드사/약관의 해외결제 수수료를 직접 입력하세요. 비워 두면 0으로 계산하고
         표시해요.
       </p>
       <ul className="mt-2 flex flex-col gap-1 text-xs">
         {profiles.map((p) => (
-          <li key={p.id} className="rounded-lg bg-surface-white px-2 py-1">
+          <li key={p.id} className="rounded-lg bg-mu-card px-2 py-1">
             {p.label} ·{" "}
             {p.fee_rate == null
               ? "수수료 미설정"
@@ -77,13 +77,13 @@ export function CardProfileSettings({ userId, profiles, onChange }: Props) {
       </ul>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <input
-          className="col-span-2 rounded-lg border border-line px-2 py-1.5 text-xs"
+          className="col-span-2 rounded-lg border border-mu-line px-2 py-1.5 text-xs"
           placeholder="이름 (예: 신한 신용)"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
         />
         <select
-          className="rounded-lg border border-line px-2 py-1.5 text-xs"
+          className="rounded-lg border border-mu-line px-2 py-1.5 text-xs"
           value={kind}
           onChange={(e) => setKind(e.target.value as typeof kind)}
         >
@@ -94,14 +94,14 @@ export function CardProfileSettings({ userId, profiles, onChange }: Props) {
         </select>
         <input
           inputMode="decimal"
-          className="rounded-lg border border-line px-2 py-1.5 text-xs"
+          className="rounded-lg border border-mu-line px-2 py-1.5 text-xs"
           placeholder="수수료율 %"
           value={feeRatePct}
           onChange={(e) => setFeeRatePct(e.target.value)}
         />
         <input
           inputMode="numeric"
-          className="col-span-2 rounded-lg border border-line px-2 py-1.5 text-xs"
+          className="col-span-2 rounded-lg border border-mu-line px-2 py-1.5 text-xs"
           placeholder="건당 고정 수수료(원)"
           value={feeFlat}
           onChange={(e) => setFeeFlat(e.target.value)}
@@ -109,13 +109,13 @@ export function CardProfileSettings({ userId, profiles, onChange }: Props) {
       </div>
       <button
         type="button"
-        className="mt-2 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white"
+        className="mt-2 rounded-lg bg-mu-accent px-3 py-1.5 text-xs font-bold text-white"
         onClick={() => void save()}
       >
         프로필 추가
       </button>
       {error ? (
-        <p className="mt-1 text-xs font-semibold text-danger">{error}</p>
+        <p className="mt-1 text-xs font-semibold text-mu-err">{error}</p>
       ) : null}
     </div>
   );

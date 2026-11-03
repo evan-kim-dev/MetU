@@ -177,15 +177,15 @@ export function GuestExpenseEntry({
   return (
     <section
       aria-label="지출 제안"
-      className="rounded-xl border border-dashed border-line-muted bg-surface-soft px-3 py-4"
+      className="rounded-xl border border-dashed border-mu-line bg-mu-sunken px-3 py-4"
     >
-      <p className="text-sm font-bold text-ink-heading">내가 낸 지출</p>
-      <p className="mt-1 text-xs text-ink-muted">
+      <p className="text-sm font-bold text-mu-fg">내가 낸 지출</p>
+      <p className="mt-1 text-xs text-mu-fg-3">
         호스트가 승인하면 정산에 들어가요.
       </p>
       <button
         type="button"
-        className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-brand px-3 text-sm font-bold text-white"
+        className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-mu-accent px-3 text-sm font-bold text-white"
         onClick={() => {
           setOpen(true);
           void refreshMine();
@@ -195,7 +195,7 @@ export function GuestExpenseEntry({
       </button>
 
       {message ? (
-        <p role="status" className="mt-2 text-xs text-ink-body">
+        <p role="status" className="mt-2 text-xs text-mu-fg-2">
           {message}
         </p>
       ) : null}
@@ -205,15 +205,15 @@ export function GuestExpenseEntry({
           {mine.map((p) => (
             <li
               key={p.id}
-              className="rounded-lg bg-surface-white px-3 py-2 text-xs ring-1 ring-line-soft"
+              className="rounded-lg bg-mu-card px-3 py-2 text-xs ring-1 ring-mu-line"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="font-bold text-ink-heading">{p.label}</span>
+                <span className="font-bold text-mu-fg">{p.label}</span>
                 <span className="font-semibold">
                   {p.amount} {p.currency}
                 </span>
               </div>
-              <p className="mt-1 text-ink-muted">
+              <p className="mt-1 text-mu-fg-3">
                 {p.status === "pending"
                   ? "대기 중"
                   : p.status === "approved"
@@ -225,7 +225,7 @@ export function GuestExpenseEntry({
               {p.status === "pending" ? (
                 <button
                   type="button"
-                  className="mt-1 min-h-[44px] font-bold text-brand underline"
+                  className="mt-1 min-h-[44px] font-bold text-mu-accent underline"
                   onClick={() => void withdraw(p.id)}
                 >
                   철회
@@ -242,10 +242,10 @@ export function GuestExpenseEntry({
         title="내가 낸 지출 제안"
       >
         <div className="flex flex-col gap-3">
-          <label className="text-xs font-bold text-ink-heading">
+          <label className="text-xs font-bold text-mu-fg">
             항목
             <input
-              className="mt-1 min-h-[44px] w-full rounded-lg border border-line-soft px-3 text-sm"
+              className="mt-1 min-h-[44px] w-full rounded-lg border border-mu-line px-3 text-sm"
               value={fields.label}
               onChange={(e) => {
                 setTouched((t) => ({ ...t, label: true }));
@@ -253,11 +253,11 @@ export function GuestExpenseEntry({
               }}
             />
           </label>
-          <label className="text-xs font-bold text-ink-heading">
+          <label className="text-xs font-bold text-mu-fg">
             금액
             <input
               inputMode="decimal"
-              className="mt-1 min-h-[44px] w-full rounded-lg border border-line-soft px-3 text-sm"
+              className="mt-1 min-h-[44px] w-full rounded-lg border border-mu-line px-3 text-sm"
               value={fields.amount}
               onChange={(e) => {
                 setTouched((t) => ({ ...t, amount: true }));
@@ -265,10 +265,10 @@ export function GuestExpenseEntry({
               }}
             />
           </label>
-          <label className="text-xs font-bold text-ink-heading">
+          <label className="text-xs font-bold text-mu-fg">
             통화
             <input
-              className="mt-1 min-h-[44px] w-full rounded-lg border border-line-soft px-3 text-sm uppercase"
+              className="mt-1 min-h-[44px] w-full rounded-lg border border-mu-line px-3 text-sm uppercase"
               value={fields.currency}
               maxLength={3}
               onChange={(e) => {
@@ -280,11 +280,11 @@ export function GuestExpenseEntry({
               }}
             />
           </label>
-          <label className="text-xs font-bold text-ink-heading">
+          <label className="text-xs font-bold text-mu-fg">
             날짜
             <input
               type="date"
-              className="mt-1 min-h-[44px] w-full rounded-lg border border-line-soft px-3 text-sm"
+              className="mt-1 min-h-[44px] w-full rounded-lg border border-mu-line px-3 text-sm"
               value={fields.spentOn}
               onChange={(e) => {
                 setTouched((t) => ({ ...t, spentOn: true }));
@@ -292,7 +292,7 @@ export function GuestExpenseEntry({
               }}
             />
           </label>
-          <label className="text-xs font-bold text-ink-heading">
+          <label className="text-xs font-bold text-mu-fg">
             영수증 사진 (선택)
             <input
               type="file"
@@ -303,14 +303,14 @@ export function GuestExpenseEntry({
             />
           </label>
           {aiFilled ? (
-            <p className="text-xs font-semibold text-brand">
+            <p className="text-xs font-semibold text-mu-accent">
               AI가 채웠어요. 확인해 주세요.
             </p>
           ) : null}
           <button
             type="button"
             disabled={busy}
-            className="min-h-[44px] rounded-xl bg-brand text-sm font-bold text-white disabled:opacity-60"
+            className="min-h-[44px] rounded-xl bg-mu-accent text-sm font-bold text-white disabled:opacity-60"
             onClick={() => void submit()}
           >
             제안 보내기

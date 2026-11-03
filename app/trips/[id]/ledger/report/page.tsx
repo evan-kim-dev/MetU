@@ -29,15 +29,15 @@ export default function LedgerReportPage() {
       <div className="mb-4 flex items-center justify-between print:hidden">
         <h1 className="text-xl font-extrabold">여행 리포트</h1>
         <div className="flex gap-3 text-xs font-bold">
-          <Link href={`/trips/${tripId}/ledger`} className="text-brand">
+          <Link href={`/trips/${tripId}/ledger`} className="text-mu-accent">
             가계부
           </Link>
-          <Link href={`/trips/${tripId}/ledger/recap`} className="text-brand">
+          <Link href={`/trips/${tripId}/ledger/recap`} className="text-mu-accent">
             리캡 카드
           </Link>
           <button
             type="button"
-            className="text-ink-body"
+            className="text-mu-fg-2"
             onClick={() => window.print()}
           >
             인쇄
@@ -49,7 +49,7 @@ export default function LedgerReportPage() {
         members={members}
         budget={Math.max(total, 1)}
       />
-      <p className="mt-4 text-[11px] text-ink-muted">
+      <p className="mt-4 text-[11px] text-mu-fg-3">
         환율은 일자별/현금/대체 출처가 지출 행에 저장돼요. 중앙값 근사치일 수
         있어요.
       </p>

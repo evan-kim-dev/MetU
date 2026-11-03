@@ -53,10 +53,10 @@ export function PasteExpenseBox({ tripId, onDrafts, onCancelNotice }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-surface-soft p-3">
-      <p className="text-xs font-bold text-ink-heading">카드 문자 / 푸시 붙여넣기</p>
+    <div className="flex flex-col gap-2 rounded-xl bg-mu-sunken p-3">
+      <p className="text-xs font-bold text-mu-fg">카드 문자 / 푸시 붙여넣기</p>
       <textarea
-        className="min-h-[96px] w-full resize-y rounded-lg border border-line bg-surface-white px-3 py-2 text-sm"
+        className="min-h-[96px] w-full resize-y rounded-lg border border-mu-line bg-mu-card px-3 py-2 text-sm"
         placeholder="승인 문자를 붙여 넣으세요"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -66,7 +66,7 @@ export function PasteExpenseBox({ tripId, onDrafts, onCancelNotice }: Props) {
         <button
           type="button"
           disabled={busy}
-          className="inline-flex items-center gap-1 rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-lg bg-mu-accent px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
           onClick={() => void parse(text)}
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
@@ -75,7 +75,7 @@ export function PasteExpenseBox({ tripId, onDrafts, onCancelNotice }: Props) {
         <button
           type="button"
           disabled={busy}
-          className="inline-flex items-center gap-1 rounded-lg bg-surface-white px-3 py-2 text-xs font-bold text-ink-body ring-1 ring-line"
+          className="inline-flex items-center gap-1 rounded-lg bg-mu-card px-3 py-2 text-xs font-bold text-mu-fg-2 ring-1 ring-line"
           onClick={async () => {
             try {
               const clip = await navigator.clipboard.readText();
@@ -91,7 +91,7 @@ export function PasteExpenseBox({ tripId, onDrafts, onCancelNotice }: Props) {
         </button>
       </div>
       {error ? (
-        <p className="text-xs font-semibold text-danger">{error}</p>
+        <p className="text-xs font-semibold text-mu-err">{error}</p>
       ) : null}
     </div>
   );

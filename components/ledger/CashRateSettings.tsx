@@ -40,14 +40,14 @@ export function CashRateSettings({ tripId, memberId }: Props) {
   }
 
   return (
-    <div className="rounded-xl bg-surface-soft p-3">
-      <p className="text-xs font-bold text-ink-heading">내 현금 환전 환율</p>
-      <p className="mt-1 text-[11px] text-ink-muted">
+    <div className="rounded-xl bg-mu-sunken p-3">
+      <p className="text-xs font-bold text-mu-fg">내 현금 환전 환율</p>
+      <p className="mt-1 text-[11px] text-mu-fg-3">
         예: 10,000엔을 91,000원에 환전하면 단가가 자동 계산돼요.
       </p>
       <div className="mt-2 grid grid-cols-3 gap-2">
         <select
-          className="rounded-lg border border-line px-2 py-1.5 text-xs"
+          className="rounded-lg border border-mu-line px-2 py-1.5 text-xs"
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
         >
@@ -64,14 +64,14 @@ export function CashRateSettings({ tripId, memberId }: Props) {
         </select>
         <input
           inputMode="decimal"
-          className="rounded-lg border border-line px-2 py-1.5 text-xs"
+          className="rounded-lg border border-mu-line px-2 py-1.5 text-xs"
           value={foreign}
           onChange={(e) => setForeign(e.target.value)}
           placeholder="외화"
         />
         <input
           inputMode="numeric"
-          className="rounded-lg border border-line px-2 py-1.5 text-xs"
+          className="rounded-lg border border-mu-line px-2 py-1.5 text-xs"
           value={krw}
           onChange={(e) => setKrw(e.target.value)}
           placeholder="원화"
@@ -79,12 +79,12 @@ export function CashRateSettings({ tripId, memberId }: Props) {
       </div>
       <button
         type="button"
-        className="mt-2 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white"
+        className="mt-2 rounded-lg bg-mu-accent px-3 py-1.5 text-xs font-bold text-white"
         onClick={() => void save()}
       >
         환율 저장
       </button>
-      {msg ? <p className="mt-1 text-xs text-ink-body">{msg}</p> : null}
+      {msg ? <p className="mt-1 text-xs text-mu-fg-2">{msg}</p> : null}
       <FxAttribution />
     </div>
   );

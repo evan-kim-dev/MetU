@@ -27,9 +27,9 @@
 | U9 | `feat/ux-trip-flows` | 보류 |  | 시연 후순위(2순위) |
 | U10 | `feat/ux-journey-polish` | 보류 |  | 시연 후순위(2순위) |
 | D0 | `chore/design-guardrails` | 완료(PR #84) | #84 | legacy-baseline 래칫 |
-| D1 | `refactor/design-shell` | 진행 |  | ui·셸 mu 토큰 · baseline 2870 |
+| D1 | `refactor/design-shell` | 완료(PR #85) | #85 | ui·셸 mu 토큰 · baseline 2870 |
 | D2 | `refactor/design-home-agent` | 대기 |  |  |
-| D3 | `refactor/design-ledger-rest` | 대기 |  |  |
+| D3 | `refactor/design-ledger-rest` | 진행 |  | ledger·/s·/join mu · baseline 2514 |
 | D4 | `refactor/design-trips` | 대기 |  |  |
 | D5 | `refactor/design-onboarding` | 대기 |  |  |
 | D6 | `refactor/design-community` | 대기 |  |  |
@@ -264,24 +264,24 @@
 | `components/home/SmartTips.tsx` | D2 | 대기 |
 | `components/home/UnassignedInboxBanner.tsx` | D2 | 대기 |
 | `components/layout/MobileShell.tsx` | D1 | 대기 |
-| `components/ledger/CardProfileSettings.tsx` | D3 | 대기 |
-| `components/ledger/CashRateSettings.tsx` | D3 | 대기 |
+| `components/ledger/CardProfileSettings.tsx` | D3 | 정리(D3, 2026-11-04) |
+| `components/ledger/CashRateSettings.tsx` | D3 | 정리(D3, 2026-11-04) |
 | `components/ledger/CurrencyTotals.tsx` | U4/U5 | U4 사용 |
 | `components/ledger/ExpenseChipSplit.tsx` | U3 | 대기 |
-| `components/ledger/ExpenseConfirmSheet.tsx` | D3 | 대기 |
+| `components/ledger/ExpenseConfirmSheet.tsx` | D3 | 정리(D3, 2026-11-04) |
 | `components/ledger/ExpenseMemberChips.tsx` | U3 | 대기 |
 | `components/ledger/ExpensePayerSheet.tsx` | U3 | 대기 |
 | `components/ledger/FeeLeakCard.tsx` | U4/U5 | U4 사용 |
 | `components/ledger/GuestExpenseEntry.tsx` | U6 | 대기 |
 | `components/ledger/GuestExpenseSlot.tsx` | U6 | 대기 |
-| `components/ledger/LedgerDashboard.tsx` | D3 | 대기 |
-| `components/ledger/LedgerInboxClient.tsx` | D3 | 대기 |
+| `components/ledger/LedgerDashboard.tsx` | D3 | 정리(D3, 2026-11-04) |
+| `components/ledger/LedgerInboxClient.tsx` | D3 | 정리(D3, 2026-11-04) |
 | `components/ledger/LedgerShell.tsx` | U2 | 검증(V0, 2026-11-03, PR #72) · 수정(U1, 2026-11-03, PR #78) · 수정(U2, 2026-11-03, PR #79) · 수정(U3, 2026-11-03, PR #80) |
 | `components/ledger/MyShareCard.tsx` | U6 | 대기 |
 | `components/ledger/PasteExpenseBox.tsx` | U2 | 대기 |
 | `components/ledger/ProposalInbox.tsx` | U6 | 대기 |
-| `components/ledger/RecapCard.tsx` | D3 | 대기 |
-| `components/ledger/ReceiptUploader.tsx` | D3 | 대기 |
+| `components/ledger/RecapCard.tsx` | D3 | 정리(D3, 2026-11-04) |
+| `components/ledger/ReceiptUploader.tsx` | D3 | 정리(D3, 2026-11-04) |
 | `components/ledger/SettleExplainSheet.tsx` | U4/U5 | 대기 |
 | `components/ledger/SettlementHistory.tsx` | U4/U5 | 대기 |
 | `components/ledger/SplitBatchBox.tsx` | U3 | 대기 |
@@ -1100,3 +1100,18 @@
 
 **다음 세션(D3) 인계**
 - 원장 나머지 화면 mu. UI 시연 전 phone-check 권장.
+
+---
+
+## D3 — 원장 나머지 (2026-11-04)
+
+**한 일**
+- `components/ledger/*` 레거시 팔레트→mu-* (LedgerDashboard·시트·설정·분담·게스트 등). `SettleExplainSheet`·`ExpenseConfirmSheet` → ds `Sheet`.
+- `/s/[token]` 첫인상 AmountCard(총지출), `/join/[token]`·wallet/recap/report mu.
+- baseline: ledger/s/join/trips 0, 합계 2870→2514. `components/trips/ledger` 는 D4.
+
+**확인**
+- `npm run typecheck` · `npm run lint` · `npm test` · `npm run build`(더미 env)
+
+**다음 세션(Q1) 인계**
+- D2·D4~ 스킵(우선순위). Q1 최종 QA. phone-check: /s·/join·영수증 확인 시트·wallet/recap/report.
