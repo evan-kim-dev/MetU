@@ -3,6 +3,8 @@ import {
   deriveGuestDefaultStep,
   deriveHostDefaultStep,
   deriveJourney,
+  isGuestStepKey,
+  isHostStepKey,
   resolveStepParam,
   type DeriveJourneyInput,
 } from "./journey-state";
@@ -189,5 +191,21 @@ describe("deriveJourney guest", () => {
 
   it("게스트가 host step 요청하면 resolve가 기본으로", () => {
     expect(resolveStepParam("record", "share", "guest")).toBe("share");
+  });
+
+  it("adjust·pay 는 게스트 키이기도 해서 게스트에게 그대로 유지돼요", () => {
+    expect(resolveStepParam("adjust", "share", "guest")).toBe("adjust");
+    expect(resolveStepParam("pay", "share", "guest")).toBe("pay");
+  });
+});
+
+describe("step key guards", () => {
+  it("게스트 키와 호스트 키를 역할별로 판정해요", () => {
+    expect(isGuestStepKey("adjust")).toBe(true);
+    expect(isGuestStepKey("pay")).toBe(true);
+    expect(isGuestStepKey("share")).toBe(true);
+    expect(isGuestStepKey("record")).toBe(false);
+    expect(isHostStepKey("adjust")).toBe(true);
+    expect(isHostStepKey("share")).toBe(false);
   });
 });

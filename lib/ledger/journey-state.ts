@@ -280,6 +280,11 @@ export function isHostStepKey(value: string): value is HostStepKey {
   return (HOST_STEP_KEYS as string[]).includes(value);
 }
 
+/** adjust·pay 는 호스트 키와 이름이 같아서 역할별로 따로 판정해야 해요. */
+export function isGuestStepKey(value: string): value is GuestStepKey {
+  return (GUEST_STEP_KEYS as string[]).includes(value);
+}
+
 export function resolveStepParam(
   raw: string | null,
   defaultStep: JourneyStepKey,
