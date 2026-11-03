@@ -16,7 +16,7 @@
 | B1 | `chore/dead-code-symbols` | 완료(PR #75) | #75 | 죽은 심볼 삭제 · export 174개 제거 · upstream 삭제 |
 | B2 | `chore/dead-routes-env-docs` | 완료(PR #76) | #76 | env·README·마이그레이션 감사 · 라우트 삭제 보류 |
 | B3 | `docs/db-orphans-report` | 완료(PR #77) | #77 | docs/db-orphans.md · 고아 후보 4 |
-| U1 | `feat/ux-step-connect-invite` | 대기 |  |  |
+| U1 | `feat/ux-step-connect-invite` | 완료(PR #78) | #78 | ConnectStep · InviteStep · useTripInvite |
 | U2 | `feat/ux-step-record` | 대기 |  |  |
 | U3 | `feat/ux-step-adjust` | 대기 |  |  |
 | U4 | `feat/ux-step-settle` | 대기 |  |  |
@@ -247,7 +247,7 @@
 | `components/ds/Sheet.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ds/Skeleton.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ds/Stepper.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
-| `components/ds/Toast.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/Toast.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) · 수정(U1, 2026-11-03, PR #78) |
 | `components/ds/index.ts` | D0 | 검증(V0, 2026-11-03, PR #72) |
 | `components/fx/FxAttribution.tsx` | D1 | 대기 |
 | `components/home/AISmartTipsShortcut.tsx` | D2 | 대기 |
@@ -276,7 +276,7 @@
 | `components/ledger/GuestExpenseSlot.tsx` | U6 | 대기 |
 | `components/ledger/LedgerDashboard.tsx` | D3 | 대기 |
 | `components/ledger/LedgerInboxClient.tsx` | D3 | 대기 |
-| `components/ledger/LedgerShell.tsx` | U2 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ledger/LedgerShell.tsx` | U2 | 검증(V0, 2026-11-03, PR #72) · 수정(U1, 2026-11-03, PR #78) |
 | `components/ledger/MyShareCard.tsx` | U6 | 대기 |
 | `components/ledger/PasteExpenseBox.tsx` | U2 | 대기 |
 | `components/ledger/ProposalInbox.tsx` | U6 | 대기 |
@@ -362,7 +362,7 @@
 | `components/trips/ledger/LedgerTab.tsx` | U9 | 대기 |
 | `components/trips/ledger/MemberManager.tsx` | U9 | 대기 |
 | `components/trips/ledger/NaturalExpenseInput.tsx` | U9 | 대기 |
-| `components/trips/ledger/TripInvitePanel.tsx` | U9 | 대기 |
+| `components/trips/ledger/TripInvitePanel.tsx` | U9 | 수정(U1, 2026-11-03, PR #78) |
 | `components/trips/useTripDetailEditor.ts` | U9 | 정리(B1, 2026-11-03, PR #75) |
 | `components/ui/AIInsightBadge.tsx` | D1 | 대기 |
 | `components/ui/AILoadingPanel.tsx` | D1 | 대기 |
@@ -957,3 +957,27 @@
 **다음 세션(U1) 인계**
 - B 트랙(정리) 끝. U1 은 호스트 ①연결 ②초대 단계 추출: `components/ledger/journey/host/` 아래 새 컴포넌트, `LedgerShell` 의 `showConnect`/`showInvite` 블록을 무손실 이동 → 스타일 순서.
 - V0 M3(connect 완료 = 연결 또는 자동 기록 ≥1)·M4(자동화 상태 로딩 경합)는 U1 범위와 겹쳐요.
+
+### 2026-11-03 (KST) · U1 · `feat/ux-step-connect-invite` · PR #78
+
+**한 일**
+- `components/trips/ledger/useTripInvite.ts` 신규: 초대 생성·QR·복사·공유 공용 훅. `TripInvitePanel` 은 이 훅을 쓰고 동작·마크업 그대로.
+- `components/ledger/journey/host/ConnectStep.tsx`: 로딩·오류·연결됨·미연결. 연결 판정은 BottomCTA 와 같은 `hasActiveToken`.
+- `components/ledger/journey/host/InviteStep.tsx`: 링크·QR·복사·공유(복사 폴백 + 토스트), 이름 자리별 링크, 참여 현황, 5초 폴링 → 「OO님이 들어왔어요」, `onMembersChanged` 로 `LedgerShell` 멤버 갱신.
+- `components/ds/Toast.tsx`: `useOptionalToast()` 추가.
+- `LedgerShell` 의 연결·초대 JSX → 새 컴포넌트 호출.
+
+**명령 결과**
+- typecheck · lint · `npm test` 186 파일 / 1343 tests(+13) · build 통과. `/trips/[id]/ledger` 256 kB.
+
+**결정**
+- 연결 카드에 별도 주 버튼 없음(주 CTA = TripJourney BottomCTA).
+- 참여 목록은 MemberChip(토글 계약) 대신 상태 행.
+
+**남은 일 / 확인 필요**
+- Evan: 실기기 합류 → 토스트(PR 체크리스트).
+- 참여 반영은 폴링(Realtime 미사용). `TripJourney.memberCount` 미갱신(V0 I9) → U10.
+
+**다음 세션(U2) 인계**
+- 새 단계 컴포넌트 위치: `components/ledger/journey/host/`. 토스트는 `useOptionalToast`(LedgerShell 이 Provider 밖에서 테스트되기 때문).
+- `LedgerShell` 에 남은 단계 블록: record · adjust · settle/pay 링크.
