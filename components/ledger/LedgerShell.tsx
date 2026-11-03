@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CardProfileSettings } from "@/components/ledger/CardProfileSettings";
 import { CashRateSettings } from "@/components/ledger/CashRateSettings";
 import { ExpenseConfirmSheet } from "@/components/ledger/ExpenseConfirmSheet";
+import { ExpenseChipSplit } from "@/components/ledger/ExpenseChipSplit";
 import { GuestExpenseSlot } from "@/components/ledger/GuestExpenseSlot";
 import { LedgerDashboard } from "@/components/ledger/LedgerDashboard";
 import { PasteExpenseBox } from "@/components/ledger/PasteExpenseBox";
@@ -302,15 +303,16 @@ export function LedgerShell({ tripId }: Props) {
                 <li className="text-xs text-ink-muted">아직 지출이 없어요.</li>
               ) : (
                 expenses.map((e) => (
-                  <li
+                  <ExpenseChipSplit
                     key={e.id}
-                    className="flex items-center justify-between rounded-lg bg-surface-soft px-3 py-2 text-xs"
-                  >
-                    <span className="font-semibold text-ink-heading">
-                      {e.merchant || e.label}
-                    </span>
-                    <span className="font-bold">{formatKRW(e.krwAmount)}</span>
-                  </li>
+                    expense={e}
+                    members={members}
+                    meId={me?.id}
+                    isAnonymous={isAnonymous}
+                    isOwner={Boolean(me?.isOwner)}
+                    settleHref={`/trips/${tripId}/ledger/settle`}
+                    onChanged={() => void reload()}
+                  />
                 ))
               )}
             </ul>

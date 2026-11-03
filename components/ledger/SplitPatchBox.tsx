@@ -3,6 +3,8 @@
 import { Loader2 } from "lucide-react";
 import { useCallback, useId, useState } from "react";
 
+import { SplitPreviewSheet } from "@/components/ledger/SplitPreviewSheet";
+import type { SplitPreviewPayload } from "@/components/ledger/split-preview-types";
 import {
   SPLIT_PATCH_TEXT_MAX,
   type SplitPatch,
@@ -14,20 +16,7 @@ import {
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
-type ShareRow = { memberId: string; name: string; krw: number };
-
-type PreviewPayload = {
-  expenseId: string;
-  label: string;
-  kind: string;
-  before: ShareRow[];
-  after: ShareRow[];
-  beforeDigest: string;
-  krwAmount?: number;
-  splitType?: string;
-  myBefore?: number;
-  myAfter?: number;
-};
+type PreviewPayload = SplitPreviewPayload;
 
 type ExpenseOption = { id: string; label: string; krwAmount: number };
 
@@ -35,13 +24,6 @@ type Props = {
   tripId: string;
   /** 적용·되돌리기 성공 후 정산/잔액을 다시 읽게 한다. */
   onChanged?: () => void | Promise<void>;
-};
-
-const KIND_LABEL: Record<string, string> = {
-  exclude: "일부 제외",
-  only: "특정 멤버만",
-  weights: "비율 조정",
-  itemExclusions: "품목별 제외",
 };
 
 function newIdempotencyKey(): string {
@@ -404,50 +386,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
           ) : null}
 
           {preview ? (
-            <div className="rounded-lg bg-surface-white p-3 ring-1 ring-line">
-              <p className="font-bold text-ink-heading">
-                {preview.label || "지출"}
-                {preview.kind
-                  ? ` · ${KIND_LABEL[preview.kind] ?? preview.kind}`
-                  : ""}
-              </p>
-              <p className="mt-1 text-ink-muted">
-                대상: {preview.label || "지출"}
-                {typeof preview.krwAmount === "number"
-                  ? ` · ${formatKRW(preview.krwAmount)}`
-                  : ""}
-              </p>
-              {typeof preview.myBefore === "number" &&
-              typeof preview.myAfter === "number" ? (
-                <p className="mt-1 font-semibold text-ink-heading">
-                  내 부담 {formatKRW(preview.myBefore)} →{" "}
-                  {formatKRW(preview.myAfter)}
-                </p>
-              ) : null}
-              <p className="mt-1 text-ink-muted">적용 전에 확인해 주세요</p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <div>
-                  <p className="font-semibold text-ink-muted">지금</p>
-                  <ul className="mt-1 space-y-0.5">
-                    {preview.before.map((r) => (
-                      <li key={`b-${r.memberId}`}>
-                        {r.name} <span>{formatKRW(r.krw)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="font-semibold text-brand">바꾼 뒤</p>
-                  <ul className="mt-1 space-y-0.5">
-                    {preview.after.map((r) => (
-                      <li key={`a-${r.memberId}`}>
-                        {r.name} <span>{formatKRW(r.krw)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
+            <SplitPreviewSheet preview={preview} showActions={false} />
           ) : null}
 
           {doneMsg ? (

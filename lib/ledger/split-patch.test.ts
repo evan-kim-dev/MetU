@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   SplitPatchSchema,
   applySplitPatch,
+  chipToPatch,
   currentParticipants,
   guestMayApply,
   sharesDigest,
@@ -441,5 +442,40 @@ describe("guestMayApply", () => {
         requesterMemberId: A,
       }).ok
     ).toBe(false);
+  });
+});
+
+describe("chipToPatch", () => {
+  it("exclude → exclude 패치", () => {
+    const r = chipToPatch({
+      expenseId: EXP,
+      memberId: A,
+      action: "exclude",
+      currentParticipants: [A, B, C],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.patch.exclude).toEqual([A]);
+  });
+
+  it("include → only 패치", () => {
+    const r = chipToPatch({
+      expenseId: EXP,
+      memberId: A,
+      action: "include",
+      currentParticipants: [B, C],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.patch.only).toEqual([B, C, A]);
+  });
+
+  it("마지막 한 명 제외는 nobody-left", () => {
+    expect(
+      chipToPatch({
+        expenseId: EXP,
+        memberId: A,
+        action: "exclude",
+        currentParticipants: [A],
+      })
+    ).toEqual({ ok: false, reason: "nobody-left" });
   });
 });

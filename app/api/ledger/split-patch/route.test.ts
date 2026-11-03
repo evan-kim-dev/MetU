@@ -278,6 +278,32 @@ describe("POST /api/ledger/split-patch (미리보기)", () => {
     expect(call.input).toContain("저는 빠질게요");
   });
 
+  it("칩 요청은 Gemini 없이 미리보기를 돌려준다", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(
+      req({ expenseId: EXP, chip: { memberId: A, action: "exclude" } })
+    );
+    expect(res.status).toBe(200);
+    expect(geminiStructured).not.toHaveBeenCalled();
+    const json = await res.json();
+    expect(json.preview.kind).toBe("exclude");
+    expect(json.patch.exclude).toEqual([A]);
+  });
+
+  it("익명이 다른 사람 칩이면 422 guest-self-only", async () => {
+    guardApi.mockResolvedValue({
+      identity: { kind: "user", userId: "user-1", isAnonymous: true },
+      clientKey: "k",
+    });
+    const { POST } = await import("./route");
+    const res = await POST(
+      req({ expenseId: EXP, chip: { memberId: B, action: "exclude" } })
+    );
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe("guest-self-only");
+    expect(geminiStructured).not.toHaveBeenCalled();
+  });
+
   it("멤버가 아닌 id 는 422 와 한국어 메시지", async () => {
     geminiOk(patchOf({ exclude: ["ghost"] }));
     const { POST } = await import("./route");
