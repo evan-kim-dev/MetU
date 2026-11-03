@@ -16,6 +16,7 @@ import { SettlementSummaryCard } from "@/components/agent/ledger-home/Settlement
 import { TripHeaderCard } from "@/components/agent/ledger-home/TripHeaderCard";
 import { useLedgerHomeData } from "@/components/agent/ledger-home/useLedgerHomeData";
 import { useSelectedTrip } from "@/components/agent/ledger-home/useSelectedTrip";
+import { ResumeCard } from "@/components/ledger/journey/ResumeCard";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -151,6 +152,36 @@ export function AgentHubContent() {
           canSwitch
           onSwitch={() => setPhase("pick")}
           switchRef={listButtonRef}
+        />
+        <ResumeCard
+          tripId={selectedTrip.id}
+          role="host"
+          automationUi={pill}
+          memberCount={
+            home.members.status === "ready"
+              ? (home.members.data?.length ?? 0)
+              : null
+          }
+          expenseCount={
+            home.expenses.status === "ready"
+              ? (home.expenses.data?.length ?? 0)
+              : null
+          }
+          pendingReviewCount={
+            home.pending.status === "ready" ? (home.pending.data ?? 0) : null
+          }
+          pendingProposalCount={0}
+          settlement={
+            home.settlement.status === "ready"
+              ? home.settlement.data
+              : undefined
+          }
+          loading={
+            home.members.status === "loading" ||
+            home.expenses.status === "loading" ||
+            home.pending.status === "loading" ||
+            home.settlement.status === "loading"
+          }
         />
         <PrimaryActions tripId={selectedTrip.id} />
         <NeedsReviewCard

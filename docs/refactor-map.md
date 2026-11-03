@@ -22,7 +22,7 @@
 | U4 | `feat/ux-step-settle` | 완료(PR #81) | #81 | SettleStep · CurrencyTotals · FeeLeakCard |
 | U5 | `feat/ux-step-pay` | 완료(PR #82) | #82 | PayStep · settle URL 조합 |
 | U6 | `feat/ux-guest-journey-complete` | 완료(PR #83) | #83 | GuestShare/Pay/Done 보강 |
-| U7 | `feat/ux-entry-points` | 보류 |  | 시연 후순위(2순위) |
+| U7 | `feat/ux-entry-points` | 진행 |  | ResumeCard · TripSwitcher 삭제 |
 | U8 | `feat/ux-onboarding-steps` | 보류 |  | 시연 후순위(2순위) |
 | U9 | `feat/ux-trip-flows` | 보류 |  | 시연 후순위(2순위) |
 | U10 | `feat/ux-journey-polish` | 보류 |  | 시연 후순위(2순위) |
@@ -44,7 +44,7 @@
 | O7 | `refactor/split-large-files` | 대기 |  |  |
 | F1 | `test/stretch-completeness` | 대기 |  |  |
 | Q0 | `chore/coverage-sweep` | 대기 |  |  |
-| Q1 | `test/final-qa` | 진행 |  | 라우트 인벤토리·QA 문서 |
+| Q1 | `test/final-qa` | 완료(PR #87) | #87 | 라우트 인벤토리·QA 문서 |
 
 ## 커버리지 표
 
@@ -208,7 +208,7 @@
 | `components/agent/ledger-home/SectionRetry.tsx` | D2 | 대기 |
 | `components/agent/ledger-home/SettlementSummaryCard.tsx` | D2 | 대기 |
 | `components/agent/ledger-home/TripHeaderCard.tsx` | D2 | 대기 |
-| `components/agent/ledger-home/TripSwitcherSheet.tsx` | U7 (확인 필요: 미연결) | 대기 |
+| `components/agent/ledger-home/TripSwitcherSheet.tsx` | U7 | 삭제(U7, 2026-11-04) · LedgerTripPicker 대체 |
 | `components/agent/ledger-home/groupTripsForLedgerPicker.ts` | D2 | 대기 |
 | `components/agent/ledger-home/ledger-home.fixtures.ts` | D2 | 대기 |
 | `components/agent/ledger-home/needsReview.ts` | D2 | 대기 |
@@ -1130,3 +1130,24 @@
 
 **다음**
 - Evan: phone-check + 데모 리허설(Q2). V0b DB 적용 여부.
+
+---
+
+## U7 — 진입점 (2026-11-04)
+
+**한 일**
+- `ResumeCard`: `deriveJourney`/`formatResumeHeadline` 로 "지금 할 일" + `이어서 하기` → `/trips/[id]/ledger`(step 없음).
+- `AgentHubContent` 가계부 홈 상단에 삽입. `TripSwitcherSheet` 삭제(`LedgerTripPicker`만 사용).
+- `pendingProposalCount` 는 홈 데이터에 없어 0(확인 필요). TripDetailContent 는 임베드 `LedgerTab`만 있어 문구 변경 대상 없음.
+
+**진입 경로 → 도착**
+| 입구 | URL |
+|---|---|
+| ResumeCard / FirstRunChecklist | `/trips/[id]/ledger` → deriveJourney 기본 step |
+| PrimaryActions 영수증/직접 | `?add=receipt\|manual` |
+| SettlementSummaryCard | `/ledger/settle` |
+| 홈 ActiveTripCard | `/trips/[id]`(상세·탭) — 여정 아님 |
+
+**확인** typecheck · lint · test · build
+
+**다음 세션(U8)** 온보딩 단계화. ResumeCard 스타일은 D2와 맞춤.

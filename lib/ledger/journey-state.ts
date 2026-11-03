@@ -297,3 +297,68 @@ export function resolveStepParam(
   }
   return defaultStep;
 }
+
+const HOST_STEP_ORDINAL: Record<HostStepKey, string> = {
+  connect: "①",
+  invite: "②",
+  record: "③",
+  adjust: "④",
+  settle: "⑤",
+  pay: "⑥",
+};
+
+const GUEST_STEP_ORDINAL: Record<GuestStepKey, string> = {
+  share: "①",
+  adjust: "②",
+  pay: "③",
+  done: "④",
+};
+
+/** 자동화 UI 상태 → 여정 입력. */
+export function automationToJourneyInput(
+  ui: "off" | "unverified" | "ok" | "silent" | null | undefined
+): DeriveJourneyInput["automation"] {
+  if (ui === "ok" || ui === "silent") return "connected";
+  if (ui === "off" || ui === "unverified") return "off";
+  return "unknown";
+}
+
+/**
+ * ResumeCard 한 줄. 예: "③ 기록 · 확인할 지출 2건"
+ * step 쿼리 없이 기본 단계로 보낼 때 쓰는 문구예요.
+ */
+export function formatResumeHeadline(
+  role: JourneyRole,
+  journey: DeriveJourneyResult
+): string {
+  const step =
+    journey.steps.find((s) => s.key === journey.defaultStep) ??
+    journey.steps[0];
+  if (!step) return "정산 여정";
+  const ordinal =
+    role === "host"
+      ? HOST_STEP_ORDINAL[step.key as HostStepKey]
+      : GUEST_STEP_ORDINAL[step.key as GuestStepKey];
+  const label =
+    role === "host"
+      ? HOST_STEP_LABELS[step.key as HostStepKey]
+      : GUEST_STEP_LABELS[step.key as GuestStepKey];
+
+  let detail: string | null = null;
+  if (step.badge != null) {
+    if (typeof step.badge === "number") {
+      detail =
+        step.key === "record"
+          ? `확인할 지출 ${step.badge}건`
+          : String(step.badge);
+    } else {
+      detail = String(step.badge);
+    }
+  } else if (step.status === "attention") {
+    detail = "확인이 필요해요";
+  }
+
+  return detail
+    ? `${ordinal} ${label} · ${detail}`
+    : `${ordinal} ${label}`;
+}
