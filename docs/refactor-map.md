@@ -22,8 +22,8 @@
 | U4 | `feat/ux-step-settle` | 완료(PR #81) | #81 | SettleStep · CurrencyTotals · FeeLeakCard |
 | U5 | `feat/ux-step-pay` | 완료(PR #82) | #82 | PayStep · settle URL 조합 |
 | U6 | `feat/ux-guest-journey-complete` | 완료(PR #83) | #83 | GuestShare/Pay/Done 보강 |
-| U7 | `feat/ux-entry-points` | 진행 |  | ResumeCard · TripSwitcher 삭제 |
-| U8 | `feat/ux-onboarding-steps` | 보류 |  | 시연 후순위(2순위) |
+| U7 | `feat/ux-entry-points` | 완료(PR #88) | #88 | ResumeCard · TripSwitcher 삭제 |
+| U8 | `feat/ux-onboarding-steps` | 완료(PR 대기) |  | Stepper · draft · share-target |
 | U9 | `feat/ux-trip-flows` | 보류 |  | 시연 후순위(2순위) |
 | U10 | `feat/ux-journey-polish` | 보류 |  | 시연 후순위(2순위) |
 | D0 | `chore/design-guardrails` | 완료(PR #84) | #84 | legacy-baseline 래칫 |
@@ -66,7 +66,7 @@
 | `app/login/page.tsx` | D1 | 정리(D1, 2026-11-04) |
 | `app/notifications/page.tsx` | Q1 · D6 | 대기 |
 | `app/onboarding/automation/page.tsx` | U8 · D5 | 대기 |
-| `app/onboarding/page.tsx` | U8 · D5 | 대기 |
+| `app/onboarding/page.tsx` | U8 · D5 | 구조(U8, 2026-11-04) · Stepper·draft |
 | `app/onboarding/result/page.tsx` | U8 · D5(+D7 추천영역) | 대기 |
 | `app/onboarding/shortcut-guide/page.tsx` | U8 · D5 | 대기 |
 | `app/opod/[id]/chat/page.tsx` | Q1 · D6 | 대기 |
@@ -76,7 +76,7 @@
 | `app/page.tsx` | U7 · D2 | 대기 |
 | `app/profile/page.tsx` | Q1 · D7 | 대기 |
 | `app/s/[token]/page.tsx` | U6 · D3 | 검증(V0, 2026-11-03, PR #72) |
-| `app/share-target/page.tsx` | U8 · D5 | 대기 |
+| `app/share-target/page.tsx` | U8 · D5 | 구조(U8, 2026-11-04) · login next·영수증 CTA |
 | `app/trips/[id]/ledger/connect/page.tsx` | U1 · D3 | 대기 |
 | `app/trips/[id]/ledger/inbox/page.tsx` | U2 · D2·D3 | 대기 |
 | `app/trips/[id]/ledger/page.tsx` | U1~U5·U10 · D3 | 대기 |
@@ -246,7 +246,7 @@
 | `components/ds/ProgressRing.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ds/Sheet.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ds/Skeleton.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
-| `components/ds/Stepper.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/Stepper.tsx` | D0 · U8 | navAriaLabel(U8, 2026-11-04) |
 | `components/ds/Toast.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) · 수정(U1, 2026-11-03, PR #78) |
 | `components/ds/index.ts` | D0 | 검증(V0, 2026-11-03, PR #72) |
 | `components/fx/FxAttribution.tsx` | D1 | 대기 |
@@ -311,7 +311,7 @@
 | `components/onboarding/connect/ConnectError.tsx` | U8 | 대기 |
 | `components/onboarding/connect/ConnectFlow.tsx` | U8 | 대기 |
 | `components/onboarding/connect/ConnectHub.tsx` | U8 | 대기 |
-| `components/onboarding/connect/ConnectStepCards.tsx` | U8 | 대기 |
+| `components/onboarding/connect/ConnectStepCards.tsx` | U8 | 삭제(U8, 2026-11-04) · ds Stepper 대체 |
 | `components/onboarding/connect/DevCurlFold.tsx` | U8 | 대기 |
 | `components/onboarding/connect/GateNotice.tsx` | U8 | 대기 |
 | `components/onboarding/connect/GuideSideCard.tsx` | U8 | 대기 |
@@ -1151,3 +1151,29 @@
 **확인** typecheck · lint · test · build
 
 **다음 세션(U8)** 온보딩 단계화. ResumeCard 스타일은 D2와 맞춤.
+
+---
+
+## U8 — 온보딩·연결 흐름 단계화 (2026-11-04)
+
+**한 일**
+- 여행 `/onboarding`: `ProgressBar` → ds `Stepper`, `sessionStorage` draft(`metu.onboarding.draft.v1`)로 중간 이탈 후 복원.
+- 연결 `ConnectFlow`: `ConnectStepCards` 삭제 → ds `Stepper`(`navAriaLabel="연결 단계"`). 스킵은 "나중에 하기" + "연결은 나중에 해도 돼요" 라벨(버튼명 `건너뛰` 없음).
+- `UnsupportedHandoff`: `/share-target` 직접 기록 링크, 복사 상태 이모지 제거.
+- `/share-target`: 로그인 `next`에 `id`/`text` 유지(`shareTargetLoginNext`), 영수증+여행 미선택 안내·여행 만들기 링크.
+- API/토큰 로직 변경 없음.
+
+**전/후 단계**
+| 흐름 | 전 | 후 |
+|---|---|---|
+| 여행 계획 | 4 · ProgressBar · 메모리만 | 4 · Stepper · draft 복원 |
+| 연결 iOS | 5 · ConnectStepCards | 5 · Stepper |
+| 연결 Android | 4 · ConnectStepCards | 4 · Stepper |
+
+**확인** typecheck · lint · 관련 vitest · (PR 전 full test/build)
+
+**확인 필요**
+- 연결 토큰 plaintext 는 의도적으로 복원 안 함(보안).
+- D5 에서 mu 토큰·레거시 팔레트 정리.
+
+**다음 세션(U9)** 여행 목록·상세·LedgerTab 입구.

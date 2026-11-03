@@ -20,6 +20,8 @@ export type StepperProps = {
   onSelect: (key: string) => void;
   onBack?: () => void;
   title?: string;
+  /** 세그먼트 nav 의 aria-label. 기본 "정산 단계". */
+  navAriaLabel?: string;
   className?: string;
 };
 
@@ -91,6 +93,7 @@ export function Stepper({
   onSelect,
   onBack,
   title,
+  navAriaLabel = "정산 단계",
   className,
 }: StepperProps) {
   const [listOpen, setListOpen] = useState(false);
@@ -110,7 +113,7 @@ export function Stepper({
         onBack={onBack}
         onOpenList={() => setListOpen(true)}
       />
-      <nav aria-label="정산 단계" className="px-4 pb-3">
+      <nav aria-label={navAriaLabel} className="px-4 pb-3">
         <ol className="flex gap-1">
           {steps.map((step) => {
             const isCurrent = step.key === currentKey;

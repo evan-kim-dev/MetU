@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoBack } from "@/lib/navigation/useGoBack";
-import { TopAppBar } from "@/components/ui/TopAppBar";
-import { ProgressBar } from "@/components/ui/ProgressBar";
+import { Stepper, type StepItem } from "@/components/ds/Stepper";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { BudgetStep } from "@/components/onboarding/BudgetStep";
 import { PartyStep } from "@/components/onboarding/PartyStep";
@@ -12,7 +11,6 @@ import { ScheduleStep } from "@/components/onboarding/ScheduleStep";
 import { StyleStep } from "@/components/onboarding/StyleStep";
 import { AIThinkingOverlay } from "@/components/onboarding/AIThinkingOverlay";
 import {
-  INITIAL_FORM,
   isFlexibleScheduleValid,
   type TravelStyle,
 } from "@/components/onboarding/types";
@@ -20,15 +18,40 @@ import {
   isKangwonUniversityDestination,
   KANGWON_GRAD_ADMISSION_URL,
 } from "@/lib/easter/kangwon-univ";
+import {
+  clearTravelDraft,
+  emptyTravelDraft,
+  loadTravelDraft,
+  saveTravelDraft,
+} from "@/lib/onboarding/travel-draft";
 
 const TOTAL_STEPS = 4;
+
+const STEP_META: { key: string; label: string }[] = [
+  { key: "budget", label: "예산" },
+  { key: "party", label: "인원" },
+  { key: "schedule", label: "일정" },
+  { key: "style", label: "스타일" },
+];
+
+function stepItems(currentStep: number): StepItem[] {
+  return STEP_META.map((meta, i) => {
+    const n = i + 1;
+    return {
+      key: meta.key,
+      label: meta.label,
+      status: n < currentStep ? "done" : n === currentStep ? "current" : "todo",
+    };
+  });
+}
 
 function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const goBack = useGoBack("/");
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState(INITIAL_FORM);
+  const restored = useMemo(() => loadTravelDraft() ?? emptyTravelDraft(), []);
+  const [step, setStep] = useState(restored.step);
+  const [form, setForm] = useState(restored.form);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showThinking, setShowThinking] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -40,6 +63,10 @@ function OnboardingPageContent() {
       router.replace("/onboarding", { scroll: false });
     }
   }, [router, searchParams]);
+
+  useEffect(() => {
+    saveTravelDraft({ step, form });
+  }, [step, form]);
 
   const toggleStyle = (style: TravelStyle) => {
     setForm((prev) => ({
@@ -80,6 +107,15 @@ function OnboardingPageContent() {
     goBack();
   };
 
+  const handleSelectStep = (key: string) => {
+    if (isSubmitting || showThinking) return;
+    const idx = STEP_META.findIndex((s) => s.key === key);
+    if (idx < 0) return;
+    const target = idx + 1;
+    // 끝낸 단계로만 되돌아가요(입력 보존).
+    if (target < step) setStep(target);
+  };
+
   const handleNext = async () => {
     // 도착지 이스터에그: 강원대학교 → 대학원 입시 모집요강
     if (
@@ -109,6 +145,7 @@ function OnboardingPageContent() {
       });
       if (!res.ok) throw new Error("onboarding-session-save-failed");
 
+      clearTravelDraft();
       router.push("/onboarding/result");
     } catch {
       setShowThinking(false);
@@ -119,6 +156,8 @@ function OnboardingPageContent() {
     }
   };
 
+  const currentKey = STEP_META[step - 1]?.key ?? "budget";
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       {showThinking && (
@@ -127,18 +166,19 @@ function OnboardingPageContent() {
         />
       )}
 
-      <TopAppBar
-        title="여행 계획하기"
-        showBack
-        backHref="/"
+      <Stepper
+        steps={stepItems(step)}
+        currentKey={currentKey}
+        onSelect={handleSelectStep}
         onBack={handleBack}
+        title="여행 계획하기"
+        navAriaLabel="여행 계획 단계"
       />
 
-      <div className="sticky top-14 z-30 border-b border-line-soft/60 bg-surface-base/90 px-5 py-3 backdrop-blur-md">
-        <ProgressBar current={step} total={TOTAL_STEPS} />
-      </div>
-
       <main className="flex-1 px-5 pb-28 pt-6">
+        <p className="sr-only" aria-live="polite">
+          {STEP_META[step - 1]?.label} 단계, {step}/{TOTAL_STEPS}
+        </p>
         {step === 1 && (
           <BudgetStep
             value={form.budget}

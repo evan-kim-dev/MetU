@@ -107,7 +107,7 @@ describe("ConnectFlow", () => {
     expect(raw).not.toMatch(/metu-/i);
   });
 
-  it("단계 카드 5개: 현재 단계 aria-current, 완료 단계는 눌러서 돌아갈 수 있어요", async () => {
+  it("Stepper 5단계: 현재 aria-current, 완료 단계는 눌러서 돌아갈 수 있어요", async () => {
     sessionStorage.setItem(
       CONNECT_STORAGE_KEY,
       JSON.stringify({
@@ -123,10 +123,8 @@ describe("ConnectFlow", () => {
     const nav = await screen.findByRole("navigation", { name: "연결 단계" });
     expect(nav.querySelectorAll("li")).toHaveLength(5);
     const current = nav.querySelector("[aria-current=\"step\"]");
-    expect(current?.textContent).toContain("단축어 추가");
-    expect(current?.textContent).toContain("진행 중");
-    expect(nav.textContent).toContain("대기");
-    expect(nav.textContent).toContain("완료");
+    expect(current?.getAttribute("aria-label") ?? "").toContain("단축어 추가");
+    expect(current?.getAttribute("aria-label") ?? "").toContain("현재");
     fireEvent.click(
       screen.getByRole("button", { name: /연결 코드, 완료/ })
     );

@@ -30,6 +30,7 @@ import { suggestTripDates } from "@/lib/ledger/trip-dates";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { useTrips } from "@/lib/trips/TripProvider";
 import type { Trip } from "@/lib/trips/types";
+import { shareTargetLoginNext } from "@/lib/ledger/share-target-next";
 
 type PendingShare = {
   inboxId?: string;
@@ -306,11 +307,15 @@ export default function ShareTargetPage() {
   }
 
   if (!user || provider === "guest") {
+    const loginNext = shareTargetLoginNext(searchParams);
     return (
       <div className="mx-auto flex max-w-lg flex-col gap-3 px-4 py-8">
         <h1 className="text-xl font-extrabold text-ink-heading">공유로 지출 추가</h1>
         <p className="text-sm text-ink-body">로그인 후 가계부에 바로 넣을 수 있어요.</p>
-        <Link href="/login?next=%2Fshare-target" className="text-sm font-bold text-brand">
+        <Link
+          href={`/login?next=${encodeURIComponent(loginNext)}`}
+          className="inline-flex min-h-11 items-center text-sm font-bold text-mu-accent"
+        >
           로그인하기
         </Link>
       </div>
@@ -373,10 +378,27 @@ export default function ShareTargetPage() {
             <Link href="/agent/inbox" className="font-bold text-brand">
               수신함
             </Link>
-            에 미할당으로 들어가요.
+            에 미할당으로 들어가요.{" "}
+            <Link href="/onboarding" className="font-bold text-mu-accent">
+              여행 만들기
+            </Link>
           </p>
         ) : null}
       </label>
+
+      {pending?.file && !tripId ? (
+        <p
+          role="status"
+          className="rounded-lg bg-mu-sunken px-3 py-2 text-xs font-semibold leading-5 text-mu-fg-2"
+        >
+          영수증 사진은 여행을 선택해야 가계부에 넣을 수 있어요. 위에서 여행을
+          고르거나{" "}
+          <Link href="/onboarding" className="font-bold text-mu-accent">
+            새 여행을 만들어 주세요
+          </Link>
+          .
+        </p>
+      ) : null}
 
       {(!shareCapable || !pending) && tripId && members.length > 0 ? (
         <>
