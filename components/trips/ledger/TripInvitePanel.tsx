@@ -1,29 +1,19 @@
 "use client";
 
 import { Check, Copy, Link2, Share2 } from "lucide-react";
-import { useEffect, useState } from "react";
 import type { TripMember } from "@/lib/ledger/types";
-import { renderQrSvg, svgToDataUri } from "@/lib/onboarding/qr-svg";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
-
-/** K10 데모 기본: 24시간 · 4명 (RPC 허용 범위 안). */
-const DEFAULT_TTL_HOURS = 24;
-const DEFAULT_MAX_USES = 4;
-
-const TTL_OPTIONS = [6, 24, 72] as const;
-const MAX_USE_OPTIONS = [2, 4, 10] as const;
-
-const ALL_KEY = "__all__";
+import {
+  ALL_KEY,
+  MAX_USE_OPTIONS,
+  TTL_OPTIONS,
+  useTripInvite,
+} from "@/components/trips/ledger/useTripInvite";
 
 interface TripInvitePanelProps {
   tripId: string;
   members: TripMember[];
   /** 소유자만 true. false 면 아무것도 그리지 않는다. */
   canInvite: boolean;
-}
-
-function inviteUrl(token: string): string {
-  return `${window.location.origin}/join/${token}`;
 }
 
 /**
@@ -35,114 +25,24 @@ export function TripInvitePanel({
   members,
   canInvite,
 }: TripInvitePanelProps) {
-  const [links, setLinks] = useState<Record<string, string>>({});
-  const [qrByKey, setQrByKey] = useState<Record<string, string>>({});
-  const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [ttlHours, setTtlHours] = useState<number>(DEFAULT_TTL_HOURS);
-  const [maxUses, setMaxUses] = useState<number>(DEFAULT_MAX_USES);
-
-  useEffect(() => {
-    let cancelled = false;
-    const entries = Object.entries(links);
-    if (entries.length === 0) return;
-    void (async () => {
-      for (const [key, url] of entries) {
-        if (qrByKey[key]) continue;
-        try {
-          const svg = await renderQrSvg(url);
-          if (cancelled) return;
-          setQrByKey((prev) => ({ ...prev, [key]: svgToDataUri(svg) }));
-        } catch (e) {
-          console.error(
-            "[invite] qr",
-            e instanceof Error ? e.message : "qr-failed"
-          );
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [links, qrByKey]);
+  const {
+    links,
+    qrByKey,
+    busyKey,
+    copiedKey,
+    error,
+    ttlHours,
+    setTtlHours,
+    maxUses,
+    setMaxUses,
+    createInvite,
+    copyLink,
+    shareLink,
+  } = useTripInvite(tripId);
 
   if (!canInvite) return null;
 
   const claimable = members.filter((m) => !m.userId && !m.isOwner);
-
-  async function createInvite(key: string, claimMemberId?: string) {
-    if (busyKey) return;
-    setBusyKey(key);
-    setError("");
-    setCopiedKey(null);
-    try {
-      const supabase = getBrowserSupabase();
-      if (!supabase) {
-        setError("초대 링크를 만들지 못했어요. 로그인 상태를 확인해 주세요.");
-        return;
-      }
-      const { data, error: rpcError } = await supabase.rpc(
-        "create_trip_invite",
-        claimMemberId
-          ? {
-              p_trip_id: tripId,
-              p_claim_member_id: claimMemberId,
-              p_ttl_hours: ttlHours,
-              p_max_uses: 1,
-            }
-          : {
-              p_trip_id: tripId,
-              p_ttl_hours: ttlHours,
-              p_max_uses: maxUses,
-            }
-      );
-      if (rpcError || typeof data !== "string" || data.length === 0) {
-        console.error(
-          "[invite] create_trip_invite",
-          rpcError?.message ?? "empty"
-        );
-        setError("초대 링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
-        return;
-      }
-      setLinks((prev) => ({ ...prev, [key]: inviteUrl(data) }));
-      setQrByKey((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-    } finally {
-      setBusyKey(null);
-    }
-  }
-
-  async function copyLink(key: string) {
-    const url = links[key];
-    if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedKey(key);
-      window.setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 2000);
-    } catch {
-      setError("링크를 복사하지 못했어요. 링크를 길게 눌러 복사해 주세요.");
-    }
-  }
-
-  async function shareLink(key: string, who: string) {
-    const url = links[key];
-    if (!url || typeof navigator.share !== "function") return;
-    try {
-      await navigator.share({
-        title: "여행 초대",
-        text: `${who}, 같이 정산해요. 이 링크로 들어와 주세요.`,
-        url,
-      });
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      console.error("[invite] share", e instanceof Error ? e.message : e);
-      setError("공유하지 못했어요. 링크를 복사해서 보내 주세요.");
-    }
-  }
 
   function renderLink(key: string, who: string) {
     const url = links[key];
