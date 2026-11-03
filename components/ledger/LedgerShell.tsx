@@ -14,7 +14,12 @@ import { SplitBatchBox } from "@/components/ledger/SplitBatchBox";
 import { ConnectStep } from "@/components/ledger/journey/host/ConnectStep";
 import { InviteStep } from "@/components/ledger/journey/host/InviteStep";
 import { RecordStep } from "@/components/ledger/journey/host/RecordStep";
+import {
+  AddExpenseSheet,
+  type AddExpenseTab,
+} from "@/components/ledger/journey/host/AddExpenseSheet";
 import { Sheet } from "@/components/ds/Sheet";
+import { useOptionalToast } from "@/components/ds/Toast";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { TABLES } from "@/lib/constants";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
@@ -75,9 +80,10 @@ export function LedgerShell({
   /** UI 숨김만. 권한은 서버 라우트·RLS가 최종 방어. */
   const guestReadonly = isAnonymous;
   const handledIntent = useRef<string | null>(null);
-  const receiptRef = useRef<HTMLDivElement>(null);
-  const voiceRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const toast = useOptionalToast();
+  const [addTab, setAddTab] = useState<AddExpenseTab | null>(null);
+  const [addFocusFirst, setAddFocusFirst] = useState(false);
   const [members, setMembers] = useState<TripMember[]>([]);
   const [expenses, setExpenses] = useState<LedgerExpenseRow[]>([]);
   const [profiles, setProfiles] = useState<
@@ -157,12 +163,18 @@ export function LedgerShell({
   const me = members.find((m) => m.userId === user?.id) ?? members[0];
 
   function openDrafts(drafts: ExpenseDraftInput[]) {
+    setAddTab(null);
     setQueue(drafts);
     setQueueIndex(0);
   }
 
-  // 가계부 탭의 바로가기: manual 은 확인 시트를 열고, 나머지는 해당 섹션으로
-  // 스크롤 + 첫 버튼에 포커스만 준다. 파일 선택창은 사용자 제스처가 필요해서 열지 않는다.
+  function openAdd(tab: AddExpenseTab) {
+    setAddFocusFirst(false);
+    setAddTab(tab);
+  }
+
+  // 가계부 탭의 바로가기: manual 은 확인 시트를 바로 열고, receipt/voice 는 지출 추가 시트를
+  // 그 탭으로 열어 첫 버튼에 포커스만 준다. 파일 선택창은 사용자 제스처가 필요해서 열지 않는다.
   const canEnter = !loading && members.length > 0 && !guestReadonly;
   useEffect(() => {
     if (!intent || !canEnter || handledIntent.current === intent) return;
@@ -176,13 +188,10 @@ export function LedgerShell({
       setSettingsOpen(true);
       return;
     }
-    // receipt/voice: record 단계에서만 스크롤 (TripJourney가 step=record로 정규화)
+    // receipt/voice: record 단계에서만 (TripJourney가 step=record로 정규화)
     if (step !== "record") return;
-    const target =
-      intent === "receipt" ? receiptRef.current : voiceRef.current;
-    if (!target) return;
-    target.scrollIntoView?.({ block: "center" });
-    target.querySelector<HTMLElement>("button, input, select")?.focus();
+    setAddFocusFirst(true);
+    setAddTab(intent === "receipt" ? "receipt" : "voice");
   }, [intent, canEnter, step]);
 
   if (loading) {
@@ -329,16 +338,14 @@ export function LedgerShell({
               ) : (
                 <RecordStep
                   tripId={tripId}
+                  expenses={expenses}
+                  members={members}
                   inboxCount={inboxCount}
                   cancelNotice={cancelNotice}
                   onDismissCancel={() => setCancelNotice(null)}
-                  onCancelNotice={setCancelNotice}
-                  onManual={() => openDrafts([newManualDraft()])}
-                  onDrafts={openDrafts}
-                  receiptRef={receiptRef}
-                  voiceRef={voiceRef}
+                  onOpenAdd={openAdd}
+                  onAdjust={() => onNavigate?.("adjust")}
                   dashboard={dashboard}
-                  expenseList={expenseList}
                 />
               )}
             </>
@@ -416,6 +423,22 @@ export function LedgerShell({
         </Sheet>
       ) : null}
 
+      {!guestReadonly ? (
+        <AddExpenseSheet
+          tripId={tripId}
+          tab={addTab}
+          onTabChange={setAddTab}
+          onClose={() => setAddTab(null)}
+          focusFirst={addFocusFirst}
+          onDrafts={openDrafts}
+          onCancelNotice={(draft) => {
+            setAddTab(null);
+            setCancelNotice(draft);
+          }}
+          onManual={() => openDrafts([newManualDraft()])}
+        />
+      ) : null}
+
       {queue.length > 0 && !guestReadonly ? (
         <ExpenseConfirmSheet
           tripId={tripId}
@@ -424,7 +447,10 @@ export function LedgerShell({
           index={queueIndex}
           onIndexChange={setQueueIndex}
           onClose={() => setQueue([])}
-          onSaved={() => void reload()}
+          onSaved={() => {
+            void reload();
+            toast?.show({ text: "지출을 저장했어요", tone: "ok" });
+          }}
           cardProfiles={profiles}
         />
       ) : null}
