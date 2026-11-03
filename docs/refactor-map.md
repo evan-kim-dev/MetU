@@ -12,7 +12,7 @@
 | C0 | `chore/claude-code-setup` | 완료(PR #71) | #71 | CLAUDE.md · .claude/settings.json · 이 파일 |
 | V0 | `chore/baseline-audit` | 완료(PR #72) | #72 | docs/audit/baseline-2026-11.md · 차단 3건 |
 | V0a | `fix/guest-journey-blockers` | 완료(PR #73) | #73 | V0 차단 X2·X3 + I1 해결 |
-| V0b | `fix/guest-claim-trigger` | 대기 |  | V0 차단 X1 — 새 마이그레이션만, DB 적용은 Evan |
+| V0b | `fix/guest-claim-trigger` | 완료(PR #74) | #74 | V0 차단 X1 + I3 — DB 적용 대기(Evan) |
 | B1 | `chore/dead-code-symbols` | 대기 |  |  |
 | B2 | `chore/dead-routes-env-docs` | 대기 |  |  |
 | B3 | `docs/db-orphans-report` | 대기 |  |  |
@@ -716,7 +716,7 @@
 | `supabase/migrations/20261103140000_guest_permissions.sql` | V0 · B3 (수정 금지) | 검증(V0, 2026-11-03, PR #72) |
 | `supabase/migrations/20261103200000_shared_settlement_billed.sql` | V0 · B3 (수정 금지) | 대기 |
 | `supabase/migrations/20261103210000_tax_free.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/verify/guest_permissions_verify.sql` | V0 · B3 | 검증(V0, 2026-11-03, PR #72) |
+| `supabase/verify/guest_permissions_verify.sql` | V0 · B3 | 검증(V0, 2026-11-03, PR #72) · 수정(V0b, 2026-11-03, PR #74) |
 
 ### 정적 파일 (`public/**`) — 16개
 
@@ -873,3 +873,22 @@
 
 **다음 세션(V0b) 인계**
 - X1 은 `trip_members_guest_guard` 트리거가 `join_trip` 의 claim(user_id null → 게스트 uid)까지 막는 문제. 새 마이그레이션으로 트리거 함수만 바꾸고, 기존 마이그레이션은 건드리지 않아요. DB 적용은 Evan.
+
+### 2026-11-03 (KST) · V0b · `fix/guest-claim-trigger` · PR #74
+
+**한 일** (V0 차단 X1 + 중요 I3)
+- 새 마이그레이션 `supabase/migrations/20261103220000_guest_claim_trigger.sql`: `trip_members_guest_guard()` 함수만 교체. 익명의 user_id 변경은 빈 자리(null) → 본인 전환만 허용(join_trip claim), is_owner 변경 차단. 기존 마이그레이션 수정 없음.
+- `supabase/verify/guest_permissions_verify.sql`: A9 · T19 · T20 추가, A7 주석 정정.
+- `lib/ledger/guest-claim-migration.test.ts` 정적 점검 4개.
+
+**명령 결과**
+- typecheck 통과 · lint 통과 · `npm test` 185 파일 / 1332 tests (+4). build 는 UI·라우트 변경 없어 미실행.
+- 참고: 같은 셸에 빌드용 더미 `GEMINI_API_KEY` 가 남아 있으면 `lib/ai/gemini.test.ts` 의 키 없음 테스트가 실패해요. 빌드는 별도 프로세스로 돌려요.
+
+**남은 일 / 확인 필요**
+- **Evan: 마이그레이션 DB 적용**(`npm run db:push` 또는 SQL Editor) → 검증 SQL A9(true,true)·T19·T20 PASS 확인. 적용 전까지 실서비스에서는 X1 이 그대로예요.
+- 새 파일(마이그레이션·테스트)은 커버리지 표에 행이 없어요(Q0 재생성 때 포함).
+
+**다음 세션(B1) 인계**
+- V0 의 차단 3건은 코드상 모두 처리(X1 은 DB 적용 대기). B1 은 런북대로 죽은 심볼 정리부터.
+- 마이그레이션 최신 파일은 이제 `20261103220000`. 마이그레이션 개수 42.
