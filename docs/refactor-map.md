@@ -14,7 +14,7 @@
 | V0a | `fix/guest-journey-blockers` | 완료(PR #73) | #73 | V0 차단 X2·X3 + I1 해결 |
 | V0b | `fix/guest-claim-trigger` | 완료(PR #74) | #74 | V0 차단 X1 + I3 — DB 적용 대기(Evan) |
 | B1 | `chore/dead-code-symbols` | 완료(PR #75) | #75 | 죽은 심볼 삭제 · export 174개 제거 · upstream 삭제 |
-| B2 | `chore/dead-routes-env-docs` | 대기 |  |  |
+| B2 | `chore/dead-routes-env-docs` | 완료(PR #76) | #76 | env·README·마이그레이션 감사 · 라우트 삭제 보류 |
 | B3 | `docs/db-orphans-report` | 대기 |  |  |
 | U1 | `feat/ux-step-connect-invite` | 대기 |  |  |
 | U2 | `feat/ux-step-record` | 대기 |  |  |
@@ -744,11 +744,11 @@
 | 경로 | 담당 세션 | 상태 |
 |---|---|---|
 | `.claude/settings.json` | C0 | 완료(C0, 2026-11-03, PR #71) |
-| `.env.example` | B2 | 대기 |
-| `.github/workflows/ci.yml` | B2 · Q1 | 대기 |
+| `.env.example` | B2 | 정리(B2, 2026-11-03, PR #76) |
+| `.github/workflows/ci.yml` | B2 · Q1 | 정리(B2, 2026-11-03, PR #76) |
 | `.gitignore` | C0 | 완료(C0, 2026-11-03, PR #71) |
 | `CLAUDE.md` | C0 | 완료(C0, 2026-11-03, PR #71) |
-| `README.md` | B2 | 대기 |
+| `README.md` | B2 | 정리(B2, 2026-11-03, PR #76) |
 | `eslint.config.mjs` | Q0 | 대기 |
 | `middleware.ts` | O6 | 대기 |
 | `next.config.mjs` | O5 · O6 | 대기 |
@@ -770,9 +770,9 @@
 | `docs/demo-checklist.md` | Q1 | 대기 |
 | `docs/design-system.md` | D0 · D8 | 대기 |
 | `docs/ios-shortcut-build.md` | Q1 | 대기 |
-| `docs/migrations-audit.md` | B2 | 대기 |
+| `docs/migrations-audit.md` | B2 | 정리(B2, 2026-11-03, PR #76) |
 | `docs/pitch-notes.md` | Q1 | 대기 |
-| `docs/refactor-map.md` | C0 (모든 세션 갱신) | 완료(C0, 2026-11-03, PR #71) |
+| `docs/refactor-map.md` | C0 (모든 세션 갱신) | 완료(C0, 2026-11-03, PR #71) · 정리(B2, 2026-11-03, PR #76) |
 
 ### 기타 (`types/` · `eval/` · `tests/` · `.cursor/`) — 5개
 
@@ -917,3 +917,23 @@
 - `.env.example` 정리 대상에 `AGENT_MAX_TOOL_CALLS` 추가.
 - `lib/server/` 에는 이제 `cache.ts` 만 남았어요.
 - B2 의 라우트 삭제(`/api/places/search`·`/api/route/matrix`)는 Vercel 로그 0건 확인이 선행 조건이에요.
+
+### 2026-11-03 (KST) · B2 · `chore/dead-routes-env-docs` · PR #76
+
+**한 일**
+- 라우트 `/api/places/search`·`/api/route/matrix` **삭제 보류**: 선행 조건(Evan 의 Vercel 로그 0건 확인) 없음. Vercel MCP 조회는 Hobby 로그 보존 1시간이라 7일 범위가 거절됐어요.
+- `/api/push/test`·`/api/ledger/receipt-url` 유지(이유 미확정).
+- `.env.example`: `DUP_CHARGE_WINDOW_MIN`·`AGODA_CID`·`AGODA_TAG`·`DEMO_BASE_URL`·`METU_INGEST_TOKEN` 문서화, 코드 참조 0인 `NEXT_PUBLIC_IOS_SHORTCUT_URL`·`AGENT_SETTLE_NOTICE_*`·`INTERNAL_API_SECRET`·`AGENT_MAX_TOOL_CALLS` 제거.
+- CI build 더미 env 에서 `INTERNAL_API_SECRET` 제거. README 에 스크립트 12개 표, `npm ci` → `npm install`. `docs/migrations-audit.md` 42개로 갱신.
+- (같은 브랜치 첫 커밋) B1 기록 보충.
+
+**명령 결과**
+- typecheck · lint · `npm test` 184 파일 / 1330 tests 통과. build 통과(CI 와 같은 더미 env 4개). 라우트 100 그대로.
+
+**남은 일 / 확인 필요**
+- Evan: 두 라우트 로그 확인 후 삭제는 별도 PR. Vercel env 에 남은 미사용 변수 정리 여부.
+- `make-favicon.py` 용도 확인 필요(원본 경로가 로컬 첨부 기준).
+
+**다음 세션(B3) 인계**
+- B3 는 `docs/db-orphans.md` 한 파일만. 마이그레이션은 이제 42개(최신 `20261103220000`). `20261103220000` 은 함수 교체만 해요.
+- 빌드 더미 env 는 이제 4개(`NEXT_PUBLIC_SUPABASE_URL`·`NEXT_PUBLIC_SUPABASE_ANON_KEY`·`GUEST_COOKIE_SECRET`·`GEMINI_API_KEY`).
