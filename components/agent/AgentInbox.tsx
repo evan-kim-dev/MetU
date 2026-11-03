@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Sheet } from "@/components/ds/Sheet";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -158,6 +159,12 @@ export function AgentInbox({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [editEvent, setEditEvent] = useState<AgentEventRow | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editMerchant, setEditMerchant] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editCurrency, setEditCurrency] = useState("KRW");
+  const [editSpentOn, setEditSpentOn] = useState("");
   const [bulk, setBulk] = useState<{
     tripId: string;
     done: number;
@@ -406,6 +413,49 @@ export function AgentInbox({
     if (!res.ok) throw new Error(json.error ?? "request-failed");
   }
 
+  function openEdit(event: AgentEventRow) {
+    const review = reviewItems(event)[0];
+    setEditEvent(event);
+    setEditText(
+      typeof event.payload?.text === "string" ? event.payload.text : ""
+    );
+    setEditMerchant(review?.draft?.merchant ?? "");
+    setEditAmount(
+      review?.draft?.amount != null ? String(review.draft.amount) : ""
+    );
+    setEditCurrency(
+      (review?.draft?.currency ?? "KRW").toString().toUpperCase() || "KRW"
+    );
+    setEditSpentOn("");
+  }
+
+  async function saveEdit() {
+    if (!editEvent) return;
+    const draft: {
+      merchant?: string;
+      amount?: number;
+      currency?: string;
+      spentOn?: string;
+    } = {};
+    if (editMerchant.trim()) draft.merchant = editMerchant.trim();
+    const amt = Number(editAmount.replace(/,/g, ""));
+    if (Number.isFinite(amt) && amt > 0) draft.amount = amt;
+    if (editCurrency.trim().length === 3) {
+      draft.currency = editCurrency.trim().toUpperCase();
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(editSpentOn.trim())) {
+      draft.spentOn = editSpentOn.trim();
+    }
+    const body: { text?: string; draft?: typeof draft } = {};
+    if (editText.trim()) body.text = editText.trim();
+    if (Object.keys(draft).length > 0) body.draft = draft;
+    if (!body.text && !body.draft) return;
+    await withBusy(editEvent.id, () =>
+      post(`/api/agent/events/${editEvent.id}/edit`, body)
+    );
+    setEditEvent(null);
+  }
+
   async function withBusy(id: string, fn: () => Promise<void>) {
     setBusyId(id);
     setRowErrors((prev) => {
@@ -505,10 +555,61 @@ export function AgentInbox({
     );
   }
 
+  function renderManageButtons(event: AgentEventRow) {
+    const disabled = busyId === event.id;
+    const canEdit = [
+      "needs_review",
+      "failed",
+      "ignored",
+      "unassigned",
+      "received",
+    ].includes(event.status);
+    if (!canEdit && event.status === "processing") return null;
+    return (
+      <>
+        {canEdit ? (
+          <button
+            type="button"
+            disabled={disabled}
+            className="min-h-11 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-ink-body disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            onClick={() => openEdit(event)}
+          >
+            수정
+          </button>
+        ) : null}
+        {event.status !== "processing" ? (
+          <button
+            type="button"
+            disabled={disabled}
+            className="min-h-11 rounded-lg border border-danger/40 px-3 py-1.5 text-xs font-bold text-danger disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            onClick={() => {
+              if (
+                typeof window !== "undefined" &&
+                !window.confirm("이 알림을 수신함에서 삭제할까요?")
+              ) {
+                return;
+              }
+              void withBusy(event.id, () =>
+                post(`/api/agent/events/${event.id}/delete`)
+              );
+            }}
+          >
+            삭제
+          </button>
+        ) : null}
+      </>
+    );
+  }
+
   function renderActions(event: AgentEventRow) {
     const disabled = busyId === event.id;
     if (event.status === "unassigned") {
-      return renderAssign(event);
+      return (
+        <div className="mt-2 flex flex-col gap-2">
+          {renderAssign(event)}
+          <div className="flex flex-wrap gap-2">{renderManageButtons(event)}</div>
+        </div>
+      );
     }
     if (event.status === "needs_review") {
       const reviews = reviewItems(event);
@@ -560,6 +661,7 @@ export function AgentInbox({
           >
             무시
           </button>
+          {renderManageButtons(event)}
         </div>
       );
     }
@@ -590,10 +692,27 @@ export function AgentInbox({
           >
             무시
           </button>
+          {renderManageButtons(event)}
         </div>
       );
     }
-    return null;
+    if (
+      event.status === "ignored" ||
+      event.status === "received" ||
+      event.status === "auto" ||
+      event.status === "done"
+    ) {
+      return (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {renderManageButtons(event)}
+        </div>
+      );
+    }
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        {renderManageButtons(event)}
+      </div>
+    );
   }
 
   function renderAutoUndo(event: AgentEventRow) {
@@ -1018,6 +1137,74 @@ export function AgentInbox({
           </>
         )}
       </div>
+
+      <Sheet
+        open={Boolean(editEvent)}
+        onClose={() => setEditEvent(null)}
+        title="알림 수정"
+      >
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="font-bold text-ink-heading">알림 내용</span>
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              className="min-h-[88px] w-full rounded-xl border border-line px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="font-bold text-ink-heading">상호</span>
+            <input
+              value={editMerchant}
+              onChange={(e) => setEditMerchant(e.target.value)}
+              className="min-h-11 rounded-xl border border-line px-3 text-sm"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="font-bold text-ink-heading">금액</span>
+              <input
+                value={editAmount}
+                inputMode="decimal"
+                onChange={(e) => setEditAmount(e.target.value)}
+                className="min-h-11 rounded-xl border border-line px-3 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="font-bold text-ink-heading">통화</span>
+              <input
+                value={editCurrency}
+                maxLength={3}
+                onChange={(e) => setEditCurrency(e.target.value.toUpperCase())}
+                className="min-h-11 rounded-xl border border-line px-3 text-sm"
+              />
+            </label>
+          </div>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="font-bold text-ink-heading">날짜 (선택)</span>
+            <input
+              type="date"
+              value={editSpentOn}
+              onChange={(e) => setEditSpentOn(e.target.value)}
+              className="min-h-11 rounded-xl border border-line px-3 text-sm"
+            />
+          </label>
+          <p className="text-[11px] text-ink-muted">
+            수정은 수신함 표시·확인용이에요. 이미 가계부에 들어간 지출은
+            바뀌지 않아요.
+          </p>
+          <button
+            type="button"
+            disabled={busyId === editEvent?.id}
+            className="min-h-11 rounded-xl bg-brand px-4 text-sm font-bold text-white disabled:opacity-50"
+            onClick={() => void saveEdit()}
+          >
+            저장
+          </button>
+        </div>
+      </Sheet>
 
       <QuickTripSheet
         open={sheetOpen}
