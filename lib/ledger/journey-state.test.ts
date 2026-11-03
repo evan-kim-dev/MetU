@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  automationToJourneyInput,
   deriveGuestDefaultStep,
   deriveHostDefaultStep,
   deriveJourney,
+  formatResumeHeadline,
   isGuestStepKey,
   isHostStepKey,
   resolveStepParam,
@@ -207,5 +209,31 @@ describe("step key guards", () => {
     expect(isGuestStepKey("record")).toBe(false);
     expect(isHostStepKey("adjust")).toBe(true);
     expect(isHostStepKey("share")).toBe(false);
+  });
+});
+
+describe("formatResumeHeadline / automationToJourneyInput", () => {
+  it("자동화 UI → 여정 입력", () => {
+    expect(automationToJourneyInput("ok")).toBe("connected");
+    expect(automationToJourneyInput("silent")).toBe("connected");
+    expect(automationToJourneyInput("off")).toBe("off");
+    expect(automationToJourneyInput("unverified")).toBe("off");
+    expect(automationToJourneyInput(null)).toBe("unknown");
+  });
+
+  it("기록·확인 건수 한 줄", () => {
+    const r = deriveJourney({
+      role: "host",
+      ...base,
+      memberCount: 3,
+      expenseCount: 2,
+      pendingReviewCount: 2,
+    });
+    expect(formatResumeHeadline("host", r)).toBe("③ 기록 · 확인할 지출 2건");
+  });
+
+  it("게스트 기본은 내 몫", () => {
+    const r = deriveJourney({ role: "guest", ...base });
+    expect(formatResumeHeadline("guest", r)).toBe("① 내 몫");
   });
 });

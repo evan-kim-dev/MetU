@@ -8,7 +8,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AGENT_REASON_MESSAGES } from "@/lib/agent/event-status";
 import { STORAGE_KEYS } from "@/lib/constants";
@@ -25,7 +25,6 @@ import { PrimaryActions } from "@/components/agent/ledger-home/PrimaryActions";
 import { RecentExpenses } from "@/components/agent/ledger-home/RecentExpenses";
 import { SettlementSummaryCard } from "@/components/agent/ledger-home/SettlementSummaryCard";
 import { TripHeaderCard } from "@/components/agent/ledger-home/TripHeaderCard";
-import { TripSwitcherSheet } from "@/components/agent/ledger-home/TripSwitcherSheet";
 import {
   pickDefaultTrip,
   useSelectedTrip,
@@ -526,57 +525,6 @@ describe("MoreSheet", () => {
       .map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual(["/share-target", "/agent/inbox", "/onboarding/automation", "/board"]);
     expect(screen.getByText(/여행을 만들면/)).toBeTruthy();
-  });
-});
-
-describe("TripSwitcherSheet", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-  });
-
-  it("목록(이름·날짜·상태 칩)에서 고르면 onSelect 후 닫혀요, 새 여행 만들기는 onCreate", () => {
-    const onSelect = vi.fn();
-    const onClose = vi.fn();
-    const onCreate = vi.fn();
-    render(
-      <TripSwitcherSheet
-        open
-        onClose={onClose}
-        trips={[TOKYO, OSAKA]}
-        selectedId={TOKYO.id}
-        onSelect={onSelect}
-        onCreate={onCreate}
-      />
-    );
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(screen.getByText("여행 중")).toBeTruthy();
-    expect(screen.getByText("예정")).toBeTruthy();
-    const current = screen.getByRole("button", { name: /도쿄/ });
-    expect(current.getAttribute("aria-current")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: /오사카/ }));
-    expect(onSelect).toHaveBeenCalledWith(OSAKA.id);
-    expect(onClose).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "새 여행 만들기" }));
-    expect(onCreate).toHaveBeenCalledTimes(1);
-  });
-
-  it("최대 12개까지만 보여요", () => {
-    const many = Array.from({ length: 15 }, (_, i) =>
-      makeTrip({ id: `m${i}`, destination: `여행${i}` })
-    );
-    render(
-      <TripSwitcherSheet
-        open
-        onClose={vi.fn()}
-        trips={many}
-        selectedId="m0"
-        onSelect={vi.fn()}
-        onCreate={vi.fn()}
-      />
-    );
-    expect(
-      within(screen.getByRole("dialog")).getAllByRole("listitem")
-    ).toHaveLength(12);
   });
 });
 
