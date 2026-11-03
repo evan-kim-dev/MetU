@@ -120,9 +120,12 @@ export function StepCode({
         </p>
       ) : null}
 
-      <div className="border-t border-line-muted pt-4">
-        <DevCurlFold />
-      </div>
+      {process.env.NODE_ENV === "development" ||
+      process.env.NEXT_PUBLIC_DEMO_MODE === "1" ? (
+        <div className="border-t border-line-muted pt-4">
+          <DevCurlFold />
+        </div>
+      ) : null}
 
       <StickyActionBar>
         <PrimaryButton

@@ -229,7 +229,7 @@ export function DemoModePanel() {
                 데모 가계부
               </Link>
               <Link
-                href={`/trips/${tripId}/ledger`}
+                href={`/trips/${tripId}/ledger?step=invite`}
                 className="inline-flex min-h-11 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 초대 QR 열기

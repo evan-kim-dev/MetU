@@ -26,12 +26,13 @@ const VisitedWorldMap = dynamic(
 );
 
 export function TripsPageContent() {
-  const { isAnonymous } = useAuth();
+  const { isAnonymous, provider } = useAuth();
   const { trips, isReady, removeTrip } = useTrips();
   const [editMode, setEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [quickTripOpen, setQuickTripOpen] = useState(false);
-  const canCreateTrip = !isAnonymous;
+  const isGuest = provider === "guest";
+  const canCreateTrip = !isAnonymous && !isGuest;
 
   useEffect(() => {
     setSelectedIds((prev) =>
@@ -155,6 +156,21 @@ export function TripsPageContent() {
                 className="h-28 animate-pulse rounded-2xl bg-surface-soft"
               />
             ))}
+          </div>
+        ) : isGuest ? (
+          <div className="flex flex-col items-center gap-4 rounded-2xl bg-surface-white px-5 py-12 text-center shadow-soft ring-1 ring-line-soft">
+            <p className="text-base font-extrabold text-ink-heading">
+              로그인하면 내 여행을 볼 수 있어요
+            </p>
+            <p className="text-sm leading-relaxed text-ink-caption">
+              여행·가계부가 기기에만 남지 않고 계정에 저장돼요.
+            </p>
+            <Link
+              href="/login?next=/trips"
+              className="inline-flex min-h-12 w-full max-w-xs items-center justify-center rounded-2xl bg-brand px-6 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              로그인하기
+            </Link>
           </div>
         ) : trips.length === 0 ? (
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-brand/20 bg-gradient-to-b from-brand/5 to-surface-soft/40 px-5 py-14 text-center">

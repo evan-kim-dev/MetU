@@ -17,7 +17,7 @@ interface TripListCardProps {
 
 const STATUS_LABEL: Record<Trip["status"], string> = {
   upcoming: "예정",
-  ongoing: "진행 중",
+  ongoing: "여행 중",
   completed: "완료",
 };
 
