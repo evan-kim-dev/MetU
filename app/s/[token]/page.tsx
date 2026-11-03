@@ -29,6 +29,13 @@ function formatForeign(amount: number, currency: string): string {
   return `${amount.toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${currency}`;
 }
 
+function formatFeePct(pct: number): string {
+  const abs = Math.abs(pct).toFixed(1);
+  if (pct > 0) return `+${abs}%`;
+  if (pct < 0) return `-${abs}%`;
+  return "0.0%";
+}
+
 function expenseSubline(
   e: SharedSettlementExpense,
   payerName: string
@@ -43,6 +50,12 @@ function expenseSubline(
       parts.push(
         `환율 ${e.fxRateToKrw.toLocaleString("ko-KR", { maximumFractionDigits: 4 })}`
       );
+    }
+  }
+  if (e.billedKrw != null) {
+    parts.push(`청구 ${formatKRW(e.billedKrw)}`);
+    if (e.feePct != null) {
+      parts.push(`시장환율 대비 ${formatFeePct(e.feePct)}`);
     }
   }
   return parts.join(" · ");
