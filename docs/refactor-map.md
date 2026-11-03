@@ -10,7 +10,8 @@
 | 세션 | 브랜치 | 상태 | PR | 메모 |
 |---|---|---|---|---|
 | C0 | `chore/claude-code-setup` | 완료(PR #71) | #71 | CLAUDE.md · .claude/settings.json · 이 파일 |
-| V0 | `chore/baseline-audit` | 대기 |  |  |
+| V0a | ix/guest-journey-blockers | 대기 |  | V0 차단 X2·X3 + I1 (끼워 넣은 세션) |
+| V0b | ix/guest-claim-trigger | 대기 |  | V0 차단 X1 — 새 마이그레이션만, DB 적용은 Evan |
 | B1 | `chore/dead-code-symbols` | 대기 |  |  |
 | B2 | `chore/dead-routes-env-docs` | 대기 |  |  |
 | B3 | `docs/db-orphans-report` | 대기 |  |  |
@@ -59,7 +60,7 @@
 | `app/board/[id]/page.tsx` | Q1 · D6 | 대기 |
 | `app/board/page.tsx` | Q1 · D6 | 대기 |
 | `app/checklist/[category]/page.tsx` | U9 · D7 | 대기 |
-| `app/join/[token]/page.tsx` | U6 · D3 | 대기 |
+| `app/join/[token]/page.tsx` | U6 · D3 | 검증(V0, 2026-11-03, PR #72) |
 | `app/legal/[slug]/page.tsx` | D1 | 대기 |
 | `app/login/page.tsx` | D1 | 대기 |
 | `app/notifications/page.tsx` | Q1 · D6 | 대기 |
@@ -73,7 +74,7 @@
 | `app/opod/page.tsx` | Q1 · D6 | 대기 |
 | `app/page.tsx` | U7 · D2 | 대기 |
 | `app/profile/page.tsx` | Q1 · D7 | 대기 |
-| `app/s/[token]/page.tsx` | U6 · D3 | 대기 |
+| `app/s/[token]/page.tsx` | U6 · D3 | 검증(V0, 2026-11-03, PR #72) |
 | `app/share-target/page.tsx` | U8 · D5 | 대기 |
 | `app/trips/[id]/ledger/connect/page.tsx` | U1 · D3 | 대기 |
 | `app/trips/[id]/ledger/inbox/page.tsx` | U2 · D2·D3 | 대기 |
@@ -101,7 +102,7 @@
 | `app/error.tsx` | U10 · D1 | 대기 |
 | `app/favicon.ico` | D1 | 대기 |
 | `app/global-error.tsx` | U10 · D1 | 대기 |
-| `app/globals.css` | D8 | 대기 |
+| `app/globals.css` | D8 | 검증(V0, 2026-11-03, PR #72) |
 | `app/icon.png` | D1 | 대기 |
 | `app/layout.tsx` | D1 · O2 | 대기 |
 | `app/loading.tsx` | U10 · D1 | 대기 |
@@ -146,7 +147,7 @@
 | `app/api/agent/sweep/route.ts` | V0 · O3 | 대기 |
 | `app/api/agent/tokens/[id]/route.ts` | V0 · O3 | 대기 |
 | `app/api/agent/tokens/route.ts` | V0 · O3 | 대기 |
-| `app/api/auth/guest/route.ts` | U6 | 대기 |
+| `app/api/auth/guest/route.ts` | U6 | 검증(V0, 2026-11-03, PR #72) |
 | `app/api/buddy-chat/route.ts` | O3 | 대기 |
 | `app/api/budget-insight/route.ts` | O3 | 대기 |
 | `app/api/destination-image/route.ts` | U9 · O3 | 대기 |
@@ -163,10 +164,10 @@
 | `app/api/ledger/parse/route.ts` | U2 | 대기 |
 | `app/api/ledger/receipt-url/route.ts` | F1 (확인 필요: 호출처 0, 삭제 금지) | 대기 |
 | `app/api/ledger/receipt/route.ts` | U2 | 대기 |
-| `app/api/ledger/split-patch/[historyId]/undo/route.ts` | U3 | 대기 |
-| `app/api/ledger/split-patch/apply/route.ts` | U3 | 대기 |
-| `app/api/ledger/split-patch/batch/route.ts` | U3 | 대기 |
-| `app/api/ledger/split-patch/route.ts` | U3 | 대기 |
+| `app/api/ledger/split-patch/[historyId]/undo/route.ts` | U3 | 검증(V0, 2026-11-03, PR #72) |
+| `app/api/ledger/split-patch/apply/route.ts` | U3 | 검증(V0, 2026-11-03, PR #72) |
+| `app/api/ledger/split-patch/batch/route.ts` | U3 | 검증(V0, 2026-11-03, PR #72) |
+| `app/api/ledger/split-patch/route.ts` | U3 | 검증(V0, 2026-11-03, PR #72) |
 | `app/api/onboarding/enrich-plan/route.ts` | O3 | 대기 |
 | `app/api/onboarding/session/route.ts` | O3 | 대기 |
 | `app/api/party-insight/route.ts` | O3 | 대기 |
@@ -235,18 +236,18 @@
 | `components/community/WritePostSheet.tsx` | D6 | 대기 |
 | `components/community/useCommunityListState.ts` | D6 | 대기 |
 | `components/community/usePostDetailActions.ts` | D6 | 대기 |
-| `components/ds/AmountCard.tsx` | D0 | 대기 |
-| `components/ds/BottomCTA.tsx` | D0 | 대기 |
-| `components/ds/Button.tsx` | D0 | 대기 |
-| `components/ds/EmptyState.tsx` | D0 | 대기 |
-| `components/ds/ExpenseRow.tsx` | D0 | 대기 |
-| `components/ds/MemberChip.tsx` | D0 | 대기 |
-| `components/ds/ProgressRing.tsx` | D0 | 대기 |
-| `components/ds/Sheet.tsx` | D0 | 대기 |
-| `components/ds/Skeleton.tsx` | D0 | 대기 |
-| `components/ds/Stepper.tsx` | D0 | 대기 |
-| `components/ds/Toast.tsx` | D0 | 대기 |
-| `components/ds/index.ts` | D0 | 대기 |
+| `components/ds/AmountCard.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/BottomCTA.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/Button.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/EmptyState.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/ExpenseRow.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/MemberChip.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/ProgressRing.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/Sheet.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/Skeleton.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/Stepper.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/Toast.tsx` | D0 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ds/index.ts` | D0 | 검증(V0, 2026-11-03, PR #72) |
 | `components/fx/FxAttribution.tsx` | D1 | 대기 |
 | `components/home/AISmartTipsShortcut.tsx` | D2 | 대기 |
 | `components/home/ActiveTripCard.tsx` | D2 | 대기 |
@@ -274,7 +275,7 @@
 | `components/ledger/GuestExpenseSlot.tsx` | U6 | 대기 |
 | `components/ledger/LedgerDashboard.tsx` | D3 | 대기 |
 | `components/ledger/LedgerInboxClient.tsx` | D3 | 대기 |
-| `components/ledger/LedgerShell.tsx` | U2 | 대기 |
+| `components/ledger/LedgerShell.tsx` | U2 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ledger/MyShareCard.tsx` | U6 | 대기 |
 | `components/ledger/PasteExpenseBox.tsx` | U2 | 대기 |
 | `components/ledger/ProposalInbox.tsx` | U6 | 대기 |
@@ -286,11 +287,11 @@
 | `components/ledger/SplitPatchBox.tsx` | U3 | 대기 |
 | `components/ledger/SplitPreviewSheet.tsx` | U3 | 대기 |
 | `components/ledger/VoiceInputButton.tsx` | U2 | 대기 |
-| `components/ledger/journey/TripJourney.tsx` | U6 · U10 | 대기 |
-| `components/ledger/journey/guest/GuestAdjust.tsx` | U6 · U10 | 대기 |
-| `components/ledger/journey/guest/GuestDone.tsx` | U6 · U10 | 대기 |
-| `components/ledger/journey/guest/GuestPay.tsx` | U6 · U10 | 대기 |
-| `components/ledger/journey/guest/GuestShare.tsx` | U6 · U10 | 대기 |
+| `components/ledger/journey/TripJourney.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ledger/journey/guest/GuestAdjust.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ledger/journey/guest/GuestDone.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ledger/journey/guest/GuestPay.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
+| `components/ledger/journey/guest/GuestShare.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ledger/split-preview-types.ts` | U2 | 대기 |
 | `components/ledger/useSettleReference.ts` | U2 | 대기 |
 | `components/map/GoogleTripMap.tsx` | D4 | 대기 |
@@ -444,16 +445,16 @@
 | `lib/airports/data.ts` | B1 | 대기 |
 | `lib/api/fetch-json.ts` | B2 | 대기 |
 | `lib/api/respond.ts` | B2 | 대기 |
-| `lib/auth/AuthProvider.tsx` | O6 | 대기 |
-| `lib/auth/callback-error.ts` | O6 | 대기 |
-| `lib/auth/community-access.ts` | O6 | 대기 |
-| `lib/auth/guest-cookie.ts` | O6 | 대기 |
-| `lib/auth/guest-session.ts` | O6 | 대기 |
-| `lib/auth/kakao.ts` | O6 | 대기 |
-| `lib/auth/login-methods.ts` | O6 | 대기 |
-| `lib/auth/post-login-path.ts` | O6 | 대기 |
-| `lib/auth/route-access.ts` | O6 | 대기 |
-| `lib/auth/types.ts` | O6 | 대기 |
+| `lib/auth/AuthProvider.tsx` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/callback-error.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/community-access.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/guest-cookie.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/guest-session.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/kakao.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/login-methods.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/post-login-path.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/route-access.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/types.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
 | `lib/checklist/categories.ts` | B2 | 대기 |
 | `lib/checklist/country-docs.ts` | B2 | 대기 |
 | `lib/checklist/docs-ai.ts` | B2 | 대기 |
@@ -486,7 +487,7 @@
 | `lib/demo/ingest-table.ts` | Q1 | 대기 |
 | `lib/demo/mode.ts` | Q1 | 대기 |
 | `lib/demo/scenario.ts` | Q1 | 대기 |
-| `lib/design/tokens.ts` | D0 | 대기 |
+| `lib/design/tokens.ts` | D0 | 검증(V0, 2026-11-03, PR #72) |
 | `lib/dm/dm-attachments.ts` | D6 | 대기 |
 | `lib/dm/dm-supabase.ts` | D6 | 대기 |
 | `lib/easter/kangwon-univ.ts` | B1 | 대기 |
@@ -526,7 +527,7 @@
 | `lib/ledger/fx.ts` | U1~U6 | 대기 |
 | `lib/ledger/image-limits.ts` | U1~U6 | 대기 |
 | `lib/ledger/image.ts` | U1~U6 | 대기 |
-| `lib/ledger/journey-state.ts` | U1~U6 | 대기 |
+| `lib/ledger/journey-state.ts` | U1~U6 | 검증(V0, 2026-11-03, PR #72) |
 | `lib/ledger/jp-tax-refund.ts` | U1~U6 | 대기 |
 | `lib/ledger/money.ts` | U1~U6 | 대기 |
 | `lib/ledger/my-share.ts` | U1~U6 | 대기 |
@@ -547,7 +548,7 @@
 | `lib/ledger/sms/parse.ts` | U1~U6 | 대기 |
 | `lib/ledger/spend-by-place.ts` | U1~U6 | 대기 |
 | `lib/ledger/split-patch-server.ts` | U1~U6 | 대기 |
-| `lib/ledger/split-patch.ts` | U1~U6 | 대기 |
+| `lib/ledger/split-patch.ts` | U1~U6 | 검증(V0, 2026-11-03, PR #72) |
 | `lib/ledger/stats.ts` | U1~U6 | 대기 |
 | `lib/ledger/supabase.ts` | U1~U6 | 대기 |
 | `lib/ledger/trip-dates.ts` | U1~U6 | 대기 |
@@ -620,7 +621,7 @@
 | `lib/route/schedule-solver.ts` | B2 | 대기 |
 | `lib/route/travel-matrix.ts` | B2 | 대기 |
 | `lib/route/types.ts` | B2 | 대기 |
-| `lib/security/guard.ts` | O6 | 대기 |
+| `lib/security/guard.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
 | `lib/security/guest-secret.ts` | O6 | 대기 |
 | `lib/security/identity.ts` | O6 | 대기 |
 | `lib/security/public-api.ts` | O6 | 대기 |
@@ -711,10 +712,10 @@
 | `supabase/migrations/20261103100000_fx_billed_merge.sql` | V0 · B3 (수정 금지) | 대기 |
 | `supabase/migrations/20261103110000_notif_expense_dcc.sql` | V0 · B3 (수정 금지) | 대기 |
 | `supabase/migrations/20261103120000_split_patch_history.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261103140000_guest_permissions.sql` | V0 · B3 (수정 금지) | 대기 |
+| `supabase/migrations/20261103140000_guest_permissions.sql` | V0 · B3 (수정 금지) | 검증(V0, 2026-11-03, PR #72) |
 | `supabase/migrations/20261103200000_shared_settlement_billed.sql` | V0 · B3 (수정 금지) | 대기 |
 | `supabase/migrations/20261103210000_tax_free.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/verify/guest_permissions_verify.sql` | V0 · B3 | 대기 |
+| `supabase/verify/guest_permissions_verify.sql` | V0 · B3 | 검증(V0, 2026-11-03, PR #72) |
 
 ### 정적 파일 (`public/**`) — 16개
 
@@ -753,7 +754,7 @@
 | `package-lock.json` | Q0 (변경 커밋 금지) | 대기 |
 | `package.json` | Q0 | 대기 |
 | `postcss.config.mjs` | Q0 | 대기 |
-| `tailwind.config.ts` | D8 | 대기 |
+| `tailwind.config.ts` | D8 | 검증(V0, 2026-11-03, PR #72) |
 | `tsconfig.json` | Q0 | 대기 |
 | `vercel.json` | B2 · Q1 | 대기 |
 | `vitest-server-only-stub.ts` | Q0 | 대기 |
@@ -824,3 +825,32 @@
 - 기준선 측정은 `acbe196` 이후 main 기준으로 해요(#70 반영). build 는 더미 env 5개(`INTERNAL_API_SECRET` 포함, CI 와 동일)로.
 - `npm audit` 19건을 보고서에 기록.
 - 커버리지 표 재생성이 필요하면 담당 배정 규칙은 런북 §6 + 위 3번.
+
+### 2026-11-03 (KST) · V0 · `chore/baseline-audit` · PR #72
+
+**한 일**
+- `docs/audit/baseline-2026-11.md` 추가(보고서만, 코드 변경 없음): 명령 5개 결과, 빌드 라우트 100개 First Load JS 표, S0·디자인 토대·여정·게스트 합류 검증, step × LedgerShell 표, 심각도별 문제, 문서와 다른 점, Evan 체크리스트.
+
+**명령 결과**
+- `npm install` up to date(락파일 변경 없음) · `typecheck` 통과 · `lint` 통과(경고 0) · `npm test` 183 파일 / 1315 tests 통과 · `npm run build` 통과(더미 env 5개, 정적 63/63)
+- 빌드 기준선: 공유 First Load JS 103 kB · Middleware 95.8 kB · 가장 큰 페이지 `/agent` 273 kB · `/trips/[id]` 270 kB · `/agent/inbox`·`/trips/[id]/ledger/inbox` 267 kB · `/` 266 kB
+- `npm audit` 19건(critical 2·high 1·moderate 16), 런타임 의존성은 `next`(moderate)만
+
+**차단 3건 (고치지 않음)**
+- X1 익명 게스트의 이름 claim 합류가 S0 트리거로 실패 — DB, 재현 필요
+- X2 게스트 `adjust`/`pay` 단계가 호스트 키와 겹쳐 기본 단계로 replace
+- X3 게스트가 「내가 냈어요」·내 몫 조정에 도달 불가
+
+**결정 (런북 V0 체크포인트)**
+- 차단 X1~X3 와 중요 I1(되돌리기 라우트 익명 허용)을 **B1 앞에 수정 세션 2개로 끼워요**:
+  - V0a `fix/guest-journey-blockers` — X2·X3·I1 (앱 코드)
+  - V0b `fix/guest-claim-trigger` — X1 (새 마이그레이션 파일만, **DB 적용은 Evan**)
+
+**남은 일 / 확인 필요**
+- Evan: 검증 SQL 블록 A→B~C, X1·I2·I3 재현, 익명 로그인 설정, trip-tips 위험 판단(보고서 §6)
+- 새 파일 `docs/audit/baseline-2026-11.md` 는 커버리지 표에 행이 없어요(Q0 가 표를 다시 뽑을 때 포함)
+
+**다음 세션 인계 (V0a → B1)**
+- 디자인 위반 수(기본 팔레트 182 · 레거시 2,679 · ai-gradient/glow 30 · `[#hex]` 7 · 10px 이하 39)는 D0 래칫 기준이에요.
+- ds 중 Button·ExpenseRow·MemberChip·Skeleton·StepHeader·useToast 는 앱 사용처 0 → B1 은 **지우지 말 것**(런북 B-2).
+- `TripSwitcherSheet` 는 여전히 테스트에서만 사용(U7 결정).
