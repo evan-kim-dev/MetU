@@ -1,5 +1,7 @@
+"use client";
+
 import { forwardRef } from "react";
-import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/design/tokens";
 
 type Variant = "primary" | "secondary";
 
@@ -10,22 +12,16 @@ interface PrimaryButtonProps
   loading?: boolean;
 }
 
-const VARIANT_STYLES: Record<Variant, string> = {
+const VARIANT: Record<Variant, string> = {
   primary:
-    "ai-gradient-bg text-surface-white shadow-glow hover:brightness-105 active:brightness-95",
+    "bg-mu-accent text-mu-on-accent hover:bg-mu-accent-strong active:bg-mu-accent-strong",
   secondary:
-    "bg-surface-white/90 text-brand-strong border border-line-soft backdrop-blur-sm hover:bg-surface-soft active:brightness-95",
-};
-
-const VARIANT_DISABLED_STYLES: Record<Variant, string> = {
-  primary:
-    "disabled:bg-none disabled:bg-line-muted disabled:text-ink-caption disabled:shadow-none disabled:hover:brightness-100",
-  secondary: "disabled:text-ink-caption disabled:bg-surface-soft",
+    "bg-mu-card text-mu-fg border border-mu-line-strong hover:bg-mu-sunken",
 };
 
 /**
- * 기본 액션 버튼.
- * 온보딩 하단 고정 버튼, 폼 제출 등 전역에서 재사용한다.
+ * 레거시 진입점. ds Button 과 같은 플랫 단색(그라디언트·글로우 제거).
+ * import 경로·props 는 유지해요.
  */
 export const PrimaryButton = forwardRef<HTMLButtonElement, PrimaryButtonProps>(
   (
@@ -36,6 +32,7 @@ export const PrimaryButton = forwardRef<HTMLButtonElement, PrimaryButtonProps>(
       className = "",
       children,
       disabled,
+      type = "button",
       ...props
     },
     ref
@@ -45,28 +42,25 @@ export const PrimaryButton = forwardRef<HTMLButtonElement, PrimaryButtonProps>(
     return (
       <button
         ref={ref}
+        type={type}
         disabled={isDisabled}
-        aria-busy={loading}
-        className={[
-          "relative inline-flex h-13 min-h-[52px] items-center justify-center overflow-hidden rounded-2xl px-6 text-base font-bold transition-all",
-          VARIANT_STYLES[variant],
-          loading ? "cursor-wait animate-pulse" : "disabled:cursor-not-allowed",
-          !loading ? VARIANT_DISABLED_STYLES[variant] : "",
-          fullWidth ? "w-full" : "",
-          className,
-        ].join(" ")}
+        aria-busy={loading || undefined}
+        className={cn(
+          "mu-focus relative inline-flex h-14 min-h-touch items-center justify-center gap-2 rounded-mu-lg px-5 text-mu-body font-semibold transition-colors duration-mu-fast ease-mu",
+          "disabled:cursor-not-allowed disabled:border-transparent disabled:bg-mu-sunken disabled:text-mu-fg-3",
+          VARIANT[variant],
+          fullWidth && "w-full",
+          className
+        )}
         {...props}
       >
         {loading ? (
           <span
+            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent"
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-shimmer"
           />
         ) : null}
-        <span className="relative inline-flex items-center justify-center gap-2">
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.4} /> : null}
-          {children}
-        </span>
+        {children}
       </button>
     );
   }

@@ -1,7 +1,6 @@
 import { forwardRef } from "react";
 
-interface TextFieldProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   /** 입력 좌측 아이콘/접두 요소 */
   leading?: React.ReactNode;
@@ -12,34 +11,47 @@ interface TextFieldProps
 }
 
 /**
- * 공통 텍스트 입력 필드.
- * focus 시 브랜드 컬러 테두리 + 링으로 하이라이트된다.
+ * 공통 텍스트 입력 필드. mu 토큰 · 입력은 mu-card 위 line-strong 경계.
  */
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
-  ({ label, leading, trailing, emphasized = false, className = "", ...props }, ref) => {
+  (
+    {
+      label,
+      leading,
+      trailing,
+      emphasized = false,
+      className = "",
+      ...props
+    },
+    ref
+  ) => {
     return (
       <label className="flex flex-col gap-2">
-        {label && (
-          <span className="text-sm font-semibold text-ink-body">{label}</span>
-        )}
-        <div className="group flex items-center gap-2 rounded-2xl border border-line-muted bg-surface-white px-4 transition-all focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10 has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-surface-soft has-[:disabled]:opacity-60">
-          {leading && <span className="text-ink-caption">{leading}</span>}
+        {label ? (
+          <span className="text-mu-label font-semibold text-mu-fg-2">
+            {label}
+          </span>
+        ) : null}
+        <div className="group flex min-h-tap items-center gap-2 rounded-mu-lg border border-mu-line-strong bg-mu-card px-4 transition-colors focus-within:border-mu-accent focus-within:ring-2 focus-within:ring-mu-accent/20 has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-mu-sunken has-[:disabled]:opacity-60">
+          {leading ? (
+            <span className="text-mu-fg-3">{leading}</span>
+          ) : null}
           <input
             ref={ref}
             className={[
-              "w-full flex-1 bg-transparent py-3.5 text-ink-heading placeholder:text-ink-caption/70 focus:outline-none disabled:cursor-not-allowed",
+              "w-full flex-1 bg-transparent py-3.5 text-mu-fg placeholder:text-mu-fg-3 focus:outline-none disabled:cursor-not-allowed",
               emphasized
-                ? "text-right text-3xl font-extrabold tracking-tight tabular-nums"
-                : "text-base",
+                ? "mu-num text-right text-mu-amount font-extrabold tracking-tight"
+                : "text-mu-body",
               className,
             ].join(" ")}
             {...props}
           />
-          {trailing && (
-            <span className="shrink-0 font-semibold text-ink-caption">
+          {trailing ? (
+            <span className="shrink-0 font-semibold text-mu-fg-3">
               {trailing}
             </span>
-          )}
+          ) : null}
         </div>
       </label>
     );

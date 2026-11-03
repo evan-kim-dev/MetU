@@ -4,9 +4,9 @@ export default function Loading() {
       <span className="sr-only" role="status">
         불러오는 중…
       </span>
-      <div className="h-4 w-2/3 animate-pulse rounded bg-surface-soft" />
-      <div className="h-4 w-full animate-pulse rounded bg-surface-soft" />
-      <div className="h-4 w-5/6 animate-pulse rounded bg-surface-soft" />
+      <div className="h-4 w-2/3 animate-pulse rounded-mu-sm bg-mu-sunken" />
+      <div className="h-4 w-full animate-pulse rounded-mu-sm bg-mu-sunken" />
+      <div className="h-4 w-5/6 animate-pulse rounded-mu-sm bg-mu-sunken" />
     </div>
   );
 }

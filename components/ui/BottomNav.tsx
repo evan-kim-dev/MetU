@@ -53,20 +53,18 @@ function NavIcon({
   return (
     <span
       className={[
-        "relative flex items-center justify-center transition-all duration-200",
-        size === "md" ? "h-7 w-7 rounded-lg" : "h-10 w-10 rounded-full",
-        active
-          ? "bg-gradient-to-br from-brand/18 via-brand-mid/14 to-brand-soft/18 ring-1 ring-brand/25 shadow-glow"
-          : "bg-transparent",
+        "relative flex items-center justify-center transition-colors duration-mu",
+        size === "md" ? "h-7 w-7 rounded-mu-sm" : "h-10 w-10 rounded-full",
+        active ? "bg-mu-accent-soft" : "bg-transparent",
       ].join(" ")}
     >
       <Icon
         className={[
           iconClass,
-          "transition-colors duration-200",
-          active ? "text-brand" : "text-ink-caption",
+          "transition-colors duration-mu",
+          active ? "text-mu-accent" : "text-mu-fg-3",
         ].join(" ")}
-        strokeWidth={active ? 2.4 : 2}
+        strokeWidth={active ? 2.25 : 1.75}
         fill={active ? "currentColor" : "none"}
         fillOpacity={active ? 0.12 : 0}
       />
@@ -90,20 +88,20 @@ function SideNavItem({
     <Link
       href={href}
       aria-label={ariaLabel}
-      className="relative flex min-h-11 w-full flex-col items-center justify-center gap-px px-1.5 transition-colors active:scale-[0.97] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      className="mu-focus relative flex min-h-tap w-full flex-col items-center justify-center gap-px px-1.5 transition-colors active:scale-[0.97] hover:opacity-90"
       aria-current={active ? "page" : undefined}
     >
       <NavIcon icon={icon} active={active} />
       <span
         className={[
-          "whitespace-nowrap text-[11px] transition-colors",
-          active ? "font-bold text-brand" : "font-semibold text-ink-caption",
+          "whitespace-nowrap text-mu-caption transition-colors",
+          active ? "font-bold text-mu-accent" : "font-semibold text-mu-fg-3",
         ].join(" ")}
       >
         {label}
       </span>
       {badgeCount && badgeCount > 0 ? (
-        <span className="absolute right-1.5 top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-[#FAE100] to-[#FDE047] px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-ink-heading shadow-sm">
+        <span className="absolute right-1.5 top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-kakao px-1.5 py-0.5 text-mu-caption font-extrabold leading-none text-kakao-ink">
           {badgeCount > 999 ? "999+" : badgeCount}
         </span>
       ) : null}
@@ -144,8 +142,8 @@ export function BottomNav() {
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center">
-      <div className="pointer-events-auto w-full max-w-mobile overflow-visible border-t border-line-soft/70 bg-surface-white/95 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-md">
-        <ul className="grid h-[56px] grid-cols-5 items-center overflow-visible px-1">
+      <div className="pointer-events-auto w-full max-w-mobile overflow-visible border-t border-mu-line bg-mu-card/95 pb-[env(safe-area-inset-bottom)] shadow-mu-sheet backdrop-blur-md">
+        <ul className="grid h-14 grid-cols-5 items-center overflow-visible px-1">
           {LEFT_ITEMS.map((item) => (
             <li
               key={item.href}
@@ -162,22 +160,20 @@ export function BottomNav() {
                 aria-current={homeActive ? "page" : undefined}
                 aria-label="홈"
                 className={[
-                  "absolute left-1/2 top-1/2 z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-[calc(50%+12px)] items-center justify-center rounded-full border-[3px] border-surface-white ai-gradient-bg shadow-[0_10px_24px_rgba(37,99,235,0.5)] transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                  homeActive ? "ring-2 ring-brand/50" : "hover:brightness-105",
+                  "mu-focus absolute left-1/2 top-1/2 z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-[calc(50%+12px)] items-center justify-center rounded-full border-[3px] border-mu-card bg-mu-accent transition-transform active:scale-95",
+                  homeActive ? "ring-2 ring-mu-accent/40" : "",
                 ].join(" ")}
               >
                 <HomeIcon
-                  className="h-6 w-6 fill-surface-white text-surface-white"
-                  strokeWidth={2.2}
+                  className="h-6 w-6 fill-mu-on-accent text-mu-on-accent"
+                  strokeWidth={1.75}
                 />
               </Link>
             </span>
             <span
               className={[
-                "whitespace-nowrap text-[11px] font-bold transition-colors",
-                homeActive
-                  ? "bg-gradient-to-r from-brand to-[#6366F1] bg-clip-text text-transparent"
-                  : "text-brand",
+                "whitespace-nowrap text-mu-caption font-bold transition-colors",
+                homeActive ? "text-mu-accent" : "text-mu-fg-3",
               ].join(" ")}
             >
               {HOME_ITEM.label}

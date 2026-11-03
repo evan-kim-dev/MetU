@@ -19,7 +19,7 @@ export default async function LegalPage({ params }: LegalPageProps) {
     return (
       <MobileShell title="문서" showBack backHref="/profile" showBottomNav={false}>
         <div className="flex flex-col items-center gap-4 px-5 py-20 text-center">
-          <p className="text-base font-bold text-ink-heading">
+          <p className="text-mu-body font-bold text-mu-fg">
             문서를 찾을 수 없어요
           </p>
           <Link href="/profile">
@@ -41,23 +41,25 @@ export default async function LegalPage({ params }: LegalPageProps) {
     >
       <article className="flex flex-col gap-6 px-5 pb-10 pt-5">
         <header className="flex flex-col gap-1">
-          <h2 className="text-xl font-bold tracking-tight text-ink-heading">
+          <h2 className="text-mu-title font-bold tracking-tight text-mu-fg">
             {doc.title}
           </h2>
-          <p className="text-sm text-ink-caption">최종 업데이트 {doc.updatedAt}</p>
+          <p className="text-mu-caption text-mu-fg-3">
+            최종 업데이트 {doc.updatedAt}
+          </p>
         </header>
 
         <div className="flex flex-col gap-6">
           {doc.sections.map((section) => (
             <section key={section.heading} className="flex flex-col gap-2">
-              <h3 className="text-base font-semibold text-ink-heading">
+              <h3 className="text-mu-body font-semibold text-mu-fg">
                 {section.heading}
               </h3>
               <div className="flex flex-col gap-2">
                 {section.body.map((paragraph) => (
                   <p
                     key={paragraph}
-                    className="text-sm leading-6 tracking-wide text-ink-body"
+                    className="text-mu-label leading-6 tracking-wide text-mu-fg-2"
                   >
                     {paragraph}
                   </p>
