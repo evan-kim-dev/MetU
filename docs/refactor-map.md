@@ -23,7 +23,7 @@
 | U5 | `feat/ux-step-pay` | 완료(PR #82) | #82 | PayStep · settle URL 조합 |
 | U6 | `feat/ux-guest-journey-complete` | 완료(PR #83) | #83 | GuestShare/Pay/Done 보강 |
 | U7 | `feat/ux-entry-points` | 완료(PR #88) | #88 | ResumeCard · TripSwitcher 삭제 |
-| U8 | `feat/ux-onboarding-steps` | 완료(PR 대기) |  | Stepper · draft · share-target |
+| U8 | `feat/ux-onboarding-steps` | 완료(PR #89) | #89 | Stepper · draft · share-target |
 | U9 | `feat/ux-trip-flows` | 보류 |  | 시연 후순위(2순위) |
 | U10 | `feat/ux-journey-polish` | 보류 |  | 시연 후순위(2순위) |
 | D0 | `chore/design-guardrails` | 완료(PR #84) | #84 | legacy-baseline 래칫 |
