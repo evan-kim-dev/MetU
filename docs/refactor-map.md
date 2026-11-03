@@ -18,7 +18,7 @@
 | B3 | `docs/db-orphans-report` | 완료(PR #77) | #77 | docs/db-orphans.md · 고아 후보 4 |
 | U1 | `feat/ux-step-connect-invite` | 완료(PR #78) | #78 | ConnectStep · InviteStep · useTripInvite |
 | U2 | `feat/ux-step-record` | 완료(PR #79) | #79 | RecordStep · AddExpenseSheet · ?add= 시트 |
-| U3 | `feat/ux-step-adjust` | 대기 |  |  |
+| U3 | `feat/ux-step-adjust` | 완료(PR #80) | #80 | AdjustStep |
 | U4 | `feat/ux-step-settle` | 대기 |  |  |
 | U5 | `feat/ux-step-pay` | 대기 |  |  |
 | U6 | `feat/ux-guest-journey-complete` | 대기 |  |  |
@@ -276,7 +276,7 @@
 | `components/ledger/GuestExpenseSlot.tsx` | U6 | 대기 |
 | `components/ledger/LedgerDashboard.tsx` | D3 | 대기 |
 | `components/ledger/LedgerInboxClient.tsx` | D3 | 대기 |
-| `components/ledger/LedgerShell.tsx` | U2 | 검증(V0, 2026-11-03, PR #72) · 수정(U1, 2026-11-03, PR #78) · 수정(U2, 2026-11-03, PR #79) |
+| `components/ledger/LedgerShell.tsx` | U2 | 검증(V0, 2026-11-03, PR #72) · 수정(U1, 2026-11-03, PR #78) · 수정(U2, 2026-11-03, PR #79) · 수정(U3, 2026-11-03, PR #80) |
 | `components/ledger/MyShareCard.tsx` | U6 | 대기 |
 | `components/ledger/PasteExpenseBox.tsx` | U2 | 대기 |
 | `components/ledger/ProposalInbox.tsx` | U6 | 대기 |
@@ -288,7 +288,7 @@
 | `components/ledger/SplitPatchBox.tsx` | U3 | 대기 |
 | `components/ledger/SplitPreviewSheet.tsx` | U3 | 대기 |
 | `components/ledger/VoiceInputButton.tsx` | U2 | 대기 |
-| `components/ledger/journey/TripJourney.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) · 수정(V0a, 2026-11-03, PR #73) · 수정(U2, 2026-11-03, PR #79) |
+| `components/ledger/journey/TripJourney.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) · 수정(V0a, 2026-11-03, PR #73) · 수정(U2, 2026-11-03, PR #79) · 수정(U3, 2026-11-03, PR #80) |
 | `components/ledger/journey/guest/GuestAdjust.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) · 수정(V0a, 2026-11-03, PR #73) |
 | `components/ledger/journey/guest/GuestDone.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ledger/journey/guest/GuestPay.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
@@ -1004,3 +1004,23 @@
 **다음 세션(U3) 인계**
 - 분담 단계는 아직 `LedgerShell` 의 `showAdjust` 블록(`SplitBatchBox` + `expenseList`=ExpenseChipSplit). U3 에서 `host/AdjustStep.tsx` 로 추출.
 - `TripJourney` 의 `HOST_CTA.record` 는 이제 쓰이지 않아요(기록 단계 CTA 는 RecordStep 소유).
+
+### 2026-11-03 (KST) · U3 · `feat/ux-step-adjust` · PR #80
+
+**한 일**
+- `components/ledger/journey/host/AdjustStep.tsx`: 한 줄로 바꾸기(SplitBatchBox + SplitPatchBox) · 지출별 칩(ExpenseChipSplit, 결제자 변경 포함) · CTA 「문제없어요, 정산할게요」 + 변경 횟수 힌트 · 빈 상태.
+- `LedgerShell` showAdjust → AdjustStep. `TripJourney` 분담 단계 BottomCTA 숨김.
+
+**명령 결과**
+- typecheck · lint · `npm test` 189 파일 / 1360 tests(+6) · build 통과. `/trips/[id]/ledger` 261 kB.
+
+**결정 / 중복**
+- 새 금액 계산 없음(서버 미리보기만). 권한은 기존 라우트 테스트로 재확인.
+- 정산 페이지의 `SplitPatchBox` 는 U4 에서 제거 예정(일시 중복).
+
+**남은 일 / 확인 필요**
+- Evan: 실기기 미리보기 → 확정 → 되돌리기.
+
+**다음 세션(U4) 인계**
+- 정산 페이지 `app/trips/[id]/ledger/settle/page.tsx`(690줄)를 `SettleStep` 으로 해체. 그 안의 `SplitPatchBox` 는 「분담 수정하기」(→ `?step=adjust`) 링크로 대체.
+- 호스트 단계 BottomCTA 소유: connect·invite·settle·pay = TripJourney, record·adjust = 단계 컴포넌트.
