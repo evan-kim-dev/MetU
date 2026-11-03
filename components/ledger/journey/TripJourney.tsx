@@ -219,8 +219,8 @@ export function TripJourney({ tripId }: Props) {
 
   const cta = (() => {
     if (!hostStep) return null;
-    // 기록 단계는 RecordStep 이 주 CTA(지출 추가)와 보조(다음: 분담 조정)를 직접 그려요.
-    if (hostStep === "record") return null;
+    // 기록·분담 단계는 RecordStep·AdjustStep 이 자기 BottomCTA 를 직접 그려요.
+    if (hostStep === "record" || hostStep === "adjust") return null;
     if (hostStep === "connect" && automationState === "connected") {
       return { label: "다음: 멤버 초대", next: "invite" as HostStepKey };
     }

@@ -354,8 +354,14 @@ export function LedgerShell({
           {showAdjust ? (
             <AdjustStep
               tripId={tripId}
+              expenses={expenses}
+              members={members}
+              meId={me?.id}
+              isOwner={Boolean(me?.isOwner)}
+              isAnonymous={isAnonymous}
               onChanged={() => void reload()}
-              expenseList={expenseList}
+              onSettle={() => onNavigate?.("settle")}
+              onRecord={() => onNavigate?.("record")}
             />
           ) : null}
 
