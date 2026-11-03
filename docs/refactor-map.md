@@ -26,8 +26,8 @@
 | U8 | `feat/ux-onboarding-steps` | 보류 |  | 시연 후순위(2순위) |
 | U9 | `feat/ux-trip-flows` | 보류 |  | 시연 후순위(2순위) |
 | U10 | `feat/ux-journey-polish` | 보류 |  | 시연 후순위(2순위) |
-| D0 | `chore/design-guardrails` | 진행 |  | legacy-baseline 래칫 |
-| D1 | `refactor/design-shell` | 대기 |  |  |
+| D0 | `chore/design-guardrails` | 완료(PR #84) | #84 | legacy-baseline 래칫 |
+| D1 | `refactor/design-shell` | 진행 |  | ui·셸 mu 토큰 · baseline 2870 |
 | D2 | `refactor/design-home-agent` | 대기 |  |  |
 | D3 | `refactor/design-ledger-rest` | 대기 |  |  |
 | D4 | `refactor/design-trips` | 대기 |  |  |
@@ -62,8 +62,8 @@
 | `app/board/page.tsx` | Q1 · D6 | 대기 |
 | `app/checklist/[category]/page.tsx` | U9 · D7 | 대기 |
 | `app/join/[token]/page.tsx` | U6 · D3 | 검증(V0, 2026-11-03, PR #72) |
-| `app/legal/[slug]/page.tsx` | D1 | 대기 |
-| `app/login/page.tsx` | D1 | 대기 |
+| `app/legal/[slug]/page.tsx` | D1 | 정리(D1, 2026-11-04) |
+| `app/login/page.tsx` | D1 | 정리(D1, 2026-11-04) |
 | `app/notifications/page.tsx` | Q1 · D6 | 대기 |
 | `app/onboarding/automation/page.tsx` | U8 · D5 | 대기 |
 | `app/onboarding/page.tsx` | U8 · D5 | 대기 |
@@ -100,14 +100,14 @@
 | `app/board/error.tsx` | U10 · D1 | 대기 |
 | `app/board/loading.tsx` | U10 · D1 | 대기 |
 | `app/checklist/[category]/loading.tsx` | U10 · D1 | 대기 |
-| `app/error.tsx` | U10 · D1 | 대기 |
+| `app/error.tsx` | U10 · D1 | 정리(D1, 2026-11-04) |
 | `app/favicon.ico` | D1 | 대기 |
 | `app/global-error.tsx` | U10 · D1 | 대기 |
 | `app/globals.css` | D8 | 검증(V0, 2026-11-03, PR #72) |
 | `app/icon.png` | D1 | 대기 |
 | `app/layout.tsx` | D1 · O2 | 대기 |
-| `app/loading.tsx` | U10 · D1 | 대기 |
-| `app/not-found.tsx` | U10 · D1 | 대기 |
+| `app/loading.tsx` | U10 · D1 | 정리(D1, 2026-11-04) |
+| `app/not-found.tsx` | U10 · D1 | 정리(D1, 2026-11-04) |
 | `app/notifications/loading.tsx` | U10 · D1 | 대기 |
 | `app/onboarding/error.tsx` | U10 · D1 | 대기 |
 | `app/onboarding/loading.tsx` | U10 · D1 | 대기 |
@@ -366,7 +366,7 @@
 | `components/trips/useTripDetailEditor.ts` | U9 | 정리(B1, 2026-11-03, PR #75) |
 | `components/ui/AIInsightBadge.tsx` | D1 | 대기 |
 | `components/ui/AILoadingPanel.tsx` | D1 | 대기 |
-| `components/ui/BottomNav.tsx` | D1 | 대기 |
+| `components/ui/BottomNav.tsx` | D1 | 정리(D1, 2026-11-04) |
 | `components/ui/BottomSheet.tsx` | D1 | 대기 |
 | `components/ui/BuildRevalidator.tsx` | D1 | 대기 |
 | `components/ui/BuildStamp.tsx` | D1 | 대기 |
@@ -377,22 +377,22 @@
 | `components/ui/EasterEggToast.tsx` | D1 | 정리(B1, 2026-11-03, PR #75) |
 | `components/ui/HorizontalScroller.tsx` | D1 | 대기 |
 | `components/ui/MetULogo.tsx` | D1 | 정리(B1, 2026-11-03, PR #75) |
-| `components/ui/OfflineBanner.tsx` | D1 | 대기 |
-| `components/ui/PageSkeleton.tsx` | D1 | 대기 |
+| `components/ui/OfflineBanner.tsx` | D1 | 정리(D1, 2026-11-04) |
+| `components/ui/PageSkeleton.tsx` | D1 | 정리(D1, 2026-11-04) |
 | `components/ui/PetCursorFollower.tsx` | D1 | 대기 |
-| `components/ui/PrimaryButton.tsx` | D1 | 대기 |
+| `components/ui/PrimaryButton.tsx` | D1 | 정리(D1, 2026-11-04) |
 | `components/ui/ProfileDogBuddy.tsx` | D1 | 대기 |
 | `components/ui/ProgressBar.tsx` | D1 | 대기 |
 | `components/ui/RouteProgress.tsx` | D1 | 대기 |
 | `components/ui/SafeAvatar.tsx` | D1 | 대기 |
 | `components/ui/SectionErrorBoundary.tsx` | D1 | 대기 |
-| `components/ui/SectionHeader.tsx` | D1 | 대기 |
-| `components/ui/SelectChip.tsx` | D1 | 대기 |
+| `components/ui/SectionHeader.tsx` | D1 | 정리(D1, 2026-11-04) |
+| `components/ui/SelectChip.tsx` | D1 | 정리(D1, 2026-11-04) |
 | `components/ui/SessionExpiredDialog.tsx` | D1 | 대기 |
 | `components/ui/StepCard.tsx` | D1 | 대기 |
-| `components/ui/TextField.tsx` | D1 | 대기 |
-| `components/ui/ToggleSwitch.tsx` | D1 | 대기 |
-| `components/ui/TopAppBar.tsx` | D1 | 대기 |
+| `components/ui/TextField.tsx` | D1 | 정리(D1, 2026-11-04) |
+| `components/ui/ToggleSwitch.tsx` | D1 | 정리(D1, 2026-11-04) |
+| `components/ui/TopAppBar.tsx` | D1 | 정리(D1, 2026-11-04) |
 
 ### 라이브러리 (`lib/**`, 테스트 제외) — 254개
 
@@ -1085,3 +1085,18 @@
 
 **다음 세션(D1) 인계**
 - 셸·`components/ui` 를 mu/ds 로. 고친 뒤 baseline 해당 버킷 숫자 내리기.
+
+---
+
+## D1 — 셸·공통 UI (2026-11-04)
+
+**한 일**
+- `PrimaryButton` flat `mu-accent`(ai-gradient·shadow-glow 제거), TextField/SelectChip/ToggleSwitch/SectionHeader/TopAppBar/OfflineBanner/PageSkeleton/BottomNav → mu-*.
+- `app/error`·`loading`·`not-found`·`login`·`legal/[slug]` mu 토큰.
+- baseline 갱신: `components/ui` 223→148, `app/_root` 37→22, legal/login 0(키 제거), 합계 2967→2870. EasterEgg* 등 잔여 레거시는 후속.
+
+**확인**
+- `npm run typecheck` · `npm run lint` · `npm test` · `npm run build`(더미 env)
+
+**다음 세션(D3) 인계**
+- 원장 나머지 화면 mu. UI 시연 전 phone-check 권장.

@@ -1,12 +1,10 @@
 {
-  "_comment": "D0 래칫 기준선. 디렉터리별 금지 스타일 히트 수. 줄이기만 가능(components/ds=0 고정). 생성: 2026-11-04 scanLegacyHits.",
-  "app/_root": 37,
+  "_comment": "D0 래칫 기준선. 디렉터리별 금지 스타일 히트 수. 줄이기만 가능(components/ds=0 고정). 갱신: 2026-11-04 D1 design-shell.",
+  "app/_root": 22,
   "app/about": 21,
   "app/auth": 2,
   "app/checklist": 1,
   "app/join": 14,
-  "app/legal": 5,
-  "app/login": 2,
   "app/onboarding": 15,
   "app/s": 25,
   "app/share-target": 18,
@@ -26,5 +24,5 @@
   "components/pwa": 18,
   "components/recommend": 144,
   "components/trips": 526,
-  "components/ui": 223
+  "components/ui": 148
 }

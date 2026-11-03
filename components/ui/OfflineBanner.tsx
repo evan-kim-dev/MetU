@@ -28,7 +28,7 @@ export function OfflineBanner() {
     return (
       <div
         role="status"
-        className="fixed inset-x-0 top-0 z-50 bg-ink-heading px-4 py-2 text-center text-sm text-white"
+        className="fixed inset-x-0 top-0 z-50 bg-mu-fg px-4 py-2 text-center text-mu-label text-mu-on-accent"
         style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
       >
         오프라인이에요. 연결되면 자동으로 다시 시도해요.
@@ -40,7 +40,7 @@ export function OfflineBanner() {
     return (
       <div
         role="status"
-        className="fixed inset-x-0 top-0 z-50 bg-emerald-700 px-4 py-2 text-center text-sm text-white"
+        className="fixed inset-x-0 top-0 z-50 bg-mu-ok px-4 py-2 text-center text-mu-label text-mu-on-accent"
         style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
       >
         다시 연결됐어요

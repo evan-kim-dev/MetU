@@ -7,7 +7,7 @@ export function SkeletonBlock({
 }) {
   return (
     <div
-      className={`animate-pulse rounded-2xl bg-surface-soft ${className}`}
+      className={`animate-pulse rounded-mu-lg bg-mu-sunken ${className}`}
       aria-hidden
     />
   );
@@ -27,8 +27,12 @@ export function ListPageSkeleton({
 }) {
   return (
     <MobileShell title={title} showBack={showBack} backHref={backHref}>
-      <div className="flex flex-col gap-3 px-5 pb-2 pt-5" aria-busy="true" aria-label="불러오는 중">
-        <SkeletonBlock className="h-10 w-full rounded-xl" />
+      <div
+        className="flex flex-col gap-3 px-5 pb-2 pt-5"
+        aria-busy="true"
+        aria-label="불러오는 중"
+      >
+        <SkeletonBlock className="h-10 w-full rounded-mu-md" />
         {Array.from({ length: rows }, (_, index) => (
           <SkeletonBlock key={index} className="h-28 w-full" />
         ))}
@@ -47,8 +51,12 @@ export function DetailPageSkeleton({
 }) {
   return (
     <MobileShell title={title} showBack backHref={backHref}>
-      <div className="flex flex-col gap-4 px-5 pb-2 pt-5" aria-busy="true" aria-label="불러오는 중">
-        <SkeletonBlock className="h-52 w-full rounded-xl2" />
+      <div
+        className="flex flex-col gap-4 px-5 pb-2 pt-5"
+        aria-busy="true"
+        aria-label="불러오는 중"
+      >
+        <SkeletonBlock className="h-52 w-full rounded-mu-md" />
         <div className="grid grid-cols-2 gap-3">
           <SkeletonBlock className="h-20" />
           <SkeletonBlock className="h-20" />
@@ -69,14 +77,18 @@ export function SectionSkeleton({
   heightClass?: string;
 }) {
   return (
-    <section className="flex flex-col gap-3" aria-busy="true" aria-label="불러오는 중">
+    <section
+      className="flex flex-col gap-3"
+      aria-busy="true"
+      aria-label="불러오는 중"
+    >
       {title ? (
         <div className="flex items-center justify-between">
-          <SkeletonBlock className="h-5 w-28 rounded-md" />
-          <SkeletonBlock className="h-4 w-14 rounded-md" />
+          <SkeletonBlock className="h-5 w-28 rounded-mu-sm" />
+          <SkeletonBlock className="h-4 w-14 rounded-mu-sm" />
         </div>
       ) : null}
-      <SkeletonBlock className={`w-full rounded-xl2 ${heightClass}`} />
+      <SkeletonBlock className={`w-full rounded-mu-md ${heightClass}`} />
     </section>
   );
 }
