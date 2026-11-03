@@ -29,7 +29,7 @@
 | D0 | `chore/design-guardrails` | 완료(PR #84) | #84 | legacy-baseline 래칫 |
 | D1 | `refactor/design-shell` | 완료(PR #85) | #85 | ui·셸 mu 토큰 · baseline 2870 |
 | D2 | `refactor/design-home-agent` | 대기 |  |  |
-| D3 | `refactor/design-ledger-rest` | 진행 |  | ledger·/s·/join mu · baseline 2514 |
+| D3 | `refactor/design-ledger-rest` | 완료(PR #86) | #86 | ledger·/s·/join mu · baseline 2514 |
 | D4 | `refactor/design-trips` | 대기 |  |  |
 | D5 | `refactor/design-onboarding` | 대기 |  |  |
 | D6 | `refactor/design-community` | 대기 |  |  |
@@ -44,7 +44,7 @@
 | O7 | `refactor/split-large-files` | 대기 |  |  |
 | F1 | `test/stretch-completeness` | 대기 |  |  |
 | Q0 | `chore/coverage-sweep` | 대기 |  |  |
-| Q1 | `test/final-qa` | 대기 |  |  |
+| Q1 | `test/final-qa` | 진행 |  | 라우트 인벤토리·QA 문서 |
 
 ## 커버리지 표
 
@@ -1115,3 +1115,18 @@
 
 **다음 세션(Q1) 인계**
 - D2·D4~ 스킵(우선순위). Q1 최종 QA. phone-check: /s·/join·영수증 확인 시트·wallet/recap/report.
+
+---
+
+## Q1 — 최종 QA (2026-11-04)
+
+**한 일**
+- `lib/qa/page-routes.ts` + 테스트: 전 `page.tsx` ↔ 인벤토리 1:1, public↔`route-access`.
+- `docs/qa/final-2026-11-04.md` 접근 표·게스트 회귀·360px 수동 체크리스트.
+- `preview-smoke`에 `/about`·홈(로그인 리다이렉트 허용) 추가.
+
+**확인**
+- typecheck · lint · test · build(더미 env)
+
+**다음**
+- Evan: phone-check + 데모 리허설(Q2). V0b DB 적용 여부.
