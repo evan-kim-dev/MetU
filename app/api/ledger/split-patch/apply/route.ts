@@ -5,14 +5,20 @@ import { getAgentAdmin } from "@/lib/agent/admin";
 import { readJsonLimited } from "@/lib/agent/body-limit";
 import { TABLES } from "@/lib/constants";
 import {
+  GUEST_SELF_ONLY_MESSAGE,
   SplitPatchSchema,
   applySplitPatch,
+  guestMayApply,
   patchKinds,
   sharesDigest,
   splitPatchReasonMessage,
 } from "@/lib/ledger/split-patch";
-import { loadSplitContext } from "@/lib/ledger/split-patch-server";
+import {
+  findRequesterMember,
+  loadSplitContext,
+} from "@/lib/ledger/split-patch-server";
 import { guardApi } from "@/lib/security/guard";
+import { isAnonymousUserIdentity } from "@/lib/security/identity";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export const maxDuration = 30;
@@ -73,6 +79,23 @@ export async function POST(request: Request) {
       : NextResponse.json({ error: "load-failed" }, { status: 500 });
   }
   const { ctx } = loaded;
+
+  const requester = findRequesterMember(ctx.members, identity.userId);
+  if (!requester) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  if (isAnonymousUserIdentity(identity)) {
+    const guest = guestMayApply({
+      patch,
+      requesterMemberId: requester.id,
+    });
+    if (!guest.ok) {
+      return NextResponse.json(
+        { error: guest.code, message: GUEST_SELF_ONLY_MESSAGE },
+        { status: 422 }
+      );
+    }
+  }
 
   // 재시도: 이미 적용된 키면 분담이 이미 바뀌었으므로 충돌 검사 전에 성공으로 돌려준다.
   const { data: prior } = await supabase

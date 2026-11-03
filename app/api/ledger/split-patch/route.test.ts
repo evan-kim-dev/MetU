@@ -94,9 +94,9 @@ describe("POST /api/ledger/split-patch (미리보기)", () => {
     };
     tables.trip_members = {
       list: [
-        { id: A, display_name: "민수" },
-        { id: B, display_name: "지영" },
-        { id: C, display_name: "철수" },
+        { id: A, display_name: "민수", user_id: "user-1", is_owner: true },
+        { id: B, display_name: "지영", user_id: "user-2", is_owner: false },
+        { id: C, display_name: "철수", user_id: "user-3", is_owner: false },
       ],
     };
     vi.spyOn(console, "info").mockImplementation(() => undefined);
@@ -216,11 +216,66 @@ describe("POST /api/ledger/split-patch (미리보기)", () => {
     geminiOk(patchOf({ clarification: "누구를 빼요?" }));
     const { POST } = await import("./route");
     const json = await (await POST(req({ expenseId: EXP, text: "x" }))).json();
-    expect(json).toEqual({
-      ok: true,
-      needsClarification: true,
-      message: "누구를 빼요?",
+    expect(json.ok).toBe(true);
+    expect(json.needsClarification).toBe(true);
+    expect(json.message).toBe("누구를 빼요?");
+    expect(json.target).toEqual({ expenseId: EXP, label: "이자카야" });
+  });
+
+  it("익명이 다른 사람을 빼면 422 guest-self-only", async () => {
+    guardApi.mockResolvedValue({
+      identity: { kind: "user", userId: "user-1", isAnonymous: true },
+      clientKey: "k",
     });
+    geminiOk(patchOf({ exclude: [B] }));
+    const { POST } = await import("./route");
+    const res = await POST(req({ expenseId: EXP, text: "민수 빼줘" }));
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe("guest-self-only");
+  });
+
+  it("익명이 weights 를 쓰면 거부", async () => {
+    guardApi.mockResolvedValue({
+      identity: { kind: "user", userId: "user-1", isAnonymous: true },
+      clientKey: "k",
+    });
+    geminiOk(patchOf({ weights: [{ memberId: A, weight: 2 }] }));
+    const { POST } = await import("./route");
+    const res = await POST(req({ expenseId: EXP, text: "나는 두 배" }));
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe("guest-self-only");
+  });
+
+  it("익명이 자기 제외는 미리보기 가능", async () => {
+    guardApi.mockResolvedValue({
+      identity: { kind: "user", userId: "user-1", isAnonymous: true },
+      clientKey: "k",
+    });
+    geminiOk(patchOf({ exclude: [A] }));
+    const { POST } = await import("./route");
+    const res = await POST(req({ expenseId: EXP, text: "저는 빠질게요" }));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.preview.myAfter).toBe(0);
+  });
+
+  it("비멤버는 403", async () => {
+    guardApi.mockResolvedValue({
+      identity: { kind: "user", userId: "stranger", isAnonymous: false },
+      clientKey: "k",
+    });
+    const { POST } = await import("./route");
+    expect((await POST(req({ expenseId: EXP, text: "x" }))).status).toBe(403);
+    expect(geminiStructured).not.toHaveBeenCalled();
+  });
+
+  it("요청자 id 가 Gemini 입력에 들어간다", async () => {
+    geminiOk(patchOf({ exclude: [A] }));
+    const { POST } = await import("./route");
+    await POST(req({ expenseId: EXP, text: "저는 빠질게요" }));
+    const call = geminiStructured.mock.calls[0]![0] as { input: string };
+    expect(call.input).toContain(`[요청자] id=${A}`);
+    expect(call.input).toContain("저는 빠질게요");
   });
 
   it("멤버가 아닌 id 는 422 와 한국어 메시지", async () => {

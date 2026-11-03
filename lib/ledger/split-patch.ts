@@ -124,6 +124,42 @@ export function splitPatchReasonMessage(reason: SplitPatchFailReason): string {
   return REASON_MESSAGES[reason];
 }
 
+/**
+ * 익명 게스트는 자기 몫만 바꿀 수 있다 (K7b).
+ * weights/only 불가, exclude·itemExclusions 는 요청자 본인만.
+ */
+export function guestMayApply(args: {
+  patch: Pick<
+    SplitPatch,
+    "exclude" | "only" | "weights" | "itemExclusions"
+  >;
+  requesterMemberId: string;
+}): { ok: true } | { ok: false; code: "guest-self-only" } {
+  const { patch, requesterMemberId } = args;
+  const kinds = patchKinds(patch);
+  if (kinds.includes("weights") || kinds.includes("only")) {
+    return { ok: false, code: "guest-self-only" };
+  }
+  if (kinds.includes("exclude")) {
+    const ids = [...new Set(patch.exclude)];
+    if (ids.length !== 1 || ids[0] !== requesterMemberId) {
+      return { ok: false, code: "guest-self-only" };
+    }
+  }
+  if (kinds.includes("itemExclusions")) {
+    if (
+      patch.itemExclusions.length === 0 ||
+      patch.itemExclusions.some((e) => e.memberId !== requesterMemberId)
+    ) {
+      return { ok: false, code: "guest-self-only" };
+    }
+  }
+  return { ok: true };
+}
+
+export const GUEST_SELF_ONLY_MESSAGE =
+  "다른 사람의 분담은 호스트만 바꿀 수 있어요.";
+
 function unique(ids: readonly string[]): string[] {
   return [...new Set(ids)];
 }

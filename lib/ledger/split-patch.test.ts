@@ -5,6 +5,7 @@ import {
   SplitPatchSchema,
   applySplitPatch,
   currentParticipants,
+  guestMayApply,
   sharesDigest,
   splitPatchReasonMessage,
   type SplitPatch,
@@ -386,5 +387,59 @@ describe("helpers", () => {
 
   it("모든 실패 사유에 한국어 메시지가 있다", () => {
     expect(splitPatchReasonMessage("no-change")).toMatch(/요/);
+  });
+});
+
+describe("guestMayApply", () => {
+  it("본인 exclude 는 허용", () => {
+    expect(
+      guestMayApply({
+        patch: patch({ exclude: [A] }),
+        requesterMemberId: A,
+      })
+    ).toEqual({ ok: true });
+  });
+
+  it("타인 exclude 는 거부", () => {
+    expect(
+      guestMayApply({
+        patch: patch({ exclude: [B] }),
+        requesterMemberId: A,
+      })
+    ).toEqual({ ok: false, code: "guest-self-only" });
+  });
+
+  it("weights·only 는 거부", () => {
+    expect(
+      guestMayApply({
+        patch: patch({ weights: [{ memberId: A, weight: 2 }] }),
+        requesterMemberId: A,
+      }).ok
+    ).toBe(false);
+    expect(
+      guestMayApply({
+        patch: patch({ only: [A, B] }),
+        requesterMemberId: A,
+      }).ok
+    ).toBe(false);
+  });
+
+  it("itemExclusions 는 요청자만", () => {
+    expect(
+      guestMayApply({
+        patch: patch({
+          itemExclusions: [{ memberId: A, itemIndex: 0 }],
+        }),
+        requesterMemberId: A,
+      }).ok
+    ).toBe(true);
+    expect(
+      guestMayApply({
+        patch: patch({
+          itemExclusions: [{ memberId: B, itemIndex: 0 }],
+        }),
+        requesterMemberId: A,
+      }).ok
+    ).toBe(false);
   });
 });

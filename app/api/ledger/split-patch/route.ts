@@ -3,26 +3,41 @@ import { z } from "zod";
 
 import { readJsonLimited } from "@/lib/agent/body-limit";
 import {
+  GUEST_SELF_ONLY_MESSAGE,
   SplitPatchSchema,
   applySplitPatch,
+  guestMayApply,
   sharesDigest,
   splitPatchReasonMessage,
   patchKinds,
 } from "@/lib/ledger/split-patch";
 import {
   SPLIT_PATCH_TEXT_MAX,
+  findRequesterMember,
   interpretSplitPatch,
   loadSplitContext,
+  resolveLatestExpenseId,
 } from "@/lib/ledger/split-patch-server";
 import { guardApi } from "@/lib/security/guard";
+import { isAnonymousUserIdentity } from "@/lib/security/identity";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
 
-const BodySchema = z.strictObject({
-  expenseId: z.string().uuid(),
-  text: z.string().trim().min(1).max(SPLIT_PATCH_TEXT_MAX),
-});
+const BodySchema = z
+  .strictObject({
+    expenseId: z.string().uuid().optional(),
+    tripId: z.string().uuid().optional(),
+    text: z.string().trim().min(1).max(SPLIT_PATCH_TEXT_MAX),
+  })
+  .superRefine((body, ctx) => {
+    if (!body.expenseId && !body.tripId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "expenseId 또는 tripId 가 필요해요.",
+      });
+    }
+  });
 
 /**
  * 미리보기. 변경은 하지 않는다.
@@ -43,9 +58,24 @@ export async function POST(request: Request) {
   if (!body.success) {
     return NextResponse.json({ error: "invalid-body" }, { status: 400 });
   }
-  const { expenseId, text } = body.data;
+  const { text } = body.data;
 
   const supabase = await createServerSupabase();
+
+  let expenseId = body.data.expenseId;
+  if (!expenseId) {
+    const latest = await resolveLatestExpenseId(
+      supabase,
+      body.data.tripId as string
+    );
+    if (!latest.ok) {
+      return latest.error === "not-found"
+        ? NextResponse.json({ error: "no-expense" }, { status: 404 })
+        : NextResponse.json({ error: "load-failed" }, { status: 500 });
+    }
+    expenseId = latest.expenseId;
+  }
+
   const loaded = await loadSplitContext(supabase, expenseId);
   if (!loaded.ok) {
     return loaded.error === "not-found"
@@ -57,10 +87,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "voided" }, { status: 409 });
   }
 
+  const requester = findRequesterMember(ctx.members, identity.userId);
+  if (!requester) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const result = await interpretSplitPatch({
     text,
     ctx,
     userId: identity.userId,
+    requesterMemberId: requester.id,
   });
 
   if (!result.ok) {
@@ -93,7 +129,7 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({ error: "patch-invalid" }, { status: 422 });
   }
-  // 어떤 지출인지는 사용자가 골랐다. 모델이 돌려준 expenseId 는 믿지 않고 덮어쓴다.
+  // 어떤 지출인지는 서버가 고른 값을 쓴다. 모델이 돌려준 expenseId 는 믿지 않는다.
   const patch = { ...checked.data, expenseId };
 
   if (patchKinds(patch).length === 0) {
@@ -103,7 +139,21 @@ export async function POST(request: Request) {
       message:
         patch.clarification ??
         splitPatchReasonMessage("clarification-needed"),
+      target: { expenseId, label: ctx.label },
     });
+  }
+
+  if (isAnonymousUserIdentity(identity)) {
+    const guest = guestMayApply({
+      patch,
+      requesterMemberId: requester.id,
+    });
+    if (!guest.ok) {
+      return NextResponse.json(
+        { error: guest.code, message: GUEST_SELF_ONLY_MESSAGE },
+        { status: 422 }
+      );
+    }
   }
 
   const applied = applySplitPatch({
@@ -137,6 +187,11 @@ export async function POST(request: Request) {
         krw,
       }));
 
+  const beforeRows = rows(ctx.expense.shares);
+  const afterRows = rows(applied.shares);
+  const myBefore = beforeRows.find((r) => r.memberId === requester.id)?.krw ?? 0;
+  const myAfter = afterRows.find((r) => r.memberId === requester.id)?.krw ?? 0;
+
   return NextResponse.json({
     ok: true,
     needsClarification: false,
@@ -147,9 +202,13 @@ export async function POST(request: Request) {
       kind: applied.kind,
       splitType: applied.splitType,
       krwAmount: ctx.expense.krwAmount,
-      before: rows(ctx.expense.shares),
-      after: rows(applied.shares),
+      before: beforeRows,
+      after: afterRows,
       beforeDigest: sharesDigest(ctx.expense.shares),
+      myBefore,
+      myAfter,
+      requesterMemberId: requester.id,
     },
+    target: { expenseId, label: ctx.label },
   });
 }

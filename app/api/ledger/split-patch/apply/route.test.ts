@@ -104,9 +104,9 @@ describe("POST /api/ledger/split-patch/apply", () => {
     };
     tables.trip_members = {
       list: [
-        { id: A, display_name: "민수" },
-        { id: B, display_name: "지영" },
-        { id: C, display_name: "철수" },
+        { id: A, display_name: "민수", user_id: "user-1", is_owner: true },
+        { id: B, display_name: "지영", user_id: "user-2", is_owner: false },
+        { id: C, display_name: "철수", user_id: "user-3", is_owner: false },
       ],
     };
     tables.trip_expense_split_history = {};
@@ -244,5 +244,28 @@ describe("POST /api/ledger/split-patch/apply", () => {
         p_patch_kind: "weights",
       })
     );
+  });
+
+  it("익명이 타인 exclude 적용하면 422, RPC 없음", async () => {
+    guardApi.mockResolvedValue({
+      identity: { kind: "user", userId: "user-1", isAnonymous: true },
+      clientKey: "k",
+    });
+    const { POST } = await import("./route");
+    const res = await POST(req(body({ patch: patchOf({ exclude: [C] }) })));
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe("guest-self-only");
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("익명이 자기 exclude 적용은 RPC 호출", async () => {
+    guardApi.mockResolvedValue({
+      identity: { kind: "user", userId: "user-1", isAnonymous: true },
+      clientKey: "k",
+    });
+    const { POST } = await import("./route");
+    const res = await POST(req(body({ patch: patchOf({ exclude: [A] }) })));
+    expect(res.status).toBe(200);
+    expect(rpc).toHaveBeenCalled();
   });
 });
