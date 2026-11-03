@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke:preview": "node scripts/preview-smoke.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
