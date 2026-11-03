@@ -278,6 +278,7 @@ export function LedgerShell({
               tripId={tripId}
               members={members}
               canInvite={Boolean(me?.isOwner && me.userId === user?.id)}
+              onMembersChanged={setMembers}
             />
           ) : null}
 

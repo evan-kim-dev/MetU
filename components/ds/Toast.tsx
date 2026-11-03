@@ -138,3 +138,8 @@ export function useToast(): ToastContextValue {
   }
   return ctx;
 }
+
+/** ToastProvider 밖에서도 렌더될 수 있는 컴포넌트용. Provider 가 없으면 null. */
+export function useOptionalToast(): ToastContextValue | null {
+  return useContext(ToastContext);
+}
