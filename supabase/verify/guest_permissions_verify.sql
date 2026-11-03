@@ -9,6 +9,7 @@
 --      (PR 머지 후 npm run db:push 또는 SQL Editor에 파일 붙여넣기)
 --   3) 블록 A 재실행 → 블록 B → 블록 C
 --   4) 블록 D는 주석 처리 — 지금은 실행하지 않음
+--   (+) 20261103220000_guest_claim_trigger.sql 적용 후 A9 · T19 · T20 으로 확인
 --
 -- 대시보드 확인(a): Authentication → Providers → Allow anonymous sign-ins
 --   (SQL로는 확인 불가)
@@ -80,17 +81,29 @@ select schemaname, tablename, policyname, permissive, cmd
 from pg_policies
 where policyname like 'anon_block%'
 order by 2, 3;
--- 기대(140000 후): trips/trip_invites/community_* / party_* / trip_plans /
---   budget_insight_logs INSERT + trip_expenses/shares INSERT/UPDATE/DELETE
+-- 기대(140000 후): trips/trip_invites/community_* / party_* INSERT
+--   + trip_expenses/shares INSERT/UPDATE/DELETE
+--   (trip_plans·budget_insight_logs 는 20260711210000 에서 drop 돼서 정책이 없어요)
 
 -- A8) proposals 테이블
 select to_regclass('public.trip_expense_proposals') as proposals;
 -- 기대(140000 후): trip_expense_proposals
 
+-- A9) 220000 적용 확인: 게스트 트리거가 빈 자리 claim 을 허용하고 is_owner 를 막는지
+select
+  position('old.user_id is null'
+    in pg_get_functiondef('public.trip_members_guest_guard()'::regprocedure)) > 0
+    as claim_allowed,
+  position('is_owner'
+    in pg_get_functiondef('public.trip_members_guest_guard()'::regprocedure)) > 0
+    as is_owner_guarded;
+-- 기대(220000 후): true, true
+
 
 -- ###########################################################################
 -- 블록 B — 익명 RLS 동작 (롤백 트랜잭션, 합성 데이터만)
--- 기대: T1~T17 각 NOTICE 가 PASS/<기대코드> 형태. T18은 수동.
+-- 기대: T1~T20 각 NOTICE 가 PASS/<기대코드> 형태. T18은 수동.
+--   T19·T20 은 20261103220000 적용 후에만 PASS (이전엔 T19 FAIL = V0 X1 재현).
 -- 반드시 마지막 rollback.
 -- ###########################################################################
 
@@ -101,6 +114,7 @@ declare
   v_host uuid := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
   v_guest uuid := 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
   v_guest2 uuid := 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+  v_guest3 uuid := 'ffffffff-ffff-ffff-ffff-ffffffffffff';
   v_trip uuid := 'dddddddd-dddd-dddd-dddd-dddddddddddd';
   v_trip2 uuid := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
   v_host_m uuid;
@@ -111,6 +125,8 @@ declare
   v_prop uuid;
   v_prop_other uuid;
   v_other_m uuid;
+  v_claim_m uuid;
+  v_joined uuid;
   v_state text;
   v_msg text;
   v_cnt int;
@@ -123,12 +139,14 @@ begin
   where trip_id in (v_trip, v_trip2);
   delete from public.trip_expenses
   where trip_id in (v_trip, v_trip2);
+  delete from public.trip_invites
+  where trip_id in (v_trip, v_trip2);
   delete from public.trip_members
   where trip_id in (v_trip, v_trip2);
   delete from public.trips
   where id in (v_trip, v_trip2);
   delete from auth.users
-  where id in (v_host, v_guest, v_guest2);
+  where id in (v_host, v_guest, v_guest2, v_guest3);
 
   -- 합성 호스트 (비익명)
   -- auth.users 필수 컬럼은 프로젝트 버전에 따라 다를 수 있음 → 실패 시
@@ -200,6 +218,29 @@ begin
     true
   );
 
+  -- 합성 게스트3 (익명, 아직 멤버 아님 → T19 이름 자리 claim)
+  insert into auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at,
+    confirmation_token, recovery_token, email_change_token_new, email_change,
+    is_anonymous
+  ) values (
+    v_guest3,
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    null,
+    crypt('synth-only', gen_salt('bf')),
+    now(),
+    '{"provider":"anonymous","providers":["anonymous"]}'::jsonb,
+    '{"name":"S0 Guest3"}'::jsonb,
+    now(),
+    now(),
+    '', '', '', '',
+    true
+  );
+
   -- profiles 트리거 검증 (이메일 없는 익명)
   if not exists (select 1 from public.profiles where id = v_guest) then
     raise notice 'T0 FAIL/profiles-missing';
@@ -232,6 +273,20 @@ begin
 
   insert into public.trip_members (trip_id, user_id, display_name, role, is_owner)
   values (v_trip2, v_host, '호스트2', 'owner', true);
+
+  -- 호스트가 미리 만든 이름 자리(user_id null) + 초대 (T19)
+  insert into public.trip_members (trip_id, user_id, display_name, role, is_owner)
+  values (v_trip, null, '민수', 'member', false)
+  returning id into v_claim_m;
+
+  insert into public.trip_invites (trip_id, token_hash, created_by, expires_at, max_uses)
+  values (
+    v_trip,
+    encode(sha256(convert_to('s0-claim-synth-token', 'utf8')), 'hex'),
+    v_host,
+    now() + interval '1 day',
+    4
+  );
 
   insert into public.trip_expenses (
     trip_id, created_by, paid_by, label, amount, currency,
@@ -590,6 +645,57 @@ begin
   exception when others then
     get stacked diagnostics v_state = returned_sqlstate, v_msg = message_text;
     raise notice 'T17 FAIL/% %', v_state, left(v_msg, 60);
+  end;
+
+  -- T19 익명 게스트3 이 join_trip 으로 이름 자리 claim → 성공 (220000 후)
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'sub', v_guest3::text,
+      'role', 'authenticated',
+      'is_anonymous', true
+    )::text,
+    true
+  );
+  begin
+    v_joined := public.join_trip('s0-claim-synth-token', v_claim_m, null);
+    raise notice 'T19 %/%',
+      case
+        when v_joined = v_claim_m
+         and exists (
+           select 1 from public.trip_members
+           where id = v_claim_m and user_id = v_guest3
+         )
+        then 'PASS' else 'FAIL'
+      end,
+      case when v_joined = v_claim_m then 'claimed' else 'other-row' end;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_msg = message_text;
+    raise notice 'T19 FAIL/% % (220000 미적용이면 X1 재현)', v_state, left(v_msg, 60);
+  end;
+
+  -- T20 익명 게스트가 자기 행 is_owner 변경 → guest-cannot-change-membership (220000 후)
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'sub', v_guest::text,
+      'role', 'authenticated',
+      'is_anonymous', true
+    )::text,
+    true
+  );
+  begin
+    update public.trip_members set is_owner = true where id = v_guest_m;
+    raise notice 'T20 FAIL/allowed';
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_msg = message_text;
+    raise notice 'T20 %/% %',
+      case
+        when v_msg like '%guest-cannot-change-membership%' then 'PASS'
+        else 'FAIL'
+      end,
+      v_state,
+      left(v_msg, 60);
   end;
 
   -- T18 mark_transfer_paid:
