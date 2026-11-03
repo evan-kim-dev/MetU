@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
@@ -55,6 +55,7 @@ vi.mock("@/components/trips/ledger/TripInvitePanel", () => ({
   TripInvitePanel: () => null,
 }));
 
+import { ToastProvider } from "@/components/ds/Toast";
 import { LedgerShell } from "@/components/ledger/LedgerShell";
 
 const scrollIntoView = vi.fn();
@@ -85,8 +86,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+/** 호스트 기록 단계는 "최근 지출", 게스트 읽기 전용은 "지출 목록" 이 보이면 로드 끝. */
 async function loaded() {
-  await screen.findByText("지출 목록");
+  await screen.findByText(/^(최근 지출|지출 목록)$/);
 }
 
 describe("LedgerShell 바로가기 쿼리", () => {
@@ -94,6 +96,7 @@ describe("LedgerShell 바로가기 쿼리", () => {
     render(<LedgerShell tripId="t1" />);
     await loaded();
     expect(screen.queryByTestId("confirm-sheet")).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "지출 추가" })).toBeNull();
     expect(scrollIntoView).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(document.body);
   });
@@ -114,19 +117,29 @@ describe("LedgerShell 바로가기 쿼리", () => {
     });
   });
 
-  it("?add=receipt 는 영수증 섹션으로 스크롤하고 첫 버튼에 포커스만 줘요", async () => {
+  // U2: 스크롤 대신 지출 추가 시트를 해당 탭으로 열고 첫 버튼에 포커스만 줘요.
+  it("?add=receipt 는 지출 추가 시트를 영수증 탭으로 열고 첫 버튼에 포커스만 줘요", async () => {
     search = "add=receipt";
     render(<LedgerShell tripId="t1" />);
+    const dialog = await screen.findByRole("dialog", { name: "지출 추가" });
+    expect(dialog).toBeTruthy();
+    expect(
+      screen.getByRole("tab", { name: "영수증" }).getAttribute("aria-selected")
+    ).toBe("true");
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByText("영수증 촬영하기"))
     );
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).not.toHaveBeenCalled();
     expect(screen.queryByTestId("confirm-sheet")).toBeNull();
   });
 
-  it("?add=voice 는 음성 섹션으로 이동해요", async () => {
+  it("?add=voice 는 지출 추가 시트를 음성 탭으로 열어요", async () => {
     search = "add=voice";
     render(<LedgerShell tripId="t1" />);
+    await screen.findByRole("dialog", { name: "지출 추가" });
+    expect(
+      screen.getByRole("tab", { name: "음성" }).getAttribute("aria-selected")
+    ).toBe("true");
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByText("음성 입력"))
     );
@@ -140,6 +153,21 @@ describe("LedgerShell 바로가기 쿼리", () => {
       expect(screen.getByText("카드 수수료 추가")).toBeTruthy()
     );
     expect(screen.getByRole("dialog", { name: "설정" })).toBeTruthy();
+  });
+
+  it("저장하면 목록을 다시 불러오고 「지출을 저장했어요」 토스트를 띄워요", async () => {
+    search = "add=manual";
+    render(
+      <ToastProvider>
+        <LedgerShell tripId="t1" />
+      </ToastProvider>
+    );
+    await screen.findByTestId("confirm-sheet");
+    const props = confirmSheet.mock.calls.at(-1)![0] as { onSaved: () => void };
+    const before = listExpenses.mock.calls.length;
+    act(() => props.onSaved());
+    expect(await screen.findByText("지출을 저장했어요")).toBeTruthy();
+    await waitFor(() => expect(listExpenses.mock.calls.length).toBe(before + 1));
   });
 
   it("알 수 없는 값은 무시해요", async () => {

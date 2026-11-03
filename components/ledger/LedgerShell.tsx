@@ -10,13 +10,16 @@ import { ExpenseConfirmSheet } from "@/components/ledger/ExpenseConfirmSheet";
 import { ExpenseChipSplit } from "@/components/ledger/ExpenseChipSplit";
 import { GuestExpenseSlot } from "@/components/ledger/GuestExpenseSlot";
 import { LedgerDashboard } from "@/components/ledger/LedgerDashboard";
-import { PasteExpenseBox } from "@/components/ledger/PasteExpenseBox";
-import { ReceiptUploader } from "@/components/ledger/ReceiptUploader";
 import { SplitBatchBox } from "@/components/ledger/SplitBatchBox";
-import { VoiceInputButton } from "@/components/ledger/VoiceInputButton";
 import { ConnectStep } from "@/components/ledger/journey/host/ConnectStep";
 import { InviteStep } from "@/components/ledger/journey/host/InviteStep";
+import { RecordStep } from "@/components/ledger/journey/host/RecordStep";
+import {
+  AddExpenseSheet,
+  type AddExpenseTab,
+} from "@/components/ledger/journey/host/AddExpenseSheet";
 import { Sheet } from "@/components/ds/Sheet";
+import { useOptionalToast } from "@/components/ds/Toast";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { TABLES } from "@/lib/constants";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
@@ -77,9 +80,10 @@ export function LedgerShell({
   /** UI 숨김만. 권한은 서버 라우트·RLS가 최종 방어. */
   const guestReadonly = isAnonymous;
   const handledIntent = useRef<string | null>(null);
-  const receiptRef = useRef<HTMLDivElement>(null);
-  const voiceRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const toast = useOptionalToast();
+  const [addTab, setAddTab] = useState<AddExpenseTab | null>(null);
+  const [addFocusFirst, setAddFocusFirst] = useState(false);
   const [members, setMembers] = useState<TripMember[]>([]);
   const [expenses, setExpenses] = useState<LedgerExpenseRow[]>([]);
   const [profiles, setProfiles] = useState<
@@ -159,12 +163,18 @@ export function LedgerShell({
   const me = members.find((m) => m.userId === user?.id) ?? members[0];
 
   function openDrafts(drafts: ExpenseDraftInput[]) {
+    setAddTab(null);
     setQueue(drafts);
     setQueueIndex(0);
   }
 
-  // 가계부 탭의 바로가기: manual 은 확인 시트를 열고, 나머지는 해당 섹션으로
-  // 스크롤 + 첫 버튼에 포커스만 준다. 파일 선택창은 사용자 제스처가 필요해서 열지 않는다.
+  function openAdd(tab: AddExpenseTab) {
+    setAddFocusFirst(false);
+    setAddTab(tab);
+  }
+
+  // 가계부 탭의 바로가기: manual 은 확인 시트를 바로 열고, receipt/voice 는 지출 추가 시트를
+  // 그 탭으로 열어 첫 버튼에 포커스만 준다. 파일 선택창은 사용자 제스처가 필요해서 열지 않는다.
   const canEnter = !loading && members.length > 0 && !guestReadonly;
   useEffect(() => {
     if (!intent || !canEnter || handledIntent.current === intent) return;
@@ -178,13 +188,10 @@ export function LedgerShell({
       setSettingsOpen(true);
       return;
     }
-    // receipt/voice: record 단계에서만 스크롤 (TripJourney가 step=record로 정규화)
+    // receipt/voice: record 단계에서만 (TripJourney가 step=record로 정규화)
     if (step !== "record") return;
-    const target =
-      intent === "receipt" ? receiptRef.current : voiceRef.current;
-    if (!target) return;
-    target.scrollIntoView?.({ block: "center" });
-    target.querySelector<HTMLElement>("button, input, select")?.focus();
+    setAddFocusFirst(true);
+    setAddTab(intent === "receipt" ? "receipt" : "voice");
   }, [intent, canEnter, step]);
 
   if (loading) {
@@ -198,6 +205,28 @@ export function LedgerShell({
   const showRecord = step === "record";
   const showAdjust = step === "adjust";
   const showSettleLink = step === "settle" || step === "pay";
+
+  const dashboard = (
+    <LedgerDashboard
+      expenses={expenses}
+      members={members}
+      budget={budget || Math.max(total, 1)}
+      insight={insight}
+      insightLoading={insightLoading}
+      onRefreshInsight={() => {
+        setInsightLoading(true);
+        try {
+          const stats = computeLedgerStats({
+            expenses,
+            budget: budget || Math.max(total, 1),
+          });
+          setInsight(buildLocalInsight(stats));
+        } finally {
+          setInsightLoading(false);
+        }
+      }}
+    />
+  );
 
   const expenseList = (
     <section className="rounded-2xl bg-surface-white p-4 shadow-sm">
@@ -295,86 +324,30 @@ export function LedgerShell({
                 <p className="text-xs text-ink-muted">
                   호스트가 승인하면 정산에 들어가요.
                 </p>
-              ) : (
-                <>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="min-h-[44px] rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white"
-                      onClick={() => openDrafts([newManualDraft()])}
-                    >
-                      직접 입력
-                    </button>
-                  </div>
-
-                  <PasteExpenseBox
-                    tripId={tripId}
-                    onDrafts={openDrafts}
-                    onCancelNotice={setCancelNotice}
-                  />
-                  <div ref={receiptRef}>
-                    <ReceiptUploader
-                      tripId={tripId}
-                      onDraft={(d) => openDrafts([d])}
-                    />
-                  </div>
-                  <div ref={voiceRef}>
-                    <VoiceInputButton tripId={tripId} onDrafts={openDrafts} />
-                  </div>
-                </>
-              )}
-
-              <LedgerDashboard
-                expenses={expenses}
-                members={members}
-                budget={budget || Math.max(total, 1)}
-                insight={insight}
-                insightLoading={insightLoading}
-                onRefreshInsight={() => {
-                  setInsightLoading(true);
-                  try {
-                    const stats = computeLedgerStats({
-                      expenses,
-                      budget: budget || Math.max(total, 1),
-                    });
-                    setInsight(buildLocalInsight(stats));
-                  } finally {
-                    setInsightLoading(false);
-                  }
-                }}
-              />
-
-              <div className="flex flex-wrap gap-3 text-xs font-bold text-brand">
-                {!guestReadonly ? (
-                  <Link href={`/trips/${tripId}/ledger/inbox`}>
-                    인박스{inboxCount > 0 ? ` (${inboxCount})` : ""}
-                  </Link>
-                ) : null}
-                {!guestReadonly ? (
-                  <Link href={`/trips/${tripId}/ledger/connect`}>자동 수집</Link>
-                ) : null}
-                <Link href={`/trips/${tripId}/ledger/settle`}>정산</Link>
-                <Link href={`/trips/${tripId}/ledger/report`}>리포트</Link>
-              </div>
-
-              {cancelNotice && !guestReadonly ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs">
-                  <p className="font-bold text-amber-900">취소 문자예요</p>
-                  <p className="text-amber-800">
-                    {cancelNotice.merchant ?? "가맹점"} · {cancelNotice.amount}{" "}
-                    {cancelNotice.currency}
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-1 min-h-[44px] font-bold text-amber-900 underline"
-                    onClick={() => setCancelNotice(null)}
-                  >
-                    닫기
-                  </button>
-                </div>
               ) : null}
 
-              {expenseList}
+              {guestReadonly ? (
+                <>
+                  {dashboard}
+                  <div className="flex flex-wrap gap-3 text-xs font-bold text-brand">
+                    <Link href={`/trips/${tripId}/ledger/settle`}>정산</Link>
+                    <Link href={`/trips/${tripId}/ledger/report`}>리포트</Link>
+                  </div>
+                  {expenseList}
+                </>
+              ) : (
+                <RecordStep
+                  tripId={tripId}
+                  expenses={expenses}
+                  members={members}
+                  inboxCount={inboxCount}
+                  cancelNotice={cancelNotice}
+                  onDismissCancel={() => setCancelNotice(null)}
+                  onOpenAdd={openAdd}
+                  onAdjust={() => onNavigate?.("adjust")}
+                  dashboard={dashboard}
+                />
+              )}
             </>
           ) : null}
 
@@ -450,6 +423,22 @@ export function LedgerShell({
         </Sheet>
       ) : null}
 
+      {!guestReadonly ? (
+        <AddExpenseSheet
+          tripId={tripId}
+          tab={addTab}
+          onTabChange={setAddTab}
+          onClose={() => setAddTab(null)}
+          focusFirst={addFocusFirst}
+          onDrafts={openDrafts}
+          onCancelNotice={(draft) => {
+            setAddTab(null);
+            setCancelNotice(draft);
+          }}
+          onManual={() => openDrafts([newManualDraft()])}
+        />
+      ) : null}
+
       {queue.length > 0 && !guestReadonly ? (
         <ExpenseConfirmSheet
           tripId={tripId}
@@ -458,7 +447,10 @@ export function LedgerShell({
           index={queueIndex}
           onIndexChange={setQueueIndex}
           onClose={() => setQueue([])}
-          onSaved={() => void reload()}
+          onSaved={() => {
+            void reload();
+            toast?.show({ text: "지출을 저장했어요", tone: "ok" });
+          }}
           cardProfiles={profiles}
         />
       ) : null}
