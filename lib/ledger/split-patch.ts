@@ -60,6 +60,52 @@ export const SplitPatchSchema = z
 export type SplitPatch = z.infer<typeof SplitPatchSchema>;
 export type SplitPatchKind = "exclude" | "only" | "weights" | "itemExclusions";
 
+/** 배치 미리보기 응답용. expenseId 는 서버가 채운 실제 UUID. */
+export const BatchSplitPatchSchema = z.strictObject({
+  patches: z.array(SplitPatchSchema).max(10),
+  clarification: z.string().trim().max(CLARIFICATION_MAX).nullable(),
+});
+
+export type BatchSplitPatch = z.infer<typeof BatchSplitPatchSchema>;
+
+/**
+ * LLM 출력용. 지출은 번호(expenseIndex)로만 받고 서버가 UUID 로 바꾼다.
+ * 금액 계열 키는 SplitPatchSchema 와 같이 없다.
+ */
+export const BatchSplitPatchLlmSchema = z
+  .strictObject({
+    patches: z
+      .array(
+        z.strictObject({
+          expenseIndex: z.number().int().min(0).max(19),
+          exclude: z.array(MemberRef).max(20),
+          only: z.array(MemberRef).max(20),
+          weights: z.array(WeightEntry).max(20),
+          itemExclusions: z.array(ItemExclusionEntry).max(100),
+          clarification: z.string().trim().max(CLARIFICATION_MAX).nullable(),
+        })
+      )
+      .max(10),
+    clarification: z.string().trim().max(CLARIFICATION_MAX).nullable(),
+  })
+  .superRefine((batch, ctx) => {
+    for (let i = 0; i < batch.patches.length; i++) {
+      const p = batch.patches[i]!;
+      const filled = patchKinds(p).length;
+      const hasClarification = Boolean(p.clarification);
+      if (filled === 1) continue;
+      if (filled === 0 && hasClarification) continue;
+      ctx.addIssue({
+        code: "custom",
+        path: ["patches", i],
+        message:
+          "exclude, only, weights, itemExclusions 중 하나만 채워야 해요.",
+      });
+    }
+  });
+
+export type BatchSplitPatchLlm = z.infer<typeof BatchSplitPatchLlmSchema>;
+
 export function patchKinds(
   patch: Pick<SplitPatch, "exclude" | "only" | "weights" | "itemExclusions">
 ): SplitPatchKind[] {
