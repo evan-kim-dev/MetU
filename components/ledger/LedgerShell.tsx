@@ -198,7 +198,7 @@ export function LedgerShell({
 
   if (loading) {
     return (
-      <div className="h-48 animate-pulse rounded-2xl bg-surface-soft" aria-busy />
+      <div className="h-48 animate-pulse rounded-2xl bg-mu-sunken" aria-busy />
     );
   }
 
@@ -232,11 +232,11 @@ export function LedgerShell({
   );
 
   const expenseList = (
-    <section className="rounded-2xl bg-surface-white p-4 shadow-sm">
-      <h2 className="text-sm font-extrabold text-ink-heading">지출 목록</h2>
+    <section className="rounded-2xl bg-mu-card p-4 shadow-sm">
+      <h2 className="text-sm font-extrabold text-mu-fg">지출 목록</h2>
       <ul className="mt-2 flex flex-col gap-2">
         {expenses.length === 0 ? (
-          <li className="text-xs text-ink-muted">아직 지출이 없어요.</li>
+          <li className="text-xs text-mu-fg-3">아직 지출이 없어요.</li>
         ) : (
           expenses.map((e) => (
             <ExpenseChipSplit
@@ -259,17 +259,17 @@ export function LedgerShell({
     <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-28 pt-2">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs text-ink-muted">합계 {formatKRW(total)}</p>
+          <p className="text-xs text-mu-fg-3">합계 {formatKRW(total)}</p>
         </div>
         <div className="flex items-center gap-2">
           {!guestReadonly ? (
             <Link
               href={`/trips/${tripId}/ledger/inbox`}
-              className="relative min-h-[44px] text-xs font-bold text-brand"
+              className="relative min-h-[44px] text-xs font-bold text-mu-accent"
             >
               인박스
               {inboxCount > 0 ? (
-                <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-extrabold text-white">
+                <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-mu-err px-1 text-xs font-extrabold text-mu-on-accent">
                   {inboxCount > 9 ? "9+" : inboxCount}
                 </span>
               ) : null}
@@ -279,7 +279,7 @@ export function LedgerShell({
             <button
               type="button"
               aria-label="설정"
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-body"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-mu-fg-2"
               onClick={() => setSettingsOpen(true)}
             >
               <Settings className="h-5 w-5" strokeWidth={1.75} aria-hidden />
@@ -289,13 +289,13 @@ export function LedgerShell({
       </div>
 
       {error ? (
-        <p className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">
+        <p className="rounded-lg bg-mu-err/10 px-3 py-2 text-xs font-semibold text-mu-err">
           {error}
         </p>
       ) : null}
 
       {members.length === 0 ? (
-        <p className="text-sm text-ink-body">동행자를 먼저 추가해 주세요.</p>
+        <p className="text-sm text-mu-fg-2">동행자를 먼저 추가해 주세요.</p>
       ) : (
         <>
           {showConnect && !guestReadonly ? (
@@ -324,7 +324,7 @@ export function LedgerShell({
                   userId={user.id}
                 />
               ) : guestReadonly ? (
-                <p className="text-xs text-ink-muted">
+                <p className="text-xs text-mu-fg-3">
                   호스트가 승인하면 정산에 들어가요.
                 </p>
               ) : null}
@@ -332,7 +332,7 @@ export function LedgerShell({
               {guestReadonly ? (
                 <>
                   {dashboard}
-                  <div className="flex flex-wrap gap-3 text-xs font-bold text-brand">
+                  <div className="flex flex-wrap gap-3 text-xs font-bold text-mu-accent">
                     <Link href={`/trips/${tripId}/ledger/settle`}>정산</Link>
                     <Link href={`/trips/${tripId}/ledger/report`}>리포트</Link>
                   </div>
@@ -407,25 +407,25 @@ export function LedgerShell({
             {me ? <CashRateSettings tripId={tripId} memberId={me.id} /> : null}
             <Link
               href={`/trips/${tripId}/ledger/inbox`}
-              className="text-sm font-bold text-brand"
+              className="text-sm font-bold text-mu-accent"
             >
               인박스
             </Link>
             <Link
               href={`/trips/${tripId}/ledger/report`}
-              className="text-sm font-bold text-brand"
+              className="text-sm font-bold text-mu-accent"
             >
               리포트
             </Link>
             <Link
               href={`/trips/${tripId}/ledger/wallet`}
-              className="text-sm font-bold text-brand"
+              className="text-sm font-bold text-mu-accent"
             >
               면세 지갑
             </Link>
             <Link
               href={`/trips/${tripId}/ledger/recap`}
-              className="text-sm font-bold text-brand"
+              className="text-sm font-bold text-mu-accent"
             >
               리캡
             </Link>

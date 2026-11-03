@@ -71,16 +71,16 @@ export default function TaxFreeWalletPage() {
   );
 
   if (!loaded) {
-    return <p className="p-6 text-sm text-ink-muted">불러오는 중…</p>;
+    return <p className="p-6 text-sm text-mu-fg-3">불러오는 중…</p>;
   }
 
   if (!isJapan) {
     return (
       <div className="mx-auto max-w-lg px-4 py-6">
-        <Link href={`/trips/${tripId}/ledger`} className="text-xs font-bold text-brand">
+        <Link href={`/trips/${tripId}/ledger`} className="text-xs font-bold text-mu-accent">
           ← 가계부
         </Link>
-        <p className="mt-4 text-sm text-ink-muted">
+        <p className="mt-4 text-sm text-mu-fg-3">
           일본 여행(현지 통화 JPY)일 때만 면세 지갑을 보여 드려요.
         </p>
       </div>
@@ -91,13 +91,13 @@ export default function TaxFreeWalletPage() {
     <div className="mx-auto max-w-lg px-4 py-6 pb-28">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold">면세 지갑</h1>
-        <Link href={`/trips/${tripId}/ledger`} className="text-xs font-bold text-brand">
+        <Link href={`/trips/${tripId}/ledger`} className="text-xs font-bold text-mu-accent">
           가계부
         </Link>
       </div>
 
-      <p className="mt-2 text-xs text-ink-muted">{JP_TAX_REFUND_DISCLAIMER}</p>
-      <p className="mt-1 text-[11px] text-ink-muted">
+      <p className="mt-2 text-xs text-mu-fg-3">{JP_TAX_REFUND_DISCLAIMER}</p>
+      <p className="mt-1 text-[11px] text-mu-fg-3">
         출처:{" "}
         <a
           href={JP_TAX_REFUND_SOURCE_URL}
@@ -110,9 +110,9 @@ export default function TaxFreeWalletPage() {
         (확인일 {JP_TAX_REFUND_VERIFIED_ON})
       </p>
 
-      <section className="mt-6 rounded-2xl bg-surface-soft p-4 text-xs">
-        <h2 className="font-extrabold text-ink-heading">출국 전 체크리스트</h2>
-        <ul className="mt-2 list-disc space-y-1 pl-4 text-ink-body">
+      <section className="mt-6 rounded-2xl bg-mu-sunken p-4 text-xs">
+        <h2 className="font-extrabold text-mu-fg">출국 전 체크리스트</h2>
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-mu-fg-2">
           <li>여권 지참</li>
           <li>면세 수속 단말/키오스크 또는 Visit Japan Web 사전 설정</li>
           <li>면세품 휴대 (포장 개봉·소비 주의)</li>
@@ -120,12 +120,12 @@ export default function TaxFreeWalletPage() {
         </ul>
       </section>
 
-      <p className="mt-4 text-[11px] text-ink-muted">
+      <p className="mt-4 text-[11px] text-mu-fg-3">
         동행자가 올린 영수증은 본인만 볼 수 있어요.
       </p>
 
       <section className="mt-6">
-        <h2 className="text-sm font-extrabold text-ink-heading">
+        <h2 className="text-sm font-extrabold text-mu-fg">
           JPY 지출 · 면세 표시
         </h2>
         <ul className="mt-2 flex flex-col gap-2">
@@ -134,10 +134,10 @@ export default function TaxFreeWalletPage() {
             .map((e) => (
               <li
                 key={e.id}
-                className="flex flex-col gap-2 rounded-xl bg-surface-soft px-3 py-2 text-xs"
+                className="flex flex-col gap-2 rounded-xl bg-mu-sunken px-3 py-2 text-xs"
               >
                 <div className="flex min-h-[44px] items-center justify-between gap-2">
-                  <span className="font-bold text-ink-heading">
+                  <span className="font-bold text-mu-fg">
                     {e.merchant || e.label}
                   </span>
                   <label className="flex min-h-[44px] items-center gap-2">
@@ -165,7 +165,7 @@ export default function TaxFreeWalletPage() {
                     <input
                       type="number"
                       inputMode="decimal"
-                      className="min-h-[44px] w-28 rounded-lg border border-line-soft px-2"
+                      className="min-h-[44px] w-28 rounded-lg border border-mu-line px-2"
                       defaultValue={e.taxExclAmount ?? ""}
                       onBlur={(ev) => {
                         const n = Number(ev.target.value);
@@ -186,7 +186,7 @@ export default function TaxFreeWalletPage() {
                   </label>
                 ) : null}
                 {e.hasReceipt ? (
-                  <span className="text-ink-muted">영수증 있음</span>
+                  <span className="text-mu-fg-3">영수증 있음</span>
                 ) : null}
               </li>
             ))}
@@ -195,21 +195,21 @@ export default function TaxFreeWalletPage() {
 
       <ul className="mt-4 flex flex-col gap-3">
         {groups.length === 0 ? (
-          <li className="text-sm text-ink-muted">
+          <li className="text-sm text-mu-fg-3">
             위에 면세 표시를 켜면 점포×날짜 카드가 생겨요.
           </li>
         ) : (
           groups.map((g) => (
             <li
               key={g.key}
-              className="rounded-2xl border border-line-soft bg-surface-white p-4"
+              className="rounded-2xl border border-mu-line bg-mu-card p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-extrabold text-ink-heading">{g.storeLabel}</p>
-                  <p className="text-xs text-ink-muted">{g.spentOn}</p>
+                  <p className="font-extrabold text-mu-fg">{g.storeLabel}</p>
+                  <p className="text-xs text-mu-fg-3">{g.spentOn}</p>
                 </div>
-                <span className="rounded-full bg-surface-soft px-2 py-1 text-[11px] font-bold">
+                <span className="rounded-full bg-mu-sunken px-2 py-1 text-[11px] font-bold">
                   {STATUS_LABEL[g.status] ?? g.status}
                 </span>
               </div>
@@ -219,16 +219,16 @@ export default function TaxFreeWalletPage() {
                 </p>
               ) : null}
               {g.shortfall != null ? (
-                <p className="mt-1 text-xs text-amber-800">
+                <p className="mt-1 text-xs text-mu-warn">
                   {g.shortfall.toLocaleString("ja-JP")}엔 더 있으면 기준에
                   닿아요
                 </p>
               ) : null}
-              <p className="mt-2 text-[11px] text-ink-muted">
+              <p className="mt-2 text-[11px] text-mu-fg-3">
                 수속 기한 약 {g.deadlineApprox} · 정확한 기한은 공식 안내 확인
               </p>
               {g.status === "legacy" ? (
-                <p className="mt-1 text-[11px] text-ink-muted">
+                <p className="mt-1 text-[11px] text-mu-fg-3">
                   2026-10-31 이전 구매는 구제도예요. 이 화면 대상이 아니에요.
                 </p>
               ) : null}

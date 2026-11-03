@@ -8,6 +8,7 @@ import {
   type SharedSettlementDetail,
   type SharedSettlementExpense,
 } from "@/lib/ledger/shared-settlement";
+import { AmountCard } from "@/components/ds/AmountCard";
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -103,13 +104,13 @@ export default function SharedSettlementPage() {
 
   if (error) {
     return (
-      <p role="alert" className="p-8 text-center text-sm text-danger">
+      <p role="alert" className="p-8 text-center text-sm text-mu-err">
         {error}
       </p>
     );
   }
   if (!data) {
-    return <p className="p-8 text-center text-sm text-ink-muted">불러오는 중…</p>;
+    return <p className="p-8 text-center text-sm text-mu-fg-3">불러오는 중…</p>;
   }
 
   const name = (id: string) =>
@@ -117,31 +118,38 @@ export default function SharedSettlementPage() {
   const sumCheck = checkExpenseSum(data);
 
   return (
-    <div className="mx-auto max-w-md px-4 py-8">
-      <h1 className="text-xl font-extrabold text-ink-heading">정산 공유</h1>
+    <div className="mu-root mx-auto max-w-mobile px-4 py-8">
+      <h1 className="text-mu-title text-mu-fg">정산 공유</h1>
 
       {data.status === "superseded" ? (
         <p
           role="status"
-          className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900"
+          className="mt-3 rounded-xl bg-mu-warn-soft px-3 py-2 text-xs font-bold text-mu-warn"
         >
           이 정산은 최신이 아니에요. 정산을 만든 분께 새 링크를 받아 주세요.
         </p>
       ) : null}
 
-      <p className="mt-2 text-sm text-ink-body">
+      <p className="mt-2 text-mu-body text-mu-fg-2">
         {data.destination} · {data.dateRange}
       </p>
-      <p className="text-xs text-ink-muted">
+      <p className="text-mu-caption text-mu-fg-3">
         v{data.version} · {settlementStatusLabel(data.status)}
         {data.completedAt ? ` · 완료 ${data.completedAt.slice(0, 10)}` : ""}
       </p>
-      <p className="mt-3 text-sm font-bold">총 {formatKRW(data.totals.totalKrw)}</p>
+
+      <div className="mt-4">
+        <AmountCard
+          label="총지출"
+          amount={data.totals.totalKrw}
+          tone="neutral"
+        />
+      </div>
 
       <section aria-label="보낼 돈" className="mt-4">
-        <h2 className="text-sm font-extrabold text-ink-heading">송금할 내역</h2>
+        <h2 className="text-sm font-extrabold text-mu-fg">송금할 내역</h2>
         {data.transfers.length === 0 ? (
-          <p className="mt-2 text-xs text-ink-muted">
+          <p className="mt-2 text-xs text-mu-fg-3">
             주고받을 돈이 없어요.
           </p>
         ) : (
@@ -149,17 +157,17 @@ export default function SharedSettlementPage() {
             {data.transfers.map((t, i) => (
               <li
                 key={`${t.from}-${t.to}-${i}`}
-                className="flex items-center justify-between gap-2 rounded-xl bg-surface-soft px-3 py-2 text-sm"
+                className="flex items-center justify-between gap-2 rounded-xl bg-mu-sunken px-3 py-2 text-sm"
               >
                 <span>
                   {name(t.from)} → {name(t.to)}{" "}
                   <strong>{formatKRW(t.krw)}</strong>
                 </span>
                 <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
                     t.status === "paid"
-                      ? "bg-emerald-50 text-emerald-800"
-                      : "bg-amber-50 text-amber-900"
+                      ? "bg-mu-ok-soft text-mu-ok"
+                      : "bg-mu-warn-soft text-mu-warn"
                   }`}
                 >
                   {transferStatusLabel(t.status)}
@@ -171,25 +179,25 @@ export default function SharedSettlementPage() {
       </section>
 
       <section aria-label="지출 내역" className="mt-6">
-        <h2 className="text-sm font-extrabold text-ink-heading">지출 내역</h2>
+        <h2 className="text-sm font-extrabold text-mu-fg">지출 내역</h2>
         {data.expenses.length === 0 ? (
-          <p className="mt-2 text-xs text-ink-muted">기록된 지출이 없어요.</p>
+          <p className="mt-2 text-xs text-mu-fg-3">기록된 지출이 없어요.</p>
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
             {data.expenses.map((e) => (
               <li
                 key={e.id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-line-soft bg-surface-white px-3 py-2"
+                className="flex items-start justify-between gap-3 rounded-xl border border-mu-line bg-mu-card px-3 py-2"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-ink-heading">
+                  <p className="truncate text-sm font-bold text-mu-fg">
                     {e.label}
                   </p>
-                  <p className="text-xs text-ink-caption">
+                  <p className="text-xs text-mu-fg-3">
                     {expenseSubline(e, name(e.paidBy))}
                   </p>
                 </div>
-                <span className="shrink-0 text-sm font-extrabold text-ink-heading">
+                <span className="shrink-0 text-sm font-extrabold text-mu-fg">
                   {formatKRW(e.krwAmount)}
                 </span>
               </li>
@@ -200,7 +208,7 @@ export default function SharedSettlementPage() {
         {sumCheck.kind === "match" ? (
           <p
             data-testid="sum-check"
-            className="mt-3 text-xs font-semibold text-emerald-800"
+            className="mt-3 text-xs font-semibold text-mu-ok"
           >
             지출 합계 {formatKRW(sumCheck.sumKrw)} · 총액과 일치해요 ✓
           </p>
@@ -208,7 +216,7 @@ export default function SharedSettlementPage() {
           <p
             data-testid="sum-check"
             role="alert"
-            className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900"
+            className="mt-3 rounded-lg bg-mu-warn-soft px-3 py-2 text-xs font-bold text-mu-warn"
           >
             지출 합계({formatKRW(sumCheck.sumKrw)})와 총액(
             {formatKRW(sumCheck.totalKrw)})이 달라요. 정산을 만든 분께
@@ -217,7 +225,7 @@ export default function SharedSettlementPage() {
         ) : (
           <p
             data-testid="sum-check"
-            className="mt-3 text-xs font-semibold text-ink-muted"
+            className="mt-3 text-xs font-semibold text-mu-fg-3"
           >
             지출이 {sumCheck.total}건이라 {sumCheck.shown}건만 보여 드려요.
             합계는 대조하지 않았어요.

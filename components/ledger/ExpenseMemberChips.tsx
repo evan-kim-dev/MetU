@@ -57,8 +57,8 @@ export function ExpenseMemberChips({
               className={[
                 "inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full px-3 text-xs font-bold transition-colors",
                 inSplit
-                  ? "bg-brand/15 text-brand ring-1 ring-brand/40"
-                  : "bg-surface-soft text-ink-muted line-through ring-1 ring-line",
+                  ? "bg-mu-accent/15 text-mu-accent ring-1 ring-mu-accent/40"
+                  : "bg-mu-sunken text-mu-fg-3 line-through ring-1 ring-line",
                 canEdit
                   ? "active:scale-[0.98]"
                   : "cursor-not-allowed opacity-60",

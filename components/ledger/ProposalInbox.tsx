@@ -95,26 +95,26 @@ export function ProposalInbox({
   return (
     <section
       aria-label="게스트 제안"
-      className="rounded-2xl bg-surface-white p-4 shadow-sm"
+      className="rounded-2xl bg-mu-card p-4 shadow-sm"
     >
-      <h2 className="text-sm font-extrabold text-ink-heading">게스트 제안</h2>
+      <h2 className="text-sm font-extrabold text-mu-fg">게스트 제안</h2>
       <ul className="mt-2 flex flex-col gap-2">
         {rows.map((p) => (
           <li
             key={p.id}
-            className="rounded-xl bg-surface-soft px-3 py-3 text-xs"
+            className="rounded-xl bg-mu-sunken px-3 py-3 text-xs"
           >
-            <p className="font-bold text-ink-heading">
+            <p className="font-bold text-mu-fg">
               {nameOf(p.proposerMemberId)} · {p.label}
             </p>
-            <p className="mt-1 text-ink-body">
+            <p className="mt-1 text-mu-fg-2">
               {p.amount} {p.currency}
               {p.source === "receipt" ? " · 영수증으로 채움" : ""}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button
                 type="button"
-                className="min-h-[44px] rounded-lg bg-brand px-3 font-bold text-white"
+                className="min-h-[44px] rounded-lg bg-mu-accent px-3 font-bold text-white"
                 onClick={() => {
                   setSavedExpenseId(null);
                   setActive(p);
@@ -124,7 +124,7 @@ export function ProposalInbox({
               </button>
               <button
                 type="button"
-                className="min-h-[44px] rounded-lg border border-line-soft px-3 font-bold text-ink-heading"
+                className="min-h-[44px] rounded-lg border border-mu-line px-3 font-bold text-mu-fg"
                 onClick={() => setRejectId(p.id)}
               >
                 거절
@@ -133,7 +133,7 @@ export function ProposalInbox({
             {rejectId === p.id ? (
               <div className="mt-2 flex flex-col gap-2">
                 <input
-                  className="min-h-[44px] rounded-lg border border-line-soft px-3"
+                  className="min-h-[44px] rounded-lg border border-mu-line px-3"
                   placeholder="사유 (선택)"
                   maxLength={100}
                   value={reason}
@@ -142,7 +142,7 @@ export function ProposalInbox({
                 <button
                   type="button"
                   disabled={busy}
-                  className="min-h-[44px] rounded-lg bg-ink-heading font-bold text-white"
+                  className="min-h-[44px] rounded-lg bg-mu-fg font-bold text-white"
                   onClick={() => void reject(p.id)}
                 >
                   거절 확정
@@ -153,7 +153,7 @@ export function ProposalInbox({
               <button
                 type="button"
                 disabled={busy}
-                className="mt-2 min-h-[44px] font-bold text-brand underline"
+                className="mt-2 min-h-[44px] font-bold text-mu-accent underline"
                 onClick={() => void approveResolve(p.id, savedExpenseId)}
               >
                 승인 처리를 다시 시도
@@ -163,7 +163,7 @@ export function ProposalInbox({
         ))}
       </ul>
       {message ? (
-        <p role="status" className="mt-2 text-xs text-ink-muted">
+        <p role="status" className="mt-2 text-xs text-mu-fg-3">
           {message}
         </p>
       ) : null}

@@ -254,11 +254,11 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
   return (
     <section
       aria-label="분담 말로 고치기"
-      className="rounded-xl bg-surface-soft p-3 text-xs"
+      className="rounded-xl bg-mu-sunken p-3 text-xs"
     >
       <button
         type="button"
-        className="flex min-h-[44px] w-full items-center justify-between gap-2 text-left font-bold text-ink-heading"
+        className="flex min-h-[44px] w-full items-center justify-between gap-2 text-left font-bold text-mu-fg"
         aria-expanded={open}
         onClick={() => void toggleOpen()}
       >
@@ -266,25 +266,25 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
       </button>
 
       {open ? (
-        <div className="mt-3 flex flex-col gap-2 border-t border-line-soft pt-3">
-          <p className="font-normal text-ink-muted">
+        <div className="mt-3 flex flex-col gap-2 border-t border-mu-line pt-3">
+          <p className="font-normal text-mu-fg-3">
             예: &ldquo;저는 술 안 마셨어요&rdquo;, &ldquo;민수는 빼고&rdquo;
           </p>
 
           {loadingList ? (
-            <p className="flex items-center gap-1 text-ink-muted">
+            <p className="flex items-center gap-1 text-mu-fg-3">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               지출 목록을 불러오는 중…
             </p>
           ) : null}
           {listError ? (
-            <p role="alert" className="font-semibold text-danger">
+            <p role="alert" className="font-semibold text-mu-err">
               {listError}
             </p>
           ) : null}
 
           {options.length === 0 && !loadingList ? (
-            <p className="text-ink-muted">고칠 지출이 아직 없어요.</p>
+            <p className="text-mu-fg-3">고칠 지출이 아직 없어요.</p>
           ) : (
             <>
               <label
@@ -294,7 +294,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                 지출 고르기
                 <select
                   id={expenseFieldId}
-                  className="min-h-[44px] w-full rounded-lg border border-line bg-surface-white px-3 text-sm font-normal"
+                  className="min-h-[44px] w-full rounded-lg border border-mu-line bg-mu-card px-3 text-sm font-normal"
                   value={expenseId}
                   disabled={Boolean(busy)}
                   onChange={(e) => {
@@ -320,7 +320,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                 어떻게 바꿀까요?
                 <textarea
                   id={textFieldId}
-                  className="min-h-[88px] w-full resize-y rounded-lg border border-line bg-surface-white px-3 py-2 text-sm font-normal"
+                  className="min-h-[88px] w-full resize-y rounded-lg border border-mu-line bg-mu-card px-3 py-2 text-sm font-normal"
                   placeholder="저는 술 안 마셨어요"
                   value={text}
                   maxLength={SPLIT_PATCH_TEXT_MAX}
@@ -341,7 +341,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                   disabled={
                     Boolean(busy) || !text.trim() || Boolean(historyId)
                   }
-                  className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-brand px-3 text-xs font-bold text-white disabled:opacity-40"
+                  className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-mu-accent px-3 text-xs font-bold text-white disabled:opacity-40"
                   onClick={() => void runPreview()}
                 >
                   {busy === "preview" ? (
@@ -353,7 +353,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                   <button
                     type="button"
                     disabled={Boolean(busy)}
-                    className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-brand px-3 text-xs font-bold text-brand disabled:opacity-40"
+                    className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-mu-accent px-3 text-xs font-bold text-mu-accent disabled:opacity-40"
                     onClick={() => void runApply()}
                   >
                     {busy === "apply" ? (
@@ -366,7 +366,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                   <button
                     type="button"
                     disabled={Boolean(busy)}
-                    className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-amber-600 px-3 text-xs font-bold text-amber-800 disabled:opacity-40"
+                    className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-mu-warn px-3 text-xs font-bold text-mu-warn disabled:opacity-40"
                     onClick={() => void runUndo()}
                   >
                     {busy === "undo" ? (
@@ -380,7 +380,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
           )}
 
           {clarify ? (
-            <p className="rounded-lg bg-amber-50 px-2 py-2 font-semibold text-amber-900">
+            <p className="rounded-lg bg-mu-warn-soft px-2 py-2 font-semibold text-mu-warn">
               {clarify}
             </p>
           ) : null}
@@ -390,12 +390,12 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
           ) : null}
 
           {doneMsg ? (
-            <p role="status" className="font-semibold text-emerald-800">
+            <p role="status" className="font-semibold text-mu-ok">
               {doneMsg}
             </p>
           ) : null}
           {error ? (
-            <p role="alert" className="font-semibold text-danger">
+            <p role="alert" className="font-semibold text-mu-err">
               {error}
             </p>
           ) : null}

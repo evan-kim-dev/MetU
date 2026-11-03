@@ -46,15 +46,15 @@ export default function TripRecapPage() {
       <div className="mb-4 flex items-center justify-between print:hidden">
         <h1 className="text-xl font-extrabold">여행 리캡</h1>
         <div className="flex gap-3 text-xs font-bold">
-          <Link href={`/trips/${tripId}/ledger`} className="text-brand">
+          <Link href={`/trips/${tripId}/ledger`} className="text-mu-accent">
             가계부
           </Link>
-          <Link href={`/trips/${tripId}/ledger/report`} className="text-brand">
+          <Link href={`/trips/${tripId}/ledger/report`} className="text-mu-accent">
             리포트
           </Link>
           <button
             type="button"
-            className="min-h-[44px] text-ink-body"
+            className="min-h-[44px] text-mu-fg-2"
             onClick={() => window.print()}
           >
             인쇄
@@ -62,7 +62,7 @@ export default function TripRecapPage() {
         </div>
       </div>
       <RecapCard destination={destination || undefined} recap={recap} />
-      <p className="mt-4 text-[11px] text-ink-muted print:hidden">
+      <p className="mt-4 text-[11px] text-mu-fg-3 print:hidden">
         저장된 지출만 모았어요. 없는 항목은 숨겼어요.
       </p>
     </div>

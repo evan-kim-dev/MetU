@@ -100,14 +100,14 @@ export default function JoinTripPage() {
   if (needsAuth) {
     return (
       <div className="mx-auto max-w-md px-4 py-10 text-center">
-        <p className="text-sm font-bold text-ink-heading">
+        <p className="text-sm font-bold text-mu-fg">
           이름만으로 여행에 참여할 수 있어요
         </p>
-        <p className="mt-2 text-xs text-ink-muted">
+        <p className="mt-2 text-xs text-mu-fg-3">
           가입 없이 참여하면 이 기기에서 가계부와 정산을 볼 수 있어요.
         </p>
         {anonError ? (
-          <p role="alert" className="mt-3 text-xs font-semibold text-danger">
+          <p role="alert" className="mt-3 text-xs font-semibold text-mu-err">
             {anonError}
           </p>
         ) : null}
@@ -115,13 +115,13 @@ export default function JoinTripPage() {
           type="button"
           disabled={anonBusy}
           onClick={() => void joinAnonymously()}
-          className="mt-4 inline-flex min-h-tap w-full items-center justify-center rounded-xl bg-brand px-4 py-3 text-sm font-extrabold text-white disabled:opacity-60"
+          className="mt-4 inline-flex min-h-tap w-full items-center justify-center rounded-xl bg-mu-accent px-4 py-3 text-sm font-extrabold text-mu-on-accent disabled:opacity-60"
         >
           {anonBusy ? "준비 중…" : "가입 없이 참여"}
         </button>
         <Link
           href={`/login?next=${encodeURIComponent(`/join/${token}`)}`}
-          className="mt-3 inline-block text-sm font-bold text-brand underline"
+          className="mt-3 inline-block text-sm font-bold text-mu-accent underline"
         >
           로그인
         </Link>
@@ -131,15 +131,15 @@ export default function JoinTripPage() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-sm text-ink-muted">불러오는 중…</div>
+      <div className="p-8 text-center text-sm text-mu-fg-3">불러오는 중…</div>
     );
   }
 
   if (error || !preview) {
     return (
-      <div className="mx-auto max-w-md px-4 py-10 text-center text-sm text-danger">
+      <div className="mx-auto max-w-md px-4 py-10 text-center text-sm text-mu-err">
         {error || "초대를 열 수 없어요."}
-        <p className="mt-3 text-xs text-ink-muted">
+        <p className="mt-3 text-xs text-mu-fg-3">
           세션이 사라졌다면 처음 초대 링크를 다시 열어 주세요.
         </p>
       </div>
@@ -177,14 +177,14 @@ export default function JoinTripPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-8">
-      <h1 className="text-xl font-extrabold text-ink-heading">여행 초대</h1>
-      <p className="text-sm text-ink-body">
+    <div className="mu-root mx-auto flex max-w-mobile flex-col gap-4 px-4 py-8">
+      <h1 className="text-mu-title text-mu-fg">여행 초대</h1>
+      <p className="text-mu-body text-mu-fg-2">
         {preview.ownerName}님의 {preview.destination}에 초대받았어요
       </p>
-      <p className="text-xs text-ink-muted">{preview.dateRange}</p>
+      <p className="text-mu-caption text-mu-fg-3">{preview.dateRange}</p>
 
-      <fieldset className="rounded-xl bg-surface-soft p-3">
+      <fieldset className="rounded-xl bg-mu-sunken p-3">
         <legend className="text-xs font-bold">내 이름 선택</legend>
         {preview.members
           .filter((m) => m.claimable)
@@ -214,7 +214,7 @@ export default function JoinTripPage() {
           </span>
           {!claimId ? (
             <input
-              className="min-h-tap rounded-lg border border-line px-2 py-1.5"
+              className="min-h-tap rounded-lg border border-mu-line-strong bg-mu-card px-2 py-1.5"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="표시 이름 (1~20자)"
@@ -226,12 +226,12 @@ export default function JoinTripPage() {
       </fieldset>
 
       {error ? (
-        <p className="text-xs font-semibold text-danger">{error}</p>
+        <p className="text-xs font-semibold text-mu-err">{error}</p>
       ) : null}
 
       <button
         type="button"
-        className="min-h-tap rounded-xl bg-brand py-3 text-sm font-extrabold text-white"
+        className="min-h-tap rounded-xl bg-mu-accent py-3 text-sm font-extrabold text-mu-on-accent"
         onClick={() => void join()}
       >
         참여하기

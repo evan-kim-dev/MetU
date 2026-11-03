@@ -48,10 +48,10 @@ export function SplitPreviewSheet({
     <div
       role="region"
       aria-label="분담 미리보기"
-      className="rounded-lg bg-surface-white p-3 ring-1 ring-line"
+      className="rounded-lg bg-mu-card p-3 ring-1 ring-line"
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="font-bold text-ink-heading">
+        <p className="font-bold text-mu-fg">
           {preview.label || "지출"}
           {preview.kind
             ? ` · ${KIND_LABEL[preview.kind] ?? preview.kind}`
@@ -60,14 +60,14 @@ export function SplitPreviewSheet({
         {onClose ? (
           <button
             type="button"
-            className="min-h-[44px] shrink-0 px-2 text-xs font-bold text-ink-muted"
+            className="min-h-[44px] shrink-0 px-2 text-xs font-bold text-mu-fg-3"
             onClick={onClose}
           >
             닫기
           </button>
         ) : null}
       </div>
-      <p className="mt-1 text-xs text-ink-muted">
+      <p className="mt-1 text-xs text-mu-fg-3">
         대상: {preview.label || "지출"}
         {typeof preview.krwAmount === "number"
           ? ` · ${formatKRW(preview.krwAmount)}`
@@ -75,14 +75,14 @@ export function SplitPreviewSheet({
       </p>
       {typeof preview.myBefore === "number" &&
       typeof preview.myAfter === "number" ? (
-        <p className="mt-1 text-xs font-semibold text-ink-heading">
+        <p className="mt-1 text-xs font-semibold text-mu-fg">
           내 부담 {formatKRW(preview.myBefore)} → {formatKRW(preview.myAfter)}
         </p>
       ) : null}
-      <p className="mt-1 text-xs text-ink-muted">적용 전에 확인해 주세요</p>
+      <p className="mt-1 text-xs text-mu-fg-3">적용 전에 확인해 주세요</p>
       <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
         <div>
-          <p className="font-semibold text-ink-muted">지금</p>
+          <p className="font-semibold text-mu-fg-3">지금</p>
           <ul className="mt-1 space-y-0.5">
             {preview.before.map((r) => (
               <li key={`b-${r.memberId}`}>
@@ -92,7 +92,7 @@ export function SplitPreviewSheet({
           </ul>
         </div>
         <div>
-          <p className="font-semibold text-brand">바꾼 뒤</p>
+          <p className="font-semibold text-mu-accent">바꾼 뒤</p>
           <ul className="mt-1 space-y-0.5">
             {preview.after.map((r) => (
               <li key={`a-${r.memberId}`}>
@@ -109,7 +109,7 @@ export function SplitPreviewSheet({
             <button
               type="button"
               disabled={Boolean(busy) || !onApply}
-              className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-brand px-3 text-xs font-bold text-brand disabled:opacity-40"
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-mu-accent px-3 text-xs font-bold text-mu-accent disabled:opacity-40"
               onClick={onApply}
             >
               {busy === "apply" ? (
@@ -121,7 +121,7 @@ export function SplitPreviewSheet({
             <button
               type="button"
               disabled={Boolean(busy) || !onUndo}
-              className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-amber-600 px-3 text-xs font-bold text-amber-800 disabled:opacity-40"
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-mu-warn px-3 text-xs font-bold text-mu-warn disabled:opacity-40"
               onClick={onUndo}
             >
               {busy === "undo" ? (
@@ -134,17 +134,17 @@ export function SplitPreviewSheet({
       ) : null}
 
       {clarify ? (
-        <p className="mt-2 rounded-lg bg-amber-50 px-2 py-2 text-xs font-semibold text-amber-900">
+        <p className="mt-2 rounded-lg bg-mu-warn-soft px-2 py-2 text-xs font-semibold text-mu-warn">
           {clarify}
         </p>
       ) : null}
       {doneMsg ? (
-        <p role="status" className="mt-2 text-xs font-semibold text-emerald-800">
+        <p role="status" className="mt-2 text-xs font-semibold text-mu-ok">
           {doneMsg}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-2 text-xs font-semibold text-danger">
+        <p role="alert" className="mt-2 text-xs font-semibold text-mu-err">
           {error}
         </p>
       ) : null}

@@ -58,14 +58,14 @@ export function SettlementHistory({
   return (
     <section
       aria-label="이전 정산"
-      className="flex flex-col gap-2 rounded-xl bg-surface-soft p-3 text-xs"
+      className="flex flex-col gap-2 rounded-xl bg-mu-sunken p-3 text-xs"
     >
       <p className="font-bold">이전 정산</p>
       <ul className="flex flex-col gap-2">
         {previous.map((item) => (
           <li
             key={item.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-white px-3 py-1"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-mu-card px-3 py-1"
           >
             <span>
               v{item.version} · {statusLabel(item.status)} ·{" "}
@@ -75,7 +75,7 @@ export function SettlementHistory({
               <button
                 type="button"
                 aria-label={`v${item.version} 공유 링크 복사`}
-                className="min-h-[44px] px-2 font-bold text-brand"
+                className="min-h-[44px] px-2 font-bold text-mu-accent"
                 onClick={() => void copy(item)}
               >
                 {copiedId === item.id ? "복사했어요 ✓" : "링크 복사"}
@@ -83,7 +83,7 @@ export function SettlementHistory({
               <Link
                 href={`/s/${item.shareToken}`}
                 aria-label={`v${item.version} 정산 열기`}
-                className="flex min-h-[44px] items-center px-2 font-bold text-brand"
+                className="flex min-h-[44px] items-center px-2 font-bold text-mu-accent"
               >
                 열기
               </Link>
@@ -92,7 +92,7 @@ export function SettlementHistory({
         ))}
       </ul>
       {error ? (
-        <p role="alert" className="font-semibold text-danger">
+        <p role="alert" className="font-semibold text-mu-err">
           {error}
         </p>
       ) : null}
