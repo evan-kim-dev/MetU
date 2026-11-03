@@ -51,7 +51,11 @@ describe("LedgerTab 초대 패널", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "동행자 초대" }));
     await waitFor(() =>
-      expect(rpc).toHaveBeenCalledWith("create_trip_invite", { p_trip_id: TRIP })
+      expect(rpc).toHaveBeenCalledWith("create_trip_invite", {
+        p_trip_id: TRIP,
+        p_ttl_hours: 24,
+        p_max_uses: 4,
+      })
     );
   });
 

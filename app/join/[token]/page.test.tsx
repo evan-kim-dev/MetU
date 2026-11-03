@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const useAuth = vi.fn();
 const rpc = vi.fn();
+const signInAnonymously = vi.fn();
 const replace = vi.fn();
 const afterJoinTrip = vi.fn();
 
@@ -36,7 +37,10 @@ vi.mock("@/lib/auth/AuthProvider", () => ({
   useAuth: () => useAuth(),
 }));
 vi.mock("@/lib/supabase/browser", () => ({
-  getBrowserSupabase: () => ({ rpc: (...a: unknown[]) => rpc(...a) }),
+  getBrowserSupabase: () => ({
+    rpc: (...a: unknown[]) => rpc(...a),
+    auth: { signInAnonymously: (...a: unknown[]) => signInAnonymously(...a) },
+  }),
 }));
 vi.mock("@/lib/trips/TripProvider", () => ({
   useTrips: () => ({ afterJoinTrip }),
@@ -57,6 +61,7 @@ const preview = {
 
 beforeEach(() => {
   rpc.mockReset();
+  signInAnonymously.mockReset();
   replace.mockReset();
   afterJoinTrip.mockReset();
   afterJoinTrip.mockResolvedValue(undefined);
@@ -69,15 +74,32 @@ afterEach(() => {
 });
 
 describe("/join/[token]", () => {
-  it("로그아웃이면 로그인 링크에 next 를 담는다", () => {
+  it("미로그인이면 가입 없이 참여 + 로그인 링크를 보여준다", () => {
     useAuth.mockReturnValue({ user: null, provider: "guest" });
     render(<JoinTripPage />);
 
+    expect(
+      screen.getByRole("button", { name: "가입 없이 참여" })
+    ).toBeTruthy();
     const link = screen.getByRole("link", { name: "로그인" });
     expect(link.getAttribute("href")).toBe(
       `/login?next=${encodeURIComponent("/join/invite-token")}`
     );
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("익명 로그인 실패 시 오류와 로그인 대안을 보여준다", async () => {
+    useAuth.mockReturnValue({ user: null, provider: "guest" });
+    signInAnonymously.mockResolvedValue({
+      data: { user: null },
+      error: { message: "Anonymous sign-ins are disabled" },
+    });
+    render(<JoinTripPage />);
+    fireEvent.click(screen.getByRole("button", { name: "가입 없이 참여" }));
+    expect(
+      await screen.findByText(/가입 없이 참여를 쓸 수 없어요/)
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "로그인" })).toBeTruthy();
   });
 
   it("만료/무효 초대는 기존 문구를 보여준다", async () => {
@@ -99,17 +121,19 @@ describe("/join/[token]", () => {
     });
     render(<JoinTripPage />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "합류하기" }));
+    fireEvent.change(await screen.findByPlaceholderText(/표시 이름/), {
+      target: { value: "새친구" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "참여하기" }));
 
     await waitFor(() => expect(replace).toHaveBeenCalledTimes(1));
     expect(rpc).toHaveBeenCalledWith("join_trip", {
       p_token: "invite-token",
       p_claim_member_id: null,
-      p_display_name: null,
+      p_display_name: "새친구",
     });
     expect(afterJoinTrip).toHaveBeenCalledWith(TRIP);
     expect(replace).toHaveBeenCalledWith(`/trips/${TRIP}/ledger`);
-    // 갱신이 끝난 뒤에 이동한다
     expect(afterJoinTrip.mock.invocationCallOrder[0]!).toBeLessThan(
       replace.mock.invocationCallOrder[0]!
     );
@@ -124,9 +148,14 @@ describe("/join/[token]", () => {
     });
     render(<JoinTripPage />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "합류하기" }));
+    fireEvent.change(await screen.findByPlaceholderText(/표시 이름/), {
+      target: { value: "새친구" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "참여하기" }));
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith(`/trips/${TRIP}/ledger`));
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith(`/trips/${TRIP}/ledger`)
+    );
     expect(console.error).toHaveBeenCalled();
   });
 
@@ -138,7 +167,10 @@ describe("/join/[token]", () => {
     });
     render(<JoinTripPage />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "합류하기" }));
+    fireEvent.change(await screen.findByPlaceholderText(/표시 이름/), {
+      target: { value: "새친구" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "참여하기" }));
 
     expect(
       await screen.findByText("초대가 만료되었거나 유효하지 않아요.")

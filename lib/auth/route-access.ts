@@ -11,6 +11,7 @@ const PUBLIC_PAGE_PREFIXES = [
   "/auth",
   "/s",
   "/trips/share",
+  "/join",
 ] as const;
 
 const STATIC_PUBLIC_EXACT = new Set([
