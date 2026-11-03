@@ -12,6 +12,7 @@ import { GuestExpenseSlot } from "@/components/ledger/GuestExpenseSlot";
 import { LedgerDashboard } from "@/components/ledger/LedgerDashboard";
 import { PasteExpenseBox } from "@/components/ledger/PasteExpenseBox";
 import { ReceiptUploader } from "@/components/ledger/ReceiptUploader";
+import { SplitBatchBox } from "@/components/ledger/SplitBatchBox";
 import { VoiceInputButton } from "@/components/ledger/VoiceInputButton";
 import { TripInvitePanel } from "@/components/trips/ledger/TripInvitePanel";
 import { Sheet } from "@/components/ds/Sheet";
@@ -410,17 +411,11 @@ export function LedgerShell({
 
           {showAdjust ? (
             <>
+              <SplitBatchBox
+                tripId={tripId}
+                onChanged={() => void reload()}
+              />
               {expenseList}
-              <p className="rounded-xl bg-surface-soft px-3 py-3 text-xs text-ink-body">
-                AI 분담 수정은 정산 화면에서 할 수 있어요. 곧 이 단계로
-                옮겨져요.
-              </p>
-              <Link
-                href={`/trips/${tripId}/ledger/settle`}
-                className="text-sm font-bold text-brand"
-              >
-                정산 화면에서 분담 수정
-              </Link>
             </>
           ) : null}
 
