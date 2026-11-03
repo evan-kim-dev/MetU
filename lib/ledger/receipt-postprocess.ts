@@ -19,6 +19,8 @@ export type ReceiptDraft = {
   paidAt: string | null;
   spentOn: string | null;
   timeIsEstimated: boolean;
+  /** EXIF 촬영시각으로 paidAt/spentOn을 채웠을 때만 'exif' */
+  timeSource?: "exif" | "receipt" | null;
   category: ExpenseCategoryOut;
   paymentMethod: "card" | "cash" | "transfer" | null;
   confidence: number;
