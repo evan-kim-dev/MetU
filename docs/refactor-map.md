@@ -21,12 +21,12 @@
 | U3 | `feat/ux-step-adjust` | 완료(PR #80) | #80 | AdjustStep |
 | U4 | `feat/ux-step-settle` | 완료(PR #81) | #81 | SettleStep · CurrencyTotals · FeeLeakCard |
 | U5 | `feat/ux-step-pay` | 완료(PR #82) | #82 | PayStep · settle URL 조합 |
-| U6 | `feat/ux-guest-journey-complete` | 진행 |  | GuestShare/Pay/Done 보강 |
-| U7 | `feat/ux-entry-points` | 대기 |  |  |
-| U8 | `feat/ux-onboarding-steps` | 대기 |  |  |
-| U9 | `feat/ux-trip-flows` | 대기 |  |  |
-| U10 | `feat/ux-journey-polish` | 대기 |  |  |
-| D0 | `chore/design-guardrails` | 대기 |  |  |
+| U6 | `feat/ux-guest-journey-complete` | 완료(PR #83) | #83 | GuestShare/Pay/Done 보강 |
+| U7 | `feat/ux-entry-points` | 보류 |  | 시연 후순위(2순위) |
+| U8 | `feat/ux-onboarding-steps` | 보류 |  | 시연 후순위(2순위) |
+| U9 | `feat/ux-trip-flows` | 보류 |  | 시연 후순위(2순위) |
+| U10 | `feat/ux-journey-polish` | 보류 |  | 시연 후순위(2순위) |
+| D0 | `chore/design-guardrails` | 진행 |  | legacy-baseline 래칫 |
 | D1 | `refactor/design-shell` | 대기 |  |  |
 | D2 | `refactor/design-home-agent` | 대기 |  |  |
 | D3 | `refactor/design-ledger-rest` | 대기 |  |  |
@@ -1063,4 +1063,25 @@
 - Evan: 실기기 2대 QR→조정→송금. `/join`·`/s` 화면 추가 리디자인(D3).
 
 **다음 세션(U7) 인계**
-- 진입점(`/agent`, 홈 CTA) 정리.
+- 진입점(`/agent`, 홈 CTA) 정리. (시연 우선순위로 U7~U10 보류 → D0 먼저)
+
+### 2026-11-04 (KST) · D0 · `chore/design-guardrails`
+
+**한 일**
+- `lib/design/legacy-scan.ts` + `legacy-baseline.json`(합계 2967) + 래칫 테스트.
+- `docs/design-system.md` 에 래칫 절. U7~U10 세션 상태「보류」, U5·U6 PR 번호 확정.
+- UI 미변경.
+
+**기준선(상위)**
+| 버킷 | 히트 |
+|---|---|
+| components/onboarding | 445 |
+| components/trips | 526 |
+| components/community | 334 |
+| components/agent | 309 |
+| components/ledger | 285 |
+| components/ui | 223 |
+| components/ds | 0 |
+
+**다음 세션(D1) 인계**
+- 셸·`components/ui` 를 mu/ds 로. 고친 뒤 baseline 해당 버킷 숫자 내리기.
