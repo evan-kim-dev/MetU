@@ -9,7 +9,7 @@
 
 | 세션 | 브랜치 | 상태 | PR | 메모 |
 |---|---|---|---|---|
-| C0 | `chore/claude-code-setup` | 완료 |  | CLAUDE.md · .claude/settings.json · 이 파일 |
+| C0 | `chore/claude-code-setup` | 완료(PR #71) | #71 | CLAUDE.md · .claude/settings.json · 이 파일 |
 | V0 | `chore/baseline-audit` | 대기 |  |  |
 | B1 | `chore/dead-code-symbols` | 대기 |  |  |
 | B2 | `chore/dead-routes-env-docs` | 대기 |  |  |
@@ -741,11 +741,11 @@
 
 | 경로 | 담당 세션 | 상태 |
 |---|---|---|
-| `.claude/settings.json` | C0 | 완료(C0, 2026-11-03) |
+| `.claude/settings.json` | C0 | 완료(C0, 2026-11-03, PR #71) |
 | `.env.example` | B2 | 대기 |
 | `.github/workflows/ci.yml` | B2 · Q1 | 대기 |
-| `.gitignore` | C0 | 완료(C0, 2026-11-03) |
-| `CLAUDE.md` | C0 | 완료(C0, 2026-11-03) |
+| `.gitignore` | C0 | 완료(C0, 2026-11-03, PR #71) |
+| `CLAUDE.md` | C0 | 완료(C0, 2026-11-03, PR #71) |
 | `README.md` | B2 | 대기 |
 | `eslint.config.mjs` | Q0 | 대기 |
 | `middleware.ts` | O6 | 대기 |
@@ -770,7 +770,7 @@
 | `docs/ios-shortcut-build.md` | Q1 | 대기 |
 | `docs/migrations-audit.md` | B2 | 대기 |
 | `docs/pitch-notes.md` | Q1 | 대기 |
-| `docs/refactor-map.md` | C0 (모든 세션 갱신) | 완료(C0, 2026-11-03) |
+| `docs/refactor-map.md` | C0 (모든 세션 갱신) | 완료(C0, 2026-11-03, PR #71) |
 
 ### 기타 (`types/` · `eval/` · `tests/` · `.cursor/`) — 5개
 
