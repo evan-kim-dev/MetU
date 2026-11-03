@@ -78,7 +78,7 @@ export function FirstRunChecklist() {
   if (allDone) {
     return (
       <p role="status" className="text-sm font-semibold text-ink-heading">
-        준비 끝! 이제 알림이 오면 자동으로 기록돼요. 🎉
+        준비 끝! 이제 알림이 오면 자동으로 기록돼요.
       </p>
     );
   }

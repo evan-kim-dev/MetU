@@ -91,7 +91,10 @@ function supabaseWithPending(count: number) {
 /** 여행 카드에서 도쿄 가계부로 들어간 뒤 총지출이 나타날 때까지 기다린다 */
 async function enterTokyoHome() {
   expect(await screen.findByTestId("ledger-trip-picker")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: /도쿄/ }));
+  const cont = screen.queryByRole("button", { name: /이어서 · 도쿄/ });
+  fireEvent.click(
+    cont ?? screen.getByRole("button", { name: /가계부 열기/ })
+  );
   const el = await screen.findByTestId("trip-total-krw");
   expect(el.textContent).toBe(formatKRW(EXPENSES_TOTAL_KRW));
 }
@@ -210,7 +213,8 @@ describe("AgentHubContent", () => {
       screen.getByRole("heading", { level: 2, name: "지금 여행 중" })
     ).toBeTruthy();
     expect(screen.getByRole("separator", { name: "다른 여행" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /도쿄/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /이어서 · 도쿄/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /가계부 열기/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /오사카/ })).toBeTruthy();
     expect(screen.queryByTestId("trip-total-krw")).toBeNull();
   });
@@ -239,7 +243,10 @@ describe("AgentHubContent", () => {
     rerender(<AgentHubContent />);
     // rerender 는 phase 를 유지하지 않으므로 다시 들어가요
     if (screen.queryByTestId("ledger-trip-picker")) {
-      fireEvent.click(screen.getByRole("button", { name: /도쿄/ }));
+      const cont = screen.queryByRole("button", { name: /이어서 · 도쿄/ });
+      fireEvent.click(
+        cont ?? screen.getByRole("button", { name: /가계부 열기/ })
+      );
     }
     await totalShown();
     expect(screen.queryByTestId("automation-pill")).toBeNull();
@@ -250,7 +257,8 @@ describe("AgentHubContent", () => {
     await enterTokyoHome();
     fireEvent.click(screen.getByRole("button", { name: /여행 목록/ }));
     expect(await screen.findByTestId("ledger-trip-picker")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /오사카/ }));
+    const osakaCards = screen.getAllByRole("button", { name: /오사카/ });
+    fireEvent.click(osakaCards[osakaCards.length - 1]!);
     expect(await screen.findByRole("heading", { name: "오사카" })).toBeTruthy();
     expect(await screen.findByText("아직 지출이 없어요")).toBeTruthy();
     expect(
@@ -273,7 +281,11 @@ describe("AgentHubContent", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     listExpenses.mockRejectedValueOnce(new Error("boom"));
     render(<AgentHubContent />);
-    fireEvent.click(await screen.findByRole("button", { name: /도쿄/ }));
+    expect(await screen.findByTestId("ledger-trip-picker")).toBeTruthy();
+    const cont = screen.queryByRole("button", { name: /이어서 · 도쿄/ });
+    fireEvent.click(
+      cont ?? screen.getByRole("button", { name: /가계부 열기/ })
+    );
     expect(await screen.findByRole("heading", { name: "도쿄" })).toBeTruthy();
     const retries = await screen.findAllByRole("button", { name: "다시 시도" });
     expect(retries.length).toBeGreaterThan(0);
@@ -326,7 +338,7 @@ describe("AgentHubContent", () => {
     expect(more.className).toContain("w-11");
     fireEvent.click(more);
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getAllByRole("link")).toHaveLength(8);
+    expect(within(dialog).getAllByRole("link")).toHaveLength(9);
     fireEvent.keyDown(window, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(more);

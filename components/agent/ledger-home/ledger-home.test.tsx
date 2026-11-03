@@ -495,14 +495,15 @@ describe("MoreSheet", () => {
     expect(document.activeElement).toBe(opener);
   });
 
-  it("항목 8개 링크가 모두 올바른 곳을 가리켜요", () => {
+  it("항목 링크가 모두 올바른 곳을 가리켜요", () => {
     render(<Harness tripId="t1" />);
     fireEvent.click(screen.getByText("열기"));
     const hrefs = within(screen.getByRole("dialog"))
       .getAllByRole("link")
       .map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual([
-      "/trips/t1/ledger",
+      "/trips/t1/ledger?step=invite",
+      "/trips/t1/ledger/settle",
       "/trips/t1/ledger?settings=fx",
       "/trips/t1/ledger?add=voice",
       "/trips/t1/ledger/report",

@@ -34,8 +34,11 @@ export function AgentHubContent() {
   const { selectedTrip, select, ready } = useSelectedTrip(trips, isReady);
   /** pick = 여행 고르기, home = 선택한 여행 가계부 */
   const [phase, setPhase] = useState<"pick" | "home">("pick");
+  /** 가계부 홈 데이터는 들어간 뒤에만 불러요 */
   const tripId =
     phase === "home" && selectedTrip ? selectedTrip.id : null;
+  /** 더보기 메뉴는 목록에서도 기본/최근 여행 기준으로 열어요 */
+  const moreTripId = selectedTrip?.id ?? null;
 
   const automation = useAutomationStatus({
     enabled: authReady && isLoggedIn && !isGuest,
@@ -112,6 +115,7 @@ export function AgentHubContent() {
         trips={trips}
         onSelect={enterTrip}
         onCreate={canCreateTrip ? () => setQuickOpen(true) : undefined}
+        continueTrip={selectedTrip}
       />
     );
   } else {
@@ -166,7 +170,7 @@ export function AgentHubContent() {
       <MoreSheet
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
-        tripId={tripId}
+        tripId={moreTripId}
         unassignedCount={unassignedCount}
         returnFocusRef={moreButtonRef}
       />
