@@ -1,18 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AmountCard } from "@/components/ds/AmountCard";
 import { BottomCTA } from "@/components/ds/BottomCTA";
-import { ProgressRing } from "@/components/ds/ProgressRing";
 import { FxAttribution } from "@/components/fx/FxAttribution";
 import { CurrencyTotals } from "@/components/ledger/CurrencyTotals";
 import { FeeLeakCard } from "@/components/ledger/FeeLeakCard";
 import { MyShareCard } from "@/components/ledger/MyShareCard";
 import { SettleExplainSheet } from "@/components/ledger/SettleExplainSheet";
-import { SettlementHistory } from "@/components/ledger/SettlementHistory";
-import { useSettleReference } from "@/components/ledger/useSettleReference";
-import { useClipboardCopy } from "@/components/onboarding/connect/useClipboardCopy";
+import {
+  useSettleReference,
+  type SettleReference,
+} from "@/components/ledger/useSettleReference";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { explainSettlement } from "@/lib/ledger/explain";
 import { resolveMyShare } from "@/lib/ledger/my-share";
@@ -22,27 +22,12 @@ import {
   minimizeTransfers,
   type LedgerExpense,
 } from "@/lib/ledger/settle";
-import {
-  PAY_APPS,
-  PAY_DEEPLINK_NOTICE,
-  PAY_OPEN_FAILED_MESSAGE,
-  launchPayApp,
-  payAmountText,
-  payGuidance,
-  type PayApp,
-} from "@/lib/ledger/pay-links";
-import {
-  buildShareText,
-  shareReasonMessage,
-} from "@/lib/ledger/settle-share";
 import { totalsByCurrency } from "@/lib/ledger/stats";
 import {
   fetchLatestSettlement,
-  fetchSettlementHistory,
   listExpenses,
   listMembers,
   listVoidedExpenseIds,
-  type SettlementHistoryItem,
   type SettlementSnapshot,
 } from "@/lib/ledger/supabase";
 import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
@@ -82,13 +67,23 @@ type Props = {
   mode?: "page" | "journey";
   /** journey 모드에서 분담 단계로 이동 */
   onAdjust?: () => void;
+  /** journey 모드에서 송금 단계로 이동 */
+  onPay?: () => void;
+  /** settle URL 에서 PayStep 과 공유할 참고 환율 상태 */
+  reference?: SettleReference;
 };
 
 /**
- * 호스트 ⑤ 정산 단계. 잔액·통화합계·수수료 차이 → 정산표 생성 → 공유·이력.
- * 분담 수정은 AdjustStep 으로 보내고, 송금 UI 는 U5 PayStep 추출 전까지 여기 유지.
+ * 호스트 ⑤ 정산 단계. 잔액·통화합계·수수료 차이 → 정산표 생성.
+ * 송금·공유·이력은 PayStep(U5).
  */
-export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
+export function SettleStep({
+  tripId,
+  mode = "page",
+  onAdjust,
+  onPay,
+  reference: referenceProp,
+}: Props) {
   const { user, isAnonymous } = useAuth();
   const [members, setMembers] = useState<TripMember[]>([]);
   const [expenseRows, setExpenseRows] = useState<LedgerExpenseRow[]>([]);
@@ -98,7 +93,6 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
   const [tripCurrencies, setTripCurrencies] = useState<string[]>([]);
   const [explainOpen, setExplainOpen] = useState(false);
   const [settlement, setSettlement] = useState<SettlementSnapshot | null>(null);
-  const [history, setHistory] = useState<SettlementHistoryItem[]>([]);
   const [basisState, setBasisState] = useState<{
     source: LedgerExpense[];
     hash: string;
@@ -106,26 +100,14 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
   const [msg, setMsg] = useState("");
   const [loadError, setLoadError] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [payNote, setPayNote] = useState("");
-  const [origin, setOrigin] = useState("");
-  const [canNativeShare, setCanNativeShare] = useState(false);
 
-  const textCopy = useClipboardCopy();
-  const linkCopy = useClipboardCopy();
-  const amountCopy = useClipboardCopy();
-  const payCleanup = useRef<(() => void) | null>(null);
-  const reference = useSettleReference();
+  const localReference = useSettleReference();
+  const reference = referenceProp ?? localReference;
 
   const expenses = useMemo(
     () => expenseRows.map(toSettleExpense),
     [expenseRows]
   );
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-    setCanNativeShare(typeof navigator.share === "function");
-    return () => payCleanup.current?.();
-  }, []);
 
   const loadSettlement = useCallback(async () => {
     const supabase = getBrowserSupabase();
@@ -136,9 +118,6 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
       return;
     }
     setSettlement(res.settlement);
-    // 이전 버전 공유 링크 목록. 실패해도 현재 정산 화면은 그대로 보여준다(로그는 남김).
-    const past = await fetchSettlementHistory(supabase, tripId);
-    if (past) setHistory(past);
   }, [tripId]);
 
   const reload = useCallback(async () => {
@@ -203,27 +182,17 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
     [expenseRows]
   );
 
-  const names = useMemo(
-    () => Object.fromEntries(members.map((m) => [m.id, m.displayName])),
-    [members]
-  );
-  const nameOf = (id: string) => names[id] ?? "?";
-
   const me = useMemo(
     () =>
       user ? members.find((m) => m.userId && m.userId === user.id) : undefined,
     [members, user]
   );
 
-  // 현재 지출 목록 기준으로 계산이 끝난 해시만 비교한다(로딩 중 깜빡임 방지).
   const basis =
     loaded && basisState && basisState.source === expenses
       ? basisState.hash
       : "";
   const transfers = useMemo(() => settlement?.transfers ?? [], [settlement]);
-  const status = settlement?.status ?? "";
-  const sharePath = settlement?.shareToken ? `/s/${settlement.shareToken}` : "";
-  const shareUrl = sharePath && origin ? `${origin}${sharePath}` : "";
 
   const stale = Boolean(
     settlement &&
@@ -231,31 +200,7 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
         (basis && basis !== settlement.basisHash))
   );
   const hasPaid = transfers.some((t) => t.status === "paid");
-  const allPaid =
-    transfers.length > 0 && transfers.every((t) => t.status === "paid");
-  const completed = status === "completed" || allPaid;
 
-  const shareResult = useMemo(() => {
-    if (!settlement || transfers.length === 0) return null;
-    return buildShareText({
-      names,
-      transfers,
-      balances,
-      shareUrl: shareUrl || null,
-      fxFallbackCount,
-      conversion: reference.shareConversion,
-    });
-  }, [
-    settlement,
-    transfers,
-    names,
-    balances,
-    shareUrl,
-    fxFallbackCount,
-    reference.shareConversion,
-  ]);
-
-  // 지출이 바뀐 뒤에는 저장된 송금표가 현재 지출과 달라서 잔액 설명만 보여준다.
   const explainResult = useMemo(
     () =>
       explainSettlement({
@@ -273,13 +218,6 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
       }),
     [members, expenses, expenseLabels, transfers, stale]
   );
-
-  const shareText = !stale && shareResult?.ok ? shareResult.text : null;
-  const shareBlockedMessage = stale
-    ? "지출이 바뀌어서 공유 문구를 만들 수 없어요. 정산을 다시 계산해 주세요."
-    : shareResult && !shareResult.ok
-      ? shareReasonMessage(shareResult.reason)
-      : "";
 
   async function createSettlement() {
     const supabase = getBrowserSupabase();
@@ -300,76 +238,12 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
       setMsg("정산 생성 실패 (소유자만 가능)");
       return;
     }
-    setPayNote("");
     setMsg("정산을 만들었어요.");
-    // 송금 행 id 가 있어야 '송금 완료'가 서버에 저장되므로 새로 읽는다.
     await loadSettlement();
-  }
-
-  async function markPaid(transferId: string) {
-    const supabase = getBrowserSupabase();
-    if (!supabase) return;
-    const { error } = await supabase.rpc("mark_transfer_paid", {
-      p_transfer_id: transferId,
-    });
-    if (error) {
-      console.error("[mark_transfer_paid]", error.message);
-      setMsg("완료 처리 실패");
-      return;
-    }
-    setMsg("");
-    await loadSettlement();
-  }
-
-  async function copyShareText() {
-    if (!shareText) return;
-    await textCopy.copy(shareText);
-  }
-
-  async function copyShareLink() {
-    if (!shareUrl) return;
-    await linkCopy.copy(shareUrl);
-  }
-
-  async function nativeShare() {
-    if (!shareText || typeof navigator.share !== "function") return;
-    try {
-      await navigator.share({
-        title: "정산 안내",
-        text: shareText,
-      });
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      console.error("[navigator.share]", e instanceof Error ? e.message : e);
-      setMsg("공유하지 못했어요. 복사해서 보내 주세요.");
-    }
-  }
-
-  function openPayApp(app: PayApp, krw: number) {
-    const amount = payAmountText(krw);
-    if (!amount) {
-      setMsg("금액을 확인할 수 없어요.");
-      return;
-    }
-    // 클릭 제스처 안에서 복사와 앱 열기를 함께 시작한다.
-    void amountCopy.copy(amount).then((ok) => {
-      setPayNote((prev) =>
-        prev === PAY_OPEN_FAILED_MESSAGE
-          ? prev
-          : ok
-            ? payGuidance(app.label, formatKRW(krw))
-            : `금액을 복사하지 못했어요. ${formatKRW(krw)}을 직접 입력해 주세요.`
-      );
-    });
-    setPayNote(payGuidance(app.label, formatKRW(krw)));
-    payCleanup.current?.();
-    payCleanup.current = launchPayApp(app.id, {
-      onFallback: () => setPayNote(PAY_OPEN_FAILED_MESSAGE),
-    });
+    if (onPay) onPay();
   }
 
   const isOwner = Boolean(me?.isOwner);
-  /** UI 숨김. 정산 생성은 서버 RPC·RLS가 최종 방어. */
   const canCreateSettlement = isOwner && !isAnonymous;
   const totalKrw = expenses.reduce((s, e) => s + e.krwAmount, 0);
   const myBalance = me ? (balances[me.id] ?? 0) : null;
@@ -378,12 +252,9 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
     hasSettlement: Boolean(settlement),
     stale,
   });
-  const paidCount = transfers.filter((t) => t.status === "paid").length;
-  const myOutgoingUnpaid = transfers.filter(
-    (t) => me && t.from === me.id && t.status !== "paid"
-  );
 
   const adjustHref = `/trips/${tripId}/ledger?step=adjust`;
+  const payHref = `/trips/${tripId}/ledger?step=pay`;
   const adjustControl =
     onAdjust != null ? (
       <button
@@ -402,11 +273,29 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
       </Link>
     );
 
+  const payControl =
+    onPay != null ? (
+      <button
+        type="button"
+        className="inline-flex min-h-tap items-center text-mu-caption font-bold text-mu-accent"
+        onClick={onPay}
+      >
+        송금하러 가기
+      </button>
+    ) : (
+      <Link
+        href={payHref}
+        className="inline-flex min-h-tap items-center text-mu-caption font-bold text-mu-accent"
+      >
+        송금하러 가기
+      </Link>
+    );
+
   return (
     <div
       className={
         mode === "page"
-          ? "mx-auto flex max-w-lg flex-col gap-4 px-4 py-6 pb-28"
+          ? "mx-auto flex max-w-lg flex-col gap-4 px-4 py-6 pb-8"
           : "flex flex-col gap-4 pb-24"
       }
     >
@@ -432,7 +321,7 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
         <div>
           <h2 className="text-mu-title text-mu-fg">이 금액으로 정산해요</h2>
           <p className="mt-1 text-mu-body text-mu-fg-2">
-            멤버 잔액을 확인하고 정산표를 만들어요. 송금은 각자 앱에서 해 주세요.
+            멤버 잔액을 확인하고 정산표를 만들어요. 송금은 다음 단계에서 해요.
           </p>
         </div>
       )}
@@ -456,39 +345,6 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
                 >
                   왜 이 금액?
                 </button>
-              }
-              payActions={
-                myShare.showPayActions && myOutgoingUnpaid.length > 0 ? (
-                  <div className="flex flex-col gap-2">
-                    {myOutgoingUnpaid.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex flex-wrap items-center gap-2 rounded-mu-md border border-mu-line bg-mu-card p-3"
-                      >
-                        <p className="w-full text-mu-caption font-bold text-mu-fg">
-                          {nameOf(t.to)}에게 {formatKRW(t.krw)}
-                        </p>
-                        {PAY_APPS.map((app) => (
-                          <button
-                            key={app.id}
-                            type="button"
-                            className="min-h-tap rounded-mu-sm border border-mu-accent px-3 text-mu-caption font-bold text-mu-accent"
-                            onClick={() => openPayApp(app, t.krw)}
-                          >
-                            {app.label} 열기
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          className="min-h-tap min-w-tap px-2 text-mu-caption font-bold text-mu-accent"
-                          onClick={() => void markPaid(t.id)}
-                        >
-                          송금 완료
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : undefined
               }
             />
           ) : (
@@ -554,12 +410,6 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
         </div>
       ) : null}
 
-      {settlement?.origin === "auto" && !completed ? (
-        <div className="rounded-mu-md bg-mu-bg px-3 py-2 text-mu-caption font-semibold text-mu-fg-2">
-          자동으로 만든 정산 제안이에요. 금액을 확인하고 직접 송금해 주세요.
-        </div>
-      ) : null}
-
       {stale ? (
         <div className="rounded-mu-md bg-mu-warn/10 px-3 py-2 text-mu-caption font-semibold text-mu-warn">
           <p>정산 후 지출이 바뀌었어요. 다시 계산할까요?</p>
@@ -575,17 +425,8 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
       {!canCreateSettlement && loaded ? (
         <p className="text-mu-caption text-mu-fg-3">
           {isAnonymous
-            ? "호스트가 정산을 계산해요. 내 송금은 아래에서 표시할 수 있어요."
-            : "정산표는 여행을 만든 분만 만들 수 있어요. 내 송금은 아래에서 표시할 수 있어요."}
-        </p>
-      ) : null}
-
-      {completed ? (
-        <p
-          role="status"
-          className="rounded-mu-md bg-mu-ok/10 px-3 py-2 text-mu-caption font-bold text-mu-ok"
-        >
-          정산 완료
+            ? "호스트가 정산을 계산해요. 송금은 송금 단계에서 표시할 수 있어요."
+            : "정산표는 여행을 만든 분만 만들 수 있어요. 송금은 송금 단계에서 표시할 수 있어요."}
         </p>
       ) : null}
 
@@ -595,131 +436,14 @@ export function SettleStep({ tripId, mode = "page", onAdjust }: Props) {
         </p>
       ) : null}
 
-      {settlement && transfers.length > 0 ? (
-        <div className="flex items-center gap-3 rounded-mu-md border border-mu-line bg-mu-card p-3">
-          <ProgressRing
-            value={paidCount}
-            max={transfers.length}
-            size={72}
-            label={`${paidCount}/${transfers.length} 송금 완료`}
-          />
-          <p className="text-mu-body font-bold text-mu-fg">
-            {paidCount}/{transfers.length} 완료
+      {loaded && settlement && transfers.length > 0 ? (
+        <div className="rounded-mu-md border border-mu-line bg-mu-card px-3 py-2">
+          <p className="text-mu-caption text-mu-fg-2">
+            정산표가 있어요. 송금·완료 표시는 송금 단계에서 해요.
           </p>
+          {payControl}
         </div>
       ) : null}
-
-      <ul className="flex flex-col gap-2">
-        {transfers.map((t) => {
-          const mineOut = Boolean(me && t.from === me.id);
-          const canMark = isOwner || mineOut;
-          return (
-            <li
-              key={t.id}
-              className="flex flex-col gap-2 rounded-mu-md border border-mu-line bg-mu-card p-3 text-mu-body"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span>
-                  {nameOf(t.from)} → {nameOf(t.to)}{" "}
-                  <strong className="mu-num">{formatKRW(t.krw)}</strong>
-                </span>
-                {t.status === "paid" ? (
-                  <span className="text-mu-caption font-bold text-mu-ok">
-                    완료
-                  </span>
-                ) : canMark ? (
-                  <button
-                    type="button"
-                    className="min-h-tap min-w-tap px-2 text-mu-caption font-bold text-mu-accent"
-                    onClick={() => void markPaid(t.id)}
-                  >
-                    송금 완료
-                  </button>
-                ) : null}
-              </div>
-              {t.status !== "paid" && mineOut && !stale ? (
-                <div className="flex flex-wrap gap-2">
-                  {PAY_APPS.map((app) => (
-                    <button
-                      key={app.id}
-                      type="button"
-                      className="min-h-tap rounded-mu-sm border border-mu-accent px-3 text-mu-caption font-bold text-mu-accent"
-                      onClick={() => openPayApp(app, t.krw)}
-                    >
-                      {app.label} 열기
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
-
-      {payNote ? (
-        <div
-          role="status"
-          className="rounded-mu-md bg-mu-bg px-3 py-2 text-mu-caption text-mu-fg-2"
-        >
-          <p>{payNote}</p>
-          <p className="mt-1 font-semibold">{PAY_DEEPLINK_NOTICE}</p>
-          {amountCopy.label ? (
-            <p className="mt-1 text-mu-fg-3">{amountCopy.label}</p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {settlement && transfers.length > 0 ? (
-        <section
-          aria-label="정산 공유"
-          className="flex flex-col gap-2 rounded-mu-md bg-mu-bg p-3 text-mu-caption"
-        >
-          <p className="font-bold text-mu-fg">동행에게 공유하기</p>
-          {shareBlockedMessage ? (
-            <p className="font-semibold text-mu-warn">{shareBlockedMessage}</p>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={!shareText}
-              className="min-h-tap rounded-mu-sm bg-mu-accent px-3 font-bold text-white disabled:opacity-40"
-              onClick={() => void copyShareText()}
-            >
-              {textCopy.label ?? "문구 복사"}
-            </button>
-            {canNativeShare ? (
-              <button
-                type="button"
-                disabled={!shareText}
-                className="min-h-tap rounded-mu-sm border border-mu-accent px-3 font-bold text-mu-accent disabled:opacity-40"
-                onClick={() => void nativeShare()}
-              >
-                공유하기
-              </button>
-            ) : null}
-            {shareUrl ? (
-              <button
-                type="button"
-                className="min-h-tap rounded-mu-sm border border-mu-accent px-3 font-bold text-mu-accent"
-                onClick={() => void copyShareLink()}
-              >
-                {linkCopy.label ?? "링크 복사"}
-              </button>
-            ) : null}
-          </div>
-          {sharePath ? (
-            <Link className="break-all text-mu-accent" href={sharePath}>
-              {sharePath}
-            </Link>
-          ) : null}
-        </section>
-      ) : null}
-
-      <SettlementHistory
-        items={history}
-        currentId={settlement?.id ?? null}
-        origin={origin}
-      />
 
       {msg ? <p className="text-mu-caption text-mu-fg-3">{msg}</p> : null}
 

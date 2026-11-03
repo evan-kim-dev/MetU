@@ -14,6 +14,7 @@ import { AdjustStep } from "@/components/ledger/journey/host/AdjustStep";
 import { ConnectStep } from "@/components/ledger/journey/host/ConnectStep";
 import { InviteStep } from "@/components/ledger/journey/host/InviteStep";
 import { RecordStep } from "@/components/ledger/journey/host/RecordStep";
+import { PayStep } from "@/components/ledger/journey/host/PayStep";
 import { SettleStep } from "@/components/ledger/journey/host/SettleStep";
 import {
   AddExpenseSheet,
@@ -206,7 +207,7 @@ export function LedgerShell({
   const showRecord = step === "record";
   const showAdjust = step === "adjust";
   const showSettle = step === "settle";
-  const showPayLink = step === "pay";
+  const showPay = step === "pay";
 
   const dashboard = (
     <LedgerDashboard
@@ -372,24 +373,19 @@ export function LedgerShell({
               tripId={tripId}
               mode="journey"
               onAdjust={() => onNavigate?.("adjust")}
+              onPay={() => onNavigate?.("pay")}
             />
           ) : null}
 
-          {showPayLink ? (
-            <section className="rounded-2xl border border-line-soft bg-surface-white p-4">
-              <h2 className="text-sm font-extrabold text-ink-heading">
-                송금을 챙겨요
-              </h2>
-              <p className="mt-1 text-xs text-ink-muted">
-                송금은 정산 화면에서 이어서 해요 (U5 에서 PayStep 으로 옮길 예정)
-              </p>
-              <Link
-                href={`/trips/${tripId}/ledger/settle`}
-                className="mt-3 inline-flex min-h-tap items-center rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white"
-              >
-                정산 화면 열기
-              </Link>
-            </section>
+          {showPay ? (
+            <PayStep
+              tripId={tripId}
+              mode="journey"
+              onSettle={() => onNavigate?.("settle")}
+              onRecap={() => {
+                window.location.href = `/trips/${tripId}/ledger/recap`;
+              }}
+            />
           ) : null}
         </>
       )}

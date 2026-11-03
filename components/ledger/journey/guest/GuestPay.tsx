@@ -11,6 +11,8 @@ type Props = {
 };
 
 export function GuestPay({ tripId, hasTransfers }: Props) {
+  const payHref = `/trips/${tripId}/ledger?step=pay`;
+
   if (!hasTransfers) {
     return (
       <div className="px-4 py-6">
@@ -20,7 +22,7 @@ export function GuestPay({ tripId, hasTransfers }: Props) {
           body="호스트가 정산을 만들면 여기서 송금할 수 있어요."
           action={
             <Link
-              href={`/trips/${tripId}/ledger/settle`}
+              href={`/trips/${tripId}/ledger?step=settle`}
               className="mu-focus text-mu-label text-mu-accent"
             >
               정산 화면 보기
@@ -34,13 +36,13 @@ export function GuestPay({ tripId, hasTransfers }: Props) {
   return (
     <div className="flex flex-col gap-4 px-4 py-6 pb-28">
       <p className="text-mu-body text-mu-fg-2">
-        내가 보낼 송금은 정산 화면에서 확인하고, 송금 앱을 연 뒤 완료를
-        눌러 주세요.
+        내가 보낼 송금은 송금 단계에서 확인하고, 송금 앱을 연 뒤 완료를 눌러
+        주세요.
       </p>
       <BottomCTA
-        label="정산에서 송금하기"
+        label="송금하러 가기"
         onClick={() => {
-          window.location.href = `/trips/${tripId}/ledger/settle`;
+          window.location.href = payHref;
         }}
       />
     </div>
