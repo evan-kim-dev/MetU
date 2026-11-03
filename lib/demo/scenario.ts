@@ -3,11 +3,18 @@ import { seoulDateIso } from "@/lib/onboarding/trip-window";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+export type DemoScenarioId = "osaka" | "mingling";
+
 /** Memo tag used to find/reuse the demo trip without touching real trips. */
 export const DEMO_TRIP_MEMO_TAG = "[metu-demo:osaka]";
 export const DEMO_TRIP_DESTINATION = "데모 여행 (오사카)";
 export const DEMO_TRIP_COUNTRY = "일본";
 export const DEMO_COMPANION_NAMES = ["민아", "준호"] as const;
+
+export const MINGLING_TRIP_MEMO_TAG = "[metu-demo:mingling]";
+export const MINGLING_TRIP_DESTINATION = "데모 여행 (밍글링)";
+/** 미연결 동행 자리 — user_id 없이 두고 게스트 claim 용. */
+export const MINGLING_COMPANION_NAMES = ["민수", "지아"] as const;
 
 export type DemoScenarioStep = {
   step: number;
@@ -132,14 +139,82 @@ export function buildDemoScenario(now: Date = new Date()): DemoScenarioStep[] {
   });
 }
 
-export function getDemoStep(
-  step: number,
-  now: Date = new Date()
-): DemoScenarioStep | null {
-  const scenario = buildDemoScenario(now);
-  return scenario.find((s) => s.step === step) ?? null;
+/**
+ * 밍글링 hero: 저녁(외화) + 2차 카페(칩 제외 장면용). 합성 fixture만 사용.
+ */
+export function buildMinglingScenario(now: Date = new Date()): DemoScenarioStep[] {
+  const dates = demoTripDates(now);
+  const day0 = dates.today;
+  const specs: Array<{
+    step: number;
+    label: string;
+    fixtureKey: keyof typeof SYNTHETIC_SMS;
+    spentOn: string;
+    hhmm: string;
+    receivedHHmm: string;
+  }> = [
+    {
+      step: 1,
+      label: "저녁 식사(외화 승인)",
+      fixtureKey: "demoHotelJpy",
+      spentOn: day0,
+      hhmm: "19:40",
+      receivedHHmm: "19:41",
+    },
+    {
+      step: 2,
+      label: "2차 카페(칩 제외용)",
+      fixtureKey: "shinhanCheckOverseas",
+      spentOn: day0,
+      hhmm: "22:15",
+      receivedHHmm: "22:16",
+    },
+  ];
+  return specs.map((s) => {
+    const raw = SYNTHETIC_SMS[s.fixtureKey].text;
+    const text = stampSmsDate(raw, s.spentOn, s.hhmm);
+    return {
+      step: s.step,
+      label: s.label,
+      text,
+      receivedAt: `${s.spentOn}T${s.receivedHHmm}:00+09:00`,
+      fixtureKey: s.fixtureKey,
+    };
+  });
 }
 
-export function demoScenarioStepCount(now: Date = new Date()): number {
-  return buildDemoScenario(now).length;
+export function getDemoStep(
+  step: number,
+  now: Date = new Date(),
+  scenario: DemoScenarioId = "osaka"
+): DemoScenarioStep | null {
+  const steps =
+    scenario === "mingling" ? buildMinglingScenario(now) : buildDemoScenario(now);
+  return steps.find((s) => s.step === step) ?? null;
+}
+
+export function demoScenarioStepCount(
+  now: Date = new Date(),
+  scenario: DemoScenarioId = "osaka"
+): number {
+  return scenario === "mingling"
+    ? buildMinglingScenario(now).length
+    : buildDemoScenario(now).length;
+}
+
+export function demoMeta(scenario: DemoScenarioId) {
+  if (scenario === "mingling") {
+    return {
+      memoTag: MINGLING_TRIP_MEMO_TAG,
+      destination: MINGLING_TRIP_DESTINATION,
+      country: DEMO_TRIP_COUNTRY,
+      companions: MINGLING_COMPANION_NAMES,
+    };
+  }
+  return {
+    memoTag: DEMO_TRIP_MEMO_TAG,
+    destination: DEMO_TRIP_DESTINATION,
+    country: DEMO_TRIP_COUNTRY,
+    companions: DEMO_COMPANION_NAMES,
+  };
 }

@@ -10,8 +10,8 @@ import { apiInternalError } from "@/lib/api/respond";
 import { TABLES } from "@/lib/constants";
 import { isDemoModeEnabled } from "@/lib/demo/mode";
 import {
-  DEMO_TRIP_DESTINATION,
-  DEMO_TRIP_MEMO_TAG,
+  type DemoScenarioId,
+  demoMeta,
   demoScenarioStepCount,
   getDemoStep,
 } from "@/lib/demo/scenario";
@@ -23,24 +23,27 @@ export const maxDuration = 60;
 
 const BodySchema = z.object({
   step: z.number().int().min(1).max(20),
+  scenario: z.enum(["osaka", "mingling"]).optional(),
 });
 
 async function resolveDemoTripId(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  scenario: DemoScenarioId
 ): Promise<string | null> {
+  const meta = demoMeta(scenario);
   const { data, error } = await supabase
     .from(TABLES.trips)
     .select("id, memo")
     .eq("user_id", userId)
-    .eq("destination", DEMO_TRIP_DESTINATION)
+    .eq("destination", meta.destination)
     .order("created_at", { ascending: false })
     .limit(20);
 
   if (error || !data) return null;
   const hit = data.find(
     (row) =>
-      typeof row.memo === "string" && row.memo.includes(DEMO_TRIP_MEMO_TAG)
+      typeof row.memo === "string" && row.memo.includes(meta.memoTag)
   );
   return hit ? (hit.id as string) : null;
 }
@@ -87,7 +90,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const maxStep = demoScenarioStepCount();
+  const scenario: DemoScenarioId = parsed.data.scenario ?? "osaka";
+  const maxStep = demoScenarioStepCount(new Date(), scenario);
   if (parsed.data.step > maxStep) {
     return NextResponse.json(
       { error: "invalid-step", maxStep },
@@ -95,13 +99,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const stepDef = getDemoStep(parsed.data.step);
+  const stepDef = getDemoStep(parsed.data.step, new Date(), scenario);
   if (!stepDef) {
     return NextResponse.json({ error: "invalid-step" }, { status: 400 });
   }
 
   const supabase = await createServerSupabase();
-  const tripId = await resolveDemoTripId(supabase, userId);
+  const tripId = await resolveDemoTripId(supabase, userId, scenario);
   if (!tripId) {
     return NextResponse.json(
       { error: "demo-trip-missing", message: "먼저 데모 여행을 만들어 주세요." },
@@ -111,7 +115,10 @@ export async function POST(request: Request) {
 
   const bucket = new Date().toISOString().slice(0, 16);
   const idempotencyKey = createHash("sha256")
-    .update(`demo-notify|${userId}|${parsed.data.step}|${bucket}`, "utf8")
+    .update(
+      `demo-notify|${scenario}|${userId}|${parsed.data.step}|${bucket}`,
+      "utf8"
+    )
     .digest("hex");
 
   const outcome = await runIngest({
@@ -138,6 +145,7 @@ export async function POST(request: Request) {
     duplicate: outcome.result.duplicate,
     status: outcome.status,
     tripId,
+    scenario,
     step: parsed.data.step,
     label: stepDef.label,
     startedAtMs,
