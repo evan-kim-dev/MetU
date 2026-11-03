@@ -477,15 +477,6 @@ export default function LedgerSettlePage() {
             );
           })}
         </ul>
-        {loaded && members.length > 0 ? (
-          <button
-            type="button"
-            className="mt-2 min-h-[44px] w-full rounded-lg border border-brand text-xs font-bold text-brand"
-            onClick={() => setExplainOpen(true)}
-          >
-            왜 이 금액?
-          </button>
-        ) : null}
       </section>
 
       {loaded ? <SplitPatchBox tripId={tripId} onChanged={reload} /> : null}
