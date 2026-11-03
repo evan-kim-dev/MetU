@@ -185,7 +185,7 @@ export function ExpenseChipSplit({
     }
   }
 
-  const hasShares = Object.keys(expense.shares).length > 0;
+  const hasShares = Object.keys(expense.shares ?? {}).length > 0;
 
   return (
     <li className="rounded-xl bg-surface-soft px-3 py-3 text-xs">
