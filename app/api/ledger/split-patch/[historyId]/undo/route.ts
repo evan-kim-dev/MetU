@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
+import { TABLES } from "@/lib/constants";
 import { guardApi } from "@/lib/security/guard";
+import { isAnonymousUserIdentity } from "@/lib/security/identity";
 
 export const maxDuration = 30;
 
@@ -34,6 +36,31 @@ export async function POST(
   const admin = getAgentAdmin();
   if (!admin) {
     return NextResponse.json({ error: "server-misconfigured" }, { status: 503 });
+  }
+
+  // 게스트는 자기가 적용한 변경만 되돌릴 수 있어요. RPC 는 멤버십만 본다.
+  if (isAnonymousUserIdentity(identity)) {
+    const { data: hist, error: histError } = await admin
+      .from(TABLES.tripExpenseSplitHistory)
+      .select("actor")
+      .eq("id", parsedId.data)
+      .maybeSingle();
+    if (histError) {
+      console.error("[split-patch/undo] history lookup", histError.message);
+      return NextResponse.json({ error: "undo-failed" }, { status: 500 });
+    }
+    if (!hist) {
+      return NextResponse.json({ error: "not-found" }, { status: 404 });
+    }
+    if ((hist as { actor?: string }).actor !== identity.userId) {
+      return NextResponse.json(
+        {
+          error: "guest-self-only",
+          message: "내가 적용한 변경만 되돌릴 수 있어요.",
+        },
+        { status: 422 }
+      );
+    }
   }
 
   const { data, error } = await admin.rpc("agent_undo_split_patch", {
