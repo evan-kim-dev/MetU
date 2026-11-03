@@ -72,6 +72,9 @@ vi.mock("@/components/layout/MobileShell", () => ({
     </div>
   ),
 }));
+vi.mock("@/components/ui/DestinationImage", () => ({
+  DestinationImage: () => <div data-testid="dest-image" />,
+}));
 
 import { AgentHubContent } from "@/components/agent/AgentHubContent";
 
@@ -85,7 +88,15 @@ function supabaseWithPending(count: number) {
   return { from: () => chain };
 }
 
-/** 헤더 총지출 숫자가 나타날 때까지 기다린다 */
+/** 여행 카드에서 도쿄 가계부로 들어간 뒤 총지출이 나타날 때까지 기다린다 */
+async function enterTokyoHome() {
+  expect(await screen.findByTestId("ledger-trip-picker")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /도쿄/ }));
+  const el = await screen.findByTestId("trip-total-krw");
+  expect(el.textContent).toBe(formatKRW(EXPENSES_TOTAL_KRW));
+}
+
+/** 헤더 총지출 숫자가 나타날 때까지 기다린다 (이미 홈에 있을 때) */
 async function totalShown() {
   const el = await screen.findByTestId("trip-total-krw");
   expect(el.textContent).toBe(formatKRW(EXPENSES_TOTAL_KRW));
@@ -142,7 +153,7 @@ afterEach(() => {
 describe("AgentHubContent", () => {
   it("제목은 '가계부'이고 개발자 문구가 없어요", async () => {
     render(<AgentHubContent />);
-    await totalShown();
+    await enterTokyoHome();
     const text = document.body.textContent ?? "";
     expect(text).not.toContain("해커톤");
     expect(text).not.toContain("/join/토큰");
@@ -192,9 +203,21 @@ describe("AgentHubContent", () => {
     expect(screen.getByTestId("quick-trip-sheet")).toBeTruthy();
   });
 
+  it("진입 시 여행 카드 목록을 보여 주고, 진행 중은 강조해요", async () => {
+    render(<AgentHubContent />);
+    expect(await screen.findByTestId("ledger-trip-picker")).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "지금 여행 중" })
+    ).toBeTruthy();
+    expect(screen.getByRole("separator", { name: "다른 여행" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /도쿄/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /오사카/ })).toBeTruthy();
+    expect(screen.queryByTestId("trip-total-krw")).toBeNull();
+  });
+
   it("진행 중 여행의 합계·최근 지출·정산 요약을 한 화면에 보여요", async () => {
     render(<AgentHubContent />);
-    await totalShown();
+    await enterTokyoHome();
     expect(screen.getByRole("heading", { name: "도쿄" })).toBeTruthy();
     expect(screen.getByTestId("automation-pill").textContent).toBe("자동 기록 켜짐");
     expect(screen.getByRole("link", { name: "영수증 촬영" }).getAttribute("href")).toBe(
@@ -203,7 +226,6 @@ describe("AgentHubContent", () => {
     expect(await screen.findByText("야키토리")).toBeTruthy();
     expect(await screen.findByRole("link", { name: "정산 보기" })).toBeTruthy();
     expect(screen.queryByText("확인 필요")).toBeNull();
-    // 허브에는 예전 자동 기록 배너/카드가 중복으로 없어요 (헤더 알약으로 대체)
     expect(screen.queryByText(/카드 알림 자동 기록이 켜져 있어요/)).toBeNull();
     expect(screen.queryByText(/자동 기록 꺼짐 · 연결하면/)).toBeNull();
   });
@@ -211,21 +233,25 @@ describe("AgentHubContent", () => {
   it("알약은 로딩·에러에서 숨겨요", async () => {
     automation({ loading: true });
     const { rerender } = render(<AgentHubContent />);
-    await totalShown();
+    await enterTokyoHome();
     expect(screen.queryByTestId("automation-pill")).toBeNull();
     automation({ uiState: null, error: { message: "x" } });
     rerender(<AgentHubContent />);
+    // rerender 는 phase 를 유지하지 않으므로 다시 들어가요
+    if (screen.queryByTestId("ledger-trip-picker")) {
+      fireEvent.click(screen.getByRole("button", { name: /도쿄/ }));
+    }
+    await totalShown();
     expect(screen.queryByTestId("automation-pill")).toBeNull();
   });
 
-  it("여행 바꾸기: 헤더·최근 지출·정산 요약이 바뀌고 선택이 저장돼요", async () => {
+  it("여행 목록에서 다른 여행을 고르면 선택이 저장돼요", async () => {
     render(<AgentHubContent />);
-    await totalShown();
-    fireEvent.click(screen.getByRole("button", { name: /여행 바꾸기/ }));
-    const dialog = screen.getByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: /오사카/ }));
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("heading", { name: "오사카" })).toBeTruthy();
+    await enterTokyoHome();
+    fireEvent.click(screen.getByRole("button", { name: /여행 목록/ }));
+    expect(await screen.findByTestId("ledger-trip-picker")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /오사카/ }));
+    expect(await screen.findByRole("heading", { name: "오사카" })).toBeTruthy();
     expect(await screen.findByText("아직 지출이 없어요")).toBeTruthy();
     expect(
       await screen.findByText("정산할 내역이 생기면 여기서 보여줘요")
@@ -236,23 +262,18 @@ describe("AgentHubContent", () => {
     expect(window.localStorage.getItem(STORAGE_KEYS.ledgerSelectedTrip)).toBe(OSAKA.id);
   });
 
-  it("마지막 선택을 복원해요", async () => {
-    window.localStorage.setItem(STORAGE_KEYS.ledgerSelectedTrip, OSAKA.id);
-    render(<AgentHubContent />);
-    expect(await screen.findByRole("heading", { name: "오사카" })).toBeTruthy();
-  });
-
-  it("여행이 1개뿐이면 '여행 바꾸기'가 없어요", async () => {
+  it("여행이 1개여도 목록으로 돌아갈 수 있어요", async () => {
     useTrips.mockReturnValue({ trips: [TOKYO], activeTrips: [TOKYO], isReady: true });
     render(<AgentHubContent />);
-    await totalShown();
-    expect(screen.queryByRole("button", { name: /여행 바꾸기/ })).toBeNull();
+    await enterTokyoHome();
+    expect(screen.getByRole("button", { name: /여행 목록/ })).toBeTruthy();
   });
 
   it("지출 섹션만 실패해도 나머지는 보이고 다시 시도하면 불러와요", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     listExpenses.mockRejectedValueOnce(new Error("boom"));
     render(<AgentHubContent />);
+    fireEvent.click(await screen.findByRole("button", { name: /도쿄/ }));
     expect(await screen.findByRole("heading", { name: "도쿄" })).toBeTruthy();
     const retries = await screen.findAllByRole("button", { name: "다시 시도" });
     expect(retries.length).toBeGreaterThan(0);
@@ -272,6 +293,7 @@ describe("AgentHubContent", () => {
     const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     render(<AgentHubContent />);
+    await enterTokyoHome();
     expect((await screen.findByTestId("needs-review-count")).textContent).toBe("2건");
     fireEvent.click(await screen.findByRole("button", { name: "도쿄 여행에 붙이기" }));
     await waitFor(() => expect(refresh).toHaveBeenCalled());
@@ -289,6 +311,7 @@ describe("AgentHubContent", () => {
       },
     });
     render(<AgentHubContent />);
+    await enterTokyoHome();
     expect((await screen.findByTestId("needs-review-count")).textContent).toBe("1건");
     expect(screen.queryByRole("button", { name: /붙이기/ })).toBeNull();
     expect(screen.getByRole("link", { name: "수신함에서 정리하기" })).toBeTruthy();
@@ -297,7 +320,7 @@ describe("AgentHubContent", () => {
   it("더보기: 열고 닫으면 포커스가 버튼으로 돌아오고 링크가 도달 가능해요", async () => {
     automation({ data: { unassignedCount: 2, recentEvents: [] } });
     render(<AgentHubContent />);
-    await totalShown();
+    await enterTokyoHome();
     const more = screen.getByRole("button", { name: "더보기" });
     expect(more.className).toContain("h-11");
     expect(more.className).toContain("w-11");
@@ -311,7 +334,7 @@ describe("AgentHubContent", () => {
 
   it("데모 패널은 맨 아래에 있어요", async () => {
     render(<AgentHubContent />);
-    await totalShown();
+    await enterTokyoHome();
     const demo = screen.getByTestId("demo-panel");
     const settle = screen.getByLabelText("정산 요약");
     expect(

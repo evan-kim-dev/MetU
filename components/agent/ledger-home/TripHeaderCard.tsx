@@ -68,7 +68,7 @@ export function TripHeaderCard({
             onClick={onSwitch}
             className="inline-flex min-h-tap shrink-0 items-center gap-1 rounded-full bg-surface-soft px-3 text-xs font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
-            여행 바꾸기
+            여행 목록
             <ChevronDown className="h-4 w-4" aria-hidden />
           </button>
         ) : null}

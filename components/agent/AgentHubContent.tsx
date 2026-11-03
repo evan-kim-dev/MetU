@@ -6,6 +6,7 @@ import { DemoModePanel } from "@/components/agent/DemoModePanel";
 import { LedgerHomeEmpty } from "@/components/agent/ledger-home/LedgerHomeEmpty";
 import { LedgerHomeGuest } from "@/components/agent/ledger-home/LedgerHomeGuest";
 import { LedgerHomeSkeleton } from "@/components/agent/ledger-home/LedgerHomeSkeleton";
+import { LedgerTripPicker } from "@/components/agent/ledger-home/LedgerTripPicker";
 import { MoreSheet } from "@/components/agent/ledger-home/MoreSheet";
 import { NeedsReviewCard } from "@/components/agent/ledger-home/NeedsReviewCard";
 import { pickFeaturedReview } from "@/components/agent/ledger-home/needsReview";
@@ -13,7 +14,6 @@ import { PrimaryActions } from "@/components/agent/ledger-home/PrimaryActions";
 import { RecentExpenses } from "@/components/agent/ledger-home/RecentExpenses";
 import { SettlementSummaryCard } from "@/components/agent/ledger-home/SettlementSummaryCard";
 import { TripHeaderCard } from "@/components/agent/ledger-home/TripHeaderCard";
-import { TripSwitcherSheet } from "@/components/agent/ledger-home/TripSwitcherSheet";
 import { useLedgerHomeData } from "@/components/agent/ledger-home/useLedgerHomeData";
 import { useSelectedTrip } from "@/components/agent/ledger-home/useSelectedTrip";
 import { MobileShell } from "@/components/layout/MobileShell";
@@ -23,8 +23,8 @@ import { useAutomationStatus } from "@/lib/hooks/useAutomationStatus";
 import { useTrips } from "@/lib/trips/TripProvider";
 
 /**
- * 가계부 탭(/agent). 데이터·상태 훅만 두고 화면은 ledger-home/ 컴포넌트를 조립해요.
- * 동작·API·DB·돈 계산은 그대로이고 화면 구성만 바뀌었어요.
+ * 가계부 탭(/agent).
+ * 진입 시 여행 카드로 한눈에 고르고, 고른 여행의 가계부 홈으로 들어가요.
  */
 export function AgentHubContent() {
   const { isReady: authReady, isLoggedIn, provider, isAnonymous } = useAuth();
@@ -32,9 +32,11 @@ export function AgentHubContent() {
   const canCreateTrip = !isGuest && !isAnonymous;
   const { trips, isReady, activeTrips } = useTrips();
   const { selectedTrip, select, ready } = useSelectedTrip(trips, isReady);
-  const tripId = selectedTrip?.id ?? null;
+  /** pick = 여행 고르기, home = 선택한 여행 가계부 */
+  const [phase, setPhase] = useState<"pick" | "home">("pick");
+  const tripId =
+    phase === "home" && selectedTrip ? selectedTrip.id : null;
 
-  // 자동 기록 상태·확인 필요 알림: 비-lite 한 번으로 알약·미배정·최근 알림을 함께 읽어요.
   const automation = useAutomationStatus({
     enabled: authReady && isLoggedIn && !isGuest,
   });
@@ -42,9 +44,8 @@ export function AgentHubContent() {
 
   const [quickOpen, setQuickOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [switchOpen, setSwitchOpen] = useState(false);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
-  const switchButtonRef = useRef<HTMLButtonElement>(null);
+  const listButtonRef = useRef<HTMLButtonElement>(null);
 
   const uiState = automation.uiState;
   const pill =
@@ -69,6 +70,11 @@ export function AgentHubContent() {
     [automation.data?.recentEvents, tripId, activeTrips]
   );
 
+  function enterTrip(id: string) {
+    select(id);
+    setPhase("home");
+  }
+
   const moreButton = isGuest ? null : (
     <button
       ref={moreButtonRef}
@@ -89,7 +95,7 @@ export function AgentHubContent() {
     body = <LedgerHomeGuest />;
   } else if (!ready) {
     body = <LedgerHomeSkeleton />;
-  } else if (!selectedTrip) {
+  } else if (trips.length === 0) {
     body = canCreateTrip ? (
       <LedgerHomeEmpty
         onCreate={() => setQuickOpen(true)}
@@ -100,6 +106,14 @@ export function AgentHubContent() {
         합류한 여행이 없어요. 초대 링크로 들어와 주세요.
       </p>
     );
+  } else if (phase === "pick" || !selectedTrip) {
+    body = (
+      <LedgerTripPicker
+        trips={trips}
+        onSelect={enterTrip}
+        onCreate={canCreateTrip ? () => setQuickOpen(true) : undefined}
+      />
+    );
   } else {
     body = (
       <>
@@ -108,9 +122,9 @@ export function AgentHubContent() {
           expenses={home.expenses}
           onRetryExpenses={home.retryExpenses}
           pill={pill}
-          canSwitch={trips.length > 1}
-          onSwitch={() => setSwitchOpen(true)}
-          switchRef={switchButtonRef}
+          canSwitch
+          onSwitch={() => setPhase("pick")}
+          switchRef={listButtonRef}
         />
         <PrimaryActions tripId={selectedTrip.id} />
         <NeedsReviewCard
@@ -146,8 +160,7 @@ export function AgentHubContent() {
     <MobileShell title="가계부" rightSlot={moreButton}>
       <div className="flex flex-col gap-4 px-4 py-4">
         {body}
-        {/* 데모 모드가 켜졌을 때만 맨 아래에 접힌 채 보여요. 꺼져 있으면 아무것도 그리지 않아요. */}
-        {!isGuest ? <DemoModePanel /> : null}
+        {!isGuest && phase === "home" ? <DemoModePanel /> : null}
       </div>
 
       <MoreSheet
@@ -157,20 +170,11 @@ export function AgentHubContent() {
         unassignedCount={unassignedCount}
         returnFocusRef={moreButtonRef}
       />
-      <TripSwitcherSheet
-        open={switchOpen}
-        onClose={() => setSwitchOpen(false)}
-        trips={trips}
-        selectedId={tripId}
-        onSelect={select}
-        onCreate={canCreateTrip ? () => setQuickOpen(true) : undefined}
-        returnFocusRef={switchButtonRef}
-      />
       {canCreateTrip ? (
         <QuickTripSheet
           open={quickOpen}
           onClose={() => setQuickOpen(false)}
-          onCreated={(trip) => select(trip.id)}
+          onCreated={(trip) => enterTrip(trip.id)}
           reason="hub"
         />
       ) : null}

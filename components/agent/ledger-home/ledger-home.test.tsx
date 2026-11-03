@@ -156,17 +156,17 @@ describe("TripHeaderCard", () => {
     expect(screen.queryByTestId("automation-pill")).toBeNull();
   });
 
-  it("여행이 1개뿐이면 '여행 바꾸기'를 숨기고, 여러 개면 눌렀을 때 onSwitch 를 불러요", () => {
+  it("여행 목록 버튼은 canSwitch 일 때만 보이고, 누르면 onSwitch 를 불러요", () => {
     const onSwitch = vi.fn();
     const { rerender } = render(
       <TripHeaderCard {...base} onSwitch={onSwitch} expenses={ready(EXPENSES)} pill={null} />
     );
-    fireEvent.click(screen.getByRole("button", { name: /여행 바꾸기/ }));
+    fireEvent.click(screen.getByRole("button", { name: /여행 목록/ }));
     expect(onSwitch).toHaveBeenCalledTimes(1);
     rerender(
       <TripHeaderCard {...base} canSwitch={false} expenses={ready(EXPENSES)} pill={null} />
     );
-    expect(screen.queryByRole("button", { name: /여행 바꾸기/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /여행 목록/ })).toBeNull();
   });
 
   it("숫자 자리만 스켈레톤이고, 실패하면 섹션 안에서 다시 시도해요", () => {
