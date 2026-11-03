@@ -673,10 +673,12 @@ describe("AgentInbox", () => {
         },
         removeChannel: vi.fn(),
       });
-      const fetchMock = vi.fn(async () => ({
-        ok: true,
-        json: async () => ({ ok: true }),
-      }));
+      const fetchMock = vi.fn(
+        async (_url: string, _init?: RequestInit) => ({
+          ok: true,
+          json: async () => ({ ok: true }),
+        })
+      );
       vi.stubGlobal("fetch", fetchMock);
       return fetchMock;
     }
@@ -696,11 +698,12 @@ describe("AgentInbox", () => {
       expect(screen.getByDisplayValue("2026-07-21")).toBeTruthy();
       fireEvent.click(screen.getByRole("button", { name: "저장" }));
       await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-      const call = fetchMock.mock.calls.find((c) =>
-        String(c[0]).includes("/edit")
+      const call = fetchMock.mock.calls.find(([url]) =>
+        String(url).includes("/edit")
       );
       expect(call).toBeTruthy();
-      expect(JSON.parse((call![1] as RequestInit).body as string)).toMatchObject({
+      const init = call?.[1];
+      expect(JSON.parse(String(init?.body))).toMatchObject({
         text: "스타벅스 4500원",
         draft: { merchant: "스타벅스", amount: 4500, currency: "KRW" },
       });
@@ -714,7 +717,7 @@ describe("AgentInbox", () => {
       await waitFor(() => expect(fetchMock).toHaveBeenCalled());
       expect(confirmSpy).toHaveBeenCalled();
       expect(
-        fetchMock.mock.calls.some((c) => String(c[0]).includes("/delete"))
+        fetchMock.mock.calls.some(([url]) => String(url).includes("/delete"))
       ).toBe(true);
       confirmSpy.mockRestore();
     });
