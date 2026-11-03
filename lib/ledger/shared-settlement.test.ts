@@ -56,11 +56,39 @@ describe("parseSharedSettlementDetail", () => {
       currency: "JPY",
       fxRateToKrw: 10,
       krwAmount: 5000,
+      billedKrw: null,
+      feePct: null,
     });
     expect(d?.totals).toEqual({
       totalKrw: 15000,
       expenseCount: 2,
       expensesTruncated: false,
+    });
+  });
+
+  it("billedKrw·feePct 를 읽는다", () => {
+    const d = parseSharedSettlementDetail(
+      raw({
+        expenses: [
+          {
+            id: "e2",
+            label: "라멘",
+            category: "식비",
+            spentOn: "2026-07-22",
+            paidBy: "m2",
+            amount: 500,
+            currency: "JPY",
+            fxRateToKrw: 10,
+            krwAmount: 5500,
+            billedKrw: 5500,
+            feePct: 3.2,
+          },
+        ],
+      })
+    );
+    expect(d?.expenses[0]).toMatchObject({
+      billedKrw: 5500,
+      feePct: 3.2,
     });
   });
 

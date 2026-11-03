@@ -30,6 +30,9 @@ const ExpenseSchema = z.object({
   currency: z.string(),
   fxRateToKrw: MoneyNumber.nullish(),
   krwAmount: MoneyNumber,
+  billedKrw: MoneyNumber.nullish(),
+  /** 시장환율 대비 차이(%). 서버가 계산한 값만. */
+  feePct: MoneyNumber.nullish(),
 });
 
 const DetailSchema = z.object({
@@ -59,6 +62,8 @@ export type SharedSettlementExpense = {
   currency: string;
   fxRateToKrw: number | null;
   krwAmount: number;
+  billedKrw: number | null;
+  feePct: number | null;
 };
 
 export type SharedSettlementDetail = {
@@ -109,6 +114,11 @@ export function parseSharedSettlementDetail(
       currency: e.currency,
       fxRateToKrw: e.fxRateToKrw ?? null,
       krwAmount: e.krwAmount,
+      billedKrw:
+        typeof e.billedKrw === "number" && e.billedKrw > 0
+          ? e.billedKrw
+          : null,
+      feePct: typeof e.feePct === "number" ? e.feePct : null,
     })),
   };
 }
