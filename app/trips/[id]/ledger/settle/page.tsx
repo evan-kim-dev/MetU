@@ -343,6 +343,12 @@ export default function LedgerSettlePage() {
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 py-6">
+      <Link
+        href={`/trips/${tripId}/ledger`}
+        className="text-xs font-bold text-brand"
+      >
+        ← 정산 여정
+      </Link>
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold">정산</h1>
         <Link
