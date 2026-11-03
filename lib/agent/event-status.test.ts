@@ -14,7 +14,7 @@ describe("agentEventStatusLabel", () => {
   it("maps known statuses", () => {
     expect(agentEventStatusLabel("unassigned")).toBe("여행 없음·보관됨");
     expect(agentEventStatusLabel("done")).toBe("가계부 저장됨");
-    expect(agentEventStatusLabel("ignored")).toBe("무시됨");
+    expect(agentEventStatusLabel("ignored")).toBe("나중에");
   });
 
   it("falls back to raw status", () => {
@@ -32,7 +32,7 @@ describe("agentEventStatusLabelForUi", () => {
   it("non-test uses status map", () => {
     expect(
       agentEventStatusLabelForUi({ status: "ignored", isTest: false })
-    ).toBe("무시됨");
+    ).toBe("나중에");
   });
 });
 

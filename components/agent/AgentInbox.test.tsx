@@ -34,6 +34,22 @@ vi.mock("@/components/trips/QuickTripSheet", () => ({
     open: boolean;
   }) => (open ? <div data-testid="quick-trip-sheet" /> : null),
 }));
+vi.mock("@/components/ds/Sheet", () => ({
+  Sheet: ({
+    open,
+    title,
+    children,
+  }: {
+    open: boolean;
+    title?: string;
+    children: React.ReactNode;
+  }) =>
+    open ? (
+      <div data-testid="edit-sheet" role="dialog" aria-label={title}>
+        {children}
+      </div>
+    ) : null,
+}));
 vi.mock("@/components/layout/MobileShell", () => ({
   MobileShell: ({
     title,
@@ -607,6 +623,100 @@ describe("AgentInbox", () => {
       );
       render(<AgentInbox />);
       expect(await screen.findByText("비슷한 지출이 이미 있어요")).toBeTruthy();
+    });
+  });
+
+  describe("수정·삭제", () => {
+    function setupReview() {
+      useAuth.mockReturnValue({
+        user: { id: "u1" },
+        provider: "kakao",
+        isReady: true,
+        isLoggedIn: true,
+      });
+      fromMock.mockReturnValue(
+        chainQuery({
+          data: [
+            {
+              id: "11111111-1111-4111-8111-111111111111",
+              trip_id: "t1",
+              source: "sms",
+              kind: "sms",
+              status: "needs_review",
+              payload: { text: "스타벅스 4500원" },
+              result: {
+                items: [
+                  {
+                    decision: "review",
+                    draft: {
+                      merchant: "스타벅스",
+                      amount: 4500,
+                      currency: "KRW",
+                      spentOn: "2026-07-21",
+                    },
+                  },
+                ],
+              },
+              error: null,
+              created_at: "2026-07-21T03:00:00Z",
+              processed_at: null,
+            },
+          ],
+          error: null,
+        })
+      );
+      getBrowserSupabase.mockReturnValue({
+        from: fromMock,
+        channel: () => {
+          const ch = { on: () => ch, subscribe: () => ch };
+          return ch;
+        },
+        removeChannel: vi.fn(),
+      });
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ ok: true }),
+      }));
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("수정 시트를 열고 저장하면 edit API 를 호출해요", async () => {
+      const fetchMock = setupReview();
+      render(<AgentInbox />);
+      expect(await screen.findByRole("button", { name: "나중에" })).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "수정" }));
+      expect(screen.getByTestId("edit-sheet")).toBeTruthy();
+      expect(screen.getByDisplayValue("스타벅스 4500원")).toBeTruthy();
+      expect(screen.getByDisplayValue("스타벅스")).toBeTruthy();
+      expect(screen.getByDisplayValue("2026-07-21")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "저장" }));
+      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      const call = fetchMock.mock.calls.find((c) =>
+        String(c[0]).includes("/edit")
+      );
+      expect(call).toBeTruthy();
+      expect(JSON.parse((call![1] as RequestInit).body as string)).toMatchObject({
+        text: "스타벅스 4500원",
+        draft: { merchant: "스타벅스", amount: 4500, currency: "KRW" },
+      });
+    });
+
+    it("삭제 확인 후 delete API 를 호출해요", async () => {
+      const fetchMock = setupReview();
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+      render(<AgentInbox />);
+      fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      expect(confirmSpy).toHaveBeenCalled();
+      expect(
+        fetchMock.mock.calls.some((c) => String(c[0]).includes("/delete"))
+      ).toBe(true);
+      confirmSpy.mockRestore();
     });
   });
 });

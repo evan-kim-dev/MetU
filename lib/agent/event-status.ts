@@ -29,7 +29,7 @@ export const AGENT_EVENT_STATUS_LABELS: Record<string, string> = {
   processing: "처리 중",
   done: "가계부 저장됨",
   needs_review: "확인 필요",
-  ignored: "무시됨",
+  ignored: "나중에",
   failed: "실패",
   unassigned: "여행 없음·보관됨",
 };
