@@ -1,13 +1,17 @@
 "use client";
 
 import { Check, Copy, Link2, Share2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TripMember } from "@/lib/ledger/types";
+import { renderQrSvg, svgToDataUri } from "@/lib/onboarding/qr-svg";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
-/** create_trip_invite 기본값(마이그레이션 20261029140000)과 문구를 맞춘다. */
-const DEFAULT_TTL_HOURS = 72;
-const DEFAULT_MAX_USES = 10;
+/** K10 데모 기본: 24시간 · 4명 (RPC 허용 범위 안). */
+const DEFAULT_TTL_HOURS = 24;
+const DEFAULT_MAX_USES = 4;
+
+const TTL_OPTIONS = [6, 24, 72] as const;
+const MAX_USE_OPTIONS = [2, 4, 10] as const;
 
 const ALL_KEY = "__all__";
 
@@ -23,10 +27,8 @@ function inviteUrl(token: string): string {
 }
 
 /**
- * 동행자 초대 링크 만들기 (소유자 전용).
- * - 일반 초대: 링크로 들어온 사람이 이름을 고르거나 새로 정해요.
- * - 이름만 있는 멤버(아직 계정이 없는 사람)는 그 사람 몫으로 지정한 1회용 링크를 따로 만들어요.
- * 링크(토큰)는 이 화면의 상태에만 두고 로그/분석에는 남기지 않아요.
+ * 동행자 초대 링크·QR (소유자 전용).
+ * 토큰/QR 값은 화면 상태에만 두고 로그·분석·에러 메시지에 남기지 않아요.
  */
 export function TripInvitePanel({
   tripId,
@@ -34,9 +36,36 @@ export function TripInvitePanel({
   canInvite,
 }: TripInvitePanelProps) {
   const [links, setLinks] = useState<Record<string, string>>({});
+  const [qrByKey, setQrByKey] = useState<Record<string, string>>({});
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [ttlHours, setTtlHours] = useState<number>(DEFAULT_TTL_HOURS);
+  const [maxUses, setMaxUses] = useState<number>(DEFAULT_MAX_USES);
+
+  useEffect(() => {
+    let cancelled = false;
+    const entries = Object.entries(links);
+    if (entries.length === 0) return;
+    void (async () => {
+      for (const [key, url] of entries) {
+        if (qrByKey[key]) continue;
+        try {
+          const svg = await renderQrSvg(url);
+          if (cancelled) return;
+          setQrByKey((prev) => ({ ...prev, [key]: svgToDataUri(svg) }));
+        } catch (e) {
+          console.error(
+            "[invite] qr",
+            e instanceof Error ? e.message : "qr-failed"
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [links, qrByKey]);
 
   if (!canInvite) return null;
 
@@ -59,16 +88,29 @@ export function TripInvitePanel({
           ? {
               p_trip_id: tripId,
               p_claim_member_id: claimMemberId,
+              p_ttl_hours: ttlHours,
               p_max_uses: 1,
             }
-          : { p_trip_id: tripId }
+          : {
+              p_trip_id: tripId,
+              p_ttl_hours: ttlHours,
+              p_max_uses: maxUses,
+            }
       );
       if (rpcError || typeof data !== "string" || data.length === 0) {
-        console.error("[invite] create_trip_invite", rpcError?.message ?? "empty");
+        console.error(
+          "[invite] create_trip_invite",
+          rpcError?.message ?? "empty"
+        );
         setError("초대 링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
         return;
       }
       setLinks((prev) => ({ ...prev, [key]: inviteUrl(data) }));
+      setQrByKey((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
     } finally {
       setBusyKey(null);
     }
@@ -106,8 +148,22 @@ export function TripInvitePanel({
     const url = links[key];
     if (!url) return null;
     const canNativeShare = typeof navigator.share === "function";
+    const qr = qrByKey[key];
     return (
       <div className="mt-2 flex flex-col gap-2">
+        {qr ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={qr}
+            alt={`${who} 초대 QR`}
+            className="mx-auto h-40 w-40 rounded-xl border border-line-muted bg-surface-white p-2"
+          />
+        ) : (
+          <div
+            className="mx-auto h-40 w-40 animate-pulse rounded-xl bg-surface-white"
+            aria-hidden
+          />
+        )}
         <input
           readOnly
           aria-label={`${who} 초대 링크`}
@@ -122,9 +178,9 @@ export function TripInvitePanel({
             className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-brand px-3 text-xs font-bold text-surface-white"
           >
             {copiedKey === key ? (
-              <Check className="h-4 w-4" />
+              <Check className="h-4 w-4" aria-hidden />
             ) : (
-              <Copy className="h-4 w-4" />
+              <Copy className="h-4 w-4" aria-hidden />
             )}
             {copiedKey === key ? "복사했어요" : "링크 복사"}
           </button>
@@ -134,7 +190,7 @@ export function TripInvitePanel({
               onClick={() => void shareLink(key, who)}
               className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-brand px-3 text-xs font-bold text-brand"
             >
-              <Share2 className="h-4 w-4" />
+              <Share2 className="h-4 w-4" aria-hidden />
               공유하기
             </button>
           ) : null}
@@ -151,8 +207,39 @@ export function TripInvitePanel({
       <div>
         <p className="text-sm font-extrabold text-ink-heading">동행자 초대</p>
         <p className="mt-0.5 text-xs text-ink-caption">
-          링크를 받은 동행자가 로그인하면 이 여행과 가계부를 함께 볼 수 있어요.
+          QR을 보여 주거나 링크를 보내면, 가입 없이 이름만으로 합류할 수 있어요.
         </p>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <label className="flex flex-col gap-1 text-xs font-semibold text-ink-caption">
+          유효 시간
+          <select
+            className="min-h-tap rounded-xl border border-line-muted bg-surface-white px-2 text-sm text-ink-body"
+            value={ttlHours}
+            onChange={(e) => setTtlHours(Number(e.target.value))}
+          >
+            {TTL_OPTIONS.map((h) => (
+              <option key={h} value={h}>
+                {h}시간
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-semibold text-ink-caption">
+          최대 인원
+          <select
+            className="min-h-tap rounded-xl border border-line-muted bg-surface-white px-2 text-sm text-ink-body"
+            value={maxUses}
+            onChange={(e) => setMaxUses(Number(e.target.value))}
+          >
+            {MAX_USE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}명
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div>
@@ -162,7 +249,7 @@ export function TripInvitePanel({
           onClick={() => void createInvite(ALL_KEY)}
           className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-brand px-4 text-sm font-bold text-surface-white disabled:opacity-60"
         >
-          <Link2 className="h-4 w-4" />
+          <Link2 className="h-4 w-4" aria-hidden />
           {busyKey === ALL_KEY
             ? "만드는 중…"
             : links[ALL_KEY]
@@ -172,9 +259,8 @@ export function TripInvitePanel({
         {links[ALL_KEY] ? (
           <>
             {renderLink(ALL_KEY, "동행자")}
-            <p className="mt-2 text-[11px] text-ink-muted">
-              이 링크는 {DEFAULT_TTL_HOURS}시간 동안, 최대 {DEFAULT_MAX_USES}명까지
-              쓸 수 있어요.
+            <p className="mt-2 text-xs text-ink-muted">
+              이 링크는 {ttlHours}시간 동안, 최대 {maxUses}명까지 쓸 수 있어요.
             </p>
           </>
         ) : null}
@@ -201,8 +287,8 @@ export function TripInvitePanel({
                 {links[m.id] ? (
                   <>
                     {renderLink(m.id, m.displayName)}
-                    <p className="mt-2 text-[11px] text-ink-muted">
-                      이 링크는 {DEFAULT_TTL_HOURS}시간 동안, 1번만 쓸 수 있어요.
+                    <p className="mt-2 text-xs text-ink-muted">
+                      이 링크는 {ttlHours}시간 동안, 1번만 쓸 수 있어요.
                     </p>
                   </>
                 ) : null}

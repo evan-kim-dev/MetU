@@ -49,9 +49,10 @@ describe("AuthGate public paths", () => {
     expect(replace).toHaveBeenCalledWith("/login?next=%2Ftrips");
   });
 
-  it("keeps /join/<token> behind login and returns to it afterwards", () => {
+  it("opens /join/<token> without login (익명 합류)", () => {
     renderAt("/join/tok123");
-    expect(replace).toHaveBeenCalledWith("/login?next=%2Fjoin%2Ftok123");
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByText("content")).toBeTruthy();
   });
 
   it("renders /about for logged-in users too", () => {

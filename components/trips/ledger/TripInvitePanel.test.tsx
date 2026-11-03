@@ -17,6 +17,10 @@ const writeText = vi.fn();
 vi.mock("@/lib/supabase/browser", () => ({
   getBrowserSupabase: () => ({ rpc: (...a: unknown[]) => rpc(...a) }),
 }));
+vi.mock("@/lib/onboarding/qr-svg", () => ({
+  renderQrSvg: vi.fn(async () => "<svg />"),
+  svgToDataUri: (s: string) => `data:image/svg+xml,${s}`,
+}));
 
 import { TripInvitePanel } from "@/components/trips/ledger/TripInvitePanel";
 
@@ -65,11 +69,15 @@ describe("TripInvitePanel", () => {
     fireEvent.click(btn);
 
     await waitFor(() =>
-      expect(rpc).toHaveBeenCalledWith("create_trip_invite", { p_trip_id: TRIP })
+      expect(rpc).toHaveBeenCalledWith("create_trip_invite", {
+        p_trip_id: TRIP,
+        p_ttl_hours: 24,
+        p_max_uses: 4,
+      })
     );
     const input = (await screen.findByLabelText("동행자 초대 링크")) as HTMLInputElement;
     expect(input.value).toBe(`${window.location.origin}/join/tokentoken123`);
-    expect(screen.getByText(/72시간 동안, 최대 10명까지/)).toBeTruthy();
+    expect(screen.getByText(/24시간 동안, 최대 4명까지/)).toBeTruthy();
     // navigator.share 가 없으면 공유 버튼은 없다
     expect(screen.queryByRole("button", { name: "공유하기" })).toBeNull();
 
@@ -111,12 +119,13 @@ describe("TripInvitePanel", () => {
       expect(rpc).toHaveBeenCalledWith("create_trip_invite", {
         p_trip_id: TRIP,
         p_claim_member_id: "m-name-only",
+        p_ttl_hours: 24,
         p_max_uses: 1,
       })
     );
     const input = (await screen.findByLabelText("철수 초대 링크")) as HTMLInputElement;
     expect(input.value).toBe(`${window.location.origin}/join/claimtoken`);
-    expect(screen.getByText(/72시간 동안, 1번만/)).toBeTruthy();
+    expect(screen.getByText(/24시간 동안, 1번만/)).toBeTruthy();
   });
 
   it("RPC 가 실패하면 한국어 오류만 보이고 원인은 로그에만 남긴다 (토큰 로그 없음)", async () => {
