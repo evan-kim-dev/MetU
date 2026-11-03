@@ -7,6 +7,7 @@ import { AmountCard } from "@/components/ds/AmountCard";
 import { BottomCTA } from "@/components/ds/BottomCTA";
 import { ProgressRing } from "@/components/ds/ProgressRing";
 import { FxAttribution } from "@/components/fx/FxAttribution";
+import { MyShareCard } from "@/components/ledger/MyShareCard";
 import { SettleExplainSheet } from "@/components/ledger/SettleExplainSheet";
 import { SettlementHistory } from "@/components/ledger/SettlementHistory";
 import { SplitPatchBox } from "@/components/ledger/SplitPatchBox";
@@ -14,6 +15,7 @@ import { useSettleReference } from "@/components/ledger/useSettleReference";
 import { useClipboardCopy } from "@/components/onboarding/connect/useClipboardCopy";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { explainSettlement } from "@/lib/ledger/explain";
+import { resolveMyShare } from "@/lib/ledger/my-share";
 import {
   basisHash,
   computeBalances,
@@ -346,10 +348,16 @@ export default function LedgerSettlePage() {
   /** UI 숨김. 정산 생성은 서버 RPC·RLS가 최종 방어. */
   const canCreateSettlement = isOwner && !isAnonymous;
   const totalKrw = expenses.reduce((s, e) => s + e.krwAmount, 0);
-  const myBalance = me ? (balances[me.id] ?? 0) : 0;
-  const myShareTone =
-    myBalance > 0 ? "ok" : myBalance < 0 ? "accent" : "neutral";
+  const myBalance = me ? (balances[me.id] ?? 0) : null;
+  const myShare = resolveMyShare({
+    liveBalance: myBalance,
+    hasSettlement: Boolean(settlement),
+    stale,
+  });
   const paidCount = transfers.filter((t) => t.status === "paid").length;
+  const myOutgoingUnpaid = transfers.filter(
+    (t) => me && t.from === me.id && t.status !== "paid"
+  );
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 py-6 pb-28">
@@ -376,20 +384,62 @@ export default function LedgerSettlePage() {
       ) : null}
 
       {loaded ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-3">
+          {me ? (
+            <MyShareCard
+              view={myShare}
+              action={
+                <button
+                  type="button"
+                  className="min-h-[44px] text-xs font-bold text-brand"
+                  onClick={() => setExplainOpen(true)}
+                >
+                  왜 이 금액?
+                </button>
+              }
+              payActions={
+                myShare.showPayActions && myOutgoingUnpaid.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {myOutgoingUnpaid.map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex flex-wrap items-center gap-2 rounded-xl border border-mu-line bg-mu-card p-3"
+                      >
+                        <p className="w-full text-xs font-bold text-ink-heading">
+                          {nameOf(t.to)}에게 {formatKRW(t.krw)}
+                        </p>
+                        {PAY_APPS.map((app) => (
+                          <button
+                            key={app.id}
+                            type="button"
+                            className="min-h-[44px] rounded-lg border border-brand px-3 text-xs font-bold text-brand"
+                            onClick={() => openPayApp(app, t.krw)}
+                          >
+                            {app.label} 열기
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className="min-h-[44px] min-w-[44px] px-2 text-xs font-bold text-brand"
+                          onClick={() => void markPaid(t.id)}
+                        >
+                          송금 완료
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : undefined
+              }
+            />
+          ) : (
+            <AmountCard
+              label="내 몫"
+              amount={0}
+              tone="neutral"
+              sub="멤버로 합류하면 내 몫이 보여요"
+            />
+          )}
           <AmountCard label="총액" amount={totalKrw} tone="neutral" />
-          <AmountCard
-            label={
-              myBalance > 0
-                ? "받을 돈"
-                : myBalance < 0
-                  ? "보낼 돈"
-                  : "내 몫"
-            }
-            amount={Math.abs(myBalance)}
-            tone={myShareTone}
-            sub={me ? undefined : "멤버로 합류하면 내 몫이 보여요"}
-          />
         </div>
       ) : null}
 
