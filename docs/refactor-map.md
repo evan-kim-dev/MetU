@@ -13,7 +13,7 @@
 | V0 | `chore/baseline-audit` | 완료(PR #72) | #72 | docs/audit/baseline-2026-11.md · 차단 3건 |
 | V0a | `fix/guest-journey-blockers` | 완료(PR #73) | #73 | V0 차단 X2·X3 + I1 해결 |
 | V0b | `fix/guest-claim-trigger` | 완료(PR #74) | #74 | V0 차단 X1 + I3 — DB 적용 대기(Evan) |
-| B1 | `chore/dead-code-symbols` | 대기 |  |  |
+| B1 | `chore/dead-code-symbols` | 완료(PR #75) | #75 | 죽은 심볼 삭제 · export 174개 제거 · upstream 삭제 |
 | B2 | `chore/dead-routes-env-docs` | 대기 |  |  |
 | B3 | `docs/db-orphans-report` | 대기 |  |  |
 | U1 | `feat/ux-step-connect-invite` | 대기 |  |  |
@@ -215,7 +215,7 @@
 | `components/agent/ledger-home/useLedgerHomeData.ts` | D2 | 대기 |
 | `components/agent/ledger-home/useSelectedTrip.ts` | D2 | 대기 |
 | `components/auth/AuthGate.tsx` | D7 | 대기 |
-| `components/auth/AuthGateOverlay.tsx` | D7 | 대기 |
+| `components/auth/AuthGateOverlay.tsx` | D7 | 정리(B1, 2026-11-03, PR #75) |
 | `components/auth/AuthMessage.tsx` | D7 | 대기 |
 | `components/auth/EmailAuthForm.tsx` | D7 | 대기 |
 | `components/auth/LoginContent.tsx` | D7 | 대기 |
@@ -293,8 +293,8 @@
 | `components/ledger/journey/guest/GuestDone.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ledger/journey/guest/GuestPay.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
 | `components/ledger/journey/guest/GuestShare.tsx` | U6 · U10 | 검증(V0, 2026-11-03, PR #72) |
-| `components/ledger/split-preview-types.ts` | U2 | 대기 |
-| `components/ledger/useSettleReference.ts` | U2 | 대기 |
+| `components/ledger/split-preview-types.ts` | U2 | 정리(B1, 2026-11-03, PR #75) |
+| `components/ledger/useSettleReference.ts` | U2 | 정리(B1, 2026-11-03, PR #75) |
 | `components/map/GoogleTripMap.tsx` | D4 | 대기 |
 | `components/map/KakaoTripMap.tsx` | D4 | 대기 |
 | `components/map/PinBadge.tsx` | D4 | 대기 |
@@ -333,7 +333,7 @@
 | `components/onboarding/guide/GuideProgress.tsx` | U8 | 대기 |
 | `components/onboarding/guide/GuideStepCard.tsx` | U8 | 대기 |
 | `components/onboarding/guide/PlatformTabs.tsx` | U8 | 대기 |
-| `components/onboarding/guide/ShortcutGuide.tsx` | U8 | 대기 |
+| `components/onboarding/guide/ShortcutGuide.tsx` | U8 | 정리(B1, 2026-11-03, PR #75) |
 | `components/onboarding/types.ts` | U8 | 대기 |
 | `components/profile/ProfileContent.tsx` | D7 | 대기 |
 | `components/profile/PublicProfileContent.tsx` | D7 | 대기 |
@@ -346,11 +346,11 @@
 | `components/recommend/planToTrip.ts` | U9 · D7 | 대기 |
 | `components/recommend/usePlanQuotes.ts` | U9 · D7 | 대기 |
 | `components/trips/ItineraryChatBar.tsx` | U9 | 대기 |
-| `components/trips/QuickTripSheet.tsx` | U9 | 대기 |
+| `components/trips/QuickTripSheet.tsx` | U9 | 정리(B1, 2026-11-03, PR #75) |
 | `components/trips/SharedTripContent.tsx` | U9 | 대기 |
 | `components/trips/SortableDayList.tsx` | U9 | 대기 |
 | `components/trips/TripDetailContent.tsx` | U9 | 대기 |
-| `components/trips/TripDetailParts.tsx` | U9 | 대기 |
+| `components/trips/TripDetailParts.tsx` | U9 | 정리(B1, 2026-11-03, PR #75) |
 | `components/trips/TripListCard.tsx` | U9 | 대기 |
 | `components/trips/TripMapPanel.tsx` | U9 | 대기 |
 | `components/trips/TripsPageContent.tsx` | U9 | 대기 |
@@ -363,7 +363,7 @@
 | `components/trips/ledger/MemberManager.tsx` | U9 | 대기 |
 | `components/trips/ledger/NaturalExpenseInput.tsx` | U9 | 대기 |
 | `components/trips/ledger/TripInvitePanel.tsx` | U9 | 대기 |
-| `components/trips/useTripDetailEditor.ts` | U9 | 대기 |
+| `components/trips/useTripDetailEditor.ts` | U9 | 정리(B1, 2026-11-03, PR #75) |
 | `components/ui/AIInsightBadge.tsx` | D1 | 대기 |
 | `components/ui/AILoadingPanel.tsx` | D1 | 대기 |
 | `components/ui/BottomNav.tsx` | D1 | 대기 |
@@ -374,9 +374,9 @@
 | `components/ui/DateField.tsx` | D1 | 대기 |
 | `components/ui/DestinationImage.tsx` | D1 | 대기 |
 | `components/ui/EasterEggCelebration.tsx` | D1 | 대기 |
-| `components/ui/EasterEggToast.tsx` | D1 | 대기 |
+| `components/ui/EasterEggToast.tsx` | D1 | 정리(B1, 2026-11-03, PR #75) |
 | `components/ui/HorizontalScroller.tsx` | D1 | 대기 |
-| `components/ui/MetULogo.tsx` | D1 | 대기 |
+| `components/ui/MetULogo.tsx` | D1 | 정리(B1, 2026-11-03, PR #75) |
 | `components/ui/OfflineBanner.tsx` | D1 | 대기 |
 | `components/ui/PageSkeleton.tsx` | D1 | 대기 |
 | `components/ui/PetCursorFollower.tsx` | D1 | 대기 |
@@ -402,10 +402,10 @@
 | `lib/agent/body-limit.ts` | V0 | 대기 |
 | `lib/agent/domain-followup.ts` | V0 | 대기 |
 | `lib/agent/event-access.ts` | V0 | 대기 |
-| `lib/agent/event-status.ts` | V0 | 대기 |
+| `lib/agent/event-status.ts` | V0 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/agent/extract-text.ts` | V0 | 대기 |
-| `lib/agent/handlers/settlement-plan.ts` | V0 | 대기 |
-| `lib/agent/handlers/settlement.ts` | V0 | 대기 |
+| `lib/agent/handlers/settlement-plan.ts` | V0 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/agent/handlers/settlement.ts` | V0 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/agent/image-magic.ts` | V0 | 대기 |
 | `lib/agent/ingest-notification.ts` | V0 | 대기 |
 | `lib/agent/ingest-pipeline.ts` | V0 | 대기 |
@@ -413,19 +413,19 @@
 | `lib/agent/ingest.ts` | V0 | 대기 |
 | `lib/agent/membership.ts` | V0 | 대기 |
 | `lib/agent/notify.ts` | V0 | 대기 |
-| `lib/agent/policy.ts` | V0 | 대기 |
-| `lib/agent/receipt-vision.ts` | V0 | 대기 |
+| `lib/agent/policy.ts` | V0 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/agent/receipt-vision.ts` | V0 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/agent/run.ts` | V0 | 대기 |
 | `lib/agent/sms-text.ts` | V0 | 대기 |
-| `lib/agent/tokens.ts` | V0 | 대기 |
+| `lib/agent/tokens.ts` | V0 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ai/budget-insight-record.ts` | B1 | 대기 |
 | `lib/ai/budget-insight.ts` | B1 | 대기 |
-| `lib/ai/budget-reality-check.ts` | B1 | 대기 |
-| `lib/ai/chat-client.ts` | B1 | 대기 |
-| `lib/ai/contracts.ts` | B1 | 대기 |
+| `lib/ai/budget-reality-check.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/ai/chat-client.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/ai/contracts.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ai/destination-knowledge.ts` | B1 | 대기 |
 | `lib/ai/destination-pois.ts` | B1 | 대기 |
-| `lib/ai/gemini.ts` | B1 | 대기 |
+| `lib/ai/gemini.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ai/generate-itinerary.ts` | B1 | 대기 |
 | `lib/ai/generate-plan.ts` | B1 | 대기 |
 | `lib/ai/insight/index.ts` | B1 | 대기 |
@@ -435,15 +435,15 @@
 | `lib/ai/plan-easter-egg.ts` | B1 | 대기 |
 | `lib/ai/prompts/insight-prompts.ts` | B1 | 대기 |
 | `lib/ai/prompts/shared.ts` | B1 | 대기 |
-| `lib/ai/realloc-budget.ts` | B1 | 대기 |
-| `lib/ai/receipt-schema.ts` | B1 | 대기 |
+| `lib/ai/realloc-budget.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/ai/receipt-schema.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ai/schedule-insight.ts` | B1 | 대기 |
-| `lib/ai/stream-chat.ts` | B1 | 대기 |
+| `lib/ai/stream-chat.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ai/trip-tips.ts` | B1 | 대기 |
-| `lib/ai/types.ts` | B1 | 대기 |
-| `lib/ai/usage.ts` | B1 | 대기 |
+| `lib/ai/types.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/ai/usage.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ai/weather-insight.ts` | B1 | 대기 |
-| `lib/airports/data.ts` | B1 | 대기 |
+| `lib/airports/data.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/api/fetch-json.ts` | B2 | 대기 |
 | `lib/api/respond.ts` | B2 | 대기 |
 | `lib/auth/AuthProvider.tsx` | O6 | 검증(V0, 2026-11-03, PR #72) |
@@ -451,87 +451,87 @@
 | `lib/auth/community-access.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
 | `lib/auth/guest-cookie.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
 | `lib/auth/guest-session.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
-| `lib/auth/kakao.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
-| `lib/auth/login-methods.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/kakao.ts` | O6 | 검증(V0, 2026-11-03, PR #72) · 정리(B1, 2026-11-03, PR #75) |
+| `lib/auth/login-methods.ts` | O6 | 검증(V0, 2026-11-03, PR #72) · 정리(B1, 2026-11-03, PR #75) |
 | `lib/auth/post-login-path.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
 | `lib/auth/route-access.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
-| `lib/auth/types.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/auth/types.ts` | O6 | 검증(V0, 2026-11-03, PR #72) · 정리(B1, 2026-11-03, PR #75) |
 | `lib/checklist/categories.ts` | B2 | 대기 |
 | `lib/checklist/country-docs.ts` | B2 | 대기 |
 | `lib/checklist/docs-ai.ts` | B2 | 대기 |
 | `lib/checklist/docs-storage.ts` | B2 | 대기 |
-| `lib/checklist/docs-upload.ts` | B2 | 대기 |
+| `lib/checklist/docs-upload.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/checklist/legacy-cleanup.ts` | B2 | 대기 |
 | `lib/checklist/resolve-docs-country.ts` | B2 | 대기 |
-| `lib/checklist/types.ts` | B2 | 대기 |
+| `lib/checklist/types.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/checklist/useChecklistItems.ts` | B2 | 대기 |
-| `lib/community/CommunityProvider.tsx` | D6 | 대기 |
-| `lib/community/author.ts` | D6 | 대기 |
-| `lib/community/chat-attachments.ts` | D6 | 대기 |
+| `lib/community/CommunityProvider.tsx` | D6 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/community/author.ts` | D6 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/community/chat-attachments.ts` | D6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/community/chat-notice.ts` | D6 | 대기 |
 | `lib/community/chat-storage.ts` | D6 | 대기 |
 | `lib/community/chat-supabase.ts` | D6 | 대기 |
 | `lib/community/counts.ts` | D6 | 대기 |
 | `lib/community/format.ts` | D6 | 대기 |
-| `lib/community/notifications-supabase.ts` | D6 | 대기 |
-| `lib/community/post-images.ts` | D6 | 대기 |
+| `lib/community/notifications-supabase.ts` | D6 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/community/post-images.ts` | D6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/community/storage.ts` | D6 | 대기 |
 | `lib/community/supabase.ts` | D6 | 대기 |
 | `lib/community/types.ts` | D6 | 대기 |
 | `lib/community/useChatRoomSummaries.ts` | D6 | 대기 |
-| `lib/community/useCommunityFeed.ts` | D6 | 대기 |
+| `lib/community/useCommunityFeed.ts` | D6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/community/useCommunityPartyActions.ts` | D6 | 대기 |
 | `lib/constants/index.ts` | Q0 | 대기 |
 | `lib/db/migration-columns.ts` | Q0 | 대기 |
 | `lib/deals/data.ts` | B1 | 대기 |
-| `lib/deals/recommend-deals.ts` | B1 | 대기 |
+| `lib/deals/recommend-deals.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/demo/ingest-table.ts` | Q1 | 대기 |
 | `lib/demo/mode.ts` | Q1 | 대기 |
-| `lib/demo/scenario.ts` | Q1 | 대기 |
-| `lib/design/tokens.ts` | D0 | 검증(V0, 2026-11-03, PR #72) |
-| `lib/dm/dm-attachments.ts` | D6 | 대기 |
-| `lib/dm/dm-supabase.ts` | D6 | 대기 |
+| `lib/demo/scenario.ts` | Q1 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/design/tokens.ts` | D0 | 검증(V0, 2026-11-03, PR #72) · 정리(B1, 2026-11-03, PR #75) |
+| `lib/dm/dm-attachments.ts` | D6 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/dm/dm-supabase.ts` | D6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/easter/kangwon-univ.ts` | B1 | 대기 |
-| `lib/easter/pet-buddy.ts` | B1 | 대기 |
+| `lib/easter/pet-buddy.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/env.ts` | Q0 | 대기 |
-| `lib/errors/user-message.ts` | U10 | 대기 |
-| `lib/flights/agoda-url.ts` | B1 | 대기 |
+| `lib/errors/user-message.ts` | U10 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/flights/agoda-url.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/flights/google-flights-url.ts` | B1 | 대기 |
 | `lib/flights/naver-flights-url.ts` | B1 | 대기 |
 | `lib/flights/plan-flight-quote.ts` | B1 | 대기 |
 | `lib/format/relative-time.ts` | U10 | 대기 |
 | `lib/friends/FriendsProvider.tsx` | D6 | 대기 |
-| `lib/friends/supabase.ts` | D6 | 대기 |
-| `lib/fx/currencies.ts` | F1 | 대기 |
-| `lib/fx/currency-list.ts` | F1 | 대기 |
-| `lib/fx/resolve-trip-currency.ts` | F1 | 대기 |
-| `lib/fx/server.ts` | F1 | 대기 |
+| `lib/friends/supabase.ts` | D6 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/fx/currencies.ts` | F1 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/fx/currency-list.ts` | F1 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/fx/resolve-trip-currency.ts` | F1 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/fx/server.ts` | F1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/fx/useFxTarget.ts` | F1 | 대기 |
-| `lib/geo/region.ts` | Q0 | 대기 |
+| `lib/geo/region.ts` | Q0 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/hooks/useAutomationStatus.ts` | U10 | 대기 |
 | `lib/hooks/useOnlineStatus.ts` | U10 | 대기 |
 | `lib/hotels/affiliate.ts` | B1 | 대기 |
 | `lib/hotels/agoda-cities.ts` | B1 | 대기 |
 | `lib/hotels/agoda-url.ts` | B1 | 대기 |
-| `lib/hotels/destinations.ts` | B1 | 대기 |
+| `lib/hotels/destinations.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/hotels/plan-hotel-quote.ts` | B1 | 대기 |
 | `lib/itinerary/apply-patch.ts` | U9 | 대기 |
-| `lib/ledger/dcc.ts` | U1~U6 | 대기 |
-| `lib/ledger/dedupe.ts` | U1~U6 | 대기 |
+| `lib/ledger/dcc.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/ledger/dedupe.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/draft.ts` | U1~U6 | 대기 |
 | `lib/ledger/exif.ts` | U1~U6 | 대기 |
-| `lib/ledger/explain.ts` | U1~U6 | 대기 |
+| `lib/ledger/explain.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/fee-leak.ts` | U1~U6 | 대기 |
-| `lib/ledger/fx-display.ts` | U1~U6 | 대기 |
-| `lib/ledger/fx-merge.ts` | U1~U6 | 대기 |
+| `lib/ledger/fx-display.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/ledger/fx-merge.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/fx-server.ts` | U1~U6 | 대기 |
 | `lib/ledger/fx.ts` | U1~U6 | 대기 |
-| `lib/ledger/image-limits.ts` | U1~U6 | 대기 |
+| `lib/ledger/image-limits.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/image.ts` | U1~U6 | 대기 |
-| `lib/ledger/journey-state.ts` | U1~U6 | 검증(V0, 2026-11-03, PR #72) · 수정(V0a, 2026-11-03, PR #73) |
-| `lib/ledger/jp-tax-refund.ts` | U1~U6 | 대기 |
+| `lib/ledger/journey-state.ts` | U1~U6 | 검증(V0, 2026-11-03, PR #72) · 수정(V0a, 2026-11-03, PR #73) · 정리(B1, 2026-11-03, PR #75) |
+| `lib/ledger/jp-tax-refund.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/money.ts` | U1~U6 | 대기 |
-| `lib/ledger/my-share.ts` | U1~U6 | 대기 |
+| `lib/ledger/my-share.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/notif/apps.ts` | U1~U6 | 대기 |
 | `lib/ledger/pay-links.ts` | U1~U6 | 대기 |
 | `lib/ledger/proposals-client.ts` | U1~U6 | 대기 |
@@ -539,21 +539,21 @@
 | `lib/ledger/recap.ts` | U1~U6 | 대기 |
 | `lib/ledger/receipt-client.ts` | U1~U6 | 대기 |
 | `lib/ledger/receipt-event.ts` | U1~U6 | 대기 |
-| `lib/ledger/receipt-postprocess.ts` | U1~U6 | 대기 |
-| `lib/ledger/settle-currency.ts` | U1~U6 | 대기 |
+| `lib/ledger/receipt-postprocess.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/ledger/settle-currency.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/settle-share.ts` | U1~U6 | 대기 |
 | `lib/ledger/settle.ts` | U1~U6 | 대기 |
-| `lib/ledger/share-inbox.ts` | U1~U6 | 대기 |
+| `lib/ledger/share-inbox.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/shared-settlement.ts` | U1~U6 | 대기 |
 | `lib/ledger/sms/__fixtures__/sms.ts` | U1~U6 | 대기 |
 | `lib/ledger/sms/parse.ts` | U1~U6 | 대기 |
 | `lib/ledger/spend-by-place.ts` | U1~U6 | 대기 |
-| `lib/ledger/split-patch-server.ts` | U1~U6 | 대기 |
-| `lib/ledger/split-patch.ts` | U1~U6 | 검증(V0, 2026-11-03, PR #72) |
+| `lib/ledger/split-patch-server.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/ledger/split-patch.ts` | U1~U6 | 검증(V0, 2026-11-03, PR #72) · 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/stats.ts` | U1~U6 | 대기 |
-| `lib/ledger/supabase.ts` | U1~U6 | 대기 |
+| `lib/ledger/supabase.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/trip-dates.ts` | U1~U6 | 대기 |
-| `lib/ledger/types.ts` | U1~U6 | 대기 |
+| `lib/ledger/types.ts` | U1~U6 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/ledger/useLedger.ts` | U1~U6 | 대기 |
 | `lib/legal/documents.ts` | Q0 (D1) | 대기 |
 | `lib/map/day-colors.ts` | Q0 (D4) | 대기 |
@@ -562,64 +562,64 @@
 | `lib/mock/community.ts` | B1 | 대기 |
 | `lib/mock/home.ts` | B1 | 대기 |
 | `lib/mock/loaders.ts` | B1 | 대기 |
-| `lib/mock/profile.ts` | B1 | 대기 |
-| `lib/navigation/useGoBack.ts` | Q0 (U7) | 대기 |
+| `lib/mock/profile.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/navigation/useGoBack.ts` | Q0 (U7) | 정리(B1, 2026-11-03, PR #75) |
 | `lib/onboarding/agent-context.ts` | U8 | 대기 |
 | `lib/onboarding/automation-ui-state.ts` | U8 | 대기 |
 | `lib/onboarding/automation.ts` | U8 | 대기 |
 | `lib/onboarding/connect-entry.ts` | U8 | 대기 |
-| `lib/onboarding/connect-machine.ts` | U8 | 대기 |
+| `lib/onboarding/connect-machine.ts` | U8 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/onboarding/connect-storage.ts` | U8 | 대기 |
 | `lib/onboarding/constants.ts` | U8 | 대기 |
 | `lib/onboarding/dev-snippets.ts` | U8 | 대기 |
-| `lib/onboarding/first-run.ts` | U8 | 대기 |
+| `lib/onboarding/first-run.ts` | U8 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/onboarding/gate-label.ts` | U8 | 대기 |
-| `lib/onboarding/guide-content.ts` | U8 | 대기 |
+| `lib/onboarding/guide-content.ts` | U8 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/onboarding/last-device-event.ts` | U8 | 대기 |
 | `lib/onboarding/qr-svg.ts` | U8 | 대기 |
 | `lib/onboarding/token-label.ts` | U8 | 대기 |
-| `lib/onboarding/trip-match.ts` | U8 | 대기 |
+| `lib/onboarding/trip-match.ts` | U8 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/onboarding/trip-window.ts` | U8 | 대기 |
 | `lib/onboarding/types.ts` | U8 | 대기 |
-| `lib/places/autocomplete.ts` | B2 | 대기 |
-| `lib/places/cache.ts` | B2 | 대기 |
+| `lib/places/autocomplete.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/places/cache.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/places/candidate-schedule.ts` | B2 | 대기 |
 | `lib/places/candidates.ts` | B2 | 대기 |
 | `lib/places/fixtures/fuku.json` | B2 | 대기 |
 | `lib/places/fixtures/icn.json` | B2 | 대기 |
 | `lib/places/fixtures/japan.json` | B2 | 대기 |
-| `lib/places/google-map.ts` | B2 | 대기 |
-| `lib/places/google.ts` | B2 | 대기 |
+| `lib/places/google-map.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/places/google.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/places/index.ts` | B2 | 대기 |
-| `lib/places/kakao-map.ts` | B2 | 대기 |
-| `lib/places/kakao.ts` | B2 | 대기 |
+| `lib/places/kakao-map.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/places/kakao.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/places/registry.ts` | B2 | 대기 |
 | `lib/places/types.ts` | B2 | 대기 |
 | `lib/places/usePlaceAutocomplete.ts` | B2 | 대기 |
 | `lib/profile/ProfileProvider.tsx` | D7 | 대기 |
-| `lib/profile/enrich-author-avatars.ts` | D7 | 대기 |
+| `lib/profile/enrich-author-avatars.ts` | D7 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/profile/public.ts` | D7 | 대기 |
 | `lib/profile/storage.ts` | D7 | 대기 |
-| `lib/profile/supabase.ts` | D7 | 대기 |
-| `lib/push/client.ts` | B1 | 대기 |
+| `lib/profile/supabase.ts` | D7 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/push/client.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/push/notify-copy.ts` | B1 | 대기 |
 | `lib/push/send.ts` | B1 | 대기 |
 | `lib/rag/budgetBands.ts` | B1 | 대기 |
-| `lib/rag/monthDeals.ts` | B1 | 대기 |
+| `lib/rag/monthDeals.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/rag/travelKnowledge.ts` | B1 | 대기 |
 | `lib/route/distance.ts` | B2 | 대기 |
 | `lib/route/genetic.ts` | B2 | 대기 |
 | `lib/route/geocode.ts` | B2 | 대기 |
 | `lib/route/matrix/cache.ts` | B2 | 대기 |
 | `lib/route/matrix/google.ts` | B2 | 대기 |
-| `lib/route/matrix/haversine.ts` | B2 | 대기 |
+| `lib/route/matrix/haversine.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/route/matrix/index.ts` | B2 | 대기 |
-| `lib/route/matrix/kakao.ts` | B2 | 대기 |
+| `lib/route/matrix/kakao.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/route/matrix/osrm.ts` | B2 | 대기 |
 | `lib/route/matrix/types.ts` | B2 | 대기 |
 | `lib/route/optimize-schedule.ts` | B2 | 대기 |
 | `lib/route/recompute-day.ts` | B2 | 대기 |
-| `lib/route/schedule-solver.ts` | B2 | 대기 |
+| `lib/route/schedule-solver.ts` | B2 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/route/travel-matrix.ts` | B2 | 대기 |
 | `lib/route/types.ts` | B2 | 대기 |
 | `lib/security/guard.ts` | O6 | 검증(V0, 2026-11-03, PR #72) |
@@ -628,11 +628,11 @@
 | `lib/security/public-api.ts` | O6 | 대기 |
 | `lib/security/rate-limit.ts` | O6 | 대기 |
 | `lib/security/safe-next.ts` | O6 | 대기 |
-| `lib/server/cache.ts` | B1 | 대기 |
-| `lib/server/upstream.ts` | B1 | 대기 |
+| `lib/server/cache.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/server/upstream.ts` | B1 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/shared/dates.ts` | U10 | 대기 |
 | `lib/shared/format.ts` | U10 | 대기 |
-| `lib/site-url.ts` | Q0 | 대기 |
+| `lib/site-url.ts` | Q0 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/supabase/admin.ts` | O6 | 대기 |
 | `lib/supabase/browser.ts` | O6 | 대기 |
 | `lib/supabase/env.ts` | O6 | 대기 |
@@ -641,17 +641,17 @@
 | `lib/travel/links-enabled.ts` | Q0 | 대기 |
 | `lib/trips/TripProvider.tsx` | U9 | 대기 |
 | `lib/trips/country-memory.ts` | U9 | 대기 |
-| `lib/trips/d-day.ts` | U9 | 대기 |
+| `lib/trips/d-day.ts` | U9 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/trips/data.ts` | U9 | 대기 |
-| `lib/trips/destination-image.ts` | U9 | 대기 |
+| `lib/trips/destination-image.ts` | U9 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/trips/quick-trip.ts` | U9 | 대기 |
 | `lib/trips/share.ts` | U9 | 대기 |
-| `lib/trips/storage.ts` | U9 | 대기 |
+| `lib/trips/storage.ts` | U9 | 정리(B1, 2026-11-03, PR #75) |
 | `lib/trips/supabase.ts` | U9 | 대기 |
-| `lib/trips/types.ts` | U9 | 대기 |
-| `lib/trips/visited-countries.ts` | U9 | 대기 |
-| `lib/weather/open-meteo.ts` | U9 | 대기 |
-| `lib/weather/parse-trip-dates.ts` | U9 | 대기 |
+| `lib/trips/types.ts` | U9 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/trips/visited-countries.ts` | U9 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/weather/open-meteo.ts` | U9 | 정리(B1, 2026-11-03, PR #75) |
+| `lib/weather/parse-trip-dates.ts` | U9 | 정리(B1, 2026-11-03, PR #75) |
 
 ### 스크립트 (`scripts/**`) — 12개
 
@@ -892,3 +892,28 @@
 **다음 세션(B1) 인계**
 - V0 의 차단 3건은 코드상 모두 처리(X1 은 DB 적용 대기). B1 은 런북대로 죽은 심볼 정리부터.
 - 마이그레이션 최신 파일은 이제 `20261103220000`. 마이그레이션 개수 42.
+
+### 2026-11-03 (KST) · B1 · `chore/dead-code-symbols` · PR #75
+
+**한 일** (동작 변화 없음, 커밋 3개)
+1. 참조 0 심볼 삭제(15 파일 −422줄): 런북 확인 목록 + 그것만 쓰던 헬퍼(`extractFunctionCalls`·`inferCabinType`·`formatCityCountryLabel`·`CONTINENT_ORDER`).
+2. 같은 파일에서만 쓰는 export 174개의 `export` 키워드 제거(84 파일). 밖 참조 ≥1 이면 유지, `DEAL_TIER_LABELS` 는 `typeof` 전용이라 유지.
+3. `lib/server/upstream.ts` + 테스트 삭제(프로덕션 import 0).
+
+**명령 결과**
+- knip@6.44.1: 파일 10 · export 161 · 타입 91 · 중복 1 — 런북과 동일.
+- typecheck 통과 · lint 통과 · `npm test` 184 파일 / 1330 tests(−2 = upstream.test) · build 통과, 라우트 100 · 공유 103 kB · 미들웨어 95.8 kB 로 V0 와 같음(`/trips/[id]/ledger` +1 kB 는 V0a).
+
+**런북과 다르게 처리한 것**
+- `readAiSseStream`·`AiStreamEvent` 는 같은 파일에서 쓰여 export 만 제거(삭제 아님).
+- `countPendingProposals` 삭제 보류(V0 M1 수정에 사용 예정).
+
+**남은 일 / 확인 필요**
+- 선언만 있는 추가 후보 21개는 보고만(PR 본문 목록).
+- `AGENT_MAX_TOOL_CALLS` env 코드 참조 0 → B2 에서 `.env.example` 정리.
+- Evan: `npm run dev` 로 주요 화면 콘솔 에러 확인(1분).
+
+**다음 세션(B2) 인계**
+- `.env.example` 정리 대상에 `AGENT_MAX_TOOL_CALLS` 추가.
+- `lib/server/` 에는 이제 `cache.ts` 만 남았어요.
+- B2 의 라우트 삭제(`/api/places/search`·`/api/route/matrix`)는 Vercel 로그 0건 확인이 선행 조건이에요.
