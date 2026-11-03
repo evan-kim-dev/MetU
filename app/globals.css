@@ -260,3 +260,93 @@
     }
   }
 }
+
+/* =============================================================================
+ * UX-S0 mu-* design tokens (additive only — do not edit rules above)
+ * ============================================================================= */
+:root {
+  --mu-bg: #f7f8fa;
+  --mu-card: #ffffff;
+  --mu-sunken: #f2f4f6;
+  --mu-line: #e5e8eb;
+  --mu-line-strong: #8b95a1;
+  --mu-fg: #191f28;
+  --mu-fg-2: #4e5968;
+  --mu-fg-3: #5f6b7a;
+  --mu-accent: #2563eb;
+  --mu-accent-strong: #1d4ed8;
+  --mu-accent-soft: #eff4ff;
+  --mu-on-accent: #ffffff;
+  --mu-ok: #0b7a4b;
+  --mu-ok-soft: #e8f7f0;
+  --mu-warn: #8a5a00;
+  --mu-warn-soft: #fff4db;
+  --mu-err: #c62828;
+  --mu-err-soft: #fdecec;
+  --mu-disabled-fg: #8b95a1;
+  --mu-disabled-bg: #f2f4f6;
+  --mu-dur-fast: 150ms;
+  --mu-dur: 200ms;
+  --mu-dur-slow: 250ms;
+  --mu-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.mu-root {
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  word-break: keep-all;
+  color: var(--mu-fg);
+}
+
+.mu-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.mu-focus:focus-visible {
+  outline: 2px solid var(--mu-accent);
+  outline-offset: 2px;
+}
+
+@keyframes mu-sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mu-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mu-dur-fast: 1ms;
+    --mu-dur: 1ms;
+    --mu-dur-slow: 1ms;
+  }
+}

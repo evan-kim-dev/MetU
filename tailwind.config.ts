@@ -1,8 +1,10 @@
 import type { Config } from "tailwindcss";
+import { MU_RADIUS } from "./lib/design/tokens";
 
 /**
  * Met U AI Design System (restored from cd5c457)
  * 색상/타이포/이펙트 토큰을 중앙화하여 매직 넘버 사용을 최소화한다.
+ * UX-S0: mu-* 토큰은 lib/design/tokens.ts 와 동기화 (기존 키는 수정하지 않음).
  */
 const config: Config = {
   content: [
@@ -13,6 +15,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        mu: {
+          bg: "var(--mu-bg)",
+          card: "var(--mu-card)",
+          sunken: "var(--mu-sunken)",
+          line: "var(--mu-line)",
+          "line-strong": "var(--mu-line-strong)",
+          fg: "var(--mu-fg)",
+          "fg-2": "var(--mu-fg-2)",
+          "fg-3": "var(--mu-fg-3)",
+          accent: "var(--mu-accent)",
+          "accent-strong": "var(--mu-accent-strong)",
+          "accent-soft": "var(--mu-accent-soft)",
+          "on-accent": "var(--mu-on-accent)",
+          ok: "var(--mu-ok)",
+          "ok-soft": "var(--mu-ok-soft)",
+          warn: "var(--mu-warn)",
+          "warn-soft": "var(--mu-warn-soft)",
+          err: "var(--mu-err)",
+          "err-soft": "var(--mu-err-soft)",
+        },
         brand: {
           DEFAULT: "#2563EB",
           strong: "#004AC6",
@@ -82,6 +104,33 @@ const config: Config = {
       fontSize: {
         "3xs": ["0.5625rem", { lineHeight: "0.75rem", letterSpacing: "0.01em" }],
         "2xs": ["0.625rem", { lineHeight: "0.875rem", letterSpacing: "0.01em" }],
+        "mu-amount-xl": [
+          "2.25rem",
+          { lineHeight: "2.75rem", fontWeight: "800", letterSpacing: "-0.02em" },
+        ],
+        "mu-amount": [
+          "1.75rem",
+          { lineHeight: "2.25rem", fontWeight: "800" },
+        ],
+        "mu-title": [
+          "1.375rem",
+          { lineHeight: "1.875rem", fontWeight: "800", letterSpacing: "-0.01em" },
+        ],
+        "mu-heading": [
+          "1.125rem",
+          { lineHeight: "1.625rem", fontWeight: "700" },
+        ],
+        "mu-body": ["0.9375rem", { lineHeight: "1.375rem", fontWeight: "500" }],
+        "mu-label": ["0.8125rem", { lineHeight: "1.125rem", fontWeight: "600" }],
+        "mu-caption": ["0.75rem", { lineHeight: "1rem", fontWeight: "500" }],
+      },
+      transitionDuration: {
+        "mu-fast": "var(--mu-dur-fast)",
+        "mu-base": "var(--mu-dur)",
+        "mu-slow": "var(--mu-dur-slow)",
+      },
+      transitionTimingFunction: {
+        mu: "var(--mu-ease)",
       },
       maxWidth: {
         mobile: "440px",
@@ -121,6 +170,8 @@ const config: Config = {
         "kakao-sm": "0 4px 16px rgba(254, 229, 0, 0.3)",
         overlay: "0 16px 48px rgba(0, 0, 0, 0.12)",
         "home-fab": "0 10px 24px rgba(37, 99, 235, 0.5)",
+        "mu-float": "0 8px 24px rgba(25, 31, 40, 0.08)",
+        "mu-sheet": "0 -8px 32px rgba(25, 31, 40, 0.12)",
       },
       borderWidth: {
         3: "3px",
@@ -132,6 +183,10 @@ const config: Config = {
       },
       borderRadius: {
         xl2: "20px",
+        "mu-sm": `${MU_RADIUS.sm}px`,
+        "mu-md": `${MU_RADIUS.md}px`,
+        "mu-lg": `${MU_RADIUS.lg}px`,
+        "mu-xl": `${MU_RADIUS.xl}px`,
       },
       letterSpacing: {
         label: "0.08em",
