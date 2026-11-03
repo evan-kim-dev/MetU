@@ -53,10 +53,17 @@ export function GuestAdjust({
 
   return (
     <div className="flex flex-col gap-6 px-4 pb-8 pt-4">
+      <div>
+        <h2 className="text-mu-title text-mu-fg">내 몫이 달라요</h2>
+        <p className="mt-1 text-mu-body text-mu-fg-2">
+          내 몫만 바꿀 수 있어요. 미리 보고 확정하면 되돌릴 수도 있어요.
+        </p>
+      </div>
+
       <section className="flex flex-col gap-2" aria-labelledby="guest-adjust-ai">
-        <h2 id="guest-adjust-ai" className="text-mu-heading text-mu-fg">
+        <h3 id="guest-adjust-ai" className="text-mu-heading text-mu-fg">
           한 줄로 내 몫 바꾸기
-        </h2>
+        </h3>
         <p className="text-mu-caption text-mu-fg-3">
           예: 「저는 술 안 마셨어요」. 미리 보고 확정해요. 내 몫만 바뀌어요.
         </p>

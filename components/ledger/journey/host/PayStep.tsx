@@ -50,10 +50,13 @@ type Props = {
   tripId: string;
   /** page = settle URL 아래 조합. journey = TripJourney 송금 칸. */
   mode?: "page" | "journey";
+  /** 호스트 CTA(공유/리캡) vs 게스트 CTA(내 송금·완료) */
+  audience?: "host" | "guest";
   /** 정산표가 없을 때 정산 단계로 */
   onSettle?: () => void;
-  /** 모두 송금 완료 시 리캡 */
+  /** 호스트: 모두 송금 완료 시 리캡. 게스트: 내 송금 끝나면 완료 단계 */
   onRecap?: () => void;
+  onDone?: () => void;
   /** settle URL 에서 SettleStep 과 공유할 참고 환율 상태 */
   reference?: SettleReference;
 };
@@ -65,8 +68,10 @@ type Props = {
 export function PayStep({
   tripId,
   mode = "journey",
+  audience = "host",
   onSettle,
   onRecap,
+  onDone,
   reference: referenceProp,
 }: Props) {
   const { user } = useAuth();
@@ -191,6 +196,14 @@ export function PayStep({
   const completed = status === "completed" || allPaid;
   const paidCount = transfers.filter((t) => t.status === "paid").length;
   const isOwner = Boolean(me?.isOwner);
+  const myOutgoing = transfers.filter((t) => me && t.from === me.id);
+  const myOutgoingUnpaid = myOutgoing.filter((t) => t.status !== "paid");
+  const myOutgoingDone =
+    myOutgoing.length > 0 && myOutgoingUnpaid.length === 0;
+  const visibleTransfers =
+    audience === "guest" && me
+      ? transfers.filter((t) => t.from === me.id || t.to === me.id)
+      : transfers;
 
   const shareResult = useMemo(() => {
     if (!settlement || transfers.length === 0) return null;
@@ -289,9 +302,13 @@ export function PayStep({
         <EmptyState
           icon={Wallet}
           title="먼저 정산을 계산해요"
-          body="호스트가 정산표를 만들면 여기서 송금할 수 있어요."
+          body={
+            audience === "guest"
+              ? "호스트가 정산을 만들면 내가 보낼 금액이 여기에 보여요."
+              : "호스트가 정산표를 만들면 여기서 송금할 수 있어요."
+          }
           action={
-            onSettle ? (
+            audience === "guest" ? undefined : onSettle ? (
               <Button onClick={onSettle}>정산하러 가기</Button>
             ) : (
               <Link
@@ -319,7 +336,9 @@ export function PayStep({
         <div>
           <h2 className="text-mu-title text-mu-fg">송금을 챙겨요</h2>
           <p className="mt-1 text-mu-body text-mu-fg-2">
-            앱에서 직접 송금한 뒤, 여기서 완료를 눌러 주세요.
+            {audience === "guest"
+              ? "내 송금만 보여요. 앱에서 보낸 뒤 ‘송금 완료’를 눌러 주세요."
+              : "앱에서 직접 송금한 뒤, 여기서 완료를 눌러 주세요."}
           </p>
         </div>
       ) : null}
@@ -367,22 +386,36 @@ export function PayStep({
         </p>
       ) : null}
 
-      {settlement && transfers.length > 0 ? (
+      {settlement && visibleTransfers.length > 0 ? (
         <div className="flex items-center gap-3 rounded-mu-md border border-mu-line bg-mu-card p-3">
           <ProgressRing
-            value={paidCount}
-            max={transfers.length}
+            value={
+              audience === "guest"
+                ? myOutgoing.filter((t) => t.status === "paid").length
+                : paidCount
+            }
+            max={
+              audience === "guest"
+                ? Math.max(myOutgoing.length, 1)
+                : transfers.length
+            }
             size={72}
-            label={`${paidCount}/${transfers.length} 송금 완료`}
+            label={
+              audience === "guest"
+                ? `내 송금 ${myOutgoing.filter((t) => t.status === "paid").length}/${myOutgoing.length || 0} 완료`
+                : `${paidCount}/${transfers.length} 송금 완료`
+            }
           />
           <p className="text-mu-body font-bold text-mu-fg">
-            {paidCount}/{transfers.length} 완료
+            {audience === "guest"
+              ? `내 송금 ${myOutgoing.filter((t) => t.status === "paid").length}/${myOutgoing.length || 0} 완료`
+              : `${paidCount}/${transfers.length} 완료`}
           </p>
         </div>
       ) : null}
 
       <ul className="flex flex-col gap-2">
-        {transfers.map((t) => {
+        {visibleTransfers.map((t) => {
           const mineOut = Boolean(me && t.from === me.id);
           const canMark = isOwner || mineOut;
           return (
@@ -441,7 +474,7 @@ export function PayStep({
         </div>
       ) : null}
 
-      {settlement && transfers.length > 0 ? (
+      {audience === "host" && settlement && transfers.length > 0 ? (
         <section
           aria-label="정산 공유"
           className="flex flex-col gap-2 rounded-mu-md bg-mu-bg p-3 text-mu-caption"
@@ -487,7 +520,7 @@ export function PayStep({
         </section>
       ) : null}
 
-      {mode === "journey" ? (
+      {mode === "journey" && audience === "host" ? (
         <>
           <button
             type="button"
@@ -508,17 +541,19 @@ export function PayStep({
             />
           </Sheet>
         </>
-      ) : (
+      ) : null}
+
+      {mode === "page" ? (
         <SettlementHistory
           items={history}
           currentId={settlement?.id ?? null}
           origin={origin}
         />
-      )}
+      ) : null}
 
       {msg ? <p className="text-mu-caption text-mu-fg-3">{msg}</p> : null}
 
-      {mode === "journey" ? (
+      {mode === "journey" && audience === "host" ? (
         <BottomCTA
           label={completed ? "리캡 보기" : "정산 현황 공유하기"}
           onClick={() => {
@@ -536,6 +571,32 @@ export function PayStep({
               : shareText
                 ? "문구를 복사해 동행에게 보내요"
                 : shareBlockedMessage || undefined
+          }
+        />
+      ) : null}
+
+      {mode === "journey" && audience === "guest" ? (
+        <BottomCTA
+          label={
+            myOutgoingDone || myOutgoing.length === 0
+              ? "완료 확인"
+              : "송금 완료했어요"
+          }
+          onClick={() => {
+            if (myOutgoingDone || myOutgoing.length === 0) {
+              onDone?.();
+              return;
+            }
+            setMsg(
+              "아직 보낼 송금이 있어요. 앱에서 보낸 뒤 각 항목의 ‘송금 완료’를 눌러 주세요."
+            );
+          }}
+          hint={
+            myOutgoingUnpaid.length > 0
+              ? `남은 송금 ${myOutgoingUnpaid.length}건`
+              : myOutgoing.length === 0
+                ? "내가 보낼 금액은 없어요"
+                : undefined
           }
         />
       ) : null}
