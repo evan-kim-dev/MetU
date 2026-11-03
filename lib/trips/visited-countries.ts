@@ -284,16 +284,6 @@ export function countryAlpha2FromIso(isoNumeric: string): string | null {
   return ISO_NUMERIC_TO_ALPHA2[isoNumeric] ?? null;
 }
 
-/** ISO numeric → regional-indicator flag emoji (e.g. 🇹🇭). */
-export function countryFlagFromIso(isoNumeric: string): string {
-  const alpha2 = countryAlpha2FromIso(isoNumeric);
-  if (!alpha2 || alpha2.length !== 2) return "🏳️";
-  const chars = alpha2.toUpperCase();
-  return String.fromCodePoint(
-    ...[...chars].map((ch) => 0x1f1e6 - 65 + ch.charCodeAt(0))
-  );
-}
-
 const COUNTRY_BLURBS: Record<string, string> = {
   "410": "사계절이 뚜렷하고 도시·자연·미식이 고르게 매력적인 여행지예요.",
   "392": "편리한 대중교통과 세심한 서비스, 미식·온천·쇼핑이 강한 나라예요.",

@@ -85,31 +85,3 @@ export async function enablePush(): Promise<
 
   return { ok: true };
 }
-
-export async function disablePush(): Promise<
-  { ok: true } | { ok: false; error: string }
-> {
-  if (!("serviceWorker" in navigator)) {
-    return { ok: false, error: "no-sw" };
-  }
-
-  const registration = await navigator.serviceWorker.getRegistration("/");
-  const subscription = registration
-    ? await registration.pushManager.getSubscription()
-    : null;
-
-  const endpoint = subscription?.endpoint;
-
-  if (subscription) {
-    await subscription.unsubscribe().catch(() => undefined);
-  }
-
-  await fetch("/api/push/subscribe", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(endpoint ? { endpoint } : {}),
-    credentials: "include",
-  }).catch(() => undefined);
-
-  return { ok: true };
-}

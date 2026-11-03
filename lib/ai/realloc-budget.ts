@@ -15,31 +15,6 @@ export function hotelBudgetCap(totalBudget: number): number {
 }
 
 /**
- * 예산 밴드 안 최저가 우선. 없으면 전체 최저가 + withinBand=false.
- */
-export function pickCheapestInBand<T>(
-  items: T[],
-  getPrice: (item: T) => number,
-  maxPrice: number
-): { item: T; price: number; withinBand: boolean } | null {
-  const priced = items
-    .map((item) => ({ item, price: getPrice(item) }))
-    .filter((row) => Number.isFinite(row.price) && row.price > 0);
-
-  if (priced.length === 0) return null;
-
-  const inBand = priced.filter((row) => row.price <= maxPrice);
-  const pool = inBand.length > 0 ? inBand : priced;
-  const best = pool.reduce((a, b) => (a.price <= b.price ? a : b));
-
-  return {
-    item: best.item,
-    price: best.price,
-    withinBand: best.price <= maxPrice,
-  };
-}
-
-/**
  * live 항공·숙소 가격을 고정하고, 남는 예산을 식비·교통·관광에 비율 재배분.
  */
 export function reallocateBudgetWithLiveQuotes(

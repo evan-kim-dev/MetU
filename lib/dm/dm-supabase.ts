@@ -205,10 +205,6 @@ export function subscribeDmMessages(
     .subscribe();
 }
 
-export function dmChatSeenKey(threadId: string): string {
-  return `dm:${threadId}`;
-}
-
 export async function notifyDmMessage(
   supabase: SupabaseClient,
   input: {

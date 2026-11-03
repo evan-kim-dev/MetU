@@ -59,10 +59,6 @@ export function saveTrips(trips: Trip[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
 }
 
-export function getTripById(trips: Trip[], id: string): Trip | undefined {
-  return trips.find((trip) => trip.id === id);
-}
-
 export function updateTripInList(
   trips: Trip[],
   id: string,
@@ -82,8 +78,4 @@ export function updateTripInList(
       spent: nextSpent,
     };
   });
-}
-
-export function getActiveTrips(trips: Trip[]): Trip[] {
-  return trips.filter((trip) => trip.status !== "completed");
 }

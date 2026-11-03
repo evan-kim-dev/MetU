@@ -41,16 +41,6 @@ export const CONTINENT_LABELS: Record<ContinentId, string> = {
   other: "기타",
 };
 
-const CONTINENT_ORDER: ContinentId[] = [
-  "east-asia",
-  "southeast-asia",
-  "europe",
-  "americas",
-  "oceania",
-  "middle-east",
-  "other",
-];
-
 const COUNTRY_TO_CONTINENT: Record<string, ContinentId> = {
   대한민국: "east-asia",
   일본: "east-asia",
@@ -75,27 +65,6 @@ const COUNTRY_TO_CONTINENT: Record<string, ContinentId> = {
 
 export function getContinentId(place: AirportPlace): ContinentId {
   return COUNTRY_TO_CONTINENT[place.country] ?? "other";
-}
-
-export function groupPlacesByContinent(
-  places: AirportPlace[]
-): Array<{ id: ContinentId; label: string; places: AirportPlace[] }> {
-  const buckets = new Map<ContinentId, AirportPlace[]>();
-
-  for (const place of places) {
-    const id = getContinentId(place);
-    const list = buckets.get(id);
-    if (list) list.push(place);
-    else buckets.set(id, [place]);
-  }
-
-  return CONTINENT_ORDER.filter((id) => (buckets.get(id)?.length ?? 0) > 0).map(
-    (id) => ({
-      id,
-      label: CONTINENT_LABELS[id],
-      places: buckets.get(id) ?? [],
-    })
-  );
 }
 
 export const AIRPORT_PLACES: AirportPlace[] = [
@@ -929,27 +898,6 @@ export function findAirportPlaceByQuery(query: string): AirportPlace | null {
       return hay.includes(q) || q.includes((place.code ?? "").toLowerCase());
     }) ?? null
   );
-}
-
-export function formatAirportKeyword(keyword: string): string {
-  const place = findAirportPlaceByQuery(keyword);
-  return place ? formatAirportInputLabel(place) : keyword;
-}
-
-/** 표시 라벨 — 도시 선택 시 "(모두)"·공항코드 없이 도시명 */
-export function formatPlaceLabel(place: AirportPlace): string {
-  if (place.kind === "city") return place.city;
-  return place.code ? `${place.city} (${place.code})` : place.name;
-}
-
-/** 온보딩/일정용: 도시 · 나라 (공항코드 없음) */
-export function formatCityCountryLabel(place: AirportPlace): string {
-  if (place.country) return `${place.city}, ${place.country}`;
-  return place.city || place.name;
-}
-
-export function formatDestinationForPlan(place: AirportPlace): string {
-  return formatCityCountryLabel(place);
 }
 
 /** 인기 도시만 (공항코드 항목 제외) */
