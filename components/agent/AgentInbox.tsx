@@ -43,6 +43,7 @@ type ResultItem = {
     merchant?: string | null;
     amount?: number | null;
     currency?: string | null;
+    spentOn?: string | null;
   };
   priced?: { krwAmount?: number; amount?: number; currency?: string };
 };
@@ -413,6 +414,16 @@ export function AgentInbox({
     if (!res.ok) throw new Error(json.error ?? "request-failed");
   }
 
+  function canEditDraft(status: string): boolean {
+    return [
+      "needs_review",
+      "failed",
+      "ignored",
+      "unassigned",
+      "received",
+    ].includes(status);
+  }
+
   function openEdit(event: AgentEventRow) {
     const review = reviewItems(event)[0];
     setEditEvent(event);
@@ -426,29 +437,36 @@ export function AgentInbox({
     setEditCurrency(
       (review?.draft?.currency ?? "KRW").toString().toUpperCase() || "KRW"
     );
-    setEditSpentOn("");
+    const spent =
+      typeof review?.draft?.spentOn === "string" ? review.draft.spentOn : "";
+    setEditSpentOn(/^\d{4}-\d{2}-\d{2}$/.test(spent) ? spent : "");
   }
 
   async function saveEdit() {
     if (!editEvent) return;
-    const draft: {
-      merchant?: string;
-      amount?: number;
-      currency?: string;
-      spentOn?: string;
+    const body: {
+      text?: string;
+      draft?: {
+        merchant?: string;
+        amount?: number;
+        currency?: string;
+        spentOn?: string;
+      };
     } = {};
-    if (editMerchant.trim()) draft.merchant = editMerchant.trim();
-    const amt = Number(editAmount.replace(/,/g, ""));
-    if (Number.isFinite(amt) && amt > 0) draft.amount = amt;
-    if (editCurrency.trim().length === 3) {
-      draft.currency = editCurrency.trim().toUpperCase();
-    }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(editSpentOn.trim())) {
-      draft.spentOn = editSpentOn.trim();
-    }
-    const body: { text?: string; draft?: typeof draft } = {};
     if (editText.trim()) body.text = editText.trim();
-    if (Object.keys(draft).length > 0) body.draft = draft;
+    if (canEditDraft(editEvent.status)) {
+      const draft: NonNullable<(typeof body)["draft"]> = {};
+      if (editMerchant.trim()) draft.merchant = editMerchant.trim();
+      const amt = Number(editAmount.replace(/,/g, ""));
+      if (Number.isFinite(amt) && amt > 0) draft.amount = amt;
+      if (editCurrency.trim().length === 3) {
+        draft.currency = editCurrency.trim().toUpperCase();
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(editSpentOn.trim())) {
+        draft.spentOn = editSpentOn.trim();
+      }
+      if (Object.keys(draft).length > 0) body.draft = draft;
+    }
     if (!body.text && !body.draft) return;
     await withBusy(editEvent.id, () =>
       post(`/api/agent/events/${editEvent.id}/edit`, body)
@@ -557,46 +575,40 @@ export function AgentInbox({
 
   function renderManageButtons(event: AgentEventRow) {
     const disabled = busyId === event.id;
-    const canEdit = [
-      "needs_review",
-      "failed",
-      "ignored",
-      "unassigned",
-      "received",
-    ].includes(event.status);
-    if (!canEdit && event.status === "processing") return null;
+    if (event.status === "processing") return null;
+    const hasLinkedExpense =
+      event.status === "auto" ||
+      event.status === "done" ||
+      autoItems(event).length > 0 ||
+      mergedItems(event).length > 0;
     return (
       <>
-        {canEdit ? (
-          <button
-            type="button"
-            disabled={disabled}
-            className="min-h-11 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-ink-body disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            onClick={() => openEdit(event)}
-          >
-            수정
-          </button>
-        ) : null}
-        {event.status !== "processing" ? (
-          <button
-            type="button"
-            disabled={disabled}
-            className="min-h-11 rounded-lg border border-danger/40 px-3 py-1.5 text-xs font-bold text-danger disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            onClick={() => {
-              if (
-                typeof window !== "undefined" &&
-                !window.confirm("이 알림을 수신함에서 삭제할까요?")
-              ) {
-                return;
-              }
-              void withBusy(event.id, () =>
-                post(`/api/agent/events/${event.id}/delete`)
-              );
-            }}
-          >
-            삭제
-          </button>
-        ) : null}
+        <button
+          type="button"
+          disabled={disabled}
+          className="min-h-11 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-ink-body disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          onClick={() => openEdit(event)}
+        >
+          수정
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          className="min-h-11 rounded-lg border border-danger/40 px-3 py-1.5 text-xs font-bold text-danger disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          onClick={() => {
+            const msg = hasLinkedExpense
+              ? "수신함에서만 지울까요? 이미 가계부에 들어간 지출은 그대로 남아요."
+              : "이 알림을 수신함에서 완전히 삭제할까요? (「나중에」와 달리 되돌릴 수 없어요)";
+            if (typeof window !== "undefined" && !window.confirm(msg)) {
+              return;
+            }
+            void withBusy(event.id, () =>
+              post(`/api/agent/events/${event.id}/delete`)
+            );
+          }}
+        >
+          삭제
+        </button>
       </>
     );
   }
@@ -652,6 +664,7 @@ export function AgentInbox({
           <button
             type="button"
             disabled={disabled}
+            title="목록 아래로 접어 두고, 나중에 다시 볼 수 있어요"
             className="min-h-11 rounded-lg bg-surface-soft px-3 py-1.5 text-xs font-bold text-ink-body disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             onClick={() =>
               void withBusy(event.id, () =>
@@ -659,7 +672,7 @@ export function AgentInbox({
               )
             }
           >
-            무시
+            나중에
           </button>
           {renderManageButtons(event)}
         </div>
@@ -683,6 +696,7 @@ export function AgentInbox({
           <button
             type="button"
             disabled={disabled}
+            title="목록 아래로 접어 두고, 나중에 다시 볼 수 있어요"
             className="min-h-11 rounded-lg bg-surface-soft px-3 py-1.5 text-xs font-bold text-ink-body disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             onClick={() =>
               void withBusy(event.id, () =>
@@ -690,7 +704,7 @@ export function AgentInbox({
               )
             }
           >
-            무시
+            나중에
           </button>
           {renderManageButtons(event)}
         </div>
@@ -1090,7 +1104,7 @@ export function AgentInbox({
                       className="flex min-h-11 items-center justify-between text-sm font-extrabold text-ink-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                       onClick={() => setIgnoredOpen((v) => !v)}
                     >
-                      <span>무시됨 ({groups.ignored.length})</span>
+                      <span>나중에 ({groups.ignored.length})</span>
                       <span>{ignoredOpen ? "▲" : "▼"}</span>
                     </button>
                     {ignoredOpen
@@ -1098,7 +1112,7 @@ export function AgentInbox({
                           <EventCard
                             key={e.id}
                             event={e}
-                            label="무시"
+                            label="나중에"
                             tone="border-surface-soft bg-surface-soft/50 opacity-80"
                           />
                         ))
@@ -1154,46 +1168,53 @@ export function AgentInbox({
               className="min-h-[88px] w-full rounded-xl border border-line px-3 py-2 text-sm"
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs">
-            <span className="font-bold text-ink-heading">상호</span>
-            <input
-              value={editMerchant}
-              onChange={(e) => setEditMerchant(e.target.value)}
-              className="min-h-11 rounded-xl border border-line px-3 text-sm"
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="flex flex-col gap-1 text-xs">
-              <span className="font-bold text-ink-heading">금액</span>
-              <input
-                value={editAmount}
-                inputMode="decimal"
-                onChange={(e) => setEditAmount(e.target.value)}
-                className="min-h-11 rounded-xl border border-line px-3 text-sm"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              <span className="font-bold text-ink-heading">통화</span>
-              <input
-                value={editCurrency}
-                maxLength={3}
-                onChange={(e) => setEditCurrency(e.target.value.toUpperCase())}
-                className="min-h-11 rounded-xl border border-line px-3 text-sm"
-              />
-            </label>
-          </div>
-          <label className="flex flex-col gap-1 text-xs">
-            <span className="font-bold text-ink-heading">날짜 (선택)</span>
-            <input
-              type="date"
-              value={editSpentOn}
-              onChange={(e) => setEditSpentOn(e.target.value)}
-              className="min-h-11 rounded-xl border border-line px-3 text-sm"
-            />
-          </label>
+          {editEvent && canEditDraft(editEvent.status) ? (
+            <>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-bold text-ink-heading">상호</span>
+                <input
+                  value={editMerchant}
+                  onChange={(e) => setEditMerchant(e.target.value)}
+                  className="min-h-11 rounded-xl border border-line px-3 text-sm"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex flex-col gap-1 text-xs">
+                  <span className="font-bold text-ink-heading">금액</span>
+                  <input
+                    value={editAmount}
+                    inputMode="decimal"
+                    onChange={(e) => setEditAmount(e.target.value)}
+                    className="min-h-11 rounded-xl border border-line px-3 text-sm"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs">
+                  <span className="font-bold text-ink-heading">통화</span>
+                  <input
+                    value={editCurrency}
+                    maxLength={3}
+                    onChange={(e) =>
+                      setEditCurrency(e.target.value.toUpperCase())
+                    }
+                    className="min-h-11 rounded-xl border border-line px-3 text-sm"
+                  />
+                </label>
+              </div>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-bold text-ink-heading">날짜 (선택)</span>
+                <input
+                  type="date"
+                  value={editSpentOn}
+                  onChange={(e) => setEditSpentOn(e.target.value)}
+                  className="min-h-11 rounded-xl border border-line px-3 text-sm"
+                />
+              </label>
+            </>
+          ) : null}
           <p className="text-[11px] text-ink-muted">
-            수정은 수신함 표시·확인용이에요. 이미 가계부에 들어간 지출은
-            바뀌지 않아요.
+            {editEvent && canEditDraft(editEvent.status)
+              ? "확인용 초안이에요. 저장 후 「가계부에 추가」로 반영해요. 이미 들어간 지출은 안 바뀌어요."
+              : "표시 문구만 바꿔요. 이미 가계부에 들어간 지출은 안 바뀌어요."}
           </p>
           <button
             type="button"

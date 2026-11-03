@@ -39,7 +39,19 @@ const BodySchema = z
     message: "empty",
   });
 
-const EDITABLE = new Set([
+/** 표시 문구(text)는 처리 중만 빼고 수정 가능 */
+const TEXT_EDITABLE = new Set([
+  "needs_review",
+  "failed",
+  "ignored",
+  "unassigned",
+  "received",
+  "auto",
+  "done",
+]);
+
+/** 확인용 draft(상호·금액)는 아직 가계부에 안 들어간 상태만 */
+const DRAFT_EDITABLE = new Set([
   "needs_review",
   "failed",
   "ignored",
@@ -50,6 +62,7 @@ const EDITABLE = new Set([
 /**
  * 본인 수신함 알림 내용 수정.
  * text → payload.text, draft → result.items[review] draft 병합.
+ * 이미 자동/완료된 알림은 표시 문구만 바꿀 수 있어요.
  */
 export async function POST(
   request: Request,
@@ -72,7 +85,7 @@ export async function POST(
   if (!owned.ok) {
     return NextResponse.json({ error: owned.error }, { status: owned.status });
   }
-  if (!EDITABLE.has(owned.event.status)) {
+  if (!TEXT_EDITABLE.has(owned.event.status)) {
     return NextResponse.json({ error: "bad-status" }, { status: 409 });
   }
 
@@ -81,6 +94,10 @@ export async function POST(
   const body = BodySchema.safeParse(limited.json);
   if (!body.success) {
     return NextResponse.json({ error: "invalid-body" }, { status: 400 });
+  }
+
+  if (body.data.draft && !DRAFT_EDITABLE.has(owned.event.status)) {
+    return NextResponse.json({ error: "draft-locked" }, { status: 409 });
   }
 
   const admin = getAgentAdmin();

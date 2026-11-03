@@ -75,4 +75,32 @@ describe("POST /api/agent/events/[id]/edit", () => {
       ).status
     ).toBe(400);
   });
+
+  it("locks draft on auto status but allows text", async () => {
+    getAgentEventForUser.mockResolvedValue({
+      ok: true,
+      event: {
+        id: "11111111-1111-4111-8111-111111111111",
+        status: "auto",
+        payload: { text: "old" },
+        result: { items: [] },
+      },
+    });
+    const { POST } = await import("./route");
+    const locked = await POST(
+      req({ draft: { merchant: "X", amount: 1, currency: "KRW" } }),
+      {
+        params: Promise.resolve({
+          id: "11111111-1111-4111-8111-111111111111",
+        }),
+      }
+    );
+    expect(locked.status).toBe(409);
+    const ok = await POST(req({ text: "표시만" }), {
+      params: Promise.resolve({
+        id: "11111111-1111-4111-8111-111111111111",
+      }),
+    });
+    expect(ok.status).toBe(200);
+  });
 });
