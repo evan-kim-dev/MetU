@@ -16,6 +16,7 @@ import { VoiceInputButton } from "@/components/ledger/VoiceInputButton";
 import { TripInvitePanel } from "@/components/trips/ledger/TripInvitePanel";
 import { Sheet } from "@/components/ds/Sheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { TABLES } from "@/lib/constants";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
 import type { HostStepKey } from "@/lib/ledger/journey-state";
 import {
@@ -123,7 +124,8 @@ export function LedgerShell({
       );
       m = await listMembers(supabase, tripId);
     }
-    const [e, p, pendingRes] = await Promise.all([
+    const owner = m.find((row) => row.isOwner && row.userId === user.id);
+    const [e, p, pendingRes, proposalRes] = await Promise.all([
       listExpenses(supabase, tripId),
       listCardProfiles(supabase),
       supabase
@@ -132,11 +134,18 @@ export function LedgerShell({
         .eq("trip_id", tripId)
         .eq("user_id", user.id)
         .in("status", ["received", "processing", "needs_review", "failed"]),
+      owner
+        ? supabase
+            .from(TABLES.tripExpenseProposals)
+            .select("id", { count: "exact", head: true })
+            .eq("trip_id", tripId)
+            .eq("status", "pending")
+        : Promise.resolve({ count: 0 }),
     ]);
     setMembers(m);
     setExpenses(e);
     setProfiles(p as typeof profiles);
-    setInboxCount(pendingRes.count ?? 0);
+    setInboxCount((pendingRes.count ?? 0) + (proposalRes.count ?? 0));
     setLoading(false);
   }, [tripId, user, provider]);
 
@@ -305,8 +314,17 @@ export function LedgerShell({
 
           {showRecord ? (
             <>
-              {guestReadonly ? (
-                <GuestExpenseSlot />
+              {guestReadonly && user && me ? (
+                <GuestExpenseSlot
+                  tripId={tripId}
+                  members={members}
+                  meId={me.id}
+                  userId={user.id}
+                />
+              ) : guestReadonly ? (
+                <p className="text-xs text-ink-muted">
+                  호스트가 승인하면 정산에 들어가요.
+                </p>
               ) : (
                 <>
                   <div className="flex flex-wrap gap-2">

@@ -11,7 +11,7 @@ import { getFxQuote } from "@/lib/ledger/fx";
 import { computeKrw } from "@/lib/ledger/money";
 import { computeShares } from "@/lib/ledger/settle";
 import { listExpenses, saveExpense } from "@/lib/ledger/supabase";
-import type { TripMember } from "@/lib/ledger/types";
+import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
 import { useCurrencyOptions } from "@/lib/fx/currency-list";
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
@@ -32,7 +32,8 @@ type Props = {
   index: number;
   onIndexChange: (i: number) => void;
   onClose: () => void;
-  onSaved: () => void;
+  /** 하위 호환: 인자 없이 호출해도 됨. 저장 행을 넘기면 제안 승인에 재사용. */
+  onSaved: (row?: LedgerExpenseRow) => void;
   cardProfiles?: CardProfile[];
 };
 
@@ -301,7 +302,7 @@ export function ExpenseConfirmSheet({
       }
       if (index + 1 < drafts.length) onIndexChange(index + 1);
       else {
-        onSaved();
+        onSaved(row);
         onClose();
       }
     } finally {

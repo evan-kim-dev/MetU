@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { ExpenseMemberChips } from "@/components/ledger/ExpenseMemberChips";
+import { ExpensePayerSheet } from "@/components/ledger/ExpensePayerSheet";
 import { SplitPreviewSheet } from "@/components/ledger/SplitPreviewSheet";
 import type {
   SplitPatch,
@@ -48,6 +49,7 @@ export function ExpenseChipSplit({
   const [historyId, setHistoryId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [doneMsg, setDoneMsg] = useState("");
+  const [payerOpen, setPayerOpen] = useState(false);
   const [staleSettle, setStaleSettle] = useState(false);
 
   const interactive = useMemo(() => {
@@ -253,6 +255,16 @@ export function ExpenseChipSplit({
           {doneMsg}
         </p>
       ) : null}
+      {isOwner && !isAnonymous ? (
+        <button
+          type="button"
+          className="mt-2 inline-flex min-h-[44px] items-center font-bold text-brand underline"
+          onClick={() => setPayerOpen(true)}
+        >
+          결제자 바꾸기
+        </button>
+      ) : null}
+
       {staleSettle && isOwner && settleHref ? (
         <p className="mt-2 text-ink-muted">
           정산이 오래됐어요.{" "}
@@ -261,6 +273,21 @@ export function ExpenseChipSplit({
           </a>
           에서 다시 계산해 주세요.
         </p>
+      ) : null}
+
+      {isOwner && !isAnonymous ? (
+        <ExpensePayerSheet
+          open={payerOpen}
+          onClose={() => setPayerOpen(false)}
+          expenseId={expense.id}
+          members={members}
+          currentPayerId={expense.paidBy}
+          onSaved={async () => {
+            setStaleSettle(true);
+            setDoneMsg("결제자를 바꿨어요. 정산이 오래됐을 수 있어요.");
+            await onChanged();
+          }}
+        />
       ) : null}
     </li>
   );

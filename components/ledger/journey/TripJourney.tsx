@@ -265,7 +265,9 @@ export function TripJourney({ tripId }: Props) {
         />
       );
     } else if (guestStep === "adjust") {
-      body = <GuestAdjust onBack={() => goStep("share")} />;
+      body = (
+        <GuestAdjust tripId={tripId} onBack={() => goStep("share")} />
+      );
     } else if (guestStep === "pay") {
       body = (
         <GuestPay

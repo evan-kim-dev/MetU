@@ -152,12 +152,21 @@ describe("LedgerShell 바로가기 쿼리", () => {
 });
 
 describe("LedgerShell 익명 게스트 읽기 전용", () => {
-  it("직접 입력·업로더·설정이 없고 안내 슬롯만 보여요", async () => {
+  it("직접 입력·업로더·설정이 없고 제안 슬롯만 보여요", async () => {
     useAuth.mockReturnValue({
       user: { id: "anon", user_metadata: {}, is_anonymous: true },
       provider: "supabase",
       isAnonymous: true,
     });
+    listMembers.mockResolvedValue([
+      {
+        id: "m1",
+        tripId: "t1",
+        displayName: "민수",
+        isOwner: false,
+        userId: "anon",
+      },
+    ]);
     render(<LedgerShell tripId="t1" />);
     await loaded();
     expect(screen.queryByRole("button", { name: "직접 입력" })).toBeNull();
@@ -166,9 +175,7 @@ describe("LedgerShell 익명 게스트 읽기 전용", () => {
     expect(screen.queryByText("붙여넣기 분석")).toBeNull();
     expect(screen.queryByText("카드 수수료 추가")).toBeNull();
     expect(screen.getByText("내가 낸 지출")).toBeTruthy();
-    expect(
-      screen.getByText(/호스트가 승인하면 정산에 들어가요/)
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "내가 냈어요" })).toBeTruthy();
   });
 
   it("익명이면 ?add=manual 바로가기도 열지 않아요", async () => {
