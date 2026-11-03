@@ -2,7 +2,7 @@
  * "내 몫" 카드 표시용 순수 함수. 금액은 서버/정산 결과에서 받은 정수 KRW만 쓴다.
  */
 
-export type MyShareKind = "owe" | "receive" | "zero";
+type MyShareKind = "owe" | "receive" | "zero";
 
 export type MyShareView = {
   /** 표시용 절대값 (정수 KRW) */

@@ -7,7 +7,7 @@ const U = (id: string) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=80`;
 
 /** Old generic “travel bag” / blank-looking fallback stored on many trips */
-export const GENERIC_TRIP_IMAGE_MARKERS = [
+const GENERIC_TRIP_IMAGE_MARKERS = [
   "photo-1488646953014",
   "photo-1469854523086",
 ] as const;

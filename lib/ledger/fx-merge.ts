@@ -10,17 +10,17 @@ import { roundHalfUp } from "@/lib/ledger/money";
  */
 
 /** 시각이 이 안이면 같은 결제로 본다 (양쪽 시각을 모두 알 때만). */
-export const FX_MERGE_TIME_WINDOW_MS = 30 * 60 * 1000;
+const FX_MERGE_TIME_WINDOW_MS = 30 * 60 * 1000;
 /** 시각을 알아도 이보다 멀면 후보에서 뺀다 (dedupe.ts 의 36h 기준과 같음). */
-export const FX_MERGE_TIME_LOOSE_MS = 36 * 60 * 60 * 1000;
+const FX_MERGE_TIME_LOOSE_MS = 36 * 60 * 60 * 1000;
 /** 자동 병합 최소 점수 (시각 0.5 + 금액 0.4 = 0.9, 상호만 맞으면 0.5 라서 자동 불가). */
-export const FX_MERGE_AUTO_MIN_SCORE = 0.8;
+const FX_MERGE_AUTO_MIN_SCORE = 0.8;
 /** 상호 유사도가 이 이상이면 +0.1 */
-export const FX_MERGE_MERCHANT_MIN_SIM = 0.5;
+const FX_MERGE_MERCHANT_MIN_SIM = 0.5;
 
-export const FX_MERGE_SCORE_TIME = 0.5;
-export const FX_MERGE_SCORE_AMOUNT = 0.4;
-export const FX_MERGE_SCORE_MERCHANT = 0.1;
+const FX_MERGE_SCORE_TIME = 0.5;
+const FX_MERGE_SCORE_AMOUNT = 0.4;
+const FX_MERGE_SCORE_MERCHANT = 0.1;
 
 // VERIFY: 청구액이 시장환율 환산액보다 -1% ~ +5% 안이면 같은 결제로 본다.
 //   작성 시점 조사 기준 예시이며 카드사·DCC 여부에 따라 다르다. 운영 값은 환경변수로 덮어쓴다.
@@ -103,7 +103,7 @@ function parseMs(value: string | null | undefined): number | null {
 }
 
 /** F·K 한 쌍이 병합 대상인지 거르는 관문. 통과하면 true. */
-export function passesFxMergeGate(
+function passesFxMergeGate(
   f: FxMergeForeign,
   k: FxMergeBilled
 ): boolean {

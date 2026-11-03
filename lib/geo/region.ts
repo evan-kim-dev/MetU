@@ -1,5 +1,5 @@
 /** 국내 도시 토큰 — hotels/destinations · budgetBands 등을 모아 확장 가능 */
-export const KR_CITIES = [
+const KR_CITIES = [
   "서울",
   "부산",
   "제주",

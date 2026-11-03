@@ -10,7 +10,7 @@ import {
   type EffectiveRate,
 } from "@/lib/ledger/settle-currency";
 
-export type LiveRateStatus = "idle" | "loading" | "ready" | "error";
+type LiveRateStatus = "idle" | "loading" | "ready" | "error";
 
 export interface SettleReference {
   /** 입력창 값(대문자 3글자까지) */

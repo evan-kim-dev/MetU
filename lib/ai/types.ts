@@ -26,7 +26,7 @@ export interface HotelPlan {
   note: string;
 }
 
-export interface DayScheduleItem extends ScheduleItemPlaceFields {
+interface DayScheduleItem extends ScheduleItemPlaceFields {
   time: string;
   title: string;
   detail?: string;

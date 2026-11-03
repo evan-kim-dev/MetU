@@ -17,8 +17,8 @@ import {
   type SplitPatchExpense,
 } from "@/lib/ledger/split-patch";
 
-export const SPLIT_PATCH_PURPOSE = "split_patch";
-export const SPLIT_PATCH_BATCH_PURPOSE = "split_patch_batch";
+const SPLIT_PATCH_PURPOSE = "split_patch";
+const SPLIT_PATCH_BATCH_PURPOSE = "split_patch_batch";
 export { SPLIT_PATCH_TEXT_MAX };
 
 /** 시스템 프롬프트는 서버 상수로만 둔다 (규칙 15). 금액은 모델이 다루지 않는다. */
@@ -187,7 +187,7 @@ export async function resolveLatestExpenseId(
   return { ok: true, expenseId: String(pick.id) };
 }
 
-export function buildSplitPatchInput(args: {
+function buildSplitPatchInput(args: {
   text: string;
   ctx: SplitContext;
   requesterMemberId: string;
@@ -266,7 +266,7 @@ export type BatchExpenseContext = {
   expense: SplitPatchExpense;
 };
 
-export function buildBatchSplitPatchInput(args: {
+function buildBatchSplitPatchInput(args: {
   text: string;
   tripId: string;
   expenses: readonly BatchExpenseContext[];

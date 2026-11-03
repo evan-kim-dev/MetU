@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { TABLES } from "@/lib/constants";
 
-export type FriendshipStatus = "pending" | "accepted" | "rejected";
+type FriendshipStatus = "pending" | "accepted" | "rejected";
 
 export interface FriendshipRow {
   id: string;

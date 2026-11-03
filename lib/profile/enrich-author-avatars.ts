@@ -2,7 +2,7 @@ import type { CommunityPost } from "@/lib/community/types";
 import type { PublicProfile } from "@/lib/profile/public";
 import { isAvatarImage } from "@/lib/profile/public";
 
-export const PROFILE_USER_ID_RE =
+const PROFILE_USER_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function isProfileUserId(id: string): boolean {

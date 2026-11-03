@@ -273,7 +273,7 @@ async function shouldCoalesceEvent(
   );
 }
 
-export async function evaluateTripSettlement(
+async function evaluateTripSettlement(
   tripId: string,
   options?: { now?: number; trigger?: "expense" | "daily" }
 ): Promise<SettlementRunResult> {

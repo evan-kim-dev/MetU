@@ -1,8 +1,8 @@
 import type { BudgetAllocation } from "@/lib/ai/types";
 
 /** 총예산 대비 항공·숙소 상한 (밴드) */
-export const FLIGHT_BUDGET_RATIO = 0.45;
-export const HOTEL_BUDGET_RATIO = 0.4;
+const FLIGHT_BUDGET_RATIO = 0.45;
+const HOTEL_BUDGET_RATIO = 0.4;
 
 const FLEXIBLE_IDS = new Set(["food", "transport", "activity"]);
 

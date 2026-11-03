@@ -2,7 +2,7 @@ import "server-only";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
 
-export type UsageRecord = {
+type UsageRecord = {
   userId: string;
   tripId?: string | null;
   model: string;
@@ -47,7 +47,7 @@ export const memoryUsageSink: UsageSink = {
 /**
  * Persist via service role. On read failure, allow the call (rule 19) and log.
  */
-export const dbUsageSink: UsageSink = {
+const dbUsageSink: UsageSink = {
   async record(entry) {
     const admin = getAgentAdmin();
     if (!admin) {

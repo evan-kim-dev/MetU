@@ -7,7 +7,7 @@ import { getUsageSink } from "@/lib/ai/usage";
 
 export type GeminiModelKind = "fast" | "main";
 
-export type GeminiOk<T> = {
+type GeminiOk<T> = {
   ok: true;
   data: T;
   model: string;
@@ -16,7 +16,7 @@ export type GeminiOk<T> = {
   outputTokens?: number;
 };
 
-export type GeminiErr = {
+type GeminiErr = {
   ok: false;
   error: string;
   reason?: string;

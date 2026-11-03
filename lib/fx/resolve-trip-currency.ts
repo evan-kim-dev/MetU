@@ -50,7 +50,7 @@ async function fetchCountriesJson(): Promise<TravelpayoutsCountry[]> {
 }
 
 /** api_cache 30일. staleIfError 로 만료 후에도 이전 값 재사용. */
-export async function getCountriesCached(): Promise<TravelpayoutsCountry[]> {
+async function getCountriesCached(): Promise<TravelpayoutsCountry[]> {
   const result = await getOrSet(
     COUNTRIES_CACHE_KEY,
     COUNTRIES_TTL_SEC,

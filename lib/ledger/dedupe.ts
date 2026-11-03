@@ -26,11 +26,11 @@ export type DedupeExisting = DedupeInput & {
 };
 
 /** 영수증 강한 후보 reason (정책·병합 로직이 이 값으로 strong 을 판별한다). */
-export const RECEIPT_STRONG_REASON = "receipt_amount_time_match";
+const RECEIPT_STRONG_REASON = "receipt_amount_time_match";
 /** strong 후보 최소 점수 */
-export const RECEIPT_STRONG_MIN_SCORE = 0.8;
+const RECEIPT_STRONG_MIN_SCORE = 0.8;
 /** 영수증 시각과 결제 시각이 이 안이면 같은 결제로 본다. */
-export const RECEIPT_TIME_WINDOW_MS = 30 * 60 * 1000;
+const RECEIPT_TIME_WINDOW_MS = 30 * 60 * 1000;
 
 export type DuplicateCandidate = {
   expenseId: string;

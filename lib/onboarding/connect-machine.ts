@@ -11,9 +11,9 @@ export type ConnectPhase =
   | "skipped"
   | "unsupported";
 
-export type ConnectIssueMode = "wizard" | "add" | "reissue";
+type ConnectIssueMode = "wizard" | "add" | "reissue";
 
-export type ConnectBusy =
+type ConnectBusy =
   | null
   | "issue"
   | "server-test"
@@ -29,7 +29,7 @@ export type ConnectErrorState = {
   operatorHint?: string;
 };
 
-export type ConnectToken = {
+type ConnectToken = {
   plain?: string;
   hint?: string;
   issuedAt?: string;
@@ -255,7 +255,7 @@ export function stepTotal(state: ConnectState): number {
   return 5;
 }
 
-export function stepIndex(state: ConnectState): number {
+function stepIndex(state: ConnectState): number {
   if (state.phase === "hub") return 0;
   const iosOrder: ConnectPhase[] = [
     "device",
@@ -741,7 +741,7 @@ export function detectIos27AndAdvance(
   };
 }
 
-export const STEP_LABELS_IOS = [
+const STEP_LABELS_IOS = [
   "기기 확인",
   "연결 코드",
   "단축어 추가",
@@ -749,7 +749,7 @@ export const STEP_LABELS_IOS = [
   "연결 확인",
 ] as const;
 
-export const STEP_LABELS_ANDROID = [
+const STEP_LABELS_ANDROID = [
   "기기 확인",
   "연결 코드",
   "매크로 만들기",

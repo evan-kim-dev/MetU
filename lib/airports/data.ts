@@ -856,7 +856,7 @@ export function searchAirportPlaces(query: string, limit = 24): AirportPlace[] {
 }
 
 /** 항공권 검색 입력란 표시 (예: 인천국제공항(ICN)) */
-export function formatAirportInputLabel(place: AirportPlace): string {
+function formatAirportInputLabel(place: AirportPlace): string {
   if (place.kind === "city") {
     return `${place.city}(전체)`;
   }

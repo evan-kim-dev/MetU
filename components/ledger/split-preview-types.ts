@@ -1,6 +1,6 @@
 import type { SplitPatch } from "@/lib/ledger/split-patch";
 
-export type ShareRow = { memberId: string; name: string; krw: number };
+type ShareRow = { memberId: string; name: string; krw: number };
 
 export type SplitPreviewPayload = {
   expenseId: string;

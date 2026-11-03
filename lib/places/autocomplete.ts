@@ -8,7 +8,7 @@ import {
   type AirportPlace,
 } from "@/lib/airports/data";
 
-export type PlaceType = "country" | "city" | "airport";
+type PlaceType = "country" | "city" | "airport";
 
 export type PlaceItem = {
   id: string;
@@ -36,7 +36,7 @@ const upstreamPlaceSchema = z.object({
   weight: z.number().optional().nullable(),
 });
 
-export const upstreamPlacesSchema = z.array(upstreamPlaceSchema);
+const upstreamPlacesSchema = z.array(upstreamPlaceSchema);
 
 export type UpstreamPlace = z.infer<typeof upstreamPlaceSchema>;
 
@@ -57,7 +57,7 @@ function localCityCode(place: AirportPlace): string {
 }
 
 /** AirportPlace → PlaceItem (로컬 폴백용) */
-export function toPlaceItem(place: AirportPlace): PlaceItem {
+function toPlaceItem(place: AirportPlace): PlaceItem {
   if (place.kind === "city") {
     const code = localCityCode(place);
     const item: PlaceItem = {

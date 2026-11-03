@@ -1,7 +1,7 @@
 import type { AuthUser } from "@/lib/auth/types";
 import { STORAGE_KEYS } from "@/lib/constants";
 
-export function getOrCreateGuestAuthorId(): string {
+function getOrCreateGuestAuthorId(): string {
   if (typeof window === "undefined") return "guest-server";
 
   const existing = localStorage.getItem(STORAGE_KEYS.guestAuthorId);

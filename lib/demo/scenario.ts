@@ -6,13 +6,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export type DemoScenarioId = "osaka" | "mingling";
 
 /** Memo tag used to find/reuse the demo trip without touching real trips. */
-export const DEMO_TRIP_MEMO_TAG = "[metu-demo:osaka]";
-export const DEMO_TRIP_DESTINATION = "데모 여행 (오사카)";
-export const DEMO_TRIP_COUNTRY = "일본";
-export const DEMO_COMPANION_NAMES = ["민아", "준호"] as const;
+const DEMO_TRIP_MEMO_TAG = "[metu-demo:osaka]";
+const DEMO_TRIP_DESTINATION = "데모 여행 (오사카)";
+const DEMO_TRIP_COUNTRY = "일본";
+const DEMO_COMPANION_NAMES = ["민아", "준호"] as const;
 
 export const MINGLING_TRIP_MEMO_TAG = "[metu-demo:mingling]";
-export const MINGLING_TRIP_DESTINATION = "데모 여행 (밍글링)";
+const MINGLING_TRIP_DESTINATION = "데모 여행 (밍글링)";
 /** 미연결 동행 자리 — user_id 없이 두고 게스트 claim 용. */
 export const MINGLING_COMPANION_NAMES = ["민수", "지아"] as const;
 

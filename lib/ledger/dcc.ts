@@ -1,7 +1,7 @@
 import { merchantBigramSimilarity } from "@/lib/ledger/dedupe";
 
 /** VERIFY: 짧은 중복결제 창(분). 확정 수수료가 아님. */
-export const DUP_CHARGE_WINDOW_MIN = Number(
+const DUP_CHARGE_WINDOW_MIN = Number(
   process.env.DUP_CHARGE_WINDOW_MIN ?? "10"
 );
 
@@ -15,7 +15,7 @@ export const DCC_PUBLIC_STAT_NOTE =
 export const DCC_PUBLIC_STAT_URL =
   "https://www.edaily.co.kr/News/Read?mediaCodeNo=257&newsId=01177526632462088";
 
-export type DccLevel = "none" | "suspected" | "confirmed";
+type DccLevel = "none" | "suspected" | "confirmed";
 
 export type DccResult = {
   level: DccLevel;

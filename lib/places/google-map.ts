@@ -42,7 +42,7 @@ function pointToHHMM(p: GoogleHourPoint | undefined): string | null {
   return `${pad2(hour)}:${pad2(minute)}`;
 }
 
-export function mapGoogleOpeningPeriods(
+function mapGoogleOpeningPeriods(
   periods: GooglePeriod[] | undefined
 ): OpeningPeriod[] | undefined {
   if (!periods?.length) return undefined;
@@ -81,7 +81,7 @@ export function mapGoogleOpeningPeriods(
   return out.length ? out : undefined;
 }
 
-export function mapGoogleKind(
+function mapGoogleKind(
   types: string[] | undefined,
   primaryType?: string
 ): PlaceKind {

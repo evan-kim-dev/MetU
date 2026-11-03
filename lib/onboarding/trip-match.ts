@@ -22,9 +22,9 @@ export type TripMatchRule = "exact" | "near" | "single" | "none";
 export type TripMatchMissReason = "no_trips" | "no_dates" | "outside_window";
 
 /** near 로 인정하는 최대 일수 (여행 시작 전 / 종료 후). */
-export const NEAR_MAX_DAYS = 14;
+const NEAR_MAX_DAYS = 14;
 /** 여러 여행이 near 범위일 때 1등이 2등보다 이만큼 더 가까워야 "명확"하다. */
-export const NEAR_CLEAR_MARGIN_DAYS = 3;
+const NEAR_CLEAR_MARGIN_DAYS = 3;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -43,7 +43,7 @@ export type TripMatchCandidate = {
   destination?: string | null;
 };
 
-export type TripMatchNearest = {
+type TripMatchNearest = {
   tripId: string;
   /** 시작 전이면 양수(며칠 전), 종료 후면 양수(며칠 뒤). 항상 0 이상. */
   diffDays: number;
@@ -58,7 +58,7 @@ export type TripMatchInput = {
   hintCurrency?: string | null;
 };
 
-export type TripMatchCandidateRank = {
+type TripMatchCandidateRank = {
   tripId: string;
   rule: Exclude<TripMatchRule, "none">;
 };

@@ -6,7 +6,7 @@ import {
   type PartyChatAttachment,
 } from "@/lib/community/chat-attachments";
 
-export const DM_CHAT_BUCKET = "dm-chat";
+const DM_CHAT_BUCKET = "dm-chat";
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 export type DmChatAttachment = PartyChatAttachment;

@@ -11,7 +11,7 @@
 /** 세 제외 합계 기준 (엔). VERIFY: 공식 안내 2026-11-02 */
 export const THRESHOLD_JPY_EXCL_TAX = 5000;
 /** 구매일부터 수속 기한(일). VERIFY: 공식 안내 2026-11-02 — 당일 포함 여부는 미확인 → UI에 '약' */
-export const WINDOW_DAYS = 90;
+const WINDOW_DAYS = 90;
 /** 신제도 적용 시작일 (로컬 구매일 기준). */
 export const EFFECTIVE_FROM = "2026-11-01";
 
@@ -33,7 +33,7 @@ export type TaxFreeExpense = {
   taxExclAmount?: number | null;
 };
 
-export type StoreDayStatus =
+type StoreDayStatus =
   | "eligible"
   | "below_threshold"
   | "needs_amount"

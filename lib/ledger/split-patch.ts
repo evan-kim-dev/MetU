@@ -28,7 +28,7 @@ const ItemExclusionEntry = z.strictObject({
   itemIndex: z.number().int().min(0).max(199),
 });
 
-export const CLARIFICATION_MAX = 200;
+const CLARIFICATION_MAX = 200;
 /** 미리보기 API 에 보내는 자연어 요청 최대 길이. */
 export const SPLIT_PATCH_TEXT_MAX = 300;
 
@@ -138,7 +138,7 @@ export type SplitPatchExpense = {
   items: ReadonlyArray<{ amount?: number | null }>;
 };
 
-export type SplitPatchSplitType = "equal" | "ratio" | "fixed";
+type SplitPatchSplitType = "equal" | "ratio" | "fixed";
 
 export type ApplySplitPatchResult =
   | {

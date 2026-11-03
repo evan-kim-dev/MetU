@@ -83,7 +83,7 @@ const DISTANCE_KM_FROM_SEOUL: Record<string, number> = {
   후쿠오카: 540,
 };
 
-export interface BudgetRealityInput {
+interface BudgetRealityInput {
   perPerson: number;
   totalBudget: number;
   people: number;

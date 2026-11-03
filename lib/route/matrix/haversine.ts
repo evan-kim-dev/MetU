@@ -2,18 +2,18 @@ import { haversineKm } from "@/lib/route/distance";
 import type { TravelMode } from "@/lib/route/matrix/types";
 
 /** 우회 계수 — 직선거리 대비 실제 도로 거리 가정 */
-export const DETOUR_FACTOR = 1.3;
+const DETOUR_FACTOR = 1.3;
 
 /** km/h — 모두 가정값이며 실제 도시/교통 상황과 다를 수 있음 */
-export const SPEED_WALK_KMH = 4.5;
-export const SPEED_DRIVE_KMH = 25;
-export const SPEED_TRANSIT_KMH = 20;
+const SPEED_WALK_KMH = 4.5;
+const SPEED_DRIVE_KMH = 25;
+const SPEED_TRANSIT_KMH = 20;
 
 /** TRANSIT: 이 거리(m) 이하면 도보와 동일하게 추정 */
 export const TRANSIT_WALK_THRESHOLD_M = 1500;
 
 /** TRANSIT: 대중교통 대기·환승 가정 (초) */
-export const TRANSIT_WAIT_SEC = 5 * 60;
+const TRANSIT_WAIT_SEC = 5 * 60;
 
 export function straightDistanceM(
   lat1: number,

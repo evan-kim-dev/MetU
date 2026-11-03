@@ -1,5 +1,5 @@
 /** Canonical production origin — never land OAuth on a stale preview deployment. */
-export const PRODUCTION_SITE_URL = "https://met-u.vercel.app";
+const PRODUCTION_SITE_URL = "https://met-u.vercel.app";
 
 export function resolveSiteOrigin(fallbackOrigin?: string): string {
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");

@@ -12,7 +12,7 @@ import { normalizeCurrencyCode } from "@/lib/fx/currencies";
  * 고정 환율이 라이브 환율의 몇 배 범위 안이어야 하는지(오타 방지용 검증 폭).
  * 시세 예측이 아니라 자릿수 실수(예: 9.12 → 912)를 막기 위한 느슨한 값이에요.
  */
-export const FIXED_RATE_MAX_FACTOR = 5;
+const FIXED_RATE_MAX_FACTOR = 5;
 
 export type FixedRateReason = "not-a-number" | "non-positive" | "far-from-live";
 
@@ -60,7 +60,7 @@ export function fixedRateMessage(reason: FixedRateReason): string {
   }
 }
 
-export type EffectiveRateSource = "fixed" | "live";
+type EffectiveRateSource = "fixed" | "live";
 
 export interface EffectiveRate {
   rate: number;
@@ -93,7 +93,7 @@ export interface ConvertibleTransfer {
   krw: number;
 }
 
-export interface ConvertedTransfer extends ConvertibleTransfer {
+interface ConvertedTransfer extends ConvertibleTransfer {
   /** 환산 금액(통화의 소수 자릿수에 맞춰 반올림) */
   amount: number;
   currency: string;

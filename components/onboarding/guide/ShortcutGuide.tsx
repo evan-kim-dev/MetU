@@ -19,7 +19,7 @@ import {
   type GuidePlatform,
 } from "@/lib/onboarding/guide-content";
 
-export type ShortcutGuideFeatures = {
+type ShortcutGuideFeatures = {
   revokeOnReissue?: boolean;
 };
 

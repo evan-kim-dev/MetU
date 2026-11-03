@@ -7,7 +7,7 @@ interface CommunityLoginGateProps {
   featureName: string;
 }
 
-export function CommunityLoginGate({ featureName }: CommunityLoginGateProps) {
+function CommunityLoginGate({ featureName }: CommunityLoginGateProps) {
   return (
     <div className="w-full rounded-2xl border-0 bg-surface-white p-6 shadow-sm">
       <p className="text-center text-base font-bold text-ink-heading">

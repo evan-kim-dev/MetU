@@ -2,7 +2,7 @@
  * Consume Next SSE (`data: {json}\n\n`) from AI chat stream routes.
  */
 
-export type AiStreamEvent =
+type AiStreamEvent =
   | { type: "meta"; cached?: boolean }
   | { type: "token"; t: string }
   | {
@@ -14,7 +14,7 @@ export type AiStreamEvent =
     }
   | { type: "error"; message: string };
 
-export async function* readAiSseStream(
+async function* readAiSseStream(
   res: Response
 ): AsyncGenerator<AiStreamEvent> {
   if (!res.body) {

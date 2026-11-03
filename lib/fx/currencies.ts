@@ -1,5 +1,5 @@
 /** Validated ISO 4217 3-letter uppercase currency code (any). */
-export type FxCurrency = string;
+type FxCurrency = string;
 
 export interface FxTarget {
   code: FxCurrency;

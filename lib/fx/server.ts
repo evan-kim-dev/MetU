@@ -21,7 +21,7 @@ function frankfurterBase(): string {
   return raw.endsWith("/v1") ? raw : `${raw}/v1`;
 }
 
-export type OpenErRatesPayload = {
+type OpenErRatesPayload = {
   rates: Record<string, number>;
   rateDate: string;
   timeLastUpdateUtc?: string;
@@ -61,7 +61,7 @@ async function fetchWithTimeout(
  * open.er-api USD 피벗 한 번 호출. KRW 기준(/latest/KRW)은 쓰지 않음(정밀도 손실).
  * 1 X = rates.KRW / rates[X] 원.
  */
-export async function fetchOpenErApiRates(): Promise<OpenErRatesPayload> {
+async function fetchOpenErApiRates(): Promise<OpenErRatesPayload> {
   const res = await fetchWithTimeout(OPEN_ER_URL);
   if (!res.ok) throw new Error(`open-er-http-${res.status}`);
   const data = (await res.json()) as {
@@ -97,7 +97,7 @@ export function krwPerUnitFromUsdPivot(
 }
 
 /** Best-effort: 오늘 날짜로 fx_rates upsert. 실패해도 무시. */
-export async function persistOpenErRatesToFxTable(
+async function persistOpenErRatesToFxTable(
   payload: OpenErRatesPayload
 ): Promise<void> {
   try {
