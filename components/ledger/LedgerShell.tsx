@@ -10,7 +10,7 @@ import { ExpenseConfirmSheet } from "@/components/ledger/ExpenseConfirmSheet";
 import { ExpenseChipSplit } from "@/components/ledger/ExpenseChipSplit";
 import { GuestExpenseSlot } from "@/components/ledger/GuestExpenseSlot";
 import { LedgerDashboard } from "@/components/ledger/LedgerDashboard";
-import { SplitBatchBox } from "@/components/ledger/SplitBatchBox";
+import { AdjustStep } from "@/components/ledger/journey/host/AdjustStep";
 import { ConnectStep } from "@/components/ledger/journey/host/ConnectStep";
 import { InviteStep } from "@/components/ledger/journey/host/InviteStep";
 import { RecordStep } from "@/components/ledger/journey/host/RecordStep";
@@ -352,13 +352,17 @@ export function LedgerShell({
           ) : null}
 
           {showAdjust ? (
-            <>
-              <SplitBatchBox
-                tripId={tripId}
-                onChanged={() => void reload()}
-              />
-              {expenseList}
-            </>
+            <AdjustStep
+              tripId={tripId}
+              expenses={expenses}
+              members={members}
+              meId={me?.id}
+              isOwner={Boolean(me?.isOwner)}
+              isAnonymous={isAnonymous}
+              onChanged={() => void reload()}
+              onSettle={() => onNavigate?.("settle")}
+              onRecord={() => onNavigate?.("record")}
+            />
           ) : null}
 
           {showSettleLink ? (
