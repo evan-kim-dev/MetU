@@ -15,7 +15,7 @@
 | V0b | `fix/guest-claim-trigger` | 완료(PR #74) | #74 | V0 차단 X1 + I3 — DB 적용 대기(Evan) |
 | B1 | `chore/dead-code-symbols` | 완료(PR #75) | #75 | 죽은 심볼 삭제 · export 174개 제거 · upstream 삭제 |
 | B2 | `chore/dead-routes-env-docs` | 완료(PR #76) | #76 | env·README·마이그레이션 감사 · 라우트 삭제 보류 |
-| B3 | `docs/db-orphans-report` | 대기 |  |  |
+| B3 | `docs/db-orphans-report` | 완료(PR #77) | #77 | docs/db-orphans.md · 고아 후보 4 |
 | U1 | `feat/ux-step-connect-invite` | 대기 |  |  |
 | U2 | `feat/ux-step-record` | 대기 |  |  |
 | U3 | `feat/ux-step-adjust` | 대기 |  |  |
@@ -674,49 +674,49 @@
 
 | 경로 | 담당 세션 | 상태 |
 |---|---|---|
-| `supabase/config.toml` | V0 · B3 | 대기 |
-| `supabase/migrations/20260709100400_create_profiles_and_avatars.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260709150000_core_app_tables.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260709150100_party_members.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260709162000_party_chat_messages.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260710120000_party_chat_realtime.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260710150000_party_chat_attachments.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260710160000_trip_share_token.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260710170000_community_post_images.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260710180000_checklist_docs_storage.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260710220000_party_join_approval.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260710221000_notifications_realtime.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260711120000_comment_likes.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260711140000_profiles_public_read.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260711150000_community_chat_category.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260711160000_friendships.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260711170000_friend_requests.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260711200000_normalize_user_fks.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260711210000_drop_unused_tables.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260713093000_dm_threads_messages.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20260713095000_dm_attachments_notifications.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261029120000_places_cache.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261029130000_trip_ledger.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261029140000_trip_ledger_core.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261029141000_save_trip_expense.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261030120000_agent_core.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261030130000_agent_core_fixes.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261030140000_api_cache.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261030150000_agent_user_state.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261030160000_agent_trip_optional.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261030170000_agent_unassigned.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261031120000_agent_events_indexes.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261031140000_rls_initplan_hot.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261101120000_agent_attach_receipt.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261101130000_trip_dates_backfill.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261101140000_trip_member_read.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261103100000_fx_billed_merge.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261103110000_notif_expense_dcc.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261103120000_split_patch_history.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261103140000_guest_permissions.sql` | V0 · B3 (수정 금지) | 검증(V0, 2026-11-03, PR #72) |
-| `supabase/migrations/20261103200000_shared_settlement_billed.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/migrations/20261103210000_tax_free.sql` | V0 · B3 (수정 금지) | 대기 |
-| `supabase/verify/guest_permissions_verify.sql` | V0 · B3 | 검증(V0, 2026-11-03, PR #72) · 수정(V0b, 2026-11-03, PR #74) |
+| `supabase/config.toml` | V0 · B3 | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260709100400_create_profiles_and_avatars.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260709150000_core_app_tables.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260709150100_party_members.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260709162000_party_chat_messages.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260710120000_party_chat_realtime.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260710150000_party_chat_attachments.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260710160000_trip_share_token.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260710170000_community_post_images.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260710180000_checklist_docs_storage.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260710220000_party_join_approval.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260710221000_notifications_realtime.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260711120000_comment_likes.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260711140000_profiles_public_read.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260711150000_community_chat_category.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260711160000_friendships.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260711170000_friend_requests.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260711200000_normalize_user_fks.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260711210000_drop_unused_tables.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260713093000_dm_threads_messages.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20260713095000_dm_attachments_notifications.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261029120000_places_cache.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261029130000_trip_ledger.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261029140000_trip_ledger_core.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261029141000_save_trip_expense.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261030120000_agent_core.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261030130000_agent_core_fixes.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261030140000_api_cache.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261030150000_agent_user_state.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261030160000_agent_trip_optional.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261030170000_agent_unassigned.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261031120000_agent_events_indexes.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261031140000_rls_initplan_hot.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261101120000_agent_attach_receipt.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261101130000_trip_dates_backfill.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261101140000_trip_member_read.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261103100000_fx_billed_merge.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261103110000_notif_expense_dcc.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261103120000_split_patch_history.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261103140000_guest_permissions.sql` | V0 · B3 (수정 금지) | 검증(V0, 2026-11-03, PR #72) · B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261103200000_shared_settlement_billed.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/migrations/20261103210000_tax_free.sql` | V0 · B3 (수정 금지) | B3 보고(B3, 2026-11-03, PR #77) |
+| `supabase/verify/guest_permissions_verify.sql` | V0 · B3 | 검증(V0, 2026-11-03, PR #72) · 수정(V0b, 2026-11-03, PR #74) · B3 보고(B3, 2026-11-03, PR #77) |
 
 ### 정적 파일 (`public/**`) — 16개
 
@@ -937,3 +937,23 @@
 **다음 세션(B3) 인계**
 - B3 는 `docs/db-orphans.md` 한 파일만. 마이그레이션은 이제 42개(최신 `20261103220000`). `20261103220000` 은 함수 교체만 해요.
 - 빌드 더미 env 는 이제 4개(`NEXT_PUBLIC_SUPABASE_URL`·`NEXT_PUBLIC_SUPABASE_ANON_KEY`·`GUEST_COOKIE_SECRET`·`GEMINI_API_KEY`).
+
+### 2026-11-03 (KST) · B3 · `docs/db-orphans-report` · PR #77
+
+**한 일**
+- `docs/db-orphans.md` 추가(보고서만, DB 접속·수정 없음): 마이그레이션 42개 최종 스키마 기준 테이블 31 · 컬럼 316 · 함수 39 참조 분석, Evan 용 읽기 전용 SQL.
+
+**결과**
+- 고아 후보: 함수 `confirm_transfer_received`, 컬럼 `trip_expenses.time_is_estimated`·`trip_expenses.reviewed_at`, (고아 함수 전용) `trip_settlement_transfers.confirmed_at`.
+- SQL 전용 컬럼 20개는 RPC·트리거가 사용 → 고아 아님.
+- 런북과 다른 점: `is_uuid_text` 는 이미 drop 됨.
+
+**명령 결과**
+- typecheck · lint · `npm test` 184 파일 / 1330 tests 통과. build 미실행(코드 변경 없음).
+
+**남은 일 / 확인 필요**
+- Evan: §4 SQL 실행, 고아 후보 유지 여부 결정(삭제는 새 마이그레이션 + 승인, 별도 세션).
+
+**다음 세션(U1) 인계**
+- B 트랙(정리) 끝. U1 은 호스트 ①연결 ②초대 단계 추출: `components/ledger/journey/host/` 아래 새 컴포넌트, `LedgerShell` 의 `showConnect`/`showInvite` 블록을 무손실 이동 → 스타일 순서.
+- V0 M3(connect 완료 = 연결 또는 자동 기록 ≥1)·M4(자동화 상태 로딩 경합)는 U1 범위와 겹쳐요.
