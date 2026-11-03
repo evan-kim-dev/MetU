@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AmountCard } from "@/components/ds/AmountCard";
+import { BottomCTA } from "@/components/ds/BottomCTA";
+import { ProgressRing } from "@/components/ds/ProgressRing";
 import { FxAttribution } from "@/components/fx/FxAttribution";
 import { SettleExplainSheet } from "@/components/ledger/SettleExplainSheet";
 import { SettlementHistory } from "@/components/ledger/SettlementHistory";
@@ -340,9 +343,14 @@ export default function LedgerSettlePage() {
   }
 
   const isOwner = Boolean(me?.isOwner);
+  const totalKrw = expenses.reduce((s, e) => s + e.krwAmount, 0);
+  const myBalance = me ? (balances[me.id] ?? 0) : 0;
+  const myShareTone =
+    myBalance > 0 ? "ok" : myBalance < 0 ? "accent" : "neutral";
+  const paidCount = transfers.filter((t) => t.status === "paid").length;
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 py-6">
+    <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 py-6 pb-28">
       <Link
         href={`/trips/${tripId}/ledger`}
         className="text-xs font-bold text-brand"
@@ -363,6 +371,24 @@ export default function LedgerSettlePage() {
         <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
           정산 정보를 모두 불러오지 못했어요. 새로고침해 주세요.
         </p>
+      ) : null}
+
+      {loaded ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <AmountCard label="총액" amount={totalKrw} tone="neutral" />
+          <AmountCard
+            label={
+              myBalance > 0
+                ? "받을 돈"
+                : myBalance < 0
+                  ? "보낼 돈"
+                  : "내 몫"
+            }
+            amount={Math.abs(myBalance)}
+            tone={myShareTone}
+            sub={me ? undefined : "멤버로 합류하면 내 몫이 보여요"}
+          />
+        </div>
       ) : null}
 
       <section
@@ -430,17 +456,9 @@ export default function LedgerSettlePage() {
         </div>
       ) : null}
 
-      {isOwner ? (
-        <button
-          type="button"
-          className="min-h-[44px] rounded-xl bg-brand py-3 text-sm font-extrabold text-white"
-          onClick={() => void createSettlement()}
-        >
-          {settlement ? "정산 다시 계산하기" : "정산 계산하기"}
-        </button>
-      ) : loaded ? (
+      {!isOwner && loaded ? (
         <p className="text-xs text-ink-muted">
-          정산표는 여행을 만든 분만 만들 수 있어요. 내 송금은 아래에서 표시할 수
+          호스트가 정산을 계산하면 알려줘요. 내 송금은 아래에서 표시할 수
           있어요.
         </p>
       ) : null}
@@ -454,10 +472,24 @@ export default function LedgerSettlePage() {
         </p>
       ) : null}
 
-      {loaded && !settlement ? (
+      {loaded && !settlement && isOwner ? (
         <p className="text-xs text-ink-muted">
-          아직 만든 정산표가 없어요. 위 버튼으로 계산해 보세요.
+          아직 만든 정산표가 없어요. 아래 버튼으로 계산해 보세요.
         </p>
+      ) : null}
+
+      {settlement && transfers.length > 0 ? (
+        <div className="flex items-center gap-3 rounded-xl border border-mu-line bg-mu-card p-3">
+          <ProgressRing
+            value={paidCount}
+            max={transfers.length}
+            size={72}
+            label={`${paidCount}/${transfers.length} 송금 완료`}
+          />
+          <p className="text-sm font-bold text-ink-heading">
+            {paidCount}/{transfers.length} 완료
+          </p>
+        </div>
       ) : null}
 
       <ul className="flex flex-col gap-2">
@@ -584,6 +616,14 @@ export default function LedgerSettlePage() {
         tripCurrencies={tripCurrencies}
         reference={reference}
       />
+
+      {isOwner ? (
+        <BottomCTA
+          label={settlement ? "정산 다시 계산하기" : "정산 계산하기"}
+          onClick={() => void createSettlement()}
+          hint={stale ? "지출이 바뀌었어요" : undefined}
+        />
+      ) : null}
 
       <footer className="flex flex-col gap-1 text-[10px] leading-snug text-ink-muted">
         <p>

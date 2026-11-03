@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  deriveGuestDefaultStep,
   deriveHostDefaultStep,
   deriveJourney,
   resolveStepParam,
@@ -155,10 +156,38 @@ describe("resolveStepParam", () => {
   });
 });
 
-describe("deriveJourney guest skeleton", () => {
+describe("deriveGuestDefaultStep", () => {
+  it("정산 없으면 share", () => {
+    expect(deriveGuestDefaultStep(base)).toBe("share");
+  });
+
+  it("open & 미송금 → pay", () => {
+    expect(
+      deriveGuestDefaultStep({
+        ...base,
+        settlement: { status: "open", transfersTotal: 2, transfersPaid: 0 },
+      })
+    ).toBe("pay");
+  });
+
+  it("completed → done", () => {
+    expect(
+      deriveGuestDefaultStep({
+        ...base,
+        settlement: { status: "completed", transfersTotal: 2, transfersPaid: 2 },
+      })
+    ).toBe("done");
+  });
+});
+
+describe("deriveJourney guest", () => {
   it("defaults to share with 4 steps", () => {
     const r = deriveJourney({ role: "guest", ...base });
     expect(r.defaultStep).toBe("share");
     expect(r.steps).toHaveLength(4);
+  });
+
+  it("게스트가 host step 요청하면 resolve가 기본으로", () => {
+    expect(resolveStepParam("record", "share", "guest")).toBe("share");
   });
 });

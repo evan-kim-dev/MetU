@@ -204,22 +204,69 @@ function buildHostSteps(
   });
 }
 
-/** 게스트 규칙·UI는 UX-G1. 타입·빈 골격만. */
+/** 게스트 기본 단계: 내 송금 완료·정산 completed → done, 그 외 → share. */
 export function deriveGuestDefaultStep(
-  _input: Omit<DeriveJourneyInput, "role">
+  input: Omit<DeriveJourneyInput, "role">
 ): GuestStepKey {
+  const { settlement } = input;
+  if (!settlement) return "share";
+  if (settlement.status === "completed") return "done";
+  if (
+    settlement.transfersTotal > 0 &&
+    settlement.transfersPaid >= settlement.transfersTotal
+  ) {
+    return "done";
+  }
+  if (settlement.status === "open" && unpaidTransfers(settlement) > 0) {
+    return "pay";
+  }
   return "share";
+}
+
+function buildGuestSteps(
+  input: Omit<DeriveJourneyInput, "role">,
+  current: GuestStepKey
+): JourneyStep[] {
+  const unpaid = unpaidTransfers(input.settlement);
+  return GUEST_STEP_KEYS.map((key) => {
+    let status: JourneyStepStatus = "todo";
+    let badge: string | number | undefined;
+    const done =
+      key === "done"
+        ? current === "done"
+        : key === "share"
+          ? Boolean(input.settlement)
+          : key === "pay"
+            ? Boolean(input.settlement) && unpaid === 0
+            : false;
+    const attention =
+      key === "pay" &&
+      input.settlement?.status === "open" &&
+      unpaid > 0;
+    if (key === "pay" && unpaid > 0 && input.settlement) {
+      badge = unpaid;
+    }
+    if (key === "adjust" && input.pendingProposalCount > 0) {
+      badge = input.pendingProposalCount;
+    }
+    if (key === current) {
+      status = attention ? "attention" : "current";
+    } else if (attention) {
+      status = "attention";
+    } else if (done) {
+      status = "done";
+    }
+    return { key, label: GUEST_STEP_LABELS[key], status, badge };
+  });
 }
 
 export function deriveJourney(input: DeriveJourneyInput): DeriveJourneyResult {
   if (input.role === "guest") {
     const defaultStep = deriveGuestDefaultStep(input);
-    const steps: JourneyStep[] = GUEST_STEP_KEYS.map((key) => ({
-      key,
-      label: GUEST_STEP_LABELS[key],
-      status: key === defaultStep ? "current" : "todo",
-    }));
-    return { defaultStep, steps };
+    return {
+      defaultStep,
+      steps: buildGuestSteps(input, defaultStep),
+    };
   }
 
   const defaultStep = deriveHostDefaultStep(input);
