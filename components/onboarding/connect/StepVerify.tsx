@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Check } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ConnectError } from "@/components/onboarding/connect/ConnectError";
@@ -76,13 +77,13 @@ function StageRow({
             : "bg-surface-soft/60",
       ].join(" ")}
     >
-      <span aria-hidden className="mt-0.5 text-base">
+      <span aria-hidden className="mt-0.5 flex h-5 w-5 items-center justify-center">
         {status === "done" ? (
-          "✅"
+          <Check className="h-4 w-4 text-success" strokeWidth={2.6} />
         ) : status === "current" ? (
           <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent motion-reduce:animate-none" />
         ) : (
-          "⚪"
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-ink-caption/40" />
         )}
       </span>
       <span className="min-w-0 flex-1">
