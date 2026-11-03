@@ -7,6 +7,10 @@ const updateEq2 = vi.fn(async () => ({ error: null }));
 
 vi.mock("@/lib/security/guard", () => ({
   guardApi: (...args: unknown[]) => guardApi(...args),
+  rejectAnonymousWrite: (identity: { kind?: string; isAnonymous?: boolean }) =>
+    identity.kind === "user" && identity.isAnonymous === true
+      ? Response.json({ error: "guest-readonly" }, { status: 403 })
+      : null,
 }));
 vi.mock("@/lib/security/rate-limit", () => ({
   checkRateLimit: () => ({ ok: true }),

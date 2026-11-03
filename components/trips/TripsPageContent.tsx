@@ -8,6 +8,7 @@ import { AutomationStatusBanner } from "@/components/home/AutomationStatusBanner
 import { MobileShell } from "@/components/layout/MobileShell";
 import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
 import { TripListCard } from "@/components/trips/TripListCard";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { useTrips } from "@/lib/trips/TripProvider";
 
 const VisitedWorldMap = dynamic(
@@ -25,10 +26,12 @@ const VisitedWorldMap = dynamic(
 );
 
 export function TripsPageContent() {
+  const { isAnonymous } = useAuth();
   const { trips, isReady, removeTrip } = useTrips();
   const [editMode, setEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [quickTripOpen, setQuickTripOpen] = useState(false);
+  const canCreateTrip = !isAnonymous;
 
   useEffect(() => {
     setSelectedIds((prev) =>
@@ -170,19 +173,27 @@ export function TripsPageContent() {
               </p>
             </div>
             <div className="mt-1 flex w-full max-w-xs flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => setQuickTripOpen(true)}
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl ai-gradient-bg px-6 text-sm font-bold text-surface-white shadow-glow transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                빠르게 여행 만들기
-              </button>
-              <Link
-                href="/onboarding"
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-surface-white px-6 text-sm font-bold text-brand ring-1 ring-line-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                AI로 일정까지 계획하기
-              </Link>
+              {canCreateTrip ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setQuickTripOpen(true)}
+                    className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl ai-gradient-bg px-6 text-sm font-bold text-surface-white shadow-glow transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    빠르게 여행 만들기
+                  </button>
+                  <Link
+                    href="/onboarding"
+                    className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-surface-white px-6 text-sm font-bold text-brand ring-1 ring-line-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    AI로 일정까지 계획하기
+                  </Link>
+                </>
+              ) : (
+                <p className="text-center text-sm text-ink-caption">
+                  초대 링크로 합류한 뒤에는 새 여행을 만들 수 없어요.
+                </p>
+              )}
             </div>
           </div>
         ) : (
@@ -220,11 +231,13 @@ export function TripsPageContent() {
           </div>
         )}
       </div>
-      <QuickTripSheet
-        open={quickTripOpen}
-        onClose={() => setQuickTripOpen(false)}
-        reason="first-run"
-      />
+      {canCreateTrip ? (
+        <QuickTripSheet
+          open={quickTripOpen}
+          onClose={() => setQuickTripOpen(false)}
+          reason="first-run"
+        />
+      ) : null}
     </MobileShell>
   );
 }

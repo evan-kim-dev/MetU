@@ -9,8 +9,15 @@ import { resolveGuestCookieSecret } from "@/lib/security/guest-secret";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export type RequestIdentity =
-  | { kind: "user"; userId: string }
+  | { kind: "user"; userId: string; isAnonymous?: boolean }
   | { kind: "guest"; nonce: string };
+
+/** Supabase 익명 로그인 사용자(JWT is_anonymous). 쿠키 guest 와는 다름. */
+export function isAnonymousUserIdentity(
+  identity: RequestIdentity
+): boolean {
+  return identity.kind === "user" && identity.isAnonymous === true;
+}
 
 export async function getRequestIdentity(): Promise<RequestIdentity | null> {
   try {
@@ -19,7 +26,11 @@ export async function getRequestIdentity(): Promise<RequestIdentity | null> {
       data: { user },
     } = await supabase.auth.getUser();
     if (user?.id) {
-      return { kind: "user", userId: user.id };
+      return {
+        kind: "user",
+        userId: user.id,
+        isAnonymous: user.is_anonymous === true,
+      };
     }
   } catch {
     // fall through to guest cookie

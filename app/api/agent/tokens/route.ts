@@ -9,7 +9,7 @@ import {
   issueTokenPlaintext,
 } from "@/lib/agent/tokens";
 import { apiInternalError } from "@/lib/api/respond";
-import { guardApi } from "@/lib/security/guard";
+import { guardApi, rejectAnonymousWrite } from "@/lib/security/guard";
 
 export const maxDuration = 60;
 
@@ -25,6 +25,8 @@ export async function GET(request: Request) {
   if (guard.identity.kind !== "user") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const anon = rejectAnonymousWrite(guard.identity);
+  if (anon) return anon;
 
   const url = new URL(request.url);
   const tripIdRaw = url.searchParams.get("tripId");
@@ -79,6 +81,8 @@ export async function POST(request: Request) {
   if (guard.identity.kind !== "user") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const anon = rejectAnonymousWrite(guard.identity);
+  if (anon) return anon;
 
   const limited = await readJsonLimited(request, 4_096);
   if (!limited.ok) return limited.response;

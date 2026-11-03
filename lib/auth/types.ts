@@ -13,7 +13,7 @@ export interface AuthUser {
   email?: string | null;
   user_metadata?: AuthUserMetadata;
   app_metadata?: { provider?: string };
-  /** Supabase 익명 로그인. 없으면 false. */
+  /** Supabase 익명 로그인. 없으면 false 취급. */
   is_anonymous?: boolean;
 }
 

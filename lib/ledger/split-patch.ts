@@ -124,6 +124,92 @@ export function splitPatchReasonMessage(reason: SplitPatchFailReason): string {
   return REASON_MESSAGES[reason];
 }
 
+/**
+ * 익명 게스트는 자기 몫만 바꿀 수 있다 (K7b).
+ * weights/only 불가, exclude·itemExclusions 는 요청자 본인만.
+ */
+export function guestMayApply(args: {
+  patch: Pick<
+    SplitPatch,
+    "exclude" | "only" | "weights" | "itemExclusions"
+  >;
+  requesterMemberId: string;
+}): { ok: true } | { ok: false; code: "guest-self-only" } {
+  const { patch, requesterMemberId } = args;
+  const kinds = patchKinds(patch);
+  if (kinds.includes("weights") || kinds.includes("only")) {
+    return { ok: false, code: "guest-self-only" };
+  }
+  if (kinds.includes("exclude")) {
+    const ids = [...new Set(patch.exclude)];
+    if (ids.length !== 1 || ids[0] !== requesterMemberId) {
+      return { ok: false, code: "guest-self-only" };
+    }
+  }
+  if (kinds.includes("itemExclusions")) {
+    if (
+      patch.itemExclusions.length === 0 ||
+      patch.itemExclusions.some((e) => e.memberId !== requesterMemberId)
+    ) {
+      return { ok: false, code: "guest-self-only" };
+    }
+  }
+  return { ok: true };
+}
+
+export const GUEST_SELF_ONLY_MESSAGE =
+  "다른 사람의 분담은 호스트만 바꿀 수 있어요.";
+
+/**
+ * 멤버 칩 탭 → SplitPatch (LLM 없음). exclude / include 만.
+ */
+export function chipToPatch(args: {
+  expenseId: string;
+  memberId: string;
+  action: "exclude" | "include";
+  currentParticipants: readonly string[];
+}):
+  | { ok: true; patch: SplitPatch }
+  | { ok: false; reason: SplitPatchFailReason } {
+  const { expenseId, memberId, action } = args;
+  const participants = [...new Set(args.currentParticipants)];
+
+  if (action === "exclude") {
+    if (!participants.includes(memberId)) {
+      return { ok: false, reason: "no-change" };
+    }
+    if (participants.filter((id) => id !== memberId).length === 0) {
+      return { ok: false, reason: "nobody-left" };
+    }
+    return {
+      ok: true,
+      patch: {
+        expenseId,
+        exclude: [memberId],
+        only: [],
+        weights: [],
+        itemExclusions: [],
+        clarification: null,
+      },
+    };
+  }
+
+  if (participants.includes(memberId)) {
+    return { ok: false, reason: "no-change" };
+  }
+  return {
+    ok: true,
+    patch: {
+      expenseId,
+      exclude: [],
+      only: [...participants, memberId],
+      weights: [],
+      itemExclusions: [],
+      clarification: null,
+    },
+  };
+}
+
 function unique(ids: readonly string[]): string[] {
   return [...new Set(ids)];
 }

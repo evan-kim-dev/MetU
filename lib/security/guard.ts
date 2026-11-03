@@ -5,9 +5,20 @@ import { NextResponse } from "next/server";
 import {
   getRequestIdentity,
   identitySubject,
+  isAnonymousUserIdentity,
   type RequestIdentity,
 } from "@/lib/security/identity";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+
+/** 익명(게스트) 쓰기 차단. 서버 최종 방어 — UI 숨김만으로 권한을 판단하지 않음. */
+export function rejectAnonymousWrite(
+  identity: RequestIdentity
+): NextResponse | null {
+  if (isAnonymousUserIdentity(identity)) {
+    return NextResponse.json({ error: "guest-readonly" }, { status: 403 });
+  }
+  return null;
+}
 
 // requireIngestToken lives in lib/agent/tokens.ts (P10).
 

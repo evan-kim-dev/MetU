@@ -8,6 +8,10 @@ const hashIngestToken = vi.fn((_plain: string) => "hash");
 
 vi.mock("@/lib/security/guard", () => ({
   guardApi: (...args: unknown[]) => guardApi(...args),
+  rejectAnonymousWrite: (identity: { kind?: string; isAnonymous?: boolean }) =>
+    identity.kind === "user" && identity.isAnonymous === true
+      ? Response.json({ error: "guest-readonly" }, { status: 403 })
+      : null,
 }));
 vi.mock("@/lib/agent/admin", () => ({
   getAgentAdmin: () => getAgentAdmin(),
