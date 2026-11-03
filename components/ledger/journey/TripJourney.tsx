@@ -295,6 +295,7 @@ export function TripJourney({ tripId }: Props) {
         <GuestPay
           tripId={tripId}
           hasTransfers={Boolean(settlement && settlement.transfersTotal > 0)}
+          onDone={() => goStep("done")}
         />
       );
     } else {

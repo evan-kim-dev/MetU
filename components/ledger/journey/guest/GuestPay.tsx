@@ -1,50 +1,24 @@
 "use client";
 
-import Link from "next/link";
-import { Wallet } from "lucide-react";
-import { BottomCTA } from "@/components/ds/BottomCTA";
-import { EmptyState } from "@/components/ds/EmptyState";
+import { PayStep } from "@/components/ledger/journey/host/PayStep";
 
 type Props = {
   tripId: string;
+  /** 레거시 호환. PayStep 이 정산 유무를 직접 읽어요. */
   hasTransfers: boolean;
+  onDone?: () => void;
 };
 
-export function GuestPay({ tripId, hasTransfers }: Props) {
-  const payHref = `/trips/${tripId}/ledger?step=pay`;
-
-  if (!hasTransfers) {
-    return (
-      <div className="px-4 py-6">
-        <EmptyState
-          icon={Wallet}
-          title="먼저 정산을 계산해요"
-          body="호스트가 정산을 만들면 여기서 송금할 수 있어요."
-          action={
-            <Link
-              href={`/trips/${tripId}/ledger?step=settle`}
-              className="mu-focus text-mu-label text-mu-accent"
-            >
-              정산 화면 보기
-            </Link>
-          }
-        />
-      </div>
-    );
-  }
-
+/**
+ * 게스트 ③ 송금. PayStep(audience=guest) — 나와 관련된 송금만, 내 건만 완료 표시.
+ */
+export function GuestPay({ tripId, onDone }: Props) {
   return (
-    <div className="flex flex-col gap-4 px-4 py-6 pb-28">
-      <p className="text-mu-body text-mu-fg-2">
-        내가 보낼 송금은 송금 단계에서 확인하고, 송금 앱을 연 뒤 완료를 눌러
-        주세요.
-      </p>
-      <BottomCTA
-        label="송금하러 가기"
-        onClick={() => {
-          window.location.href = payHref;
-        }}
-      />
-    </div>
+    <PayStep
+      tripId={tripId}
+      mode="journey"
+      audience="guest"
+      onDone={onDone}
+    />
   );
 }

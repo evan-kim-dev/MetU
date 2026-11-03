@@ -20,8 +20,8 @@
 | U2 | `feat/ux-step-record` | 완료(PR #79) | #79 | RecordStep · AddExpenseSheet · ?add= 시트 |
 | U3 | `feat/ux-step-adjust` | 완료(PR #80) | #80 | AdjustStep |
 | U4 | `feat/ux-step-settle` | 완료(PR #81) | #81 | SettleStep · CurrencyTotals · FeeLeakCard |
-| U5 | `feat/ux-step-pay` | 진행 |  | PayStep 추출 |
-| U6 | `feat/ux-guest-journey-complete` | 대기 |  |  |
+| U5 | `feat/ux-step-pay` | 완료(PR #82) | #82 | PayStep · settle URL 조합 |
+| U6 | `feat/ux-guest-journey-complete` | 진행 |  | GuestShare/Pay/Done 보강 |
 | U7 | `feat/ux-entry-points` | 대기 |  |  |
 | U8 | `feat/ux-onboarding-steps` | 대기 |  |  |
 | U9 | `feat/ux-trip-flows` | 대기 |  |  |
@@ -1052,3 +1052,15 @@
 
 **다음 세션(U6) 인계**
 - 게스트 여정 완성(GuestShare/Adjust/Pay/Done 감사·보강).
+
+### 2026-11-04 (KST) · U6 · `feat/ux-guest-journey-complete`
+
+**한 일**
+- GuestShare: 제목·분담 확인 CTA(보낼 돈 없을 때). GuestPay → PayStep(audience=guest, 관련 송금만). GuestDone: PWA 홈 추가 안내. GuestAdjust: 「내 몫이 달라요」 헤더.
+- 권한 회귀: 기존 guest-readonly / guest-self-only 라우트 테스트 유지.
+
+**확인 필요**
+- Evan: 실기기 2대 QR→조정→송금. `/join`·`/s` 화면 추가 리디자인(D3).
+
+**다음 세션(U7) 인계**
+- 진입점(`/agent`, 홈 CTA) 정리.
