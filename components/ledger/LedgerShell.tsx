@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CardProfileSettings } from "@/components/ledger/CardProfileSettings";
 import { CashRateSettings } from "@/components/ledger/CashRateSettings";
@@ -11,8 +12,10 @@ import { PasteExpenseBox } from "@/components/ledger/PasteExpenseBox";
 import { ReceiptUploader } from "@/components/ledger/ReceiptUploader";
 import { VoiceInputButton } from "@/components/ledger/VoiceInputButton";
 import { TripInvitePanel } from "@/components/trips/ledger/TripInvitePanel";
+import { Sheet } from "@/components/ds/Sheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
+import type { HostStepKey } from "@/lib/ledger/journey-state";
 import {
   buildLocalInsight,
   computeLedgerStats,
@@ -27,7 +30,12 @@ import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
-type Props = { tripId: string };
+type Props = {
+  tripId: string;
+  /** UX-S1: 여정 단계. 기본 record (기존 한 페이지와 동일 블록). */
+  step?: HostStepKey;
+  onNavigate?: (step: HostStepKey) => void;
+};
 
 /** 가계부 탭에서 넘어오는 ?add= / ?settings= 값. 알 수 없는 값은 무시한다. */
 type EntryIntent = "manual" | "receipt" | "voice" | "settings-fx";
@@ -53,7 +61,11 @@ function newManualDraft(): ExpenseDraftInput {
   };
 }
 
-export function LedgerShell({ tripId }: Props) {
+export function LedgerShell({
+  tripId,
+  step = "record",
+  onNavigate,
+}: Props) {
   const { user, provider } = useAuth();
   const searchParams = useSearchParams();
   const intent = readEntryIntent(searchParams);
@@ -85,6 +97,7 @@ export function LedgerShell({ tripId }: Props) {
   > | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const reload = useCallback(async () => {
     const supabase = getBrowserSupabase();
@@ -146,16 +159,18 @@ export function LedgerShell({ tripId }: Props) {
       setQueueIndex(0);
       return;
     }
+    if (intent === "settings-fx") {
+      setSettingsOpen(true);
+      return;
+    }
+    // receipt/voice: record 단계에서만 스크롤 (TripJourney가 step=record로 정규화)
+    if (step !== "record") return;
     const target =
-      intent === "receipt"
-        ? receiptRef.current
-        : intent === "voice"
-          ? voiceRef.current
-          : settingsRef.current;
+      intent === "receipt" ? receiptRef.current : voiceRef.current;
     if (!target) return;
     target.scrollIntoView?.({ block: "center" });
     target.querySelector<HTMLElement>("button, input, select")?.focus();
-  }, [intent, canEnter]);
+  }, [intent, canEnter, step]);
 
   if (loading) {
     return (
@@ -163,14 +178,42 @@ export function LedgerShell({ tripId }: Props) {
     );
   }
 
+  const showConnect = step === "connect";
+  const showInvite = step === "invite";
+  const showRecord = step === "record";
+  const showAdjust = step === "adjust";
+  const showSettleLink = step === "settle" || step === "pay";
+
+  const expenseList = (
+    <section className="rounded-2xl bg-surface-white p-4 shadow-sm">
+      <h2 className="text-sm font-extrabold text-ink-heading">지출 목록</h2>
+      <ul className="mt-2 flex flex-col gap-2">
+        {expenses.length === 0 ? (
+          <li className="text-xs text-ink-muted">아직 지출이 없어요.</li>
+        ) : (
+          expenses.map((e) => (
+            <li
+              key={e.id}
+              className="flex items-center justify-between rounded-lg bg-surface-soft px-3 py-2 text-xs"
+            >
+              <span className="font-semibold text-ink-heading">
+                {e.merchant || e.label}
+              </span>
+              <span className="font-bold">{formatKRW(e.krwAmount)}</span>
+            </li>
+          ))
+        )}
+      </ul>
+    </section>
+  );
+
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-6">
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-28 pt-2">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold text-ink-heading">가계부</h1>
           <p className="text-xs text-ink-muted">합계 {formatKRW(total)}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Link
             href={`/trips/${tripId}/ledger/inbox`}
             className="relative text-xs font-bold text-brand"
@@ -182,12 +225,14 @@ export function LedgerShell({ tripId }: Props) {
               </span>
             ) : null}
           </Link>
-          <Link
-            href={`/trips/${tripId}`}
-            className="text-xs font-bold text-brand"
+          <button
+            type="button"
+            aria-label="설정"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-body"
+            onClick={() => setSettingsOpen(true)}
           >
-            여행으로
-          </Link>
+            <Settings className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+          </button>
         </div>
       </div>
 
@@ -201,121 +246,193 @@ export function LedgerShell({ tripId }: Props) {
         <p className="text-sm text-ink-body">동행자를 먼저 추가해 주세요.</p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white"
-              onClick={() => openDrafts([newManualDraft()])}
-            >
-              직접 입력
-            </button>
-          </div>
-
-          <PasteExpenseBox
-            tripId={tripId}
-            onDrafts={openDrafts}
-            onCancelNotice={setCancelNotice}
-          />
-          <div ref={receiptRef}>
-            <ReceiptUploader
-              tripId={tripId}
-              onDraft={(d) => openDrafts([d])}
-            />
-          </div>
-          <div ref={voiceRef}>
-            <VoiceInputButton
-              tripId={tripId}
-              onDrafts={openDrafts}
-            />
-          </div>
-
-          <LedgerDashboard
-            expenses={expenses}
-            members={members}
-            budget={budget || Math.max(total, 1)}
-            insight={insight}
-            insightLoading={insightLoading}
-            onRefreshInsight={() => {
-              setInsightLoading(true);
-              try {
-                const stats = computeLedgerStats({
-                  expenses,
-                  budget: budget || Math.max(total, 1),
-                });
-                setInsight(buildLocalInsight(stats));
-              } finally {
-                setInsightLoading(false);
-              }
-            }}
-          />
-
-          <div className="flex flex-wrap gap-3 text-xs font-bold text-brand">
-            <Link href={`/trips/${tripId}/ledger/inbox`}>
-              인박스{inboxCount > 0 ? ` (${inboxCount})` : ""}
-            </Link>
-            <Link href={`/trips/${tripId}/ledger/connect`}>자동 수집</Link>
-            <Link href={`/trips/${tripId}/ledger/settle`}>정산</Link>
-            <Link href={`/trips/${tripId}/ledger/report`}>리포트</Link>
-          </div>
-
-          <TripInvitePanel
-            tripId={tripId}
-            members={members}
-            canInvite={Boolean(me?.isOwner && me.userId === user?.id)}
-          />
-
-          {cancelNotice ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs">
-              <p className="font-bold text-amber-900">취소 문자예요</p>
-              <p className="text-amber-800">
-                {cancelNotice.merchant ?? "가맹점"} · {cancelNotice.amount}{" "}
-                {cancelNotice.currency}
+          {showConnect ? (
+            <section className="rounded-2xl border border-line-soft bg-surface-white p-4">
+              <h2 className="text-sm font-extrabold text-ink-heading">
+                알림을 연결해요
+              </h2>
+              <p className="mt-1 text-xs text-ink-muted">
+                결제 알림이 오면 지출이 자동으로 쌓여요
               </p>
+              <Link
+                href={`/trips/${tripId}/ledger/connect`}
+                className="mt-3 inline-flex min-h-tap items-center text-sm font-bold text-brand"
+              >
+                연결 관리
+              </Link>
               <button
                 type="button"
-                className="mt-1 font-bold text-amber-900 underline"
-                onClick={() => setCancelNotice(null)}
+                className="mt-2 block text-xs font-semibold text-ink-muted underline"
+                onClick={() => onNavigate?.("invite")}
               >
-                닫기
+                나중에 직접 입력할게요
               </button>
-            </div>
+            </section>
           ) : null}
 
-          <section className="rounded-2xl bg-surface-white p-4 shadow-sm">
-            <h2 className="text-sm font-extrabold text-ink-heading">지출 목록</h2>
-            <ul className="mt-2 flex flex-col gap-2">
-              {expenses.length === 0 ? (
-                <li className="text-xs text-ink-muted">아직 지출이 없어요.</li>
-              ) : (
-                expenses.map((e) => (
-                  <li
-                    key={e.id}
-                    className="flex items-center justify-between rounded-lg bg-surface-soft px-3 py-2 text-xs"
-                  >
-                    <span className="font-semibold text-ink-heading">
-                      {e.merchant || e.label}
-                    </span>
-                    <span className="font-bold">{formatKRW(e.krwAmount)}</span>
-                  </li>
-                ))
-              )}
-            </ul>
-          </section>
-
-          <div ref={settingsRef} className="flex flex-col gap-4">
-            {user ? (
-              <CardProfileSettings
-                userId={user.id}
-                profiles={profiles}
-                onChange={setProfiles}
+          {showInvite ? (
+            <>
+              <TripInvitePanel
+                tripId={tripId}
+                members={members}
+                canInvite={Boolean(me?.isOwner && me.userId === user?.id)}
               />
-            ) : null}
-            {me ? (
-              <CashRateSettings tripId={tripId} memberId={me.id} />
-            ) : null}
-          </div>
+              <ul className="rounded-2xl bg-surface-white p-4 text-sm">
+                <li className="mb-2 text-xs font-bold text-ink-muted">멤버</li>
+                {members.map((m) => (
+                  <li
+                    key={m.id}
+                    className="flex items-center justify-between py-2 text-ink-heading"
+                  >
+                    <span>{m.displayName}</span>
+                    <span className="text-xs text-ink-muted">
+                      {m.isOwner ? "호스트" : "멤버"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+
+          {showRecord ? (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white"
+                  onClick={() => openDrafts([newManualDraft()])}
+                >
+                  직접 입력
+                </button>
+              </div>
+
+              <PasteExpenseBox
+                tripId={tripId}
+                onDrafts={openDrafts}
+                onCancelNotice={setCancelNotice}
+              />
+              <div ref={receiptRef}>
+                <ReceiptUploader
+                  tripId={tripId}
+                  onDraft={(d) => openDrafts([d])}
+                />
+              </div>
+              <div ref={voiceRef}>
+                <VoiceInputButton tripId={tripId} onDrafts={openDrafts} />
+              </div>
+
+              <LedgerDashboard
+                expenses={expenses}
+                members={members}
+                budget={budget || Math.max(total, 1)}
+                insight={insight}
+                insightLoading={insightLoading}
+                onRefreshInsight={() => {
+                  setInsightLoading(true);
+                  try {
+                    const stats = computeLedgerStats({
+                      expenses,
+                      budget: budget || Math.max(total, 1),
+                    });
+                    setInsight(buildLocalInsight(stats));
+                  } finally {
+                    setInsightLoading(false);
+                  }
+                }}
+              />
+
+              <div className="flex flex-wrap gap-3 text-xs font-bold text-brand">
+                <Link href={`/trips/${tripId}/ledger/inbox`}>
+                  인박스{inboxCount > 0 ? ` (${inboxCount})` : ""}
+                </Link>
+                <Link href={`/trips/${tripId}/ledger/connect`}>자동 수집</Link>
+                <Link href={`/trips/${tripId}/ledger/report`}>리포트</Link>
+              </div>
+
+              {cancelNotice ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs">
+                  <p className="font-bold text-amber-900">취소 문자예요</p>
+                  <p className="text-amber-800">
+                    {cancelNotice.merchant ?? "가맹점"} · {cancelNotice.amount}{" "}
+                    {cancelNotice.currency}
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-1 font-bold text-amber-900 underline"
+                    onClick={() => setCancelNotice(null)}
+                  >
+                    닫기
+                  </button>
+                </div>
+              ) : null}
+
+              {expenseList}
+            </>
+          ) : null}
+
+          {showAdjust ? (
+            <>
+              {expenseList}
+              <p className="rounded-xl bg-surface-soft px-3 py-3 text-xs text-ink-body">
+                AI 분담 수정은 정산 화면에서 할 수 있어요. 곧 이 단계로
+                옮겨져요.
+              </p>
+              <Link
+                href={`/trips/${tripId}/ledger/settle`}
+                className="text-sm font-bold text-brand"
+              >
+                정산 화면에서 분담 수정
+              </Link>
+            </>
+          ) : null}
+
+          {showSettleLink ? (
+            <section className="rounded-2xl border border-line-soft bg-surface-white p-4">
+              <h2 className="text-sm font-extrabold text-ink-heading">
+                {step === "pay" ? "송금을 챙겨요" : "이 금액으로 정산해요"}
+              </h2>
+              <p className="mt-1 text-xs text-ink-muted">
+                정산·송금은 기존 정산 화면에서 이어서 해요
+              </p>
+              <Link
+                href={`/trips/${tripId}/ledger/settle`}
+                className="mt-3 inline-flex min-h-tap items-center rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white"
+              >
+                정산 화면 열기
+              </Link>
+            </section>
+          ) : null}
         </>
       )}
+
+      <Sheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title="설정"
+      >
+        <div ref={settingsRef} className="flex flex-col gap-4">
+          {user ? (
+            <CardProfileSettings
+              userId={user.id}
+              profiles={profiles}
+              onChange={setProfiles}
+            />
+          ) : null}
+          {me ? <CashRateSettings tripId={tripId} memberId={me.id} /> : null}
+          <Link
+            href={`/trips/${tripId}/ledger/inbox`}
+            className="text-sm font-bold text-brand"
+          >
+            인박스
+          </Link>
+          <Link
+            href={`/trips/${tripId}/ledger/report`}
+            className="text-sm font-bold text-brand"
+          >
+            리포트
+          </Link>
+        </div>
+      </Sheet>
 
       {queue.length > 0 ? (
         <ExpenseConfirmSheet

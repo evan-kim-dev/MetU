@@ -129,13 +129,13 @@ describe("LedgerShell 바로가기 쿼리", () => {
     expect(screen.queryByTestId("confirm-sheet")).toBeNull();
   });
 
-  it("?settings=fx 는 환율·수수료 설정으로 이동해요", async () => {
+  it("?settings=fx 는 설정 시트를 열어요", async () => {
     search = "settings=fx";
     render(<LedgerShell tripId="t1" />);
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByText("카드 수수료 추가"))
+      expect(screen.getByText("카드 수수료 추가")).toBeTruthy()
     );
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("dialog", { name: "설정" })).toBeTruthy();
   });
 
   it("알 수 없는 값은 무시해요", async () => {
