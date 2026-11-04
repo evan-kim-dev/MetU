@@ -5,6 +5,8 @@ import {
   deriveHostDefaultStep,
   deriveJourney,
   formatResumeHeadline,
+  hostPhaseOf,
+  resolveHostPhaseNav,
   isGuestStepKey,
   isHostStepKey,
   resolveStepParam,
@@ -185,10 +187,12 @@ describe("deriveGuestDefaultStep", () => {
 });
 
 describe("deriveJourney guest", () => {
-  it("defaults to share with 4 steps", () => {
+  it("defaults to share with 세부 4칸·스테퍼 3칸", () => {
     const r = deriveJourney({ role: "guest", ...base });
     expect(r.defaultStep).toBe("share");
     expect(r.steps).toHaveLength(4);
+    expect(r.phaseSteps).toHaveLength(3);
+    expect(r.phaseSteps.map((s) => s.key)).toEqual(["share", "pay", "done"]);
   });
 
   it("게스트가 host step 요청하면 resolve가 기본으로", () => {
@@ -221,7 +225,7 @@ describe("formatResumeHeadline / automationToJourneyInput", () => {
     expect(automationToJourneyInput(null)).toBe("unknown");
   });
 
-  it("기록·확인 건수 한 줄", () => {
+  it("기록·확인 건수 한 줄(3단계 묶음)", () => {
     const r = deriveJourney({
       role: "host",
       ...base,
@@ -229,11 +233,22 @@ describe("formatResumeHeadline / automationToJourneyInput", () => {
       expenseCount: 2,
       pendingReviewCount: 2,
     });
-    expect(formatResumeHeadline("host", r)).toBe("③ 기록 · 확인할 지출 2건");
+    expect(formatResumeHeadline("host", r)).toBe("② 기록 · 확인할 지출 2건");
   });
 
   it("게스트 기본은 내 몫", () => {
     const r = deriveJourney({ role: "guest", ...base });
     expect(formatResumeHeadline("guest", r)).toBe("① 내 몫");
+  });
+
+  it("호스트 스테퍼는 준비·기록·정산 3칸", () => {
+    const r = deriveJourney({ role: "host", ...base, memberCount: 2 });
+    expect(r.phaseSteps.map((s) => s.label)).toEqual([
+      "준비",
+      "기록",
+      "정산",
+    ]);
+    expect(hostPhaseOf("settle")).toBe("close");
+    expect(resolveHostPhaseNav("spend", base, "settle")).toBe("record");
   });
 });

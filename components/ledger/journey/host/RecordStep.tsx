@@ -20,8 +20,10 @@ type Props = {
   cancelNotice: ExpenseDraftInput | null;
   onDismissCancel: () => void;
   onOpenAdd: (tab: AddExpenseTab) => void;
-  /** 지출을 누르면 분담 단계로 가요. */
+  /** 지출을 누르면 분담(선택) 단계로 가요. */
   onAdjust: () => void;
+  /** 주 흐름: 기록 → 정산. */
+  onSettle: () => void;
   /** 통계 카드 (LedgerDashboard) */
   dashboard: React.ReactNode;
 };
@@ -54,6 +56,7 @@ export function RecordStep({
   onDismissCancel,
   onOpenAdd,
   onAdjust,
+  onSettle,
   dashboard,
 }: Props) {
   const total = expenses.reduce(
@@ -170,7 +173,7 @@ export function RecordStep({
       <BottomCTA
         label="지출 추가"
         onClick={() => onOpenAdd("paste")}
-        secondary={{ label: "다음: 분담 조정", onClick: onAdjust }}
+        secondary={{ label: "다음: 정산하기", onClick: onSettle }}
       />
     </div>
   );

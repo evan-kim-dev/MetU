@@ -148,9 +148,12 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
   return (
     <MobileShell title="공유 여행" showBack backHref="/" showBottomNav={false}>
       <div className="flex flex-col gap-6 px-5 pb-28 pt-5">
-        <div className="rounded-2xl border-0 bg-brand/5 shadow-sm px-4 py-3 text-sm text-ink-body">
-          친구가 공유한 여행이에요. 내 계정에 추가하면 예산·일정을 그대로
-          가져와 수정할 수 있어요.
+        <div className="rounded-2xl border-0 bg-mu-accent-soft shadow-sm px-4 py-3 text-sm text-mu-fg-2">
+          <p className="font-extrabold text-mu-fg">공유된 여행</p>
+          <p className="mt-1 leading-relaxed">
+            친구가 공유한 여행이에요. 내 계정에 추가하면 예산·일정을 그대로
+            가져와 수정할 수 있어요.
+          </p>
         </div>
 
         <div className="relative h-56 overflow-hidden rounded-2xl bg-surface-soft shadow-md">

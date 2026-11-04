@@ -41,9 +41,24 @@ type JourneyStep = {
   badge?: string | number;
 };
 
+/** 스테퍼에 보이는 묶음 단계(딥링크 step 은 기존 키 유지). */
+export type HostPhaseKey = "prep" | "spend" | "close";
+export type GuestPhaseKey = "share" | "pay" | "done";
+export type JourneyPhaseKey = HostPhaseKey | GuestPhaseKey;
+
+export type JourneyPhaseStep = {
+  key: JourneyPhaseKey;
+  label: string;
+  status: JourneyStepStatus;
+  badge?: string | number;
+};
+
 export type DeriveJourneyResult = {
   defaultStep: JourneyStepKey;
+  /** @deprecated 세부 6/4칸 — 스테퍼는 phaseSteps 를 써요. */
   steps: JourneyStep[];
+  /** 스테퍼용 묶음 단계(호스트 3 · 게스트 3). */
+  phaseSteps: JourneyPhaseStep[];
 };
 
 const HOST_STEP_KEYS: HostStepKey[] = [
@@ -260,12 +275,138 @@ function buildGuestSteps(
   });
 }
 
+const HOST_PHASE_DEFS: {
+  key: HostPhaseKey;
+  label: string;
+  members: HostStepKey[];
+}[] = [
+  { key: "prep", label: "준비", members: ["connect", "invite"] },
+  { key: "spend", label: "기록", members: ["record", "adjust"] },
+  { key: "close", label: "정산", members: ["settle", "pay"] },
+];
+
+export function hostPhaseOf(step: HostStepKey): HostPhaseKey {
+  if (step === "connect" || step === "invite") return "prep";
+  if (step === "record" || step === "adjust") return "spend";
+  return "close";
+}
+
+export function guestPhaseOf(step: GuestStepKey): GuestPhaseKey {
+  if (step === "adjust" || step === "share") return "share";
+  if (step === "pay") return "pay";
+  return "done";
+}
+
+/** 스테퍼에서 묶음 칸을 눌렀을 때 이동할 세부 step. */
+export function resolveHostPhaseNav(
+  phase: HostPhaseKey,
+  input: Omit<DeriveJourneyInput, "role">,
+  current: HostStepKey
+): HostStepKey {
+  if (hostPhaseOf(current) === phase) return current;
+  if (phase === "prep") {
+    return hostCompletion("invite", input).done ? "invite" : "connect";
+  }
+  if (phase === "spend") {
+    return "record";
+  }
+  // close
+  if (
+    input.settlement?.status === "open" &&
+    unpaidTransfers(input.settlement) > 0
+  ) {
+    return "pay";
+  }
+  if (input.settlement?.status === "completed") return "pay";
+  return "settle";
+}
+
+export function resolveGuestPhaseNav(
+  phase: GuestPhaseKey,
+  current: GuestStepKey
+): GuestStepKey {
+  if (guestPhaseOf(current) === phase) {
+    return current === "adjust" ? "share" : current;
+  }
+  return phase;
+}
+
+function buildHostPhaseSteps(
+  input: Omit<DeriveJourneyInput, "role">,
+  current: HostStepKey
+): JourneyPhaseStep[] {
+  const currentPhase = hostPhaseOf(current);
+  return HOST_PHASE_DEFS.map((phase) => {
+    const completions = phase.members.map((k) => hostCompletion(k, input));
+    const attention = completions.some((c) => c.attention);
+    const badge = completions.find((c) => c.badge != null)?.badge;
+    // 준비=초대 완료, 기록=지출 기록 완료, 정산=송금 완료
+    const done =
+      phase.key === "prep"
+        ? hostCompletion("invite", input).done
+        : phase.key === "spend"
+          ? hostCompletion("record", input).done
+          : hostCompletion("pay", input).done;
+
+    let status: JourneyStepStatus;
+    if (phase.key === currentPhase) {
+      status = attention ? "attention" : "current";
+    } else if (attention) {
+      status = "attention";
+    } else if (done) {
+      status = "done";
+    } else {
+      status = "todo";
+    }
+    return { key: phase.key, label: phase.label, status, badge };
+  });
+}
+
+function buildGuestPhaseSteps(
+  input: Omit<DeriveJourneyInput, "role">,
+  current: GuestStepKey
+): JourneyPhaseStep[] {
+  const unpaid = unpaidTransfers(input.settlement);
+  const currentPhase = guestPhaseOf(current);
+  const defs: { key: GuestPhaseKey; label: string }[] = [
+    { key: "share", label: "내 몫" },
+    { key: "pay", label: "송금" },
+    { key: "done", label: "완료" },
+  ];
+  return defs.map(({ key, label }) => {
+    const done =
+      key === "done"
+        ? current === "done"
+        : key === "share"
+          ? Boolean(input.settlement)
+          : Boolean(input.settlement) && unpaid === 0;
+    const attention =
+      key === "pay" &&
+      input.settlement?.status === "open" &&
+      unpaid > 0;
+    const badge =
+      key === "pay" && unpaid > 0 && input.settlement ? unpaid : undefined;
+    let status: JourneyStepStatus;
+    if (key === currentPhase) {
+      status = attention ? "attention" : "current";
+    } else if (attention) {
+      status = "attention";
+    } else if (done) {
+      status = "done";
+    } else {
+      status = "todo";
+    }
+    return { key, label, status, badge };
+  });
+}
+
 export function deriveJourney(input: DeriveJourneyInput): DeriveJourneyResult {
   if (input.role === "guest") {
     const defaultStep = deriveGuestDefaultStep(input);
     return {
       defaultStep,
       steps: buildGuestSteps(input, defaultStep),
+      phaseSteps: buildGuestPhaseSteps(input, defaultStep),
     };
   }
 
@@ -273,6 +414,7 @@ export function deriveJourney(input: DeriveJourneyInput): DeriveJourneyResult {
   return {
     defaultStep,
     steps: buildHostSteps(input, defaultStep),
+    phaseSteps: buildHostPhaseSteps(input, defaultStep),
   };
 }
 
@@ -298,20 +440,22 @@ export function resolveStepParam(
   return defaultStep;
 }
 
-const HOST_STEP_ORDINAL: Record<HostStepKey, string> = {
-  connect: "①",
-  invite: "②",
-  record: "③",
-  adjust: "④",
-  settle: "⑤",
-  pay: "⑥",
+const HOST_PHASE_ORDINAL: Record<HostPhaseKey, string> = {
+  prep: "①",
+  spend: "②",
+  close: "③",
 };
 
-const GUEST_STEP_ORDINAL: Record<GuestStepKey, string> = {
+const HOST_PHASE_LABEL: Record<HostPhaseKey, string> = {
+  prep: "준비",
+  spend: "기록",
+  close: "정산",
+};
+
+const GUEST_PHASE_ORDINAL: Record<GuestPhaseKey, string> = {
   share: "①",
-  adjust: "②",
-  pay: "③",
-  done: "④",
+  pay: "②",
+  done: "③",
 };
 
 /** 자동화 UI 상태 → 여정 입력. */
@@ -324,37 +468,41 @@ export function automationToJourneyInput(
 }
 
 /**
- * ResumeCard 한 줄. 예: "③ 기록 · 확인할 지출 2건"
- * step 쿼리 없이 기본 단계로 보낼 때 쓰는 문구예요.
+ * ResumeCard 한 줄. 예: "② 기록 · 확인할 지출 2건"
+ * 스테퍼와 같은 3단계 묶음 기준으로 보여 줘요.
  */
 export function formatResumeHeadline(
   role: JourneyRole,
   journey: DeriveJourneyResult
 ): string {
-  const step =
-    journey.steps.find((s) => s.key === journey.defaultStep) ??
-    journey.steps[0];
-  if (!step) return "정산 여정";
+  const phase =
+    journey.phaseSteps.find((s) =>
+      role === "host"
+        ? s.key === hostPhaseOf(journey.defaultStep as HostStepKey)
+        : s.key === guestPhaseOf(journey.defaultStep as GuestStepKey)
+    ) ?? journey.phaseSteps[0];
+  if (!phase) return "정산 여정";
+
   const ordinal =
     role === "host"
-      ? HOST_STEP_ORDINAL[step.key as HostStepKey]
-      : GUEST_STEP_ORDINAL[step.key as GuestStepKey];
+      ? HOST_PHASE_ORDINAL[phase.key as HostPhaseKey]
+      : GUEST_PHASE_ORDINAL[phase.key as GuestPhaseKey];
   const label =
     role === "host"
-      ? HOST_STEP_LABELS[step.key as HostStepKey]
-      : GUEST_STEP_LABELS[step.key as GuestStepKey];
+      ? HOST_PHASE_LABEL[phase.key as HostPhaseKey]
+      : phase.label;
 
   let detail: string | null = null;
-  if (step.badge != null) {
-    if (typeof step.badge === "number") {
+  if (phase.badge != null) {
+    if (typeof phase.badge === "number") {
       detail =
-        step.key === "record"
-          ? `확인할 지출 ${step.badge}건`
-          : String(step.badge);
+        phase.key === "spend" || journey.defaultStep === "record"
+          ? `확인할 지출 ${phase.badge}건`
+          : String(phase.badge);
     } else {
-      detail = String(step.badge);
+      detail = String(phase.badge);
     }
-  } else if (step.status === "attention") {
+  } else if (phase.status === "attention") {
     detail = "확인이 필요해요";
   }
 

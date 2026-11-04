@@ -31,6 +31,7 @@ function renderStep(props: Partial<React.ComponentProps<typeof RecordStep>> = {}
   const handlers = {
     onOpenAdd: vi.fn(),
     onAdjust: vi.fn(),
+    onSettle: vi.fn(),
     onDismissCancel: vi.fn(),
   };
   render(
@@ -59,12 +60,12 @@ describe("RecordStep", () => {
     expect(screen.queryByText("지출 분석 보기")).toBeNull();
   });
 
-  it("주 CTA 「지출 추가」와 보조 「다음: 분담 조정」", () => {
+  it("주 CTA 「지출 추가」와 보조 「다음: 정산하기」", () => {
     const h = renderStep();
     fireEvent.click(screen.getByRole("button", { name: "지출 추가" }));
     expect(h.onOpenAdd).toHaveBeenCalledWith("paste");
-    fireEvent.click(screen.getByRole("button", { name: "다음: 분담 조정" }));
-    expect(h.onAdjust).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "다음: 정산하기" }));
+    expect(h.onSettle).toHaveBeenCalledTimes(1);
   });
 
   it("총지출·건수와 최근순 목록(외화·결제자), 누르면 분담 단계로", () => {

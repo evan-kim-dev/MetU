@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -348,6 +348,7 @@ export function LedgerShell({
                   onDismissCancel={() => setCancelNotice(null)}
                   onOpenAdd={openAdd}
                   onAdjust={() => onNavigate?.("adjust")}
+                  onSettle={() => onNavigate?.("settle")}
                   dashboard={dashboard}
                 />
               )}

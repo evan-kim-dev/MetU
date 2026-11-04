@@ -17,9 +17,12 @@ const listMembers = vi.fn();
 const listExpenses = vi.fn();
 const listVoidedExpenseIds = vi.fn();
 const getFxRateToKrw = vi.fn();
+const push = vi.fn();
+const rpc = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "trip-1" }),
+  useRouter: () => ({ push, replace: vi.fn() }),
 }));
 vi.mock("next/link", () => ({
   default: ({
@@ -36,10 +39,10 @@ vi.mock("next/link", () => ({
   ),
 }));
 vi.mock("@/lib/auth/AuthProvider", () => ({
-  useAuth: () => ({ user: { id: "u-a" } }),
+  useAuth: () => ({ user: { id: "u-a" }, isAnonymous: false }),
 }));
 vi.mock("@/lib/supabase/browser", () => ({
-  getBrowserSupabase: () => ({}),
+  getBrowserSupabase: () => ({ rpc: (...a: unknown[]) => rpc(...a) }),
 }));
 vi.mock("@/lib/ledger/fx", () => ({
   getFxRateToKrw: (...a: unknown[]) => getFxRateToKrw(...a),

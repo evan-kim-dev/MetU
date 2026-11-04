@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AmountCard } from "@/components/ds/AmountCard";
 import { BottomCTA } from "@/components/ds/BottomCTA";
@@ -84,8 +85,10 @@ export function SettleStep({
   onPay,
   reference: referenceProp,
 }: Props) {
+  const router = useRouter();
   const { user, isAnonymous } = useAuth();
   const [members, setMembers] = useState<TripMember[]>([]);
+  const [creating, setCreating] = useState(false);
   const [expenseRows, setExpenseRows] = useState<LedgerExpenseRow[]>([]);
   const [fxFallbackCount, setFxFallbackCount] = useState(0);
   const [hasForeign, setHasForeign] = useState(false);
@@ -219,28 +222,44 @@ export function SettleStep({
     [members, expenses, expenseLabels, transfers, stale]
   );
 
-  async function createSettlement() {
-    const supabase = getBrowserSupabase();
-    if (!supabase || !user) return;
-    const hash = await basisHash(expenses);
-    const transfersCalc = minimizeTransfers(balances);
-    const { data, error } = await supabase.rpc("create_settlement", {
-      p_trip_id: tripId,
-      p_basis_hash: hash,
-      p_transfers: transfersCalc.map((t) => ({
-        from: t.from,
-        to: t.to,
-        krw: t.krw,
-      })),
-    });
-    if (error || !data) {
-      if (error) console.error("[create_settlement]", error.message);
-      setMsg("정산 생성 실패 (소유자만 가능)");
+  const payHref = `/trips/${tripId}/ledger?step=pay`;
+
+  function goPay() {
+    if (onPay) {
+      onPay();
       return;
     }
-    setMsg("정산을 만들었어요.");
-    await loadSettlement();
-    if (onPay) onPay();
+    router.push(payHref);
+  }
+
+  async function createSettlement() {
+    const supabase = getBrowserSupabase();
+    if (!supabase || !user || creating) return;
+    setCreating(true);
+    setMsg("");
+    try {
+      const hash = await basisHash(expenses);
+      const transfersCalc = minimizeTransfers(balances);
+      const { data, error } = await supabase.rpc("create_settlement", {
+        p_trip_id: tripId,
+        p_basis_hash: hash,
+        p_transfers: transfersCalc.map((t) => ({
+          from: t.from,
+          to: t.to,
+          krw: t.krw,
+        })),
+      });
+      if (error || !data) {
+        if (error) console.error("[create_settlement]", error.message);
+        setMsg("정산 생성 실패 (소유자만 가능)");
+        return;
+      }
+      setMsg("정산을 만들었어요.");
+      await loadSettlement();
+      goPay();
+    } finally {
+      setCreating(false);
+    }
   }
 
   const isOwner = Boolean(me?.isOwner);
@@ -253,8 +272,10 @@ export function SettleStep({
     stale,
   });
 
+  /** 정산표가 있고 최신이면 송금 단계로 갈 수 있어요(송금 0건·completed 포함). */
+  const canGoPay = Boolean(settlement) && !stale;
+
   const adjustHref = `/trips/${tripId}/ledger?step=adjust`;
-  const payHref = `/trips/${tripId}/ledger?step=pay`;
   const adjustControl =
     onAdjust != null ? (
       <button
@@ -270,24 +291,6 @@ export function SettleStep({
         className="inline-flex min-h-tap items-center text-mu-caption font-bold text-mu-accent"
       >
         분담 수정하기
-      </Link>
-    );
-
-  const payControl =
-    onPay != null ? (
-      <button
-        type="button"
-        className="inline-flex min-h-tap items-center text-mu-caption font-bold text-mu-accent"
-        onClick={onPay}
-      >
-        송금하러 가기
-      </button>
-    ) : (
-      <Link
-        href={payHref}
-        className="inline-flex min-h-tap items-center text-mu-caption font-bold text-mu-accent"
-      >
-        송금하러 가기
       </Link>
     );
 
@@ -436,12 +439,13 @@ export function SettleStep({
         </p>
       ) : null}
 
-      {loaded && settlement && transfers.length > 0 ? (
+      {loaded && canGoPay ? (
         <div className="rounded-mu-md border border-mu-line bg-mu-card px-3 py-2">
           <p className="text-mu-caption text-mu-fg-2">
-            정산표가 있어요. 송금·완료 표시는 송금 단계에서 해요.
+            {transfers.length > 0
+              ? "정산표가 있어요. 아래 버튼으로 송금 단계로 넘어가요."
+              : "정산이 맞춰져 송금할 금액이 없어요. 송금 단계에서 현황을 확인할 수 있어요."}
           </p>
-          {payControl}
         </div>
       ) : null}
 
@@ -456,10 +460,25 @@ export function SettleStep({
         reference={reference}
       />
 
-      {canCreateSettlement ? (
+      {canGoPay ? (
+        <BottomCTA
+          label="송금하러 가기"
+          onClick={goPay}
+          loading={creating}
+          secondary={
+            canCreateSettlement
+              ? {
+                  label: "정산 다시 계산하기",
+                  onClick: () => void createSettlement(),
+                }
+              : undefined
+          }
+        />
+      ) : canCreateSettlement ? (
         <BottomCTA
           label={settlement ? "정산 다시 계산하기" : "정산 계산하기"}
           onClick={() => void createSettlement()}
+          loading={creating}
           hint={stale ? "지출이 바뀌었어요" : undefined}
         />
       ) : null}
