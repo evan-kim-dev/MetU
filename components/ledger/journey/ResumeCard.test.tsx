@@ -49,7 +49,7 @@ describe("ResumeCard", () => {
       />
     );
     expect(screen.getByText("지금 할 일")).toBeTruthy();
-    expect(screen.getByText("③ 기록 · 확인할 지출 2건")).toBeTruthy();
+    expect(screen.getByText("② 기록 · 확인할 지출 2건")).toBeTruthy();
     const link = screen.getByRole("link", { name: /이어서 하기/ });
     expect(link.getAttribute("href")).toBe("/trips/t1/ledger");
   });
@@ -83,7 +83,7 @@ describe("ResumeCard", () => {
         })}
       />
     );
-    expect(screen.getByText("⑥ 송금 · 1/2")).toBeTruthy();
+    expect(screen.getByText("③ 정산 · 1/2")).toBeTruthy();
   });
 
   it("게스트 문구는 내 몫 보기 CTA", () => {

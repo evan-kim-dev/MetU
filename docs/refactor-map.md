@@ -24,7 +24,7 @@
 | U6 | `feat/ux-guest-journey-complete` | 완료(PR #83) | #83 | GuestShare/Pay/Done 보강 |
 | U7 | `feat/ux-entry-points` | 완료(PR #88) | #88 | ResumeCard · TripSwitcher 삭제 |
 | U8 | `feat/ux-onboarding-steps` | 완료(PR #89) | #89 | Stepper · draft · share-target |
-| U9 | `feat/ux-trip-flows` | 보류 |  | 시연 후순위(2순위) |
+| U9 | `feat/ux-trip-flows` | 완료(PR 대기) |  | TripDetail 분리 · LedgerTab 여정 입구 |
 | U10 | `feat/ux-journey-polish` | 보류 |  | 시연 후순위(2순위) |
 | D0 | `chore/design-guardrails` | 완료(PR #84) | #84 | legacy-baseline 래칫 |
 | D1 | `refactor/design-shell` | 완료(PR #85) | #85 | ui·셸 mu 토큰 · baseline 2870 |
@@ -347,9 +347,9 @@
 | `components/recommend/usePlanQuotes.ts` | U9 · D7 | 대기 |
 | `components/trips/ItineraryChatBar.tsx` | U9 | 대기 |
 | `components/trips/QuickTripSheet.tsx` | U9 | 정리(B1, 2026-11-03, PR #75) |
-| `components/trips/SharedTripContent.tsx` | U9 | 대기 |
+| `components/trips/SharedTripContent.tsx` | U9 | 구조(U9, 2026-11-04) · 공유 배너 위계 |
 | `components/trips/SortableDayList.tsx` | U9 | 대기 |
-| `components/trips/TripDetailContent.tsx` | U9 | 대기 |
+| `components/trips/TripDetailContent.tsx` | U9 | 구조(U9, 2026-11-04) · &lt;400줄 분리 |
 | `components/trips/TripDetailParts.tsx` | U9 | 정리(B1, 2026-11-03, PR #75) |
 | `components/trips/TripListCard.tsx` | U9 | 대기 |
 | `components/trips/TripMapPanel.tsx` | U9 | 대기 |
@@ -359,7 +359,7 @@
 | `components/trips/ledger/ExpenseFlags.tsx` | U9 | 대기 |
 | `components/trips/ledger/ExpenseForm.tsx` | U9 | 대기 |
 | `components/trips/ledger/ExpenseFxLine.tsx` | U9 | 대기 |
-| `components/trips/ledger/LedgerTab.tsx` | U9 | 대기 |
+| `components/trips/ledger/LedgerTab.tsx` | U9 | 구조(U9, 2026-11-04) · 여정 입구 카드 |
 | `components/trips/ledger/MemberManager.tsx` | U9 | 대기 |
 | `components/trips/ledger/NaturalExpenseInput.tsx` | U9 | 대기 |
 | `components/trips/ledger/TripInvitePanel.tsx` | U9 | 수정(U1, 2026-11-03, PR #78) |
@@ -1177,3 +1177,17 @@
 - D5 에서 mu 토큰·레거시 팔레트 정리.
 
 **다음 세션(U9)** 여행 목록·상세·LedgerTab 입구.
+
+---
+
+## U9 — 여행 목록·상세·공유 흐름 (2026-11-04)
+
+**한 일**
+- `TripDetailContent` 865→373줄: `detail/` 로 Hero·Budget·Schedule·Memo·GuestExpenses·Tips 분리(동작 동일).
+- `LedgerTab`: `/trips/[id]/ledger` 여정 입구 카드 추가. 기존 멤버·초대·지출 UI는 유지(삭제 없음).
+- `SharedTripContent` 공유 배너 위계 보강. 상세에 `tips` 섹션 노출.
+- LedgerTab 기능 축소(임베드 CRUD 제거)는 하지 않음 — **확인 필요**(여정 SSOT와 중복).
+
+**확인** typecheck · lint · test · build
+
+**다음 세션(U10)** 여정 로딩·빈·에러·모션·접근성 마감.

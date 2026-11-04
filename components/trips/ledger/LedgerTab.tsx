@@ -1,6 +1,7 @@
 "use client";
 
-import { Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import { FxAttribution } from "@/components/fx/FxAttribution";
 import { CurrencyTotals } from "@/components/ledger/CurrencyTotals";
@@ -105,6 +106,25 @@ export function LedgerTab({
         <Wallet className="h-5 w-5 text-brand" />
         <h3 className="text-lg font-extrabold text-ink-heading">함께 쓰는 가계부</h3>
       </div>
+
+      {tripId ? (
+        <Link
+          href={`/trips/${tripId}/ledger`}
+          className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-mu-line bg-mu-sunken px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-extrabold text-mu-fg">정산 여정 열기</p>
+            <p className="mt-0.5 text-xs leading-5 text-mu-fg-2">
+              연결·초대·기록·정산을 단계로 이어가요
+            </p>
+          </div>
+          <ChevronRight
+            className="h-5 w-5 shrink-0 text-mu-fg-3"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+        </Link>
+      ) : null}
 
       {error ? (
         <p className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">

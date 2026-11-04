@@ -179,15 +179,15 @@ describe("TripJourney", () => {
     expect(screen.queryByRole("button", { name: "정산 화면 열기" })).toBeNull();
   });
 
-  it("칸 탭 시 step 쿼리를 push해요", async () => {
+  it("묶음 칸 탭 시 세부 step 쿼리를 push해요", async () => {
     search = "step=settle";
     render(<TripJourney tripId="t1" />);
     await screen.findByRole("navigation", { name: "정산 단계" });
     const nav = screen.getByRole("navigation", { name: "정산 단계" });
-    const inviteBtn = Array.from(nav.querySelectorAll("button")).find((b) =>
-      (b.getAttribute("aria-label") ?? "").startsWith("초대")
+    const prepBtn = Array.from(nav.querySelectorAll("button")).find((b) =>
+      (b.getAttribute("aria-label") ?? "").startsWith("준비")
     );
-    fireEvent.click(inviteBtn!);
+    fireEvent.click(prepBtn!);
     expect(push).toHaveBeenCalledWith(
       expect.stringContaining("step=invite"),
       { scroll: false }
@@ -275,12 +275,12 @@ describe("TripJourney", () => {
       search = "step=share";
       render(<TripJourney tripId="t1" />);
       const nav = await screen.findByRole("navigation", { name: "정산 단계" });
-      const adjustBtn = Array.from(nav.querySelectorAll("button")).find((b) =>
-        (b.getAttribute("aria-label") ?? "").startsWith("조정")
+      const payBtn = Array.from(nav.querySelectorAll("button")).find((b) =>
+        (b.getAttribute("aria-label") ?? "").startsWith("송금")
       );
-      fireEvent.click(adjustBtn!);
+      fireEvent.click(payBtn!);
       expect(push).toHaveBeenCalledWith(
-        expect.stringContaining("step=adjust"),
+        expect.stringContaining("step=pay"),
         { scroll: false }
       );
     });

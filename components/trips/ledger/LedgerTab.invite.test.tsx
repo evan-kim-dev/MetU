@@ -45,6 +45,13 @@ function renderTab(props: { canInvite?: boolean; readOnly?: boolean }) {
 }
 
 describe("LedgerTab 초대 패널", () => {
+  it("정산 여정 입구가 /trips/[id]/ledger 로 가요", () => {
+    renderTab({ canInvite: true });
+    expect(
+      screen.getByRole("link", { name: /정산 여정 열기/ }).getAttribute("href")
+    ).toBe(`/trips/${TRIP}/ledger`);
+  });
+
   it("소유자(canInvite)에게는 초대 버튼이 보이고 누르면 create_trip_invite 를 호출한다", async () => {
     rpc.mockResolvedValue({ data: "tok", error: null });
     renderTab({ canInvite: true });

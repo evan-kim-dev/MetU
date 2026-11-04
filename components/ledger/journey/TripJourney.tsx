@@ -15,10 +15,16 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useAutomationStatus } from "@/lib/hooks/useAutomationStatus";
 import {
   deriveJourney,
+  guestPhaseOf,
+  hostPhaseOf,
   isGuestStepKey,
   isHostStepKey,
+  resolveGuestPhaseNav,
+  resolveHostPhaseNav,
   resolveStepParam,
+  type GuestPhaseKey,
   type GuestStepKey,
+  type HostPhaseKey,
   type HostStepKey,
   type JourneyRole,
   type JourneySettlement,
@@ -41,7 +47,7 @@ const HOST_CTA: Record<
 > = {
   connect: { label: "자동 수집 연결하기", href: "connect" },
   invite: { label: "다음: 지출 기록", next: "record" },
-  record: { label: "다음: 분담 조정", next: "adjust" },
+  record: { label: "다음: 정산하기", next: "settle" },
   adjust: { label: "다음: 정산하기", next: "settle" },
   // settle·pay 는 각 Step 이 BottomCTA 소유.
   settle: { label: "정산 계산하기", href: "settle" },
@@ -213,6 +219,44 @@ export function TripJourney({ tripId }: Props) {
     [router, searchParams, role]
   );
 
+  const journeyInput = useMemo(
+    () => ({
+      automation: automationState,
+      memberCount,
+      expenseCount,
+      pendingReviewCount,
+      pendingProposalCount: 0,
+      settlement,
+    }),
+    [
+      automationState,
+      memberCount,
+      expenseCount,
+      pendingReviewCount,
+      settlement,
+    ]
+  );
+
+  const onSelectPhase = useCallback(
+    (phaseKey: string) => {
+      if (role === "host" && isHostStepKey(currentStep)) {
+        const next = resolveHostPhaseNav(
+          phaseKey as HostPhaseKey,
+          journeyInput,
+          currentStep
+        );
+        goStep(next);
+        return;
+      }
+      if (role === "guest" && isGuestStepKey(currentStep)) {
+        goStep(
+          resolveGuestPhaseNav(phaseKey as GuestPhaseKey, currentStep)
+        );
+      }
+    },
+    [role, currentStep, journeyInput, goStep]
+  );
+
   const hostStep =
     role === "host" && isHostStepKey(currentStep) ? currentStep : null;
   const guestStep: GuestStepKey | null =
@@ -250,8 +294,16 @@ export function TripJourney({ tripId }: Props) {
     if ("next" in cta && cta.next) goStep(cta.next);
   };
 
-  const stepsForUi = journey.steps.map((s) => {
-    if (s.key === currentStep) {
+  const currentPhase =
+    role === "host" && isHostStepKey(currentStep)
+      ? hostPhaseOf(currentStep)
+      : role === "guest" && isGuestStepKey(currentStep)
+        ? guestPhaseOf(currentStep)
+        : null;
+
+  // phaseSteps 는 defaultStep 기준이라, 실제 currentStep 에 맞춰 current 표시를 보정해요.
+  const stepsForUi = journey.phaseSteps.map((s) => {
+    if (currentPhase && s.key === currentPhase) {
       return {
         ...s,
         status: (s.status === "attention" ? "attention" : "current") as
@@ -315,12 +367,13 @@ export function TripJourney({ tripId }: Props) {
         <OfflineBanner />
         <Stepper
           steps={stepsForUi}
-          currentKey={currentStep}
-          onSelect={goStep}
+          currentKey={currentPhase ?? stepsForUi[0]?.key ?? "prep"}
+          onSelect={onSelectPhase}
           onBack={() => router.push("/agent")}
           title={
-            stepsForUi.find((s) => s.key === currentStep)?.label ?? "가계부"
+            stepsForUi.find((s) => s.key === currentPhase)?.label ?? "가계부"
           }
+          navAriaLabel="정산 단계"
         />
         <div className="flex-1 overflow-y-auto">{body}</div>
         {role === "host" && cta ? (
