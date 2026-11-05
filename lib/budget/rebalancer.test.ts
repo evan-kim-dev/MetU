@@ -64,6 +64,19 @@ describe("rebalanceScheduleBudget", () => {
     expect(result.savedAmount).toBe(0);
     expect(result.adjustmentsLog[0]).toMatch(/감축할 유동/);
   });
+
+  it("티어 감축만으로 부족하면 비율 수렴으로 목표에 맞춰요", () => {
+    const items: RebalanceItem[] = [
+      { id: "a", name: "스팟A", category: "spot", costKRW: 40_000 },
+      { id: "b", name: "스팟B", category: "spot", costKRW: 40_000 },
+    ];
+    const result = rebalanceScheduleBudget(items, 50_000);
+    expect(result.newTotal).toBeLessThanOrEqual(50_000);
+    expect(result.savedAmount).toBe(30_000);
+    expect(result.adjustmentsLog.some((l) => l.includes("상한 맞춤"))).toBe(
+      true
+    );
+  });
 });
 
 describe("classifyRebalanceCategory", () => {

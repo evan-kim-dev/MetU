@@ -47,7 +47,7 @@ export function rebalanceScheduleBudget(
     };
   }
 
-  // 식비 → 카페 → 액티비티 순으로 가성비 티어 감축 (항목당 최대 40%/30%/25%)
+  // 1차: 식비 → 카페 → 액티비티 티어 감축 (항목당 최대 40%/30%/25%)
   for (const item of adjustedItems) {
     if (diff <= 0) break;
     if (item.isFixed) continue;
@@ -76,6 +76,31 @@ export function rebalanceScheduleBudget(
       adjustmentsLog.push(
         `${item.name}: 액티비티 티어 조정 (-₩${cut.toLocaleString("ko-KR")})`
       );
+    }
+  }
+
+  // 2차: 티어 감축 후에도 남으면 비고정 항목을 비율로 추가 수렴
+  if (diff > 0) {
+    const flexible = adjustedItems.filter((i) => !i.isFixed && i.costKRW > 0);
+    const flexSum = flexible.reduce((s, i) => s + i.costKRW, 0);
+    if (flexSum > 0) {
+      let remaining = diff;
+      for (let i = 0; i < flexible.length; i += 1) {
+        const item = flexible[i]!;
+        const isLast = i === flexible.length - 1;
+        const proportional = Math.floor((item.costKRW / flexSum) * diff);
+        const cut = Math.min(
+          item.costKRW,
+          isLast ? remaining : Math.min(remaining, proportional)
+        );
+        if (cut <= 0) continue;
+        item.costKRW -= cut;
+        remaining -= cut;
+        adjustmentsLog.push(
+          `${item.name}: 예산 상한 맞춤 (-₩${cut.toLocaleString("ko-KR")})`
+        );
+      }
+      diff = remaining;
     }
   }
 

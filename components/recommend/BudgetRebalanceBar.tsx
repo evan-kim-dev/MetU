@@ -1,14 +1,17 @@
 "use client";
 
 import { RefreshCw, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DaySchedule } from "@/lib/ai/types";
 import {
-  classifyRebalanceCategory,
   rebalanceScheduleBudget,
-  type RebalanceItem,
   type RebalanceResult,
 } from "@/lib/budget/rebalancer";
+import {
+  applyRebalanceCostsToSchedule,
+  previewDiscretionaryGap,
+  scheduleToRebalanceItems,
+} from "@/lib/budget/schedule-map";
 import { formatKRW } from "@/lib/shared/format";
 
 export type BudgetRebalanceBarProps = {
@@ -27,42 +30,6 @@ export type BudgetRebalanceBarProps = {
     result: RebalanceResult;
   }) => void;
 };
-
-function scheduleToItems(schedule: DaySchedule[]): RebalanceItem[] {
-  const items: RebalanceItem[] = [];
-  for (const day of schedule) {
-    for (let i = 0; i < day.items.length; i += 1) {
-      const item = day.items[i]!;
-      items.push({
-        id: `d${day.day}-${i}-${item.title}`,
-        name: `Day ${day.day} ${item.title}`,
-        category: classifyRebalanceCategory(item.kind, item.title),
-        costKRW: Math.max(0, Math.floor(item.cost)),
-        isFixed: item.kind === "attraction" || item.kind === "lodging",
-      });
-    }
-  }
-  return items;
-}
-
-function applyCostsToSchedule(
-  schedule: DaySchedule[],
-  adjusted: RebalanceItem[]
-): DaySchedule[] {
-  const costById = new Map(adjusted.map((a) => [a.id, a.costKRW]));
-  return schedule.map((day) => {
-    const items = day.items.map((item, i) => {
-      const id = `d${day.day}-${i}-${item.title}`;
-      const next = costById.get(id);
-      return next == null ? item : { ...item, cost: next };
-    });
-    return {
-      ...day,
-      items,
-      dayTotal: items.reduce((s, it) => s + it.cost, 0),
-    };
-  });
-}
 
 function summarizeLog(result: RebalanceResult): string {
   if (result.savedAmount <= 0) {
@@ -83,23 +50,39 @@ export function BudgetRebalanceBar({
 }: BudgetRebalanceBarProps) {
   const lo = Math.min(minBudget, maxBudget);
   const hi = Math.max(minBudget, maxBudget);
-  const initial = Math.min(hi, Math.max(lo, totalBudget));
-  const [target, setTarget] = useState(initial);
+  const clampedBudget = Math.min(hi, Math.max(lo, totalBudget));
+  const [target, setTarget] = useState(clampedBudget);
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTarget(Math.min(hi, Math.max(lo, totalBudget)));
+  }, [totalBudget, lo, hi]);
 
   const discretionaryTarget = useMemo(
     () => Math.max(0, target - Math.max(0, fixedCostKRW)),
     [target, fixedCostKRW]
   );
 
+  const preview = useMemo(
+    () =>
+      previewDiscretionaryGap({
+        schedule: dailySchedule,
+        targetDiscretionaryBudget: discretionaryTarget,
+      }),
+    [dailySchedule, discretionaryTarget]
+  );
+
   function handleRebalance() {
     if (busy) return;
     setBusy(true);
     try {
-      const items = scheduleToItems(dailySchedule);
+      const items = scheduleToRebalanceItems(dailySchedule);
       const result = rebalanceScheduleBudget(items, discretionaryTarget);
-      const schedule = applyCostsToSchedule(dailySchedule, result.adjustedItems);
+      const schedule = applyRebalanceCostsToSchedule(
+        dailySchedule,
+        result.adjustedItems
+      );
       onRebalanced({ targetBudget: target, schedule, result });
       setBanner(summarizeLog(result));
     } finally {
@@ -135,6 +118,20 @@ export function BudgetRebalanceBar({
           <span>{formatKRW(hi)}</span>
         </span>
       </label>
+      {preview.gap > 0 ? (
+        <p className="text-mu-caption font-semibold text-mu-warn">
+          지금 일정은 현지 가용보다 {formatKRW(preview.gap)} 많아요. 리밸런싱하면
+          맞춰 드려요.
+        </p>
+      ) : preview.gap < 0 ? (
+        <p className="text-mu-caption font-semibold text-mu-ok">
+          현지 가용보다 {formatKRW(-preview.gap)} 여유가 있어요.
+        </p>
+      ) : (
+        <p className="text-mu-caption font-semibold text-mu-fg-3">
+          일정 합과 현지 가용이 같아요.
+        </p>
+      )}
       <button
         type="button"
         disabled={busy || dailySchedule.length === 0}

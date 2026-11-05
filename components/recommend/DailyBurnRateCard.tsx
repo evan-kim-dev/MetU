@@ -6,7 +6,14 @@ import {
   calcDailyBurnAllowance,
   convertKrwToLocal,
 } from "@/lib/budget/burn-rate";
+import {
+  assessDailyPace,
+  type PaceStatus,
+} from "@/lib/budget/pace";
 import { calculateEffectiveFX } from "@/lib/finance/fx-buffer";
+import { computeFxDisplayUnit } from "@/lib/fx/currencies";
+import { useFxTarget } from "@/lib/fx/useFxTarget";
+import { useLiveKrwRate } from "@/lib/fx/useLiveKrwRate";
 import { formatKRW } from "@/lib/shared/format";
 
 export type DailyBurnRateCardProps = {
@@ -15,18 +22,43 @@ export type DailyBurnRateCardProps = {
   fixedCostKRW: number;
   days: number;
   people: number;
+  country?: string;
+  destination?: string;
+  /** 일정 일평균 계획 지출 — 페이스 진단용 */
+  plannedDayAverageKRW?: number;
   /**
-   * 기준 환율. JPY 면 보통 100엔당 원화.
-   * VERIFY: 호출 측에서 라이브/캐시 환율을 넘기세요. 기본은 표시용 예시값.
+   * 기준 환율 폴백 (라이브 실패 시).
+   * VERIFY: 예시값. 라이브 `/api/fx` 가 우선이에요.
    */
-  baseRate: number;
-  /** 현지 통화 코드 (표시용) */
-  currencyCode: string;
-  /** baseRate 가 가리키는 외화 단위 (엔=100, 달러=1) */
-  rateUnit?: number;
+  fallbackBaseRate?: number;
+  fallbackCurrencyCode?: string;
+  fallbackRateUnit?: number;
   brandFeeRate?: number;
   cardFeeRate?: number;
   volatilityBuffer?: number;
+};
+
+const PACE_COPY: Record<
+  PaceStatus,
+  { label: string; className: string; hint: (delta: number) => string }
+> = {
+  under: {
+    label: "여유",
+    className: "bg-mu-ok-soft text-mu-ok",
+    hint: (delta) =>
+      `일정 평균이 한도보다 ${formatKRW(Math.abs(delta))} 낮아요.`,
+  },
+  on_pace: {
+    label: "적정",
+    className: "bg-mu-accent-soft text-mu-accent",
+    hint: () => "일정 평균이 안전 한도 안에 있어요.",
+  },
+  over: {
+    label: "초과",
+    className: "bg-mu-warn-soft text-mu-warn",
+    hint: (delta) =>
+      `일정 평균이 한도보다 ${formatKRW(delta)} 높아요. 리밸런싱을 눌러 보세요.`,
+  },
 };
 
 export function DailyBurnRateCard({
@@ -34,9 +66,12 @@ export function DailyBurnRateCard({
   fixedCostKRW,
   days,
   people,
-  baseRate,
-  currencyCode,
-  rateUnit = 1,
+  country,
+  destination,
+  plannedDayAverageKRW,
+  fallbackBaseRate = 1380,
+  fallbackCurrencyCode = "USD",
+  fallbackRateUnit = 1,
   brandFeeRate,
   cardFeeRate,
   volatilityBuffer,
@@ -44,54 +79,92 @@ export function DailyBurnRateCard({
   const tipId = useId();
   const [tipOpen, setTipOpen] = useState(false);
 
-  const { dailyKrw, localAmount, markupPercent, effectiveRate } = useMemo(() => {
-    const fx = calculateEffectiveFX({
-      baseRate,
-      brandFeeRate,
-      cardFeeRate,
-      volatilityBuffer,
-    });
-    const daily = calcDailyBurnAllowance({
+  const { target: fxTarget } = useFxTarget(country, destination);
+  const currencyCode = fxTarget?.code ?? fallbackCurrencyCode;
+  const { rate: liveRate, loading: fxLoading } = useLiveKrwRate(currencyCode);
+
+  const { dailyKrw, localAmount, markupPercent, effectiveRate, rateUnit, sourceLabel } =
+    useMemo(() => {
+      const unit =
+        fxTarget?.unit && fxTarget.unit > 0
+          ? fxTarget.unit
+          : liveRate
+            ? computeFxDisplayUnit(liveRate.krw)
+            : fallbackRateUnit;
+
+      const perUnit = liveRate?.krw ?? fallbackBaseRate / Math.max(1, unit);
+      const baseRate = Math.round(perUnit * unit * 100) / 100;
+
+      const fx = calculateEffectiveFX({
+        baseRate,
+        brandFeeRate,
+        cardFeeRate,
+        volatilityBuffer,
+      });
+      const daily = calcDailyBurnAllowance({
+        totalBudget,
+        fixedCostKRW,
+        days,
+        people,
+      });
+      const local = convertKrwToLocal({
+        amountKRW: daily,
+        effectiveRate: fx.effectiveRate,
+        rateUnit: unit,
+      });
+      return {
+        dailyKrw: daily,
+        localAmount: local,
+        markupPercent: fx.markupPercent,
+        effectiveRate: fx.effectiveRate,
+        rateUnit: unit,
+        sourceLabel: liveRate
+          ? liveRate.source === "frankfurter" || liveRate.source === "open.er"
+            ? "시장 환율"
+            : "참고 환율"
+          : "예시 환율",
+      };
+    }, [
       totalBudget,
       fixedCostKRW,
       days,
       people,
+      liveRate,
+      fxTarget,
+      fallbackBaseRate,
+      fallbackRateUnit,
+      brandFeeRate,
+      cardFeeRate,
+      volatilityBuffer,
+    ]);
+
+  const pace = useMemo(() => {
+    if (plannedDayAverageKRW == null) return null;
+    return assessDailyPace({
+      plannedDayTotalKRW: plannedDayAverageKRW,
+      allowanceKRW: dailyKrw * Math.max(1, people),
     });
-    const local = convertKrwToLocal({
-      amountKRW: daily,
-      effectiveRate: fx.effectiveRate,
-      rateUnit,
-    });
-    return {
-      dailyKrw: daily,
-      localAmount: local,
-      markupPercent: fx.markupPercent,
-      effectiveRate: fx.effectiveRate,
-    };
-  }, [
-    totalBudget,
-    fixedCostKRW,
-    days,
-    people,
-    baseRate,
-    brandFeeRate,
-    cardFeeRate,
-    volatilityBuffer,
-    rateUnit,
-  ]);
+  }, [plannedDayAverageKRW, dailyKrw, people]);
 
   const unitLabel =
     rateUnit > 1
-      ? `${rateUnit.toLocaleString("ko-KR")}${currencyCode}`
+      ? `${rateUnit.toLocaleString("ko-KR")}${currencyCode === "JPY" ? "엔" : currencyCode}`
       : currencyCode;
   const localLabel =
-    rateUnit > 1
-      ? `약 ${localAmount.toLocaleString("ko-KR")}${currencyCode}`
+    rateUnit > 1 && (currencyCode === "JPY" || currencyCode === "엔")
+      ? `약 ${localAmount.toLocaleString("ko-KR")}엔`
       : `약 ${currencyCode} ${localAmount.toLocaleString("ko-KR")}`;
 
   return (
     <div className="relative rounded-mu-xl border border-mu-line bg-mu-card p-5 shadow-mu-float">
-      <div className="absolute right-3 top-3">
+      <div className="absolute right-3 top-3 flex items-center gap-1">
+        {pace ? (
+          <span
+            className={`rounded-full px-2.5 py-1 text-mu-caption font-bold ${PACE_COPY[pace.status].className}`}
+          >
+            {PACE_COPY[pace.status].label}
+          </span>
+        ) : null}
         <button
           type="button"
           className="inline-flex min-h-tap min-w-[44px] items-center justify-center gap-1 rounded-full bg-mu-accent-soft px-2.5 py-1 text-mu-caption font-bold text-mu-accent"
@@ -104,21 +177,31 @@ export function DailyBurnRateCard({
         </button>
       </div>
 
-      <p className="pr-24 text-mu-caption font-semibold text-mu-fg-3">
+      <p className="pr-28 text-mu-caption font-semibold text-mu-fg-3">
         오늘 하루 자유롭게 쓸 수 있는 안전 한도
       </p>
       <p className="mu-num mt-2 text-mu-amount font-extrabold tracking-tight text-mu-fg">
         {formatKRW(dailyKrw)}
+        <span className="ml-1 text-mu-caption font-semibold text-mu-fg-3">
+          /인
+        </span>
       </p>
-      <p className="mt-1 text-mu-body font-bold text-mu-accent">{localLabel}</p>
+      <p className="mt-1 text-mu-body font-bold text-mu-accent">
+        {fxLoading && !liveRate ? "환율 불러오는 중…" : localLabel}
+      </p>
       <p className="mt-2 text-mu-caption leading-relaxed text-mu-fg-3">
         총예산 − 항공·숙소 ÷ ({Math.max(1, days)}일 × {Math.max(1, people)}인).
-        실청구 환율은 {unitLabel}당 약 ₩
+        {sourceLabel} 기준 {unitLabel}당 약 ₩
         {effectiveRate.toLocaleString("ko-KR", {
           maximumFractionDigits: 2,
-        })}{" "}
-        기준이에요.
+        })}
+        이에요.
       </p>
+      {pace ? (
+        <p className="mt-2 text-mu-caption font-semibold text-mu-fg-2">
+          {PACE_COPY[pace.status].hint(pace.deltaKRW)}
+        </p>
+      ) : null}
 
       {tipOpen ? (
         <p

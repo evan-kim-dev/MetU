@@ -33,24 +33,7 @@ import { buildGoogleFlightsUrlFromPlan } from "@/lib/flights/google-flights-url"
 import { buildAgodaHotelUrlFromPlan } from "@/lib/hotels/agoda-url";
 import { useTrips } from "@/lib/trips/TripProvider";
 import { planToTrip } from "@/components/recommend/planToTrip";
-
-/** VERIFY: 표시용 예시 환율. 라이브 FX 연동 시 교체. */
-function localFxMeta(country: string): {
-  currencyCode: string;
-  baseRate: number;
-  rateUnit: number;
-} {
-  const c = country.trim().toLowerCase();
-  if (
-    c === "jp" ||
-    c === "jpn" ||
-    c.includes("일본") ||
-    c.includes("japan")
-  ) {
-    return { currencyCode: "엔", baseRate: 910, rateUnit: 100 };
-  }
-  return { currencyCode: "USD", baseRate: 1380, rateUnit: 1 };
-}
+import { averageDayTotal } from "@/lib/budget/pace";
 
 type FlightOverride = { price: number; airline: string };
 type HotelOverride = { price: number; name: string };
@@ -538,12 +521,21 @@ export function RecommendResult({
             minBudget={Math.min(800_000, plan.totalBudget)}
             maxBudget={Math.max(1_500_000, plan.totalBudget)}
             onRebalanced={({ targetBudget, schedule }) => {
-              setPlan((prev) => ({
-                ...prev,
-                totalBudget: targetBudget,
-                dailySchedule: schedule,
-                form: { ...prev.form, budget: String(targetBudget) },
-              }));
+              setPlan((prev) => {
+                const realloc = reallocateBudgetWithLiveQuotes(
+                  prev.budgetAllocation,
+                  targetBudget,
+                  flightPrice,
+                  hotelPrice
+                );
+                return {
+                  ...prev,
+                  totalBudget: targetBudget,
+                  dailySchedule: schedule,
+                  budgetAllocation: realloc.items,
+                  form: { ...prev.form, budget: String(targetBudget) },
+                };
+              });
             }}
           />
           {liveBudget.overBudget ? (
@@ -571,9 +563,18 @@ export function RecommendResult({
               fixedCostKRW={flightPrice + hotelPrice}
               days={Math.max(1, plan.nights + 1)}
               people={plan.people}
-              baseRate={localFxMeta(plan.country).baseRate}
-              currencyCode={localFxMeta(plan.country).currencyCode}
-              rateUnit={localFxMeta(plan.country).rateUnit}
+              country={plan.country}
+              destination={plan.destination}
+              plannedDayAverageKRW={averageDayTotal(plan.dailySchedule)}
+              fallbackBaseRate={
+                /일본|japan|^jp/i.test(plan.country) ? 910 : 1380
+              }
+              fallbackCurrencyCode={
+                /일본|japan|^jp/i.test(plan.country) ? "JPY" : "USD"
+              }
+              fallbackRateUnit={
+                /일본|japan|^jp/i.test(plan.country) ? 100 : 1
+              }
             />
           </div>
         </section>
