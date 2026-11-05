@@ -4,7 +4,11 @@
  */
 
 /** 로그인 없이 열리는 화면(페이지) 경로 — 정확 일치. */
-const PUBLIC_PAGE_EXACT = new Set(["/"]);
+const PUBLIC_PAGE_EXACT = new Set([
+  "/",
+  "/onboarding",
+  "/onboarding/result",
+]);
 
 /** 로그인 없이 열리는 화면(페이지) 경로 prefix. */
 const PUBLIC_PAGE_PREFIXES = [

@@ -146,10 +146,12 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
           <PrimaryButton
             onClick={() => {
               onClose();
-              router.push("/onboarding");
+              router.push(
+                `/onboarding/result?city=${encodeURIComponent(place.name)}`
+              );
             }}
           >
-            이 여행지로 계획 시작하기
+            {place.name} 100만원 추천 코스 바로보기
           </PrimaryButton>
         </div>
       </div>

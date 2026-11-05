@@ -257,11 +257,12 @@ function OnboardingPageContent() {
         ) : null}
         <PrimaryButton
           onClick={handleNext}
+          // AI 인사이트 로딩과 무관 — 입력만 채우면 바로 다음으로
           disabled={!canProceed || isSubmitting}
           loading={isSubmitting}
         >
           {isSubmitting
-            ? "AI가 생각 중…"
+            ? "저장 중…"
             : step === TOTAL_STEPS
               ? "완료하고 추천 받기"
               : "다음"}

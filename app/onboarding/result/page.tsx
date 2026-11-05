@@ -20,6 +20,22 @@ const VALID_STYLES: TravelStyle[] = [
   "shopping-mall",
 ];
 
+/** 쿠키 없이 바로 보는 100만·2인 표준 데모 폼 */
+function buildDemoForm(destination: string): OnboardingForm {
+  return {
+    budget: "1000000",
+    people: 2,
+    origin: "서울",
+    destination: destination.trim() || "도쿄",
+    dateType: "flexible",
+    startDate: "",
+    endDate: "",
+    flexibleYear: 2026,
+    flexibleMonth: 11,
+    styles: ["food", "sightseeing"],
+  };
+}
+
 function parseFormFromCookie(raw: string): OnboardingForm | null {
   try {
     const decoded = raw.startsWith("%7B") ? decodeURIComponent(raw) : raw;
@@ -42,10 +58,23 @@ function parseFormFromCookie(raw: string): OnboardingForm | null {
   }
 }
 
-export default async function RecommendPage() {
-  const cookieStore = await cookies();
-  const raw = cookieStore.get("onboarding-form")?.value;
-  const form = raw ? parseFormFromCookie(raw) : null;
+interface PageProps {
+  searchParams: Promise<{ sample?: string; city?: string }>;
+}
+
+export default async function RecommendPage({ searchParams }: PageProps) {
+  const { sample, city } = await searchParams;
+  const targetCity = (city?.trim() || (sample ? "도쿄" : "")) || null;
+
+  let form: OnboardingForm | null = null;
+  if (targetCity) {
+    form = buildDemoForm(targetCity);
+  } else {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get("onboarding-form")?.value;
+    form = raw ? parseFormFromCookie(raw) : null;
+  }
+
   if (!form) {
     redirect("/onboarding");
   }
