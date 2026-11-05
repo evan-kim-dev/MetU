@@ -3,6 +3,9 @@
  * middleware(서버)와 AuthGate(클라이언트)가 같은 목록을 써서 어긋나지 않게 한다.
  */
 
+/** 로그인 없이 열리는 화면(페이지) 경로 — 정확 일치. */
+const PUBLIC_PAGE_EXACT = new Set(["/"]);
+
 /** 로그인 없이 열리는 화면(페이지) 경로 prefix. */
 const PUBLIC_PAGE_PREFIXES = [
   "/login",
@@ -27,6 +30,7 @@ const STATIC_PUBLIC_EXACT = new Set([
  * AuthGate(클라이언트)가 사용한다.
  */
 export function isPublicPagePath(pathname: string): boolean {
+  if (PUBLIC_PAGE_EXACT.has(pathname)) return true;
   return PUBLIC_PAGE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );

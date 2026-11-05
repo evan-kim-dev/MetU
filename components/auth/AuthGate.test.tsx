@@ -7,7 +7,19 @@ import { AuthGate } from "@/components/auth/AuthGate";
 const replace = vi.fn();
 let pathname = "/";
 const searchParams = new URLSearchParams();
-let auth = { isReady: true, isLoggedIn: false };
+let auth: {
+  isReady: boolean;
+  isLoggedIn: boolean;
+  user: { id: string; is_anonymous?: boolean } | null;
+  isAnonymous: boolean;
+  provider: "kakao" | "guest" | "supabase" | null;
+} = {
+  isReady: true,
+  isLoggedIn: false,
+  user: null,
+  isAnonymous: false,
+  provider: null,
+};
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace }),
@@ -31,11 +43,17 @@ function renderAt(path: string) {
 describe("AuthGate public paths", () => {
   beforeEach(() => {
     replace.mockClear();
-    auth = { isReady: true, isLoggedIn: false };
+    auth = {
+      isReady: true,
+      isLoggedIn: false,
+      user: null,
+      isAnonymous: false,
+      provider: null,
+    };
   });
   afterEach(() => cleanup());
 
-  it.each(["/about", "/s/abc", "/trips/share/abc", "/legal", "/login"])(
+  it.each(["/", "/about", "/s/abc", "/trips/share/abc", "/legal", "/login"])(
     "does not redirect logged-out users on %s",
     (path) => {
       renderAt(path);
@@ -56,8 +74,27 @@ describe("AuthGate public paths", () => {
   });
 
   it("renders /about for logged-in users too", () => {
-    auth = { isReady: true, isLoggedIn: true };
+    auth = {
+      isReady: true,
+      isLoggedIn: true,
+      user: { id: "u1" },
+      isAnonymous: false,
+      provider: "kakao",
+    };
     renderAt("/about");
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByText("content")).toBeTruthy();
+  });
+
+  it("게스트만 있으면 /login 에 머물러요 (무한 리다이렉트 방지)", () => {
+    auth = {
+      isReady: true,
+      isLoggedIn: true,
+      user: null,
+      isAnonymous: false,
+      provider: "guest",
+    };
+    renderAt("/login");
     expect(replace).not.toHaveBeenCalled();
     expect(screen.getByText("content")).toBeTruthy();
   });

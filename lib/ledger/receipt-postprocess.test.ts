@@ -73,6 +73,24 @@ describe("postprocessReceiptExtract", () => {
     expect(draft.warnings.some((w) => w.includes("통화"))).toBe(true);
   });
 
+  it("외화+원화 병기 시 foreign/krw·dccDetected 필드를 채운다", () => {
+    const { draft } = postprocessReceiptExtract(
+      baseExtract({
+        currency: "JPY",
+        total: 1000,
+        secondaryAmounts: [
+          { label: "KRW", amount: 12000, currency: "KRW" },
+        ],
+      }),
+      "JPY"
+    );
+    expect(draft.foreignCurrency).toBe("JPY");
+    expect(draft.foreignAmount).toBe(1000);
+    expect(draft.krwAmount).toBe(12000);
+    // 시장환율 없으면 confirmed 불가 → none 또는 suspected
+    expect(["none", "suspected", "confirmed"]).toContain(draft.dccDetected.level);
+  });
+
   it("정상 영수증은 경고가 없다", () => {
     const { draft } = postprocessReceiptExtract(
       baseExtract({

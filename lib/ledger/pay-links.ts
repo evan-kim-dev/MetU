@@ -37,6 +37,117 @@ export function payAmountText(krw: number): string | null {
   return String(krw);
 }
 
+export type TossSendParams = {
+  /** 은행명 (예: 카카오뱅크). 비어 있으면 스킴만. */
+  bank?: string | null;
+  /** 계좌번호. 하이픈은 제거. */
+  accountNo?: string | null;
+  /** 정수 KRW */
+  amount: number;
+};
+
+/**
+ * VERIFY: 비공식 `supertoss://send` 스킴. 토스 공식 송금 API 가 아님.
+ * 은행·계좌가 없으면 앱 루트(`supertoss://`)만 반환한다.
+ */
+export function buildTossSendUrl(params: TossSendParams): string | null {
+  const amount = payAmountText(params.amount);
+  if (!amount) return null;
+  const bank = (params.bank ?? "").trim();
+  const accountNo = (params.accountNo ?? "").replace(/[-\s]/g, "").trim();
+  if (!bank || !accountNo) {
+    return getPayApp("toss").url;
+  }
+  const q = new URLSearchParams({
+    bank,
+    accountNo,
+    amount,
+  });
+  return `supertoss://send?${q.toString()}`;
+}
+
+export type OpenTossPayInput = TossSendParams & {
+  /** 계좌번호 클립보드 복사 (데스크톱·딥링크 실패 폴백) */
+  copyText: (text: string) => Promise<boolean>;
+  /** 기본 window.location.href */
+  navigate?: (url: string) => void;
+  isMobile?: boolean;
+};
+
+/**
+ * 모바일: 토스 딥링크 시도 → 실패/데스크톱이면 계좌(있으면) 또는 금액을 클립보드에 복사.
+ * 반환: 사용자 안내 문구.
+ */
+export async function openTossPay(
+  input: OpenTossPayInput
+): Promise<{ ok: boolean; message: string }> {
+  const amount = payAmountText(input.amount);
+  if (!amount) {
+    return { ok: false, message: "금액을 확인할 수 없어요." };
+  }
+
+  const accountNo = (input.accountNo ?? "").replace(/[-\s]/g, "").trim();
+  const bank = (input.bank ?? "").trim();
+  const clipboardPayload = accountNo || amount;
+  const navigate =
+    input.navigate ??
+    ((url: string) => {
+      window.location.href = url;
+    });
+
+  const ua =
+    typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const mobile =
+    input.isMobile ??
+    /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+
+  const url = buildTossSendUrl({
+    bank,
+    accountNo,
+    amount: input.amount,
+  });
+  if (!url) {
+    return { ok: false, message: "금액을 확인할 수 없어요." };
+  }
+
+  if (mobile) {
+    try {
+      navigate(url);
+    } catch (e) {
+      console.error("[openTossPay]", e instanceof Error ? e.message : e);
+      const copied = await input.copyText(clipboardPayload);
+      return {
+        ok: copied,
+        message: copied
+          ? accountNo
+            ? "계좌번호를 복사했어요. 토스 앱에서 붙여 넣어 주세요."
+            : payGuidance("토스", formatAmountLabel(input.amount))
+          : PAY_OPEN_FAILED_MESSAGE,
+      };
+    }
+    return {
+      ok: true,
+      message: accountNo
+        ? "토스를 열었어요. 송금 후 앱에서 확인해 주세요."
+        : payGuidance("토스", formatAmountLabel(input.amount)),
+    };
+  }
+
+  const copied = await input.copyText(clipboardPayload);
+  return {
+    ok: copied,
+    message: copied
+      ? accountNo
+        ? "계좌번호를 복사했어요. 모바일에서 토스로 송금해 주세요."
+        : payGuidance("토스", formatAmountLabel(input.amount))
+      : PAY_OPEN_FAILED_MESSAGE,
+  };
+}
+
+function formatAmountLabel(krw: number): string {
+  return `${krw.toLocaleString("ko-KR")}원`;
+}
+
 /** 복사 후 보여 줄 안내 문구(금액은 formatKRW 로 만든 문자열을 받는다). */
 export function payGuidance(appLabel: string, amountLabel: string): string {
   return `${amountLabel}을 복사했어요. ${appLabel} 앱에서 받는 분께 직접 송금해 주세요.`;

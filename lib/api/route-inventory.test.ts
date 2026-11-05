@@ -18,6 +18,8 @@ const ALLOWLIST: Record<string, string> = {
   "share-target/route.ts": "PWA share_target POST redirect; no secrets",
   "places/autocomplete/route.ts":
     "public Travelpayouts autocomplete proxy; IP rate-limited, no user data write",
+  "recommended-deals/route.ts":
+    "public home deals curation; IP rate-limited, read-only (api_cache via admin)",
 };
 
 function walk(dir: string, out: string[] = []): string[] {

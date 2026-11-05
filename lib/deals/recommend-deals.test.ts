@@ -68,7 +68,7 @@ describe("curateRecommendedDeals", () => {
     expect(aiChatOrNull).toHaveBeenCalledTimes(1);
   });
 
-  it("깨진 JSON → 빈 상태", async () => {
+  it("깨진 JSON → RAG 폴백", async () => {
     aiChatOrNull.mockResolvedValue({
       content: "{not-json",
       source: "ai",
@@ -80,8 +80,11 @@ describe("curateRecommendedDeals", () => {
       "@/lib/deals/recommend-deals"
     );
     const res = await curateRecommendedDeals();
-    expect(res.places).toEqual([]);
-    expect(res.source).toBe("empty");
+    expect(res.places.length).toBeGreaterThan(0);
+    expect(res.source).toBe("rag");
+    for (const place of res.places) {
+      expect(place).not.toHaveProperty("fromPrice");
+    }
   });
 
   it("캐시 히트 시 aiChatOrNull 호출 0회", async () => {
@@ -115,14 +118,14 @@ describe("curateRecommendedDeals", () => {
     expect(aiChatOrNull).toHaveBeenCalledTimes(0);
   });
 
-  it("Gemini null + 캐시 없음 → 빈 상태", async () => {
+  it("Gemini null + 캐시 없음 → RAG 폴백", async () => {
     aiChatOrNull.mockResolvedValue(null);
     const { curateRecommendedDeals } = await import(
       "@/lib/deals/recommend-deals"
     );
     const res = await curateRecommendedDeals();
-    expect(res.places).toEqual([]);
-    expect(res.source).toBe("empty");
+    expect(res.places.length).toBeGreaterThan(0);
+    expect(res.source).toBe("rag");
   });
 });
 

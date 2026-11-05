@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   PAY_APPS,
   PAY_LAUNCH_TIMEOUT_MS,
+  buildTossSendUrl,
   getPayApp,
   launchPayApp,
+  openTossPay,
   payAmountText,
   payGuidance,
   type LaunchEnv,
@@ -48,6 +50,58 @@ describe("payAmountText", () => {
     expect(payAmountText(10.5)).toBeNull();
     expect(payAmountText(0)).toBeNull();
     expect(payAmountText(-1)).toBeNull();
+  });
+});
+
+describe("buildTossSendUrl / openTossPay", () => {
+  it("은행·계좌가 있으면 send 스킴에 금액·계좌를 실어요", () => {
+    const url = buildTossSendUrl({
+      bank: "카카오뱅크",
+      accountNo: "3333-01-1234567",
+      amount: 12000,
+    });
+    expect(url).toMatch(/^supertoss:\/\/send\?/);
+    expect(url).toContain("accountNo=3333011234567");
+    expect(url).toContain("amount=12000");
+    expect(url).toContain(encodeURIComponent("카카오뱅크"));
+  });
+
+  it("계좌 없으면 앱 루트만", () => {
+    expect(
+      buildTossSendUrl({ bank: null, accountNo: null, amount: 5000 })
+    ).toBe("supertoss://");
+  });
+
+  it("데스크톱이면 클립보드에 복사하고 딥링크는 안 열어요", async () => {
+    const navigate = vi.fn();
+    const copyText = vi.fn(async () => true);
+    const res = await openTossPay({
+      bank: "토스뱅크",
+      accountNo: "1000-1234",
+      amount: 3000,
+      copyText,
+      navigate,
+      isMobile: false,
+    });
+    expect(navigate).not.toHaveBeenCalled();
+    expect(copyText).toHaveBeenCalledWith("10001234");
+    expect(res.ok).toBe(true);
+  });
+
+  it("모바일이면 딥링크를 열어요", async () => {
+    const navigate = vi.fn();
+    const copyText = vi.fn(async () => true);
+    const res = await openTossPay({
+      bank: "토스뱅크",
+      accountNo: "1000-1234",
+      amount: 3000,
+      copyText,
+      navigate,
+      isMobile: true,
+    });
+    expect(navigate).toHaveBeenCalled();
+    expect(String(navigate.mock.calls[0]?.[0])).toMatch(/^supertoss:\/\/send\?/);
+    expect(res.ok).toBe(true);
   });
 });
 

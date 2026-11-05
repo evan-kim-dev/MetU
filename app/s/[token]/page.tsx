@@ -1,14 +1,21 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   checkExpenseSum,
   parseSharedSettlementDetail,
   type SharedSettlementDetail,
   type SharedSettlementExpense,
 } from "@/lib/ledger/shared-settlement";
+import { calculateSplit } from "@/lib/ledger/share-split";
+import {
+  PAY_DEEPLINK_NOTICE,
+  openTossPay,
+  payAmountText,
+} from "@/lib/ledger/pay-links";
 import { AmountCard } from "@/components/ds/AmountCard";
+import { Button } from "@/components/ds/Button";
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -41,10 +48,7 @@ function expenseSubline(
   e: SharedSettlementExpense,
   payerName: string
 ): string {
-  const parts = [
-    e.spentOn ?? "날짜 미상",
-    `${payerName} 결제`,
-  ];
+  const parts = [e.spentOn ?? "날짜 미상", `${payerName} 결제`];
   if (e.currency.trim().toUpperCase() !== "KRW") {
     parts.push(formatForeign(e.amount, e.currency));
     if (e.fxRateToKrw != null) {
@@ -66,6 +70,11 @@ export default function SharedSettlementPage() {
   const { token } = useParams<{ token: string }>();
   const [data, setData] = useState<SharedSettlementDetail | null>(null);
   const [error, setError] = useState("");
+  const [meId, setMeId] = useState<string>("");
+  const [excludeAlcohol, setExcludeAlcohol] = useState(false);
+  const [excludedExpenseIds, setExcludedExpenseIds] = useState<string[]>([]);
+  const [payNote, setPayNote] = useState("");
+  const payBusy = useRef(false);
 
   useEffect(() => {
     const supabase = getBrowserSupabase();
@@ -89,6 +98,7 @@ export default function SharedSettlementPage() {
         return;
       }
       setData(detail);
+      if (detail.members[0]) setMeId(detail.members[0].id);
     })();
   }, [token]);
 
@@ -101,6 +111,35 @@ export default function SharedSettlementPage() {
       document.head.removeChild(meta);
     };
   }, []);
+
+  const splitPreview = useMemo(() => {
+    if (!data || !meId) return null;
+    return calculateSplit({
+      memberIds: data.members.map((m) => m.id),
+      expenses: data.expenses.map((e) => ({
+        id: e.id,
+        paidBy: e.paidBy,
+        krwAmount: e.krwAmount,
+        label: e.label,
+      })),
+      exclusions: {
+        [meId]: {
+          alcohol: excludeAlcohol,
+          expenseIds: excludedExpenseIds,
+        },
+      },
+    });
+  }, [data, meId, excludeAlcohol, excludedExpenseIds]);
+
+  const myShare = splitPreview?.individualAmount[meId] ?? 0;
+  const myOutgoing = useMemo(() => {
+    if (!data || !meId) return [];
+    return data.transfers.filter((t) => t.from === meId && t.status !== "paid");
+  }, [data, meId]);
+  const payAmount =
+    myOutgoing.length > 0
+      ? myOutgoing.reduce((s, t) => s + t.krw, 0)
+      : myShare;
 
   if (error) {
     return (
@@ -117,8 +156,43 @@ export default function SharedSettlementPage() {
     data.members.find((m) => m.id === id)?.displayName ?? "?";
   const sumCheck = checkExpenseSum(data);
 
+  function toggleExpenseExclude(id: string) {
+    setExcludedExpenseIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  async function handleTossPay() {
+    if (payBusy.current) return;
+    const amountText = payAmountText(payAmount);
+    if (!amountText) {
+      setPayNote("송금할 금액이 없어요.");
+      return;
+    }
+    payBusy.current = true;
+    try {
+      const result = await openTossPay({
+        amount: payAmount,
+        // 공유 정산 RPC 에는 계좌가 없음 — 금액만 딥링크/클립보드.
+        bank: null,
+        accountNo: null,
+        copyText: async (text) => {
+          try {
+            await navigator.clipboard.writeText(text);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      });
+      setPayNote(result.message);
+    } finally {
+      payBusy.current = false;
+    }
+  }
+
   return (
-    <div className="mu-root mx-auto max-w-mobile px-4 py-8">
+    <div className="mu-root mx-auto max-w-mobile px-4 py-8 pb-28">
       <h1 className="text-mu-title text-mu-fg">정산 공유</h1>
 
       {data.status === "superseded" ? (
@@ -146,12 +220,63 @@ export default function SharedSettlementPage() {
         />
       </div>
 
-      <section aria-label="보낼 돈" className="mt-4">
+      <section aria-label="내 몫" className="mt-4 rounded-2xl border border-mu-line bg-mu-card p-4">
+        <h2 className="text-sm font-extrabold text-mu-fg">내 몫 보기</h2>
+        <label className="mt-3 block text-xs font-bold text-mu-fg-2">
+          나는
+          <select
+            className="mt-1 min-h-11 w-full rounded-xl border border-mu-line bg-mu-bg px-3 text-sm text-mu-fg"
+            value={meId}
+            onChange={(e) => setMeId(e.target.value)}
+          >
+            {data.members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="mt-3 flex min-h-11 items-center gap-2 text-sm text-mu-fg">
+          <input
+            type="checkbox"
+            className="h-5 w-5 accent-mu-accent"
+            checked={excludeAlcohol}
+            onChange={(e) => setExcludeAlcohol(e.target.checked)}
+          />
+          술·주류는 빼고 계산해요
+        </label>
+
+        <p className="mt-3 text-xs text-mu-fg-3">
+          미리보기예요. 호스트 정산표와 다를 수 있어요. 확정은 여행 가계부에서
+          해요.
+        </p>
+
+        <div className="mt-3">
+          <AmountCard label="내 몫 (미리보기)" amount={myShare} tone="accent" />
+        </div>
+
+        {payAmount > 0 ? (
+          <div className="mt-4 flex flex-col gap-2">
+            <Button type="button" variant="primary" onClick={() => void handleTossPay()}>
+              토스로 {formatKRW(payAmount)} 송금하기
+            </Button>
+            <p className="text-xs text-mu-fg-3">{PAY_DEEPLINK_NOTICE}</p>
+            {payNote ? (
+              <p role="status" className="text-xs font-semibold text-mu-fg-2">
+                {payNote}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-mu-fg-3">지금 보낼 금액이 없어요.</p>
+        )}
+      </section>
+
+      <section aria-label="보낼 돈" className="mt-6">
         <h2 className="text-sm font-extrabold text-mu-fg">송금할 내역</h2>
         {data.transfers.length === 0 ? (
-          <p className="mt-2 text-xs text-mu-fg-3">
-            주고받을 돈이 없어요.
-          </p>
+          <p className="mt-2 text-xs text-mu-fg-3">주고받을 돈이 없어요.</p>
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
             {data.transfers.map((t, i) => (
@@ -180,6 +305,9 @@ export default function SharedSettlementPage() {
 
       <section aria-label="지출 내역" className="mt-6">
         <h2 className="text-sm font-extrabold text-mu-fg">지출 내역</h2>
+        <p className="mt-1 text-xs text-mu-fg-3">
+          체크하면 내 몫 미리보기에서 제외해요.
+        </p>
         {data.expenses.length === 0 ? (
           <p className="mt-2 text-xs text-mu-fg-3">기록된 지출이 없어요.</p>
         ) : (
@@ -189,14 +317,23 @@ export default function SharedSettlementPage() {
                 key={e.id}
                 className="flex items-start justify-between gap-3 rounded-xl border border-mu-line bg-mu-card px-3 py-2"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-mu-fg">
-                    {e.label}
-                  </p>
-                  <p className="text-xs text-mu-fg-3">
-                    {expenseSubline(e, name(e.paidBy))}
-                  </p>
-                </div>
+                <label className="flex min-w-0 flex-1 items-start gap-2">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-5 w-5 shrink-0 accent-mu-accent"
+                    checked={excludedExpenseIds.includes(e.id)}
+                    onChange={() => toggleExpenseExclude(e.id)}
+                    aria-label={`${e.label} 내 몫에서 제외`}
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-mu-fg">
+                      {e.label}
+                    </p>
+                    <p className="text-xs text-mu-fg-3">
+                      {expenseSubline(e, name(e.paidBy))}
+                    </p>
+                  </div>
+                </label>
                 <span className="shrink-0 text-sm font-extrabold text-mu-fg">
                   {formatKRW(e.krwAmount)}
                 </span>
@@ -210,7 +347,7 @@ export default function SharedSettlementPage() {
             data-testid="sum-check"
             className="mt-3 text-xs font-semibold text-mu-ok"
           >
-            지출 합계 {formatKRW(sumCheck.sumKrw)} · 총액과 일치해요 ✓
+            지출 합계 {formatKRW(sumCheck.sumKrw)} · 총액과 일치해요
           </p>
         ) : sumCheck.kind === "mismatch" ? (
           <p

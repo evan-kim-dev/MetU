@@ -12,6 +12,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/onboarding/session",
   "/api/trip-tips",
   "/api/share-target",
+  "/api/recommended-deals",
   "/api/agent/sweep",
   "/api/agent/cron/",
 ] as const;

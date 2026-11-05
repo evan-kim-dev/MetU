@@ -1,4 +1,5 @@
 import type { ExpenseCategoryOut, ReceiptOut } from "@/lib/ai/contracts";
+import { detectDcc, type DccResult } from "@/lib/ledger/dcc";
 
 type ReceiptLineItem = {
   name: string;
@@ -16,6 +17,13 @@ export type ReceiptDraft = {
   merchantKo: string | null;
   amount: number | null;
   currency: string | null;
+  /** 영수증 본통화가 외화일 때 현지 결제액 (total 과 동일할 수 있음). */
+  foreignCurrency: string | null;
+  foreignAmount: number | null;
+  /** 병기된 원화 청구액이 있을 때만. */
+  krwAmount: number | null;
+  /** DCC(이중환전) 판정 — 환율 조회 없이 secondary 인쇄값만으로. */
+  dccDetected: DccResult;
   paidAt: string | null;
   spentOn: string | null;
   timeIsEstimated: boolean;
@@ -280,6 +288,39 @@ export function postprocessReceiptExtract(
     options.now ?? new Date()
   );
 
+  const krwSecondary = extract.secondaryAmounts.find(
+    (s) => (s.currency ?? "").toUpperCase() === "KRW"
+  );
+  const foreignCcy =
+    currency && currency.toUpperCase() !== "KRW" ? currency.toUpperCase() : null;
+  const foreignAmt =
+    foreignCcy && total != null && Number.isFinite(total) ? total : null;
+  const krwAmount =
+    krwSecondary && Number.isFinite(krwSecondary.amount)
+      ? Math.round(krwSecondary.amount)
+      : null;
+
+  const dccDetected = detectDcc({
+    tripLocalCurrency,
+    draftCurrency: currency,
+    merchant: extract.merchant,
+    receiptSecondary: extract.secondaryAmounts.map((s) => ({
+      currency: s.currency ?? "",
+      amount: s.amount,
+      label: s.label,
+    })),
+    foreignAmount: foreignAmt,
+    foreignCurrency: foreignCcy,
+    // 시장환율은 이 단계에서 조회하지 않음 → confirmed 대신 suspected/none
+    marketRate: null,
+  });
+
+  if (dccDetected.level === "suspected") {
+    warnings.push("원화 결제(DCC) 가능성이 있어요 — 청구 금액을 확인해 주세요");
+  } else if (dccDetected.level === "confirmed") {
+    warnings.push("영수증에 외화·원화 금액이 함께 있어요 — 이중환전을 확인해 주세요");
+  }
+
   const draft: ReceiptDraft = {
     source: "receipt",
     isReceipt: extract.isReceipt,
@@ -288,6 +329,10 @@ export function postprocessReceiptExtract(
     merchantKo: extract.merchantKo,
     amount: total,
     currency,
+    foreignCurrency: foreignCcy,
+    foreignAmount: foreignAmt,
+    krwAmount,
+    dccDetected,
     paidAt: paidAtIso,
     spentOn,
     timeIsEstimated,

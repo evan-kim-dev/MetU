@@ -18,9 +18,51 @@ const TARGET_COUNT = 6;
 
 export type CuratedDealsResult = {
   places: DealPlace[];
-  source: "ai+rag" | "cache" | "empty";
+  source: "ai+rag" | "cache" | "rag" | "empty";
   hit: "fresh" | "stale" | "miss";
 };
+
+/** RAG cheapPlaces → 국가 추정. 가격 숫자 없음. */
+const PLACE_COUNTRY: Record<string, string> = {
+  런던: "영국",
+  파리: "프랑스",
+  오사카: "일본",
+  방콕: "태국",
+  프라하: "체코",
+  도쿄: "일본",
+  제주: "한국",
+  타이베이: "대만",
+  교토: "일본",
+  부산: "한국",
+  다낭: "베트남",
+  홍콩: "홍콩",
+  후쿠오카: "일본",
+  발리: "인도네시아",
+  오키나와: "일본",
+  홋카이도: "일본",
+  삿포로: "일본",
+  "파리(비수기 초입)": "프랑스",
+};
+
+/**
+ * AI/캐시가 비었을 때 시즌 RAG 큐레이션으로 채운다.
+ * 가짜 가격·항공료를 만들지 않고, monthDeals 후보만 DealPlace 로 옮긴다.
+ */
+export function ragFallbackDeals(now = Date.now()): DealPlace[] {
+  const { month } = kstMonthYear(now);
+  const tip = getMonthDealTip(month);
+  const rows = tip.cheapPlaces.map((name) => {
+    const clean = name.replace(/\(.*?\)/g, "").trim() || name.trim();
+    return {
+      name: clean,
+      country: PLACE_COUNTRY[name] ?? PLACE_COUNTRY[clean] ?? "해외",
+      bestMonth: `${month}월`,
+      highlight: tip.dealReason.slice(0, 120),
+      tier: "가성비",
+    };
+  });
+  return toDealPlaces(rows);
+}
 
 type CachedDealsPayload = { places: DealPlace[] };
 
@@ -138,7 +180,11 @@ export async function curateRecommendedDeals(): Promise<CuratedDealsResult> {
       ? cached.value.places
       : [];
     if (places.length === 0) {
-      return { places: [], source: "empty", hit: cached.hit };
+      const rag = ragFallbackDeals();
+      if (rag.length === 0) {
+        return { places: [], source: "empty", hit: cached.hit };
+      }
+      return { places: rag, source: "rag", hit: cached.hit };
     }
     return {
       places,
@@ -147,6 +193,10 @@ export async function curateRecommendedDeals(): Promise<CuratedDealsResult> {
     };
   } catch (error) {
     console.error("[recommended-deals]", error);
-    return { places: [], source: "empty", hit: "miss" };
+    const rag = ragFallbackDeals();
+    if (rag.length === 0) {
+      return { places: [], source: "empty", hit: "miss" };
+    }
+    return { places: rag, source: "rag", hit: "miss" };
   }
 }
