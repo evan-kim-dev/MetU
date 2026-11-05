@@ -22,6 +22,8 @@ import { AIInsightBadge } from "@/components/ui/AIInsightBadge";
 import { AILoadingPanel } from "@/components/ui/AILoadingPanel";
 import { EasterEggCelebration } from "@/components/ui/EasterEggCelebration";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
+import { BudgetRebalanceBar } from "@/components/recommend/BudgetRebalanceBar";
+import { DailyBurnRateCard } from "@/components/recommend/DailyBurnRateCard";
 import { usePlanQuotes } from "@/components/recommend/usePlanQuotes";
 import { formatKRW } from "@/lib/shared/format";
 import { planHasEasterEgg } from "@/lib/ai/plan-easter-egg";
@@ -31,6 +33,24 @@ import { buildGoogleFlightsUrlFromPlan } from "@/lib/flights/google-flights-url"
 import { buildAgodaHotelUrlFromPlan } from "@/lib/hotels/agoda-url";
 import { useTrips } from "@/lib/trips/TripProvider";
 import { planToTrip } from "@/components/recommend/planToTrip";
+
+/** VERIFY: 표시용 예시 환율. 라이브 FX 연동 시 교체. */
+function localFxMeta(country: string): {
+  currencyCode: string;
+  baseRate: number;
+  rateUnit: number;
+} {
+  const c = country.trim().toLowerCase();
+  if (
+    c === "jp" ||
+    c === "jpn" ||
+    c.includes("일본") ||
+    c.includes("japan")
+  ) {
+    return { currencyCode: "엔", baseRate: 910, rateUnit: 100 };
+  }
+  return { currencyCode: "USD", baseRate: 1380, rateUnit: 1 };
+}
 
 type FlightOverride = { price: number; airline: string };
 type HotelOverride = { price: number; name: string };
@@ -511,6 +531,21 @@ export function RecommendResult({
               </span>
             ) : null}
           </div>
+          <BudgetRebalanceBar
+            totalBudget={plan.totalBudget}
+            fixedCostKRW={flightPrice + hotelPrice}
+            dailySchedule={plan.dailySchedule}
+            minBudget={Math.min(800_000, plan.totalBudget)}
+            maxBudget={Math.max(1_500_000, plan.totalBudget)}
+            onRebalanced={({ targetBudget, schedule }) => {
+              setPlan((prev) => ({
+                ...prev,
+                totalBudget: targetBudget,
+                dailySchedule: schedule,
+                form: { ...prev.form, budget: String(targetBudget) },
+              }));
+            }}
+          />
           {liveBudget.overBudget ? (
             <p className="mb-3 rounded-xl2 border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
               항공·숙소 금액만으로 이미 총예산을{" "}
@@ -530,6 +565,17 @@ export function RecommendResult({
             totalBudget={plan.totalBudget}
             people={plan.people}
           />
+          <div className="mt-5">
+            <DailyBurnRateCard
+              totalBudget={plan.totalBudget}
+              fixedCostKRW={flightPrice + hotelPrice}
+              days={Math.max(1, plan.nights + 1)}
+              people={plan.people}
+              baseRate={localFxMeta(plan.country).baseRate}
+              currencyCode={localFxMeta(plan.country).currencyCode}
+              rateUnit={localFxMeta(plan.country).rateUnit}
+            />
+          </div>
         </section>
 
         <section
