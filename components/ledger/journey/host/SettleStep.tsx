@@ -298,8 +298,8 @@ export function SettleStep({
     <div
       className={
         mode === "page"
-          ? "mx-auto flex max-w-lg flex-col gap-4 px-4 py-6 pb-8"
-          : "flex flex-col gap-4 pb-24"
+          ? "mx-auto flex max-w-mobile flex-col gap-5 px-4 py-6 pb-8"
+          : "flex flex-col gap-5 pb-24"
       }
     >
       {mode === "page" ? (
@@ -330,7 +330,10 @@ export function SettleStep({
       )}
 
       {loadError ? (
-        <p className="rounded-mu-md bg-mu-warn/10 px-3 py-2 text-mu-caption font-semibold text-mu-warn">
+        <p
+          role="alert"
+          className="rounded-mu-lg border border-mu-warn/30 bg-mu-warn-soft px-4 py-3 text-mu-caption font-semibold text-mu-warn"
+        >
           정산 정보를 모두 불러오지 못했어요. 새로고침해 주세요.
         </p>
       ) : null}
@@ -343,7 +346,7 @@ export function SettleStep({
               action={
                 <button
                   type="button"
-                  className="min-h-tap text-mu-caption font-bold text-mu-accent"
+                  className="mu-focus min-h-tap text-mu-caption font-bold text-mu-accent"
                   onClick={() => setExplainOpen(true)}
                 >
                   왜 이 금액?
@@ -364,10 +367,12 @@ export function SettleStep({
 
       <section
         aria-label="멤버별 잔액"
-        className="rounded-mu-md border border-mu-line bg-mu-card p-3 text-mu-caption"
+        className="overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card"
       >
-        <p className="font-bold text-mu-fg">잔액</p>
-        <ul className="mt-2 space-y-1">
+        <p className="border-b border-mu-line px-4 py-3 text-mu-heading text-mu-fg">
+          잔액
+        </p>
+        <ul className="divide-y divide-mu-line">
           {members.map((m) => {
             const value = balances[m.id] ?? 0;
             const mine = me?.id === m.id;
@@ -376,19 +381,23 @@ export function SettleStep({
                 key={m.id}
                 data-testid={`balance-${m.id}`}
                 data-mine={mine ? "true" : undefined}
-                className={`flex min-h-tap items-center justify-between rounded-mu-sm px-2 ${
-                  mine ? "bg-mu-bg ring-1 ring-mu-accent/40" : ""
+                className={`flex min-h-tap items-center justify-between gap-3 px-4 py-3 ${
+                  mine ? "bg-mu-accent-soft" : ""
                 }`}
               >
-                <span className={mine ? "font-extrabold" : undefined}>
+                <span
+                  className={`text-mu-body ${mine ? "font-extrabold text-mu-fg" : "font-semibold text-mu-fg"}`}
+                >
                   {m.displayName}
                   {mine ? " (나)" : ""}
                 </span>
-                <span className="text-right">
-                  <span className={`mu-num font-semibold ${balanceTone(value)}`}>
+                <span className="shrink-0 text-right">
+                  <span
+                    className={`mu-num block text-mu-body font-bold ${balanceTone(value)}`}
+                  >
                     {signedKRW(value)}
                   </span>
-                  <span className="ml-2 text-mu-caption text-mu-fg-3">
+                  <span className="text-mu-caption text-mu-fg-3">
                     {balanceLabel(value)}
                   </span>
                 </span>
@@ -405,7 +414,7 @@ export function SettleStep({
       {loaded ? <FeeLeakCard expenses={expenseRows} /> : null}
 
       {loaded ? (
-        <div className="rounded-mu-md border border-mu-line bg-mu-card px-3 py-2">
+        <div className="flex items-center justify-between gap-3 rounded-mu-xl border border-mu-line bg-mu-card px-4 py-3">
           <p className="text-mu-caption text-mu-fg-2">
             사람별 몫이 안 맞으면 분담을 먼저 고쳐 주세요.
           </p>
@@ -414,7 +423,10 @@ export function SettleStep({
       ) : null}
 
       {stale ? (
-        <div className="rounded-mu-md bg-mu-warn/10 px-3 py-2 text-mu-caption font-semibold text-mu-warn">
+        <div
+          role="status"
+          className="rounded-mu-lg border border-mu-warn/30 bg-mu-warn-soft px-4 py-3 text-mu-caption font-semibold text-mu-warn"
+        >
           <p>정산 후 지출이 바뀌었어요. 다시 계산할까요?</p>
           {hasPaid ? (
             <p className="mt-1 font-normal">
@@ -440,8 +452,8 @@ export function SettleStep({
       ) : null}
 
       {loaded && canGoPay ? (
-        <div className="rounded-mu-md border border-mu-line bg-mu-card px-3 py-2">
-          <p className="text-mu-caption text-mu-fg-2">
+        <div className="rounded-mu-xl border border-mu-line bg-mu-accent-soft px-4 py-3">
+          <p className="text-mu-caption font-semibold text-mu-fg-2">
             {transfers.length > 0
               ? "정산표가 있어요. 아래 버튼으로 송금 단계로 넘어가요."
               : "정산이 맞춰져 송금할 금액이 없어요. 송금 단계에서 현황을 확인할 수 있어요."}
@@ -491,7 +503,7 @@ export function SettleStep({
         {fxFallbackCount > 0 ? (
           <p
             role="alert"
-            className="rounded-mu-sm bg-mu-warn/10 px-2 py-1 font-semibold text-mu-warn"
+            className="rounded-mu-md border border-mu-warn/30 bg-mu-warn-soft px-3 py-2 font-semibold text-mu-warn"
           >
             {fxFallbackCount}건은 마지막으로 확인한 환율로 계산됐어요. 송금하기
             전에 금액을 한 번 더 확인해 주세요.

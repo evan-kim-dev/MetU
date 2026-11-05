@@ -25,8 +25,6 @@ type Props = {
   onRecord: () => void;
 };
 
-const CARD = "rounded-mu-lg border border-mu-line bg-mu-card p-4";
-
 /**
  * 호스트 ④ 분담 단계(선택). 분담 계산은 서버가 해요:
  * LLM 은 문장 해석만, 칩은 chipToPatch(LLM 없음), 모두 미리보기 → 적용 → 되돌리기.
@@ -50,7 +48,7 @@ export function AdjustStep({
 
   if (expenses.length === 0) {
     return (
-      <div className={CARD}>
+      <div className="rounded-mu-xl border border-mu-line bg-mu-card p-4">
         <EmptyState
           icon={Receipt}
           title="조정할 지출이 없어요"
@@ -62,39 +60,38 @@ export function AdjustStep({
   }
 
   return (
-    <div className="flex flex-col gap-6 pb-24">
+    <div className="flex flex-col gap-5 pb-24">
       <div>
         <h2 className="text-mu-title text-mu-fg">정산 전에 안 맞는 게 있나요?</h2>
         <p className="mt-1 text-mu-body text-mu-fg-2">
-          없으면 바로 정산해도 돼요. 바꾸면 먼저 미리 보고, 확정한 뒤에도 되돌릴 수 있어요.
+          없으면 바로 정산해도 돼요. 바꾸면 먼저 미리 보고, 확정한 뒤에도 되돌릴 수
+          있어요.
         </p>
       </div>
 
-      <section aria-labelledby="adjust-text-title" className={CARD}>
-        <h3 id="adjust-text-title" className="text-mu-heading text-mu-fg">
-          한 줄로 바꾸기
-        </h3>
-        <p className="mt-1 text-mu-caption text-mu-fg-3">
-          예: 「민수는 술 안 마셨어요」, 「택시비는 셋이서만」.
-        </p>
-        <div className="mt-3 flex flex-col gap-3">
-          <SplitBatchBox tripId={tripId} onChanged={changed} />
-          <SplitPatchBox tripId={tripId} onChanged={changed} />
-        </div>
-      </section>
+      <div className="flex flex-col gap-3">
+        <SplitBatchBox tripId={tripId} onChanged={changed} />
+        <SplitPatchBox tripId={tripId} onChanged={changed} />
+      </div>
 
-      <section aria-labelledby="adjust-chips-title" className={CARD}>
-        <div className="flex items-center gap-2">
-          <ListChecks className="h-5 w-5 text-mu-fg-2" strokeWidth={1.75} aria-hidden />
-          <h3 id="adjust-chips-title" className="text-mu-heading text-mu-fg">
-            지출별로 빼고 넣기
-          </h3>
+      <section aria-labelledby="adjust-chips-title" className="flex flex-col gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <ListChecks
+              className="h-5 w-5 text-mu-accent"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <h3 id="adjust-chips-title" className="text-mu-heading text-mu-fg">
+              지출별로 빼고 넣기
+            </h3>
+          </div>
+          <p className="mt-1 text-mu-caption text-mu-fg-3">
+            사람 칩을 누르면 바뀐 몫을 먼저 보여 줘요.
+            {isOwner && !isAnonymous ? " 결제자도 여기서 바꿔요." : ""}
+          </p>
         </div>
-        <p className="mt-1 text-mu-caption text-mu-fg-3">
-          사람 칩을 누르면 바뀐 몫을 먼저 보여 줘요.
-          {isOwner && !isAnonymous ? " 결제자도 여기서 바꿔요." : ""}
-        </p>
-        <ul className="mt-3 flex flex-col gap-2">
+        <ul className="flex flex-col gap-2">
           {expenses.map((e) => (
             <ExpenseChipSplit
               key={e.id}
@@ -113,7 +110,11 @@ export function AdjustStep({
       <BottomCTA
         label="문제없어요, 정산할게요"
         onClick={onSettle}
-        hint={changes > 0 ? `이번에 분담을 ${changes}번 바꿨어요. 정산에 반영돼요.` : undefined}
+        hint={
+          changes > 0
+            ? `이번에 분담을 ${changes}번 바꿨어요. 정산에 반영돼요.`
+            : undefined
+        }
       />
     </div>
   );

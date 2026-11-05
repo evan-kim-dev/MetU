@@ -254,11 +254,11 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
   return (
     <section
       aria-label="분담 말로 고치기"
-      className="rounded-xl bg-mu-sunken p-3 text-xs"
+      className="rounded-mu-xl border border-mu-line bg-mu-card p-4 text-mu-body"
     >
       <button
         type="button"
-        className="flex min-h-[44px] w-full items-center justify-between gap-2 text-left font-bold text-mu-fg"
+        className="mu-focus flex min-h-tap w-full items-center justify-between gap-2 text-left text-mu-heading text-mu-fg"
         aria-expanded={open}
         onClick={() => void toggleOpen()}
       >
@@ -266,8 +266,8 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
       </button>
 
       {open ? (
-        <div className="mt-3 flex flex-col gap-2 border-t border-mu-line pt-3">
-          <p className="font-normal text-mu-fg-3">
+        <div className="mt-3 flex flex-col gap-3 border-t border-mu-line pt-3">
+          <p className="text-mu-caption text-mu-fg-3">
             예: &ldquo;저는 술 안 마셨어요&rdquo;, &ldquo;민수는 빼고&rdquo;
           </p>
 
@@ -294,7 +294,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                 지출 고르기
                 <select
                   id={expenseFieldId}
-                  className="min-h-[44px] w-full rounded-lg border border-mu-line bg-mu-card px-3 text-sm font-normal"
+                  className="min-h-tap w-full rounded-mu-md border border-mu-line bg-mu-sunken px-3 text-mu-body font-normal"
                   value={expenseId}
                   disabled={Boolean(busy)}
                   onChange={(e) => {
@@ -320,7 +320,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                 어떻게 바꿀까요?
                 <textarea
                   id={textFieldId}
-                  className="min-h-[88px] w-full resize-y rounded-lg border border-mu-line bg-mu-card px-3 py-2 text-sm font-normal"
+                  className="min-h-[88px] w-full resize-y rounded-mu-md border border-mu-line bg-mu-sunken px-3 py-2 text-mu-body font-normal"
                   placeholder="저는 술 안 마셨어요"
                   value={text}
                   maxLength={SPLIT_PATCH_TEXT_MAX}
@@ -341,7 +341,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                   disabled={
                     Boolean(busy) || !text.trim() || Boolean(historyId)
                   }
-                  className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-mu-accent px-3 text-xs font-bold text-white disabled:opacity-40"
+                  className="mu-focus inline-flex min-h-tap items-center gap-1 rounded-mu-md bg-mu-accent px-3 text-mu-caption font-bold text-mu-on-accent disabled:opacity-40"
                   onClick={() => void runPreview()}
                 >
                   {busy === "preview" ? (
@@ -353,7 +353,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                   <button
                     type="button"
                     disabled={Boolean(busy)}
-                    className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-mu-accent px-3 text-xs font-bold text-mu-accent disabled:opacity-40"
+                    className="mu-focus inline-flex min-h-tap items-center gap-1 rounded-mu-md border border-mu-accent px-3 text-mu-caption font-bold text-mu-accent disabled:opacity-40"
                     onClick={() => void runApply()}
                   >
                     {busy === "apply" ? (
@@ -366,7 +366,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
                   <button
                     type="button"
                     disabled={Boolean(busy)}
-                    className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-mu-warn px-3 text-xs font-bold text-mu-warn disabled:opacity-40"
+                    className="mu-focus inline-flex min-h-tap items-center gap-1 rounded-mu-md border border-mu-warn px-3 text-mu-caption font-bold text-mu-warn disabled:opacity-40"
                     onClick={() => void runUndo()}
                   >
                     {busy === "undo" ? (
@@ -380,7 +380,7 @@ export function SplitPatchBox({ tripId, onChanged }: Props) {
           )}
 
           {clarify ? (
-            <p className="rounded-lg bg-mu-warn-soft px-2 py-2 font-semibold text-mu-warn">
+            <p className="rounded-mu-md bg-mu-warn-soft px-3 py-2 font-semibold text-mu-warn">
               {clarify}
             </p>
           ) : null}
