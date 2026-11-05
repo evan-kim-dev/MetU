@@ -23,8 +23,8 @@ export const PAGE_ROUTES: readonly PageRouteSpec[] = [
   {
     path: "/",
     file: "app/page.tsx",
-    access: "auth-or-guest",
-    note: "홈 · AuthGate",
+    access: "public",
+    note: "홈 · 비로그인 공개(추천딜·랜딩)",
   },
   {
     path: "/about",
