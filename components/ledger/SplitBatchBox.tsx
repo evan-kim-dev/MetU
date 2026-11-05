@@ -192,11 +192,12 @@ export function SplitBatchBox({ tripId, onChanged }: Props) {
   return (
     <section
       aria-label="한 줄로 분담 바꾸기"
-      className="rounded-mu-lg border border-mu-line bg-mu-card p-4"
+      className="rounded-mu-xl border border-mu-line bg-mu-card p-4"
     >
-      <h2 className="text-sm font-extrabold text-mu-fg">
-        한 줄로 분담 바꾸기
-      </h2>
+      <h2 className="text-mu-heading text-mu-fg">한 줄로 분담 바꾸기</h2>
+      <p className="mt-1 text-mu-caption text-mu-fg-3">
+        예: 「민수랑 나는 술 빼줘」
+      </p>
       <label htmlFor={textFieldId} className="sr-only">
         분담 수정 요청
       </label>
@@ -205,14 +206,14 @@ export function SplitBatchBox({ tripId, onChanged }: Props) {
         value={text}
         maxLength={SPLIT_PATCH_TEXT_MAX}
         placeholder="민수랑 나는 술 빼줘"
-        className="mt-2 min-h-[88px] w-full rounded-xl border border-mu-line bg-mu-sunken px-3 py-2 text-sm"
+        className="mt-3 min-h-[88px] w-full rounded-mu-lg border border-mu-line bg-mu-sunken px-3 py-2 text-mu-body"
         onChange={(e) => setText(e.target.value)}
       />
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
           disabled={busy !== null}
-          className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-mu-accent px-3 text-xs font-bold text-white disabled:opacity-40"
+          className="mu-focus inline-flex min-h-tap items-center gap-1 rounded-mu-md bg-mu-accent px-3 text-mu-caption font-bold text-mu-on-accent disabled:opacity-40"
           onClick={() => void onPreview()}
         >
           {busy === "preview" ? (
@@ -223,7 +224,7 @@ export function SplitBatchBox({ tripId, onChanged }: Props) {
         {items.length > 0 ? (
           <button
             type="button"
-            className="min-h-[44px] rounded-lg border border-mu-line-strong px-3 text-xs font-bold text-mu-fg-3"
+            className="mu-focus min-h-tap rounded-mu-md border border-mu-line px-3 text-mu-caption font-bold text-mu-fg-3"
             onClick={resetPreview}
           >
             지우기
@@ -232,17 +233,17 @@ export function SplitBatchBox({ tripId, onChanged }: Props) {
       </div>
 
       {clarify ? (
-        <p role="status" className="mt-2 text-xs font-semibold text-mu-warn">
+        <p role="status" className="mt-2 text-mu-caption font-semibold text-mu-warn">
           {clarify}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-2 text-xs font-semibold text-mu-err">
+        <p role="alert" className="mt-2 text-mu-caption font-semibold text-mu-err">
           {error}
         </p>
       ) : null}
       {doneMsg ? (
-        <p role="status" className="mt-2 text-xs font-semibold text-mu-ok">
+        <p role="status" className="mt-2 text-mu-caption font-semibold text-mu-ok">
           {doneMsg}
         </p>
       ) : null}
@@ -260,7 +261,7 @@ export function SplitBatchBox({ tripId, onChanged }: Props) {
                   historyId={it.historyId}
                   showActions={false}
                 />
-                <p className="mt-1 text-xs text-mu-fg-3">
+                <p className="mt-1 text-mu-caption text-mu-fg-3">
                   합계 {formatKRW(beforeSum)} → {formatKRW(afterSum)}
                   {beforeSum === afterSum ? " (불변)" : ""}
                   {it.historyId ? " · 적용됨" : ""}
@@ -272,7 +273,7 @@ export function SplitBatchBox({ tripId, onChanged }: Props) {
             <button
               type="button"
               disabled={busy !== null || appliedCount === items.length}
-              className="min-h-[44px] rounded-lg bg-mu-accent px-3 text-xs font-bold text-white disabled:opacity-40"
+              className="mu-focus min-h-tap rounded-mu-md bg-mu-accent px-3 text-mu-caption font-bold text-mu-on-accent disabled:opacity-40"
               onClick={() => void applyAll()}
             >
               {busy === "apply" ? "적용 중…" : "모두 확정"}
@@ -280,7 +281,7 @@ export function SplitBatchBox({ tripId, onChanged }: Props) {
             <button
               type="button"
               disabled={busy !== null || appliedCount === 0}
-              className="min-h-[44px] rounded-lg border border-mu-warn px-3 text-xs font-bold text-mu-warn disabled:opacity-40"
+              className="mu-focus min-h-tap rounded-mu-md border border-mu-warn px-3 text-mu-caption font-bold text-mu-warn disabled:opacity-40"
               onClick={() => void undoAll()}
             >
               {busy === "undo" ? "되돌리는 중…" : "모두 되돌리기"}

@@ -190,17 +190,21 @@ export function ExpenseChipSplit({
   const hasShares = Object.keys(expense.shares ?? {}).length > 0;
 
   return (
-    <li className="rounded-xl bg-mu-sunken px-3 py-3 text-xs">
-      <div className="flex items-start justify-between gap-2">
+    <li className="rounded-mu-lg border border-mu-line bg-mu-card px-4 py-4 text-mu-body">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-semibold text-mu-fg">
+          <p className="truncate text-mu-body font-semibold text-mu-fg">
             {expense.merchant || expense.label}
           </p>
           {payerName ? (
-            <p className="mt-0.5 text-mu-fg-3">결제 {payerName}</p>
+            <p className="mt-0.5 text-mu-caption text-mu-fg-3">
+              결제 {payerName}
+            </p>
           ) : null}
         </div>
-        <span className="shrink-0 font-bold">{formatKRW(expense.krwAmount)}</span>
+        <span className="mu-num shrink-0 text-mu-body font-bold text-mu-fg">
+          {formatKRW(expense.krwAmount)}
+        </span>
       </div>
 
       {hasShares ? (
@@ -237,7 +241,7 @@ export function ExpenseChipSplit({
           <button
             type="button"
             disabled={Boolean(busy)}
-            className="inline-flex min-h-[44px] items-center rounded-lg border border-mu-warn px-3 text-xs font-bold text-mu-warn disabled:opacity-40"
+            className="mu-focus inline-flex min-h-tap items-center rounded-mu-md border border-mu-warn px-3 text-mu-caption font-bold text-mu-warn disabled:opacity-40"
             onClick={() => void onUndo()}
           >
             되돌리기
@@ -258,7 +262,7 @@ export function ExpenseChipSplit({
       {isOwner && !isAnonymous ? (
         <button
           type="button"
-          className="mt-2 inline-flex min-h-[44px] items-center font-bold text-mu-accent underline"
+          className="mu-focus mt-2 inline-flex min-h-tap items-center text-mu-caption font-bold text-mu-accent"
           onClick={() => setPayerOpen(true)}
         >
           결제자 바꾸기

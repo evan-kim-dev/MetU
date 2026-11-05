@@ -328,8 +328,8 @@ export function PayStep({
     <div
       className={
         mode === "page"
-          ? "flex flex-col gap-4 pb-8"
-          : "flex flex-col gap-4 pb-24"
+          ? "flex flex-col gap-5 pb-8"
+          : "flex flex-col gap-5 pb-24"
       }
     >
       {mode === "journey" ? (
@@ -344,13 +344,19 @@ export function PayStep({
       ) : null}
 
       {loadError ? (
-        <p className="rounded-mu-md bg-mu-warn/10 px-3 py-2 text-mu-caption font-semibold text-mu-warn">
+        <p
+          role="alert"
+          className="rounded-mu-lg border border-mu-warn/30 bg-mu-warn-soft px-4 py-3 text-mu-caption font-semibold text-mu-warn"
+        >
           정산 정보를 모두 불러오지 못했어요. 새로고침해 주세요.
         </p>
       ) : null}
 
       {stale ? (
-        <div className="rounded-mu-md bg-mu-warn/10 px-3 py-2 text-mu-caption font-semibold text-mu-warn">
+        <div
+          role="status"
+          className="rounded-mu-lg border border-mu-warn/30 bg-mu-warn-soft px-4 py-3 text-mu-caption font-semibold text-mu-warn"
+        >
           <p>송금표가 최신이 아니에요. 정산 단계에서 다시 계산해 주세요.</p>
           {onSettle ? (
             <button
@@ -372,7 +378,7 @@ export function PayStep({
       ) : null}
 
       {settlement?.origin === "auto" && !completed ? (
-        <div className="rounded-mu-md bg-mu-bg px-3 py-2 text-mu-caption font-semibold text-mu-fg-2">
+        <div className="rounded-mu-lg border border-mu-line bg-mu-sunken px-4 py-3 text-mu-caption font-semibold text-mu-fg-2">
           자동으로 만든 정산 제안이에요. 금액을 확인하고 직접 송금해 주세요.
         </div>
       ) : null}
@@ -380,14 +386,14 @@ export function PayStep({
       {completed ? (
         <p
           role="status"
-          className="rounded-mu-md bg-mu-ok/10 px-3 py-2 text-mu-caption font-bold text-mu-ok"
+          className="rounded-mu-lg border border-mu-ok/20 bg-mu-ok-soft px-4 py-3 text-mu-caption font-bold text-mu-ok"
         >
           정산 완료
         </p>
       ) : null}
 
       {settlement && visibleTransfers.length > 0 ? (
-        <div className="flex items-center gap-3 rounded-mu-md border border-mu-line bg-mu-card p-3">
+        <div className="flex items-center gap-4 rounded-mu-xl border border-mu-line bg-mu-card p-4">
           <ProgressRing
             value={
               audience === "guest"
@@ -406,11 +412,14 @@ export function PayStep({
                 : `${paidCount}/${transfers.length} 송금 완료`
             }
           />
-          <p className="text-mu-body font-bold text-mu-fg">
-            {audience === "guest"
-              ? `내 송금 ${myOutgoing.filter((t) => t.status === "paid").length}/${myOutgoing.length || 0} 완료`
-              : `${paidCount}/${transfers.length} 완료`}
-          </p>
+          <div className="min-w-0">
+            <p className="text-mu-caption text-mu-fg-3">진행</p>
+            <p className="mt-0.5 text-mu-heading text-mu-fg">
+              {audience === "guest"
+                ? `내 송금 ${myOutgoing.filter((t) => t.status === "paid").length}/${myOutgoing.length || 0} 완료`
+                : `${paidCount}/${transfers.length} 완료`}
+            </p>
+          </div>
         </div>
       ) : null}
 
@@ -421,21 +430,25 @@ export function PayStep({
           return (
             <li
               key={t.id}
-              className="flex flex-col gap-2 rounded-mu-md border border-mu-line bg-mu-card p-3 text-mu-body"
+              className="flex flex-col gap-3 rounded-mu-xl border border-mu-line bg-mu-card p-4 text-mu-body"
             >
-              <div className="flex items-center justify-between gap-2">
-                <span>
-                  {nameOf(t.from)} → {nameOf(t.to)}{" "}
-                  <strong className="mu-num">{formatKRW(t.krw)}</strong>
-                </span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-mu-body font-semibold text-mu-fg">
+                    {nameOf(t.from)} → {nameOf(t.to)}
+                  </p>
+                  <p className="mu-num mt-1 text-mu-amount font-extrabold text-mu-fg">
+                    {formatKRW(t.krw)}
+                  </p>
+                </div>
                 {t.status === "paid" ? (
-                  <span className="text-mu-caption font-bold text-mu-ok">
+                  <span className="rounded-full bg-mu-ok-soft px-2.5 py-1 text-mu-caption font-bold text-mu-ok">
                     완료
                   </span>
                 ) : canMark ? (
                   <button
                     type="button"
-                    className="min-h-tap min-w-tap px-2 text-mu-caption font-bold text-mu-accent"
+                    className="mu-focus min-h-tap shrink-0 rounded-mu-md px-2 text-mu-caption font-bold text-mu-accent"
                     onClick={() => void markPaid(t.id)}
                   >
                     송금 완료
@@ -448,7 +461,7 @@ export function PayStep({
                     <button
                       key={app.id}
                       type="button"
-                      className="min-h-tap rounded-mu-sm border border-mu-accent px-3 text-mu-caption font-bold text-mu-accent"
+                      className="mu-focus min-h-tap rounded-mu-md border border-mu-accent bg-mu-accent-soft px-3 text-mu-caption font-bold text-mu-accent"
                       onClick={() => openPayApp(app, t.krw)}
                     >
                       {app.label} 열기
@@ -464,7 +477,7 @@ export function PayStep({
       {payNote ? (
         <div
           role="status"
-          className="rounded-mu-md bg-mu-bg px-3 py-2 text-mu-caption text-mu-fg-2"
+          className="rounded-mu-lg border border-mu-line bg-mu-sunken px-4 py-3 text-mu-caption text-mu-fg-2"
         >
           <p>{payNote}</p>
           <p className="mt-1 font-semibold">{PAY_DEEPLINK_NOTICE}</p>
@@ -477,9 +490,9 @@ export function PayStep({
       {audience === "host" && settlement && transfers.length > 0 ? (
         <section
           aria-label="정산 공유"
-          className="flex flex-col gap-2 rounded-mu-md bg-mu-bg p-3 text-mu-caption"
+          className="flex flex-col gap-3 rounded-mu-xl border border-mu-line bg-mu-card p-4 text-mu-caption"
         >
-          <p className="font-bold text-mu-fg">동행에게 공유하기</p>
+          <p className="text-mu-heading text-mu-fg">동행에게 공유하기</p>
           {shareBlockedMessage ? (
             <p className="font-semibold text-mu-warn">{shareBlockedMessage}</p>
           ) : null}
@@ -487,7 +500,7 @@ export function PayStep({
             <button
               type="button"
               disabled={!shareText}
-              className="min-h-tap rounded-mu-sm bg-mu-accent px-3 font-bold text-white disabled:opacity-40"
+              className="mu-focus min-h-tap rounded-mu-md bg-mu-accent px-3 font-bold text-mu-on-accent disabled:opacity-40"
               onClick={() => void copyShareText()}
             >
               {textCopy.label ?? "문구 복사"}
@@ -496,7 +509,7 @@ export function PayStep({
               <button
                 type="button"
                 disabled={!shareText}
-                className="min-h-tap rounded-mu-sm border border-mu-accent px-3 font-bold text-mu-accent disabled:opacity-40"
+                className="mu-focus min-h-tap rounded-mu-md border border-mu-accent px-3 font-bold text-mu-accent disabled:opacity-40"
                 onClick={() => void nativeShare()}
               >
                 공유하기
@@ -505,7 +518,7 @@ export function PayStep({
             {shareUrl ? (
               <button
                 type="button"
-                className="min-h-tap rounded-mu-sm border border-mu-accent px-3 font-bold text-mu-accent"
+                className="mu-focus min-h-tap rounded-mu-md border border-mu-accent px-3 font-bold text-mu-accent"
                 onClick={() => void copyShareLink()}
               >
                 {linkCopy.label ?? "링크 복사"}
@@ -513,7 +526,7 @@ export function PayStep({
             ) : null}
           </div>
           {sharePath ? (
-            <Link className="break-all text-mu-accent" href={sharePath}>
+            <Link className="break-all font-semibold text-mu-accent" href={sharePath}>
               {sharePath}
             </Link>
           ) : null}

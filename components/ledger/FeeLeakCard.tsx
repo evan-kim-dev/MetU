@@ -21,33 +21,33 @@ export function FeeLeakCard({ expenses }: { expenses: LedgerExpenseRow[] }) {
   return (
     <section
       aria-label="시장환율 대비 차이"
-      className="rounded-2xl bg-mu-sunken px-4 py-3 text-sm text-mu-fg-2"
+      className="rounded-mu-xl border border-mu-line bg-mu-card px-4 py-4 text-mu-body text-mu-fg-2"
     >
-      <h2 className="text-sm font-extrabold text-mu-fg">
-        시장환율 대비 차이
-      </h2>
+      <h2 className="text-mu-heading text-mu-fg">시장환율 대비 차이</h2>
       {leak.measuredKrw == null ? (
-        <p className="mt-1 text-xs text-mu-fg-3">{FEE_LEAK_EMPTY_COPY}</p>
+        <p className="mt-2 text-mu-caption text-mu-fg-3">{FEE_LEAK_EMPTY_COPY}</p>
       ) : (
         <>
           {more ? (
-            <p className="mt-1 text-sm font-bold text-mu-fg">{more}</p>
+            <p className="mt-2 text-mu-body font-bold text-mu-fg">{more}</p>
           ) : null}
-          <p className="mt-1 text-xs text-mu-fg-3">
+          <p className="mt-1 text-mu-caption text-mu-fg-3">
             {feeLeakMeasuredCopy(leak.measuredKrw, leak.measuredCount)}
           </p>
         </>
       )}
       {leak.estimatedCount > 0 ? (
-        <p className="mt-2 text-xs text-mu-fg-3">
+        <p className="mt-3 text-mu-caption text-mu-fg-3">
           설정 기반 추정 {leak.estimatedCount}건 ·{" "}
-          {formatKRW(leak.estimatedKrw)} (카드 수수료 설정값)
+          <span className="mu-num">{formatKRW(leak.estimatedKrw)}</span> (카드
+          수수료 설정값)
         </p>
       ) : null}
       {leak.dccCount > 0 ? (
-        <p className="mt-1 text-xs text-mu-fg-3">
+        <p className="mt-1 text-mu-caption text-mu-fg-3">
           DCC 확정 {leak.dccCount}건 · 알려진 차이{" "}
-          {formatKRW(leak.dccKnownKrw)} (측정 합계와 따로 봐요)
+          <span className="mu-num">{formatKRW(leak.dccKnownKrw)}</span> (측정
+          합계와 따로 봐요)
         </p>
       ) : null}
     </section>
