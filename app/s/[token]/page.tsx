@@ -20,15 +20,6 @@ const INVALID_LINK_MESSAGE = "링크가 유효하지 않아요.";
 const LOAD_FAILED_MESSAGE =
   "정산을 불러오지 못했어요. 잠시 후 다시 열어 주세요.";
 
-/**
- * VERIFY: 데모용 호스트 입금 계좌. 공유 RPC 에 계좌 필드가 없어 임시 상수.
- * 지갑/프로필 스키마 연동 후 서버 값으로 교체.
- */
-const DEMO_HOST_PAYOUT = {
-  bank: "국민은행",
-  accountNo: "943202-00-709112",
-} as const;
-
 function transferStatusLabel(status: string): string {
   return status === "paid" ? "송금 완료" : "송금 전";
 }
@@ -170,11 +161,19 @@ function SharedSettlementInner() {
 
   async function handleTossPay() {
     if (busy.current || payAmount <= 0) return;
+    const payout = data?.hostPayout;
+    if (!payout) {
+      toast?.show({
+        text: "호스트가 아직 입금 계좌를 등록하지 않았어요.",
+        tone: "warn",
+      });
+      return;
+    }
     busy.current = true;
     try {
       await executeTossTransfer({
-        bank: DEMO_HOST_PAYOUT.bank,
-        accountNo: DEMO_HOST_PAYOUT.accountNo,
+        bank: payout.bank,
+        accountNo: payout.accountNo,
         amount: payAmount,
         onSuccessCopy: () => {
           toast?.show({
@@ -264,17 +263,27 @@ function SharedSettlementInner() {
 
         {payAmount > 0 ? (
           <div className="mt-4 flex flex-col gap-2">
-            <Button
-              type="button"
-              variant="primary"
-              className="w-full"
-              onClick={() => void handleTossPay()}
-            >
-              토스로 {formatKRW(payAmount)} 송금하기
-            </Button>
-            <p className="text-xs text-mu-fg-3">
-              모바일에서는 토스 앱을 열고, PC에서는 계좌·금액을 복사해요.
-            </p>
+            {data.hostPayout ? (
+              <>
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => void handleTossPay()}
+                >
+                  토스로 {formatKRW(payAmount)} 송금하기
+                </Button>
+                <p className="text-xs text-mu-fg-3">
+                  {data.hostPayout.bank} · 모바일에서는 토스 앱을 열고, PC에서는
+                  계좌·금액을 복사해요.
+                </p>
+              </>
+            ) : (
+              <p role="status" className="text-xs font-bold text-mu-warn">
+                호스트 입금 계좌가 아직 없어요. 금액만 확인하고, 호스트에게
+                계좌를 물어봐 주세요.
+              </p>
+            )}
           </div>
         ) : (
           <p className="mt-3 text-xs text-mu-fg-3">지금 보낼 금액이 없어요.</p>

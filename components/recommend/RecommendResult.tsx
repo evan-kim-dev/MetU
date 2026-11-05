@@ -25,6 +25,7 @@ import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
 import { BudgetRebalanceBar } from "@/components/recommend/BudgetRebalanceBar";
 import { DailyBurnRateCard } from "@/components/recommend/DailyBurnRateCard";
 import { usePlanQuotes } from "@/components/recommend/usePlanQuotes";
+import { DEMO_EXAMPLE_FX_FEES } from "@/lib/finance/fx-buffer";
 import { formatKRW } from "@/lib/shared/format";
 import { planHasEasterEgg } from "@/lib/ai/plan-easter-egg";
 import { reallocateBudgetWithLiveQuotes } from "@/lib/ai/realloc-budget";
@@ -93,11 +94,17 @@ interface RecommendResultProps {
   plan: TripRecommendation;
   /** true면 폴백을 먼저 보여주고 뒤에서 AI 보강 */
   enrich?: boolean;
+  /**
+   * true면 FX 배지에 VERIFY 예시(+2.5%)를 명시 적용.
+   * 1초 데모·샘플 직행용. 일반 온보딩은 수수료 미설정(0).
+   */
+  demoFxExample?: boolean;
 }
 
 export function RecommendResult({
   plan: initialPlan,
   enrich = false,
+  demoFxExample = false,
 }: RecommendResultProps) {
   const router = useRouter();
   const { addTrip } = useTrips();
@@ -587,6 +594,12 @@ export function RecommendResult({
               fallbackRateUnit={
                 /일본|japan|^jp/i.test(plan.country) ? 100 : 1
               }
+              {...(demoFxExample
+                ? {
+                    ...DEMO_EXAMPLE_FX_FEES,
+                    feeSourceLabel: "예시(약관 확인 필요)",
+                  }
+                : {})}
             />
           </div>
         </section>

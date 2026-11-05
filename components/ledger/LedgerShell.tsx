@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CardProfileSettings } from "@/components/ledger/CardProfileSettings";
+import { HostPayoutSettings } from "@/components/ledger/HostPayoutSettings";
 import { CashRateSettings } from "@/components/ledger/CashRateSettings";
 import { ExpenseConfirmSheet } from "@/components/ledger/ExpenseConfirmSheet";
 import { ExpenseChipSplit } from "@/components/ledger/ExpenseChipSplit";
@@ -399,11 +400,14 @@ export function LedgerShell({
         >
           <div ref={settingsRef} className="flex flex-col gap-4">
             {user ? (
-              <CardProfileSettings
-                userId={user.id}
-                profiles={profiles}
-                onChange={setProfiles}
-              />
+              <>
+                <HostPayoutSettings userId={user.id} />
+                <CardProfileSettings
+                  userId={user.id}
+                  profiles={profiles}
+                  onChange={setProfiles}
+                />
+              </>
             ) : null}
             {me ? <CashRateSettings tripId={tripId} memberId={me.id} /> : null}
             <Link

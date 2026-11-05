@@ -80,5 +80,11 @@ export default async function RecommendPage({ searchParams }: PageProps) {
   }
 
   const plan = buildFallbackTripPlan(form);
-  return <RecommendResult plan={plan} enrich />;
+  return (
+    <RecommendResult
+      plan={plan}
+      enrich
+      demoFxExample={Boolean(targetCity)}
+    />
+  );
 }
