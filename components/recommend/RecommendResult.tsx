@@ -547,7 +547,7 @@ export function RecommendResult({
               <button
                 type="button"
                 onClick={editingFlight ? () => setEditingFlight(false) : openFlightEdit}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                className="flex h-11 w-11 min-h-tap min-w-[44px] items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
                 aria-label={editingFlight ? "항공 수정 닫기" : "항공 가격 수정"}
               >
                 {editingFlight ? (
@@ -562,7 +562,7 @@ export function RecommendResult({
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Google Flights 항공권 검색 바로가기"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                  className="flex h-11 w-11 min-h-tap min-w-[44px] shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
                 >
                   <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
                 </a>
@@ -570,7 +570,7 @@ export function RecommendResult({
                 <Link
                   href="/checklist/flight"
                   aria-label="항공권 검색 바로가기"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                  className="flex h-11 w-11 min-h-tap min-w-[44px] shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
                 >
                   <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
                 </Link>
@@ -690,7 +690,7 @@ export function RecommendResult({
               <button
                 type="button"
                 onClick={editingHotel ? () => setEditingHotel(false) : openHotelEdit}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                className="flex h-11 w-11 min-h-tap min-w-[44px] items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
                 aria-label={editingHotel ? "숙소 수정 닫기" : "숙소 가격 수정"}
               >
                 {editingHotel ? (
@@ -705,7 +705,7 @@ export function RecommendResult({
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Agoda 숙소 검색 바로가기"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                  className="flex h-11 w-11 min-h-tap min-w-[44px] shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
                 >
                   <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
                 </a>
@@ -713,7 +713,7 @@ export function RecommendResult({
                 <Link
                   href="/checklist/hotel"
                   aria-label="숙소 검색 바로가기"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
+                  className="flex h-11 w-11 min-h-tap min-w-[44px] shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors hover:bg-surface-soft active:bg-surface-base"
                 >
                   <SquareArrowOutUpRight className="h-4.5 w-4.5" strokeWidth={2.2} />
                 </Link>

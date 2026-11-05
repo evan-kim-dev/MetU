@@ -32,7 +32,7 @@ const DONE_TEXT: Record<Done, string> = {
   merged: "이미 있는 지출에 영수증을 붙였어요.",
   review: "영수증을 읽었어요. 수신함에서 확인해 주세요.",
   not_receipt: "영수증이 아닌 것 같아요.",
-  failed: "영수증을 읽지 못했어요. 다시 시도해 주세요.",
+  failed: "영수증을 읽지 못했어요. 붙여넣기·직접 입력으로 이어서 적어 주세요.",
 };
 
 function sleep(ms: number): Promise<void> {
@@ -152,7 +152,7 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
       });
       setError(
         res.status >= 500
-          ? "영수증 인식에 실패했어요. 다시 시도해 주세요."
+          ? "영수증 인식에 실패했어요. 붙여넣기·직접 입력으로 이어서 적어 주세요."
           : mapped.message
       );
       return;
