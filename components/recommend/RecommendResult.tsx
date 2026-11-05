@@ -22,6 +22,8 @@ import { AIInsightBadge } from "@/components/ui/AIInsightBadge";
 import { AILoadingPanel } from "@/components/ui/AILoadingPanel";
 import { EasterEggCelebration } from "@/components/ui/EasterEggCelebration";
 import { BudgetDonutChart } from "@/components/recommend/BudgetDonutChart";
+import { BudgetRebalanceBar } from "@/components/recommend/BudgetRebalanceBar";
+import { DailyBurnRateCard } from "@/components/recommend/DailyBurnRateCard";
 import { usePlanQuotes } from "@/components/recommend/usePlanQuotes";
 import { formatKRW } from "@/lib/shared/format";
 import { planHasEasterEgg } from "@/lib/ai/plan-easter-egg";
@@ -31,6 +33,7 @@ import { buildGoogleFlightsUrlFromPlan } from "@/lib/flights/google-flights-url"
 import { buildAgodaHotelUrlFromPlan } from "@/lib/hotels/agoda-url";
 import { useTrips } from "@/lib/trips/TripProvider";
 import { planToTrip } from "@/components/recommend/planToTrip";
+import { averageDayTotal } from "@/lib/budget/pace";
 
 type FlightOverride = { price: number; airline: string };
 type HotelOverride = { price: number; name: string };
@@ -523,6 +526,30 @@ export function RecommendResult({
               </span>
             ) : null}
           </div>
+          <BudgetRebalanceBar
+            totalBudget={plan.totalBudget}
+            fixedCostKRW={flightPrice + hotelPrice}
+            dailySchedule={plan.dailySchedule}
+            minBudget={Math.min(800_000, plan.totalBudget)}
+            maxBudget={Math.max(1_500_000, plan.totalBudget)}
+            onRebalanced={({ targetBudget, schedule }) => {
+              setPlan((prev) => {
+                const realloc = reallocateBudgetWithLiveQuotes(
+                  prev.budgetAllocation,
+                  targetBudget,
+                  flightPrice,
+                  hotelPrice
+                );
+                return {
+                  ...prev,
+                  totalBudget: targetBudget,
+                  dailySchedule: schedule,
+                  budgetAllocation: realloc.items,
+                  form: { ...prev.form, budget: String(targetBudget) },
+                };
+              });
+            }}
+          />
           {liveBudget.overBudget ? (
             <p className="mb-3 rounded-xl2 border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
               항공·숙소 금액만으로 이미 총예산을{" "}
@@ -542,6 +569,26 @@ export function RecommendResult({
             totalBudget={plan.totalBudget}
             people={plan.people}
           />
+          <div className="mt-5">
+            <DailyBurnRateCard
+              totalBudget={plan.totalBudget}
+              fixedCostKRW={flightPrice + hotelPrice}
+              days={Math.max(1, plan.nights + 1)}
+              people={plan.people}
+              country={plan.country}
+              destination={plan.destination}
+              plannedDayAverageKRW={averageDayTotal(plan.dailySchedule)}
+              fallbackBaseRate={
+                /일본|japan|^jp/i.test(plan.country) ? 910 : 1380
+              }
+              fallbackCurrencyCode={
+                /일본|japan|^jp/i.test(plan.country) ? "JPY" : "USD"
+              }
+              fallbackRateUnit={
+                /일본|japan|^jp/i.test(plan.country) ? 100 : 1
+              }
+            />
+          </div>
         </section>
 
         <section
