@@ -42,7 +42,7 @@ export function CashRateSettings({ tripId, memberId }: Props) {
   return (
     <div className="rounded-xl bg-mu-sunken p-3">
       <p className="text-xs font-bold text-mu-fg">내 현금 환전 환율</p>
-      <p className="mt-1 text-[11px] text-mu-fg-3">
+      <p className="mt-1 text-mu-caption text-mu-fg-3">
         예: 10,000엔을 91,000원에 환전하면 단가가 자동 계산돼요.
       </p>
       <div className="mt-2 grid grid-cols-3 gap-2">

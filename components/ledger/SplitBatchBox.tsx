@@ -192,7 +192,7 @@ export function SplitBatchBox({ tripId, onChanged }: Props) {
   return (
     <section
       aria-label="한 줄로 분담 바꾸기"
-      className="rounded-2xl bg-mu-card p-4 shadow-sm"
+      className="rounded-mu-lg border border-mu-line bg-mu-card p-4"
     >
       <h2 className="text-sm font-extrabold text-mu-fg">
         한 줄로 분담 바꾸기

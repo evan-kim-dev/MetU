@@ -218,6 +218,7 @@ export function LedgerShell({
       budget={budget || Math.max(total, 1)}
       insight={insight}
       insightLoading={insightLoading}
+      embedded={!guestReadonly}
       onRefreshInsight={() => {
         setInsightLoading(true);
         try {
@@ -234,11 +235,13 @@ export function LedgerShell({
   );
 
   const expenseList = (
-    <section className="rounded-2xl bg-mu-card p-4 shadow-sm">
-      <h2 className="text-sm font-extrabold text-mu-fg">지출 목록</h2>
-      <ul className="mt-2 flex flex-col gap-2">
+    <section className="overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card">
+      <h2 className="border-b border-mu-line px-4 py-3 text-mu-heading text-mu-fg">
+        지출 목록
+      </h2>
+      <ul className="flex flex-col gap-2 p-4">
         {expenses.length === 0 ? (
-          <li className="text-xs text-mu-fg-3">아직 지출이 없어요.</li>
+          <li className="text-mu-body text-mu-fg-3">아직 지출이 없어요.</li>
         ) : (
           expenses.map((e) => (
             <ExpenseChipSplit
@@ -258,40 +261,40 @@ export function LedgerShell({
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-28 pt-2">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-mu-fg-3">합계 {formatKRW(total)}</p>
+    <div className="mx-auto flex w-full max-w-mobile flex-col gap-5 px-4 pb-28 pt-3">
+      {!guestReadonly ? (
+        <div className="flex items-center justify-end gap-1">
+          <Link
+            href={`/trips/${tripId}/ledger/inbox`}
+            className="mu-focus relative inline-flex min-h-tap items-center rounded-mu-md px-3 text-mu-label font-bold text-mu-accent"
+          >
+            인박스
+            {inboxCount > 0 ? (
+              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-mu-err px-1.5 text-mu-caption font-extrabold text-mu-on-accent">
+                {inboxCount > 9 ? "9+" : inboxCount}
+              </span>
+            ) : null}
+          </Link>
+          <button
+            type="button"
+            aria-label="설정"
+            className="mu-focus flex h-11 w-11 items-center justify-center rounded-mu-md text-mu-fg-2"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          {!guestReadonly ? (
-            <Link
-              href={`/trips/${tripId}/ledger/inbox`}
-              className="relative min-h-[44px] text-xs font-bold text-mu-accent"
-            >
-              인박스
-              {inboxCount > 0 ? (
-                <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-mu-err px-1 text-xs font-extrabold text-mu-on-accent">
-                  {inboxCount > 9 ? "9+" : inboxCount}
-                </span>
-              ) : null}
-            </Link>
-          ) : null}
-          {!guestReadonly ? (
-            <button
-              type="button"
-              aria-label="설정"
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-mu-fg-2"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <Settings className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-            </button>
-          ) : null}
-        </div>
-      </div>
+      ) : (
+        <p className="text-mu-caption text-mu-fg-3">
+          합계 <span className="mu-num font-bold text-mu-fg">{formatKRW(total)}</span>
+        </p>
+      )}
 
       {error ? (
-        <p className="rounded-lg bg-mu-err/10 px-3 py-2 text-xs font-semibold text-mu-err">
+        <p
+          role="alert"
+          className="rounded-mu-lg border border-mu-err/20 bg-mu-err-soft px-3 py-3 text-mu-body font-semibold text-mu-err"
+        >
           {error}
         </p>
       ) : null}
@@ -334,9 +337,19 @@ export function LedgerShell({
               {guestReadonly ? (
                 <>
                   {dashboard}
-                  <div className="flex flex-wrap gap-3 text-xs font-bold text-mu-accent">
-                    <Link href={`/trips/${tripId}/ledger/settle`}>정산</Link>
-                    <Link href={`/trips/${tripId}/ledger/report`}>리포트</Link>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link
+                      href={`/trips/${tripId}/ledger/settle`}
+                      className="mu-focus flex min-h-tap items-center justify-center rounded-mu-lg border border-mu-line bg-mu-card text-mu-label font-bold text-mu-accent"
+                    >
+                      정산
+                    </Link>
+                    <Link
+                      href={`/trips/${tripId}/ledger/report`}
+                      className="mu-focus flex min-h-tap items-center justify-center rounded-mu-lg border border-mu-line bg-mu-card text-mu-label font-bold text-mu-accent"
+                    >
+                      리포트
+                    </Link>
                   </div>
                   {expenseList}
                 </>

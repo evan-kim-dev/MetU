@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ChartColumn, ChevronRight, Inbox, Receipt, X } from "lucide-react";
+import {
+  ChartColumn,
+  ChevronRight,
+  ClipboardPaste,
+  FileText,
+  Inbox,
+  Mic,
+  Receipt,
+  X,
+} from "lucide-react";
 import { AmountCard } from "@/components/ds/AmountCard";
 import { BottomCTA } from "@/components/ds/BottomCTA";
 import { Button } from "@/components/ds/Button";
@@ -46,6 +55,16 @@ function expenseMeta(e: LedgerExpenseRow, payer: string | undefined): string {
   return parts.join(" · ");
 }
 
+const QUICK_ACTIONS: Array<{
+  tab: AddExpenseTab;
+  label: string;
+  icon: typeof Receipt;
+}> = [
+  { tab: "receipt", label: "영수증", icon: Receipt },
+  { tab: "paste", label: "붙여넣기", icon: ClipboardPaste },
+  { tab: "voice", label: "음성", icon: Mic },
+];
+
 /** 호스트 ③ 기록 단계: 요약 · 확인할 것 · 최근 지출. 입력은 지출 추가 시트에서 해요. */
 export function RecordStep({
   tripId,
@@ -67,24 +86,57 @@ export function RecordStep({
   const recent = sortRecent(expenses);
 
   return (
-    <div className="flex flex-col gap-6 pb-24">
+    <div className="flex flex-col gap-5 pb-24">
       <AmountCard
         label="총지출"
         amount={total}
-        sub={expenses.length > 0 ? `지출 ${expenses.length}건` : "아직 기록이 없어요"}
+        sub={
+          expenses.length > 0
+            ? `지출 ${expenses.length}건 · 누르면 분담을 바꿔요`
+            : "아직 기록이 없어요"
+        }
+        tone={expenses.length > 0 ? "accent" : "neutral"}
       />
+
+      <div
+        className="grid grid-cols-3 gap-2"
+        role="group"
+        aria-label="지출 추가 방법"
+      >
+        {QUICK_ACTIONS.map(({ tab, label, icon: Icon }) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => onOpenAdd(tab)}
+            className="mu-focus flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-mu-lg border border-mu-line bg-mu-card px-2 py-3 text-mu-caption font-bold text-mu-fg transition-colors active:bg-mu-sunken"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-mu-accent-soft text-mu-accent">
+              <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+            </span>
+            {label}
+          </button>
+        ))}
+      </div>
 
       {inboxCount > 0 ? (
         <Link
           href={`/trips/${tripId}/ledger/inbox`}
           className="mu-focus flex min-h-tap items-center gap-3 rounded-mu-lg border border-mu-line bg-mu-warn-soft px-4 py-3"
         >
-          <Inbox className="h-5 w-5 shrink-0 text-mu-warn" strokeWidth={1.75} aria-hidden />
+          <Inbox
+            className="h-5 w-5 shrink-0 text-mu-warn"
+            strokeWidth={1.75}
+            aria-hidden
+          />
           <span className="min-w-0 flex-1 text-mu-body text-mu-fg">
             확인할 알림·제안{" "}
             <span className="mu-num font-bold">{inboxCount}건</span>
           </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-mu-fg-3" strokeWidth={1.75} aria-hidden />
+          <ChevronRight
+            className="h-5 w-5 shrink-0 text-mu-fg-3"
+            strokeWidth={1.75}
+            aria-hidden
+          />
         </Link>
       ) : null}
 
@@ -116,36 +168,49 @@ export function RecordStep({
         </div>
       ) : null}
 
-      <section aria-labelledby="record-list-title" className="rounded-mu-lg border border-mu-line bg-mu-card px-4">
-        <div className="flex items-baseline justify-between gap-2 pt-4">
+      <section
+        aria-labelledby="record-list-title"
+        className="overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card"
+      >
+        <div className="flex items-baseline justify-between gap-2 border-b border-mu-line px-4 pt-4 pb-3">
           <h2 id="record-list-title" className="text-mu-heading text-mu-fg">
             최근 지출
           </h2>
           {recent.length > 0 ? (
-            <span className="text-mu-caption text-mu-fg-3">누르면 분담을 바꿔요</span>
+            <button
+              type="button"
+              onClick={onAdjust}
+              className="mu-focus min-h-11 text-mu-caption font-bold text-mu-accent"
+            >
+              분담 조정
+            </button>
           ) : null}
         </div>
         {recent.length === 0 ? (
-          <EmptyState
-            icon={Receipt}
-            title="아직 기록이 없어요"
-            body="영수증을 찍거나 카드 문자를 붙여 넣으면 여기에 쌓여요."
-            action={
-              <Button onClick={() => onOpenAdd("receipt")}>
-                <Receipt className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-                영수증 올리기
-              </Button>
-            }
-          />
+          <div className="px-2">
+            <EmptyState
+              icon={Receipt}
+              title="아직 기록이 없어요"
+              body="영수증을 찍거나 카드 문자를 붙여 넣으면 여기에 쌓여요."
+              action={
+                <Button onClick={() => onOpenAdd("receipt")}>
+                  <Receipt className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                  영수증 올리기
+                </Button>
+              }
+            />
+          </div>
         ) : (
-          <div className="pb-1">
+          <div className="px-4 pb-1">
             {recent.map((e) => (
               <ExpenseRow
                 key={e.id}
                 merchant={e.merchantKo || e.merchant || e.label || "지출"}
                 amount={Number.isFinite(e.krwAmount) ? e.krwAmount : 0}
                 meta={expenseMeta(e, nameOf(e.paidBy))}
-                icon={<Receipt className="h-5 w-5" strokeWidth={1.75} aria-hidden />}
+                icon={
+                  <Receipt className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                }
                 onClick={onAdjust}
               />
             ))}
@@ -154,20 +219,44 @@ export function RecordStep({
       </section>
 
       {expenses.length > 0 ? (
-        <details className="group rounded-mu-lg border border-mu-line bg-mu-card px-4">
-          <summary className="mu-focus flex min-h-tap cursor-pointer list-none items-center gap-2 py-3 text-mu-label text-mu-fg-2">
-            <ChartColumn className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-            지출 분석 보기
+        <details className="group overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card">
+          <summary className="mu-focus flex min-h-tap cursor-pointer list-none items-center gap-2 px-4 py-3 text-mu-label text-mu-fg">
+            <ChartColumn
+              className="h-5 w-5 text-mu-accent"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <span className="flex-1 font-bold">지출 분석 보기</span>
+            <ChevronRight
+              className="h-5 w-5 text-mu-fg-3 transition-transform group-open:rotate-90"
+              strokeWidth={1.75}
+              aria-hidden
+            />
           </summary>
-          <div className="pb-4">{dashboard}</div>
+          <div className="border-t border-mu-line px-4 py-4">{dashboard}</div>
         </details>
       ) : null}
 
       <Link
         href={`/trips/${tripId}/ledger/report`}
-        className="mu-focus inline-flex min-h-tap items-center self-start text-mu-label text-mu-accent"
+        className="mu-focus flex min-h-tap items-center gap-3 rounded-mu-xl border border-mu-line bg-mu-card px-4 py-3"
       >
-        리포트 보기
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-mu-sunken text-mu-fg-2">
+          <FileText className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-mu-body font-semibold text-mu-fg">
+            리포트
+          </span>
+          <span className="mt-0.5 block text-mu-caption text-mu-fg-3">
+            여행 지출을 한눈에 정리해요
+          </span>
+        </span>
+        <ChevronRight
+          className="h-5 w-5 shrink-0 text-mu-fg-3"
+          strokeWidth={1.75}
+          aria-hidden
+        />
       </Link>
 
       <BottomCTA

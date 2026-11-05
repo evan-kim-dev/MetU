@@ -12,7 +12,7 @@ export function RecapCard({ destination, recap }: Props) {
   return (
     <article
       aria-label="여행 리캡"
-      className="rounded-2xl border border-mu-line bg-mu-card p-6 shadow-sm"
+      className="rounded-mu-xl border border-mu-line bg-mu-card p-6"
     >
       {destination ? (
         <p className="text-mu-label text-mu-fg-3">{destination}</p>
@@ -75,7 +75,7 @@ export function RecapCard({ destination, recap }: Props) {
       ) : null}
 
       {recap.recordCounts ? (
-        <p className="mt-4 text-[11px] text-mu-fg-3">
+        <p className="mt-4 text-mu-caption text-mu-fg-3">
           기록{" "}
           {Object.entries(recap.recordCounts)
             .map(([k, n]) => `${k} ${n}`)

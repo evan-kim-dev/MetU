@@ -64,7 +64,7 @@ export function HostPayoutSettings({ userId }: Props) {
   return (
     <div className="rounded-xl bg-mu-sunken p-3">
       <p className="text-xs font-bold text-mu-fg">입금 계좌 (토스 송금)</p>
-      <p className="mt-1 text-[11px] text-mu-fg-3">
+      <p className="mt-1 text-mu-caption text-mu-fg-3">
         게스트 공유 링크(`/s/…`)에서 토스 딥링크에 쓰여요. 본인만 읽고 쓸 수
         있고, 유효한 공유 토큰으로만 게스트에게 전달돼요.
       </p>

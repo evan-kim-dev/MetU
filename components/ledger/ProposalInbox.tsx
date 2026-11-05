@@ -95,7 +95,7 @@ export function ProposalInbox({
   return (
     <section
       aria-label="게스트 제안"
-      className="rounded-2xl bg-mu-card p-4 shadow-sm"
+      className="rounded-mu-xl border border-mu-line bg-mu-card p-4"
     >
       <h2 className="text-sm font-extrabold text-mu-fg">게스트 제안</h2>
       <ul className="mt-2 flex flex-col gap-2">
