@@ -6,6 +6,7 @@ import { Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CardProfileSettings } from "@/components/ledger/CardProfileSettings";
 import { HostPayoutSettings } from "@/components/ledger/HostPayoutSettings";
+import { HostTransferSettings } from "@/components/ledger/HostTransferSettings";
 import { CashRateSettings } from "@/components/ledger/CashRateSettings";
 import { ExpenseConfirmSheet } from "@/components/ledger/ExpenseConfirmSheet";
 import { ExpenseChipSplit } from "@/components/ledger/ExpenseChipSplit";
@@ -402,6 +403,16 @@ export function LedgerShell({
             {user ? (
               <>
                 <HostPayoutSettings userId={user.id} />
+                {me?.isOwner ? (
+                  <HostTransferSettings
+                    tripId={tripId}
+                    meId={me.id}
+                    members={members}
+                    onTransferred={() => {
+                      void reload();
+                    }}
+                  />
+                ) : null}
                 <CardProfileSettings
                   userId={user.id}
                   profiles={profiles}

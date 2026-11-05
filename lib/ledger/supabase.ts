@@ -746,6 +746,36 @@ export async function setExpensePayer(
   return { ok: false, error: "결제자를 바꾸지 못했어요." };
 }
 
+/** 현재 호스트만. 가입된 멤버(user_id 있음)에게 trips.user_id·멤버 role 을 넘긴다. */
+export async function transferTripHost(
+  supabase: SupabaseClient,
+  tripId: string,
+  newOwnerMemberId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.rpc("transfer_trip_host", {
+    p_trip_id: tripId,
+    p_new_owner_member_id: newOwnerMemberId,
+  });
+  if (!error) return { ok: true };
+  const msg = error.message ?? "";
+  if (msg.includes("forbidden")) {
+    return { ok: false, error: "호스트만 넘길 수 있어요." };
+  }
+  if (msg.includes("guest-cannot-host")) {
+    return { ok: false, error: "아직 가입하지 않은 동행에게는 넘길 수 없어요." };
+  }
+  if (msg.includes("already-owner")) {
+    return { ok: false, error: "이미 호스트예요." };
+  }
+  if (msg.includes("bad-member") || msg.includes("bad-args")) {
+    return { ok: false, error: "넘길 동행을 확인해 주세요." };
+  }
+  if (msg.includes("not-found")) {
+    return { ok: false, error: "여행을 찾지 못했어요." };
+  }
+  return { ok: false, error: "호스트를 넘기지 못했어요." };
+}
+
 export async function upsertCardProfile(
   supabase: SupabaseClient,
   profile: {

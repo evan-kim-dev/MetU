@@ -54,6 +54,9 @@ vi.mock("@/components/ledger/CardProfileSettings", () => ({
 vi.mock("@/components/ledger/HostPayoutSettings", () => ({
   HostPayoutSettings: () => <button type="button">입금 계좌 저장</button>,
 }));
+vi.mock("@/components/ledger/HostTransferSettings", () => ({
+  HostTransferSettings: () => <button type="button">호스트 넘기기</button>,
+}));
 vi.mock("@/components/ledger/CashRateSettings", () => ({
   CashRateSettings: () => <button type="button">현금 환율 저장</button>,
 }));
