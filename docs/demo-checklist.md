@@ -2,19 +2,54 @@
 
 데모 데이터와 시뮬 알림으로 **실제 ingest 파이프라인**을 재현합니다. 가짜 DB 결과나 하드코딩 환율을 쓰지 마세요.
 
+PRD Flow A/B 요약은 [prd-v1.md](./prd-v1.md) §4 · 부록 A 를 참고하세요.
+
+## 공개 데모 URL vs 시연 전용 모드
+
+| 구분 | 로그인 | `NEXT_PUBLIC_DEMO_MODE` | 용도 |
+|------|--------|-------------------------|------|
+| **공개 심사/제출 URL** | Flow B(온보딩 결과)는 **로그인 불필요** (`/onboarding`, `/onboarding/result` 공개). Flow A 게스트 `/s/[token]` 도 가입 없이 접속 | **off** (제출·공개 URL) | 심사위원이 바로 열어보는 주소 |
+| **시연 전용(호스트 폰)** | 호스트는 로그인 + 데모 패널 | **on** (시연 기기/프리뷰만) | 밍글링 시드·합성 알림·초기화 |
+
+- `NEXT_PUBLIC_DEMO_MODE` 는 **빌드 타임**이에요. 변경 후 **재배포**해야 반영돼요.
+- 공개 URL에서 데모 패널·`/api/agent/demo/*` 가 보이면 안 됩니다. 시연 직전에만 on 한 프리뷰/별도 배포를 쓰세요.
+- Flow B 직행: `https://<공개도메인>/onboarding/result?sample=tokyo` (홈 배너와 동일).
+
 ## 사전 (전날)
 
 - Vercel env 확인 (값은 대시보드에서만, 레포/커밋 금지)
   - `GEMINI_API_KEY`, `SUPABASE_*`, `AGENT_INGEST_PEPPER`, `CRON_SECRET`
   - 데모용으로 `AGENT_SETTLE_COALESCE_SEC` 를 10~30 근처로 (Evan이 Vercel에서 직접 설정)
-  - UI 노출 + 데모 라우트: `NEXT_PUBLIC_DEMO_MODE=1` (`.env.example` 참고)
+  - UI 노출 + 데모 라우트: `NEXT_PUBLIC_DEMO_MODE=1` (`.env.example` 참고) — **시연 전용 on**, 제출 URL은 off
     - **빌드 타임 변수**예요. Vercel 에 설정/변경한 뒤 **재배포**해야 반영돼요.
     - 꺼져 있으면(기본) 패널이 안 보이고 `/api/agent/demo/seed`·`notify`·`reset` 는 404 를 돌려줘요.
 - `npm run db:verify`
 - 실기기 PWA 설치, iOS 단축어/알림 권한, 웹 푸시 권한
 - 콜드스타트 완화: 시연 직전 `/api/warmup` 한 번 호출
 
-## 데모 대본 v2 (밍글링 hero)
+## Flow B — 예산 1초 데모 (로그인 불필요)
+
+심사/공개 URL에서 바로 가능. 데모 모드 on 불필요.
+
+1. **홈** → 「1초 데모」/도쿄 샘플 배너 탭 → `/onboarding/result?sample=tokyo` (또는 추천 시트에서 도시 선택 → `?city=`)
+2. 완성형 예산 플랜·일정이 바로 렌더되는지 확인 (온보딩 4단계 스킵)
+3. **리밸런서 슬라이더**로 총예산을 낮춤 → 유동 항목(식비 등) 티어가 가성비 쪽으로 바뀌는지
+4. **페이스메이커 / FX 배지** (`DailyBurnRateCard`): 일일 안전 한도·실청구 환율(+2.5% VERIFY 예시) 표시
+5. (선택) 일정 동선이 지그재그 없이 이어지는지 한 화면 스크롤로 확인
+
+폴백: 샘플 쿼리 없이 `/onboarding` 진입 시에도 result 공개 경로로 이어질 수 있음. AI 배지 대기는 비차단이어야 함.
+
+## Flow A — 밍글링 게스트 정산 (`/s/[token]`)
+
+기존 밍글링 hero 대본과 동일. 게스트 폰에서는 특히:
+
+1. QR/`/s/[token]` 접속 → 내 몫 확인
+2. **「술·주류는 빼고 계산해요」** 토글 → 금액 즉시 재계산 (`calculateSplit`)
+3. **토스로 송금** → 딥링크(또는 클립보드 폴백). 계좌는 데모 상수 `DEMO_HOST_PAYOUT`(VERIFY)
+
+아래 「데모 대본 v2」가 호스트·게스트 전체 시나리오예요.
+
+## 데모 대본 v2 (밍글링 hero · Flow A 상세)
 
 합성 에셋 안내는 [demo-assets.md](./demo-assets.md). 성능 숫자("N초 만에")는 말하지 않아요.
 
