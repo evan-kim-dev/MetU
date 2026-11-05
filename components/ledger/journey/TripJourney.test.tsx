@@ -53,6 +53,9 @@ vi.mock("@/components/ledger/VoiceInputButton", () => ({
 vi.mock("@/components/ledger/CardProfileSettings", () => ({
   CardProfileSettings: () => <button type="button">카드 수수료 추가</button>,
 }));
+vi.mock("@/components/ledger/HostPayoutSettings", () => ({
+  HostPayoutSettings: () => <button type="button">입금 계좌 저장</button>,
+}));
 vi.mock("@/components/ledger/CashRateSettings", () => ({
   CashRateSettings: () => null,
 }));

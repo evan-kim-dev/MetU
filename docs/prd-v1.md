@@ -121,20 +121,20 @@ MetU는 차세대 자율 에이전트 표준인 Anthropic MCP (Model Context Pro
 
 ## 부록 A. FR → 구현 매핑 (심사 시점 · main)
 
-작성 기준: origin/main (PR #96 병합 이후, ccb8aa9 근처). 코드가 문서보다 우선합니다.
+작성 기준: origin/main (PR #96 이후 + VERIFY 후속). 코드가 문서보다 우선합니다.
 
 | FR | 상태 | 경로 / 근거 | PR |
 | :--- | :--- | :--- | :--- |
 | FR-01 게스트 웹 뷰 | 충족 | pp/s/[token]/page.tsx, 초대 QR → /s/[token] | #91–#94 |
 | FR-02 예외 분담 토글 | 충족 | calculateSplit (lib/ledger/share-split.ts), 술 제외 체크박스 | #91–#94 |
-| FR-03 토스 1초 딥링크 | 충족(VERIFY) | executeTossTransfer (lib/ledger/toss.ts). 계좌는 DEMO_HOST_PAYOUT 상수 — 공유 RPC 계좌 필드·지갑 연동 후속 | #94 |
+| FR-03 토스 1초 딥링크 | 충족 | executeTossTransfer + ledger_payout_profiles → 공유 RPC hostPayout. 미등록 시 송금 CTA 숨김 | #94 · VERIFY 후속 |
 | FR-04 게스트 쓰기 차단 | 충족 | 403 guest-readonly / guest-self-only, RLS·라우트 테스트 | 기존 |
-| FR-05 1초 데모 고속도로 | 충족 | 홈 ?sample=tokyo, 추천 시트 ?city=, 공개 경로 /onboarding·/onboarding/result (lib/auth/route-access.ts) | #96 |
+| FR-05 1초 데모 고속도로 | 충족 | 홈 ?sample=tokyo, 추천 시트 ?city=, 공개 경로 /onboarding·/onboarding/result | #96 |
 | FR-06 스마트 예산 리밸런서 | 충족 | BudgetRebalanceBar, 
-ebalanceScheduleBudget (lib/budget/rebalancer.ts) | #95 |
+ebalanceScheduleBudget | #95 |
 | FR-07 일일 가용 경비 | 충족 | DailyBurnRateCard | #95 |
-| FR-08 실청구 환율 버퍼 | 충족(VERIFY) | calculateEffectiveFX (lib/finance/fx-buffer.ts) — brand/card/volatility 기본값은 예시. ledger_card_profiles 약관 연동 후속 | #95 |
-| FR-09 지오 최단 동선 | 충족 | 일정 최적화 / nearest-neighbor 체이닝 (추천 결과) | #92–#95 |
+| FR-08 실청구 환율 버퍼 | 충족 | 기본 수수료 0 + 「수수료 미설정」. eesFromCardProfile. 1초 데모만 VERIFY 예시 +2.5% | #95 · VERIFY 후속 |
+| FR-09 지오 최단 동선 | 충족 | 일정 최적화 / nearest-neighbor 체이닝 | #92–#95 |
 | FR-10 카드 알림 파싱 | 충족 | paste 파서 · parseCardSms / /api/ledger/parse | 기존 |
 | FR-11 영수증 OCR·DCC | 충족 | 영수증 업로드 · DCC 경고 배지 | 기존 |
 | FR-12 개인정보 마스킹 | 충족 | 
@@ -151,8 +151,8 @@ edactSensitiveText (LLM·저장 전) | 기존 |
 | RLS · 게스트 변조 차단 | 충족 | FR-04 와 동일 |
 | §7 MCP | 로드맵 only | 구현·머지 대상 아님 |
 
-### VERIFY / 로드맵 (의도적 미완)
+### VERIFY / 로드맵
 
-1. **토스 실계좌**: pp/s/[token]/page.tsx 의 DEMO_HOST_PAYOUT — 데모용. 공유 RPC에 계좌 컬럼·지갑 연동 후 서버 값으로 교체.
-2. **FX 수수료율**: lib/finance/fx-buffer.ts 기본값(+2.5% 구성)은 VERIFY 예시. 카드 프로필(ledger_card_profiles) 하드 바인딩은 후속.
-3. **§7 MCP**: 문서 §7만. Supabase/Maps/Fintech MCP 서버 구현은 이번 심사 범위 밖.
+1. **토스 입금 계좌**: ledger_payout_profiles + 가계부 설정 UI + 공유 RPC hostPayout. 마이그레이션 20261106010000 적용 필요. 데모 상수 제거됨.
+2. **FX 수수료율**: 기본 0. 카드 프로필 ee_rate 연동. 1초 데모(demoFxExample)만 DEMO_EXAMPLE_FX_FEES(+2.5%) VERIFY 예시.
+3. **§7 MCP**: 문서 §7만. Supabase/Maps/Fintech MCP 서버 구현은 심사 범위 밖(로드맵).

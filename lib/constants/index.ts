@@ -19,6 +19,7 @@ export const TABLES = {
   tripMembers: "trip_members",
   tripInvites: "trip_invites",
   ledgerCardProfiles: "ledger_card_profiles",
+  ledgerPayoutProfiles: "ledger_payout_profiles",
   tripExpenses: "trip_expenses",
   tripExpenseShares: "trip_expense_shares",
   tripExpenseSplitHistory: "trip_expense_split_history",

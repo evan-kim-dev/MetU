@@ -45,7 +45,7 @@ PRD Flow A/B 요약은 [prd-v1.md](./prd-v1.md) §4 · 부록 A 를 참고하세
 
 1. QR/`/s/[token]` 접속 → 내 몫 확인
 2. **「술·주류는 빼고 계산해요」** 토글 → 금액 즉시 재계산 (`calculateSplit`)
-3. **토스로 송금** → 딥링크(또는 클립보드 폴백). 계좌는 데모 상수 `DEMO_HOST_PAYOUT`(VERIFY)
+3. **토스로 송금** → 딥링크(또는 클립보드 폴백). 호스트가 가계부 설정에 입금 계좌를 저장해 두어야 해요(`ledger_payout_profiles` → RPC `hostPayout`)
 
 아래 「데모 대본 v2」가 호스트·게스트 전체 시나리오예요.
 

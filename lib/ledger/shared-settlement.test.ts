@@ -48,6 +48,22 @@ function raw(over: Record<string, unknown> = {}) {
 }
 
 describe("parseSharedSettlementDetail", () => {
+  it("hostPayout 이 없으면 null 로 둡니다", () => {
+    expect(parseSharedSettlementDetail(raw())?.hostPayout).toBeNull();
+  });
+
+  it("hostPayout 을 파싱해요", () => {
+    const d = parseSharedSettlementDetail(
+      raw({
+        hostPayout: { bank: "국민은행", accountNo: "123-45-6789" },
+      })
+    );
+    expect(d?.hostPayout).toEqual({
+      bank: "국민은행",
+      accountNo: "123-45-6789",
+    });
+  });
+
   it("정상 응답을 앱 타입으로 바꾼다", () => {
     const d = parseSharedSettlementDetail(raw());
     expect(d?.destination).toBe("도쿄");

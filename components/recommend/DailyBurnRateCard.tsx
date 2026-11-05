@@ -36,6 +36,11 @@ export type DailyBurnRateCardProps = {
   brandFeeRate?: number;
   cardFeeRate?: number;
   volatilityBuffer?: number;
+  /**
+   * 수수료 출처 라벨. 예: "예시(약관 확인)" · "카드 프로필".
+   * 비우면 markup 0 일 때 "수수료 미설정".
+   */
+  feeSourceLabel?: string;
 };
 
 const PACE_COPY: Record<
@@ -75,6 +80,7 @@ export function DailyBurnRateCard({
   brandFeeRate,
   cardFeeRate,
   volatilityBuffer,
+  feeSourceLabel,
 }: DailyBurnRateCardProps) {
   const tipId = useId();
   const [tipOpen, setTipOpen] = useState(false);
@@ -155,6 +161,15 @@ export function DailyBurnRateCard({
       ? `약 ${localAmount.toLocaleString("ko-KR")}엔`
       : `약 ${currencyCode} ${localAmount.toLocaleString("ko-KR")}`;
 
+  const feeBadge =
+    markupPercent > 0
+      ? `FX +${markupPercent}%`
+      : "수수료 미설정";
+  const feeTip =
+    markupPercent > 0
+      ? `${feeSourceLabel ?? "설정 수수료"} 기준 약 ${markupPercent}%를 반영한 보수적 실청구 환율이에요. 약관·카드에 따라 달라질 수 있어요.`
+      : "카드 프로필에 해외수수료를 넣으면 실청구 환율에 반영해요. 지금은 기준 환율만 써요.";
+
   return (
     <div className="relative rounded-mu-xl border border-mu-line bg-mu-card p-5 shadow-mu-float">
       <div className="absolute right-3 top-3 flex items-center gap-1">
@@ -172,7 +187,7 @@ export function DailyBurnRateCard({
           aria-expanded={tipOpen}
           onClick={() => setTipOpen((v) => !v)}
         >
-          FX +{markupPercent}%
+          {feeBadge}
           <Info className="h-3.5 w-3.5" aria-hidden />
         </button>
       </div>
@@ -209,13 +224,11 @@ export function DailyBurnRateCard({
           role="tooltip"
           className="mt-3 rounded-mu-md border border-mu-line bg-mu-sunken px-3 py-2 text-mu-caption leading-relaxed text-mu-fg-2"
         >
-          브랜드·카드 해외수수료와 환율 변동 버퍼(예시 합계 약 {markupPercent}
-          %)를 반영한 보수적 실청구 환율이에요. 약관·카드 설정에 따라 달라질 수
-          있어요.
+          {feeTip}
         </p>
       ) : (
         <span id={tipId} className="sr-only">
-          해외결제 수수료·환율 변동 버퍼를 반영한 실청구 환율 배지예요.
+          {feeTip}
         </span>
       )}
     </div>

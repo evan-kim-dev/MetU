@@ -1,17 +1,18 @@
 /**
  * 해외결제 실청구 환율 버퍼.
- * VERIFY: brand/card/volatility 기본값은 작성 시점 조사 기준 예시예요.
- * 실제 약관·스프레드는 카드 프로필 설정이 우선이며, 미설정이면 호출 측에서 0을 넘기세요.
+ * 미설정 수수료는 0. 확정 약관 수치를 코드에 박지 않아요.
+ * 카드 프로필(`ledger_card_profiles.fee_rate`)은 `feesFromCardProfile` 로 넘기세요.
+ * 데모 예시(+2.5%)는 호출 측에서 VERIFY 라벨과 함께 명시적으로만 넘깁니다.
  */
 
 export interface FXBufferOptions {
   /** 기준 환율 (예: 100엔당 910원, 또는 1USD당 원화) */
   baseRate: number;
-  /** 비자/마스터 등 브랜드 수수료 (기본 0.01 = 1%) */
+  /** 비자/마스터 등 브랜드 수수료 (미설정 0) */
   brandFeeRate?: number;
-  /** 카드사 해외이용수수료 (기본 0.002 = 0.2%) */
+  /** 카드사 해외이용수수료 (미설정 0) */
   cardFeeRate?: number;
-  /** 환율 변동 대비 버퍼 (기본 0.013 = 1.3%) */
+  /** 환율 변동 대비 버퍼 (미설정 0) */
   volatilityBuffer?: number;
 }
 
@@ -33,9 +34,9 @@ export function calculateEffectiveFX(options: FXBufferOptions): FXBufferResult {
     return { effectiveRate: 0, markupPercent: 0, bufferAmount: 0 };
   }
 
-  const brand = options.brandFeeRate ?? 0.01;
-  const card = options.cardFeeRate ?? 0.002;
-  const buffer = options.volatilityBuffer ?? 0.013;
+  const brand = options.brandFeeRate ?? 0;
+  const card = options.cardFeeRate ?? 0;
+  const buffer = options.volatilityBuffer ?? 0;
   const totalMarkup = brand + card + buffer;
 
   const effectiveRate = Math.round(base * (1 + totalMarkup) * 100) / 100;
@@ -47,3 +48,31 @@ export function calculateEffectiveFX(options: FXBufferOptions): FXBufferResult {
     bufferAmount,
   };
 }
+
+/**
+ * 카드 프로필 해외수수료율 → FX 버퍼 입력.
+ * 브랜드·변동 버퍼는 프로필에 없으므로 0. fee_rate 미설정이면 전부 0.
+ */
+export function feesFromCardProfile(
+  feeRate: number | null | undefined
+): Pick<FXBufferOptions, "brandFeeRate" | "cardFeeRate" | "volatilityBuffer"> {
+  const card =
+    typeof feeRate === "number" && Number.isFinite(feeRate) && feeRate >= 0
+      ? feeRate
+      : 0;
+  return {
+    brandFeeRate: 0,
+    cardFeeRate: card,
+    volatilityBuffer: 0,
+  };
+}
+
+/**
+ * VERIFY: 데모·문서용 예시 합계 약 2.5% (브랜드 1% + 카드 0.2% + 변동 1.3%).
+ * 약관 확정값이 아님. UI에 "예시"를 같이 표시하세요.
+ */
+export const DEMO_EXAMPLE_FX_FEES = {
+  brandFeeRate: 0.01,
+  cardFeeRate: 0.002,
+  volatilityBuffer: 0.013,
+} as const;

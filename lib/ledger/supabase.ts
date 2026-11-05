@@ -776,6 +776,47 @@ export async function upsertCardProfile(
   return data;
 }
 
+export type PayoutProfileRow = {
+  user_id: string;
+  bank: string;
+  account_no: string;
+  updated_at: string;
+};
+
+export async function getPayoutProfile(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<PayoutProfileRow | null> {
+  const { data, error } = await supabase
+    .from(TABLES.ledgerPayoutProfiles)
+    .select("user_id, bank, account_no, updated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as PayoutProfileRow;
+}
+
+export async function upsertPayoutProfile(
+  supabase: SupabaseClient,
+  input: { userId: string; bank: string; accountNo: string }
+): Promise<PayoutProfileRow | null> {
+  const bank = input.bank.trim().slice(0, 40);
+  const accountNo = input.accountNo.trim().slice(0, 64);
+  if (!bank || accountNo.replace(/[^0-9]/g, "").length < 4) return null;
+  const { data, error } = await supabase
+    .from(TABLES.ledgerPayoutProfiles)
+    .upsert({
+      user_id: input.userId,
+      bank,
+      account_no: accountNo,
+      updated_at: new Date().toISOString(),
+    })
+    .select("user_id, bank, account_no, updated_at")
+    .single();
+  if (error || !data) return null;
+  return data as PayoutProfileRow;
+}
+
 export async function upsertCashRate(
   supabase: SupabaseClient,
   p: {
