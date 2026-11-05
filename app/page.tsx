@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus, Zap } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SectionSkeleton } from "@/components/ui/PageSkeleton";
@@ -42,22 +42,43 @@ export default async function HomePage() {
         <UnassignedInboxBanner />
 
         {/* 새 여행 계획 CTA */}
-        <Link
-          href="/onboarding"
-          className="ai-gradient-bg flex items-center justify-between rounded-xl2 px-5 py-4 shadow-glow transition-all active:scale-[0.99]"
-        >
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-surface-white">
-              새로운 여행 계획하기
+        <div className="flex flex-col gap-2">
+          <Link
+            href="/onboarding"
+            className="ai-gradient-bg flex items-center justify-between rounded-xl2 px-5 py-4 shadow-glow transition-all active:scale-[0.99]"
+          >
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-surface-white">
+                새로운 여행 계획하기
+              </span>
+              <span className="text-xs font-medium text-surface-white/80">
+                예산만 알려주면 AI가 코스를 짜드려요
+              </span>
+            </div>
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-white/90">
+              <Plus className="h-5 w-5 text-brand" strokeWidth={2.6} />
             </span>
-            <span className="text-xs font-medium text-surface-white/80">
-              예산만 알려주면 AI가 코스를 짜드려요
+          </Link>
+          <Link
+            href="/onboarding/result?sample=tokyo"
+            className="flex min-h-tap items-center justify-between rounded-xl2 border border-brand/30 bg-brand-soft/40 px-5 py-3 text-brand transition-all hover:bg-brand-soft/60 active:scale-[0.99]"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <Zap
+                className="h-4 w-4 shrink-0 text-brand"
+                strokeWidth={2.4}
+                aria-hidden
+              />
+              <span className="text-xs font-bold text-ink-heading">
+                [1초 데모] 100만원 도쿄 2인 AI 추천 플랜 바로보기
+              </span>
+            </div>
+            <span className="flex shrink-0 items-center gap-0.5 text-xs font-bold text-brand">
+              체험하기
+              <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden />
             </span>
-          </div>
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-white/90">
-            <Plus className="h-5 w-5 text-brand" strokeWidth={2.6} />
-          </span>
-        </Link>
+          </Link>
+        </div>
 
         {/* 진행 중인 여행 */}
         <Suspense

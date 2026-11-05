@@ -137,8 +137,8 @@ export const PAGE_ROUTES: readonly PageRouteSpec[] = [
   {
     path: "/onboarding",
     file: "app/onboarding/page.tsx",
-    access: "auth-or-guest",
-    note: "온보딩",
+    access: "public",
+    note: "온보딩 (1초 데모 공개)",
   },
   {
     path: "/onboarding/automation",
@@ -149,8 +149,8 @@ export const PAGE_ROUTES: readonly PageRouteSpec[] = [
   {
     path: "/onboarding/result",
     file: "app/onboarding/result/page.tsx",
-    access: "auth-or-guest",
-    note: "온보딩 결과",
+    access: "public",
+    note: "온보딩 결과 (?sample/?city 데모)",
   },
   {
     path: "/onboarding/shortcut-guide",

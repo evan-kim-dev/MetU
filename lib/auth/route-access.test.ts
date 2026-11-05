@@ -37,6 +37,13 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/join/")).toBe(true);
   });
 
+  it("allows onboarding form and result demo without login", () => {
+    expect(isPublicPath("/onboarding")).toBe(true);
+    expect(isPublicPath("/onboarding/result")).toBe(true);
+    expect(isPublicPath("/onboarding/automation")).toBe(false);
+    expect(isPublicPath("/onboarding/shortcut-guide")).toBe(false);
+  });
+
   it("does not treat trips or agent as public", () => {
     expect(isPublicPath("/trips")).toBe(false);
     expect(isPublicPath("/trips/123")).toBe(false);

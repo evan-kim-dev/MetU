@@ -1,13 +1,13 @@
 interface AIInsightBadgeProps {
   children: React.ReactNode;
   variant?: "insight" | "factbomb" | "easter";
-  /** true면 본문 대신 로딩 애니메이션만 표시 */
+  /** true면 인사이트 옆에 로딩 표시 (다음 버튼은 막지 않아요) */
   loading?: boolean;
 }
 
 /**
- * AI 인사이트 안내 배지 (cd5c457 aesthetic + loading).
- * Fluid — expands with content, never clamps text.
+ * AI 인사이트 안내 배지.
+ * 로딩 중에도 기존/로컬 인사이트를 유지해 온보딩이 막히지 않게 해요.
  */
 export function AIInsightBadge({
   children,
@@ -41,40 +41,27 @@ export function AIInsightBadge({
         aria-hidden
       />
       <div className="min-w-0 flex-1">
-        {isSpecial && !loading ? (
+        {isSpecial ? (
           <p className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-amber-700">
             {isEaster ? "이스터 에그 발견" : "AI 팩트폭격"}
           </p>
         ) : null}
 
         {loading ? (
-          <div className="flex flex-col gap-2.5 py-0.5" aria-label="AI가 생각 중">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1" aria-hidden>
-                <span className="h-1.5 w-1.5 rounded-full bg-brand motion-safe:animate-[pulse_1s_ease-in-out_infinite]" />
-                <span className="h-1.5 w-1.5 rounded-full bg-brand/70 motion-safe:animate-[pulse_1s_ease-in-out_0.2s_infinite]" />
-                <span className="h-1.5 w-1.5 rounded-full bg-brand/40 motion-safe:animate-[pulse_1s_ease-in-out_0.4s_infinite]" />
-              </span>
-              <span className="text-sm font-medium text-ink-caption">
-                AI가 생각 중…
-              </span>
-            </div>
-            <div className="flex flex-col gap-2" aria-hidden>
-              <div className="h-2 w-full animate-pulse rounded-full bg-brand/15" />
-              <div className="h-2 w-[92%] animate-pulse rounded-full bg-brand/10" />
-              <div className="h-2 w-[70%] animate-pulse rounded-full bg-brand/10" />
-            </div>
-          </div>
-        ) : (
-          <p
-            className={[
-              "whitespace-pre-wrap break-words text-sm font-medium leading-relaxed",
-              isSpecial ? "text-ink-heading" : "text-brand-strong",
-            ].join(" ")}
-          >
-            {children}
+          <p className="mb-1.5 text-xs font-semibold text-ink-caption">
+            AI가 생각 중… 바로 다음으로 넘어가도 돼요
           </p>
-        )}
+        ) : null}
+
+        <p
+          className={[
+            "whitespace-pre-wrap break-words text-sm font-medium leading-relaxed",
+            isSpecial ? "text-ink-heading" : "text-brand-strong",
+            loading ? "opacity-80" : "",
+          ].join(" ")}
+        >
+          {children}
+        </p>
       </div>
     </div>
   );

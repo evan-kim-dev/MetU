@@ -246,7 +246,6 @@ export function ScheduleStep({
   };
 
   const today = startOfToday();
-  const todayIso = toIsoDate(today);
   const canGoPrevMonth =
     viewDate.getFullYear() > today.getFullYear() ||
     (viewDate.getFullYear() === today.getFullYear() &&
@@ -421,32 +420,13 @@ export function ScheduleStep({
                 })}
               </div>
             </div>
-            <div className="w-full grid grid-cols-2 gap-2">
-              <input
-                type="date"
-                value={startDate}
-                min={todayIso}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  if (next && next < todayIso) return;
-                  onStartDateChange(next);
-                  if (endDate && next && endDate < next) onEndDateChange("");
-                }}
-                className="h-11 rounded-lg border border-line-muted bg-surface-white px-3 text-sm text-ink-heading focus:border-brand focus:outline-none"
-              />
-              <input
-                type="date"
-                value={endDate}
-                min={startDate || todayIso}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  const minDate = startDate || todayIso;
-                  if (next && next < minDate) return;
-                  onEndDateChange(next);
-                }}
-                className="h-11 rounded-lg border border-line-muted bg-surface-white px-3 text-sm text-ink-heading focus:border-brand focus:outline-none"
-              />
-            </div>
+            {(startDate || endDate) && (
+              <p className="text-center text-xs font-semibold text-ink-caption">
+                {startDate || "출발일"}
+                {" → "}
+                {endDate || "귀국일"}
+              </p>
+            )}
           </>
         ) : (
           <div className="w-full flex flex-col gap-3">
