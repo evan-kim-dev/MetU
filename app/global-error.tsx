@@ -11,29 +11,27 @@ export default function GlobalError({
 }) {
   return (
     <html lang="ko">
-      <body className="bg-surface-base text-ink-body antialiased">
-        <div className="flex min-h-dvh justify-center bg-canvas">
-          <div className="relative flex h-dvh w-full max-w-mobile flex-col items-center justify-center gap-5 overflow-hidden bg-surface-base px-6 text-center shadow-soft">
-            <p className="text-xs font-bold tracking-label text-brand">
-              Met U
-            </p>
-            <h1 className="text-xl font-extrabold tracking-tight text-ink-heading">
+      <body className="bg-mu-bg text-mu-fg antialiased">
+        <div className="mu-root flex min-h-dvh justify-center bg-mu-bg">
+          <div className="relative flex h-dvh w-full max-w-mobile flex-col items-center justify-center gap-5 overflow-hidden bg-mu-bg px-6 text-center">
+            <p className="text-mu-caption font-bold text-mu-accent">Met U</p>
+            <h1 className="text-mu-title font-extrabold tracking-tight text-mu-fg">
               앱을 불러오지 못했어요
             </h1>
-            <p className="max-w-copy text-sm leading-relaxed text-ink-caption">
+            <p className="max-w-copy text-mu-body leading-relaxed text-mu-fg-3">
               일시적인 오류일 수 있어요. 다시 시도해 주세요.
             </p>
             <div className="flex w-full max-w-copy flex-col gap-2">
               <button
                 type="button"
                 onClick={reset}
-                className="inline-flex h-13 min-h-touch items-center justify-center rounded-2xl bg-brand px-6 text-base font-bold text-surface-white shadow-md transition-all active:brightness-95"
+                className="mu-focus inline-flex h-14 min-h-touch items-center justify-center rounded-mu-lg bg-mu-accent px-6 text-mu-body font-bold text-mu-on-accent transition-colors active:bg-mu-accent-strong"
               >
                 다시 시도
               </button>
               <Link
                 href="/"
-                className="inline-flex h-12 items-center justify-center rounded-2xl border border-line-muted bg-surface-white text-sm font-bold text-brand-strong transition-colors active:bg-surface-soft"
+                className="mu-focus inline-flex h-12 min-h-tap items-center justify-center rounded-mu-lg border border-mu-line bg-mu-card text-mu-label font-bold text-mu-accent transition-colors active:bg-mu-sunken"
               >
                 홈으로 가기
               </Link>

@@ -120,7 +120,7 @@ export function TripIconButton({
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors active:bg-surface-soft"
+      className="flex h-11 w-11 min-h-tap min-w-[44px] shrink-0 items-center justify-center rounded-full text-ink-caption transition-colors active:bg-surface-soft"
     >
       {children}
     </button>
