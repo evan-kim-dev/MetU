@@ -499,7 +499,10 @@ export function RecommendResult({
           ))}
         </div>
 
-        <section className="rounded-xl2 bg-surface-white p-6 shadow-soft">
+        <section
+          className="animate-stagger-in rounded-xl2 bg-surface-white p-6 shadow-soft"
+          style={{ animationDelay: "100ms" }}
+        >
           <div className="mb-4 flex items-center gap-2">
             <Wallet className="h-5 w-5 text-brand" />
             <h3 className="text-lg font-extrabold text-ink-heading">예산 분배</h3>
@@ -534,9 +537,10 @@ export function RecommendResult({
 
         <section
           className={[
-            "rounded-xl2 border border-line-soft bg-surface-white p-6 shadow-soft transition-opacity",
+            "animate-stagger-in rounded-xl2 border border-line-soft bg-surface-white p-6 shadow-soft transition-opacity",
             enriching ? "opacity-90" : "",
           ].join(" ")}
+          style={{ animationDelay: "200ms" }}
         >
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -677,9 +681,10 @@ export function RecommendResult({
 
         <section
           className={[
-            "rounded-xl2 border border-line-soft bg-surface-white p-6 shadow-soft transition-opacity",
+            "animate-stagger-in rounded-xl2 border border-line-soft bg-surface-white p-6 shadow-soft transition-opacity",
             enriching ? "opacity-90" : "",
           ].join(" ")}
+          style={{ animationDelay: "300ms" }}
         >
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -821,7 +826,10 @@ export function RecommendResult({
           )}
         </section>
 
-        <section className="rounded-xl2 bg-surface-white p-6 shadow-soft">
+        <section
+          className="animate-stagger-in rounded-xl2 bg-surface-white p-6 shadow-soft"
+          style={{ animationDelay: "400ms" }}
+        >
           <div className="mb-4 flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-brand" />
             <h3 className="text-lg font-extrabold text-ink-heading">일정표</h3>
