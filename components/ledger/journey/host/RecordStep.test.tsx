@@ -85,9 +85,13 @@ describe("RecordStep", () => {
       ],
     });
     expect(screen.getByLabelText("총지출 ₩15,500")).toBeTruthy();
-    expect(screen.getByText("지출 2건")).toBeTruthy();
+    expect(
+      screen.getByText((t) => t.includes("지출 2건"))
+    ).toBeTruthy();
     const list = screen.getByRole("heading", { name: "최근 지출" }).closest("section")!;
-    const rows = within(list).getAllByRole("button");
+    const rows = within(list)
+      .getAllByRole("button")
+      .filter((el) => el.getAttribute("aria-label"));
     expect(rows[0]!.getAttribute("aria-label")).toContain("라멘집");
     expect(screen.getByText("07/21 · 1,200 JPY · 민수 결제")).toBeTruthy();
     fireEvent.click(rows[1]!);

@@ -55,7 +55,7 @@ export function HostTransferSettings({
   return (
     <div className="rounded-xl bg-mu-sunken p-3">
       <p className="text-xs font-bold text-mu-fg">호스트 넘기기</p>
-      <p className="mt-1 text-[11px] text-mu-fg-3">
+      <p className="mt-1 text-mu-caption text-mu-fg-3">
         가입한 동행에게만 넘길 수 있어요. 넘기면 설정·초대·정산 권한이 그쪽으로
         옮겨지고, 나는 일반 멤버가 돼요.
       </p>

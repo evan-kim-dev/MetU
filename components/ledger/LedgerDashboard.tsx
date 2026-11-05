@@ -9,7 +9,7 @@ import {
   type LedgerStatsInput,
 } from "@/lib/ledger/stats";
 import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
-import { MU_COLORS } from "@/lib/design/tokens";
+import { MU_COLORS, cn } from "@/lib/design/tokens";
 import { formatKRW } from "@/lib/shared/format";
 
 /** 차트 시리즈 — hex 리터럴 금지(래칫). 토큰 값만 참조. */
@@ -36,6 +36,8 @@ type Props = {
     warnings: string[];
   } | null;
   insightLoading?: boolean;
+  /** details 안 등 바깥 카드가 있을 때 이중 카드 방지 */
+  embedded?: boolean;
 };
 
 export function LedgerDashboard({
@@ -47,6 +49,7 @@ export function LedgerDashboard({
   onRefreshInsight,
   insight,
   insightLoading,
+  embedded = false,
 }: Props) {
   const [scope, setScope] = useState<"all" | "today">("all");
   const today = new Date().toISOString().slice(0, 10);
@@ -88,7 +91,13 @@ export function LedgerDashboard({
 
   if (expenses.length === 0) {
     return (
-      <div className="rounded-2xl bg-mu-sunken px-4 py-6 text-center text-sm text-mu-fg-3">
+      <div
+        className={cn(
+          "px-1 py-4 text-center text-mu-body text-mu-fg-3",
+          !embedded &&
+            "rounded-mu-xl border border-mu-line bg-mu-sunken px-4 py-6"
+        )}
+      >
         지출을 추가하면 예산 대비 현황이 여기에 보여요.
       </div>
     );
@@ -100,17 +109,29 @@ export function LedgerDashboard({
   );
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl bg-mu-card p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-extrabold text-mu-fg">예산 대시보드</h2>
-        <div className="flex gap-1">
+    <section
+      className={cn(
+        "flex flex-col gap-5",
+        !embedded && "rounded-mu-xl border border-mu-line bg-mu-card p-5"
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-mu-heading text-mu-fg">예산 현황</h2>
+        <div
+          className="flex rounded-mu-md bg-mu-sunken p-1"
+          role="group"
+          aria-label="기간"
+        >
           {(["all", "today"] as const).map((s) => (
             <button
               key={s}
               type="button"
-              className={`rounded-md px-2 py-1 text-[11px] font-bold ${
-                scope === s ? "bg-mu-accent text-mu-on-accent" : "bg-mu-sunken"
-              }`}
+              className={cn(
+                "mu-focus min-h-tap rounded-mu-sm px-3 text-mu-caption font-bold transition-colors",
+                scope === s
+                  ? "bg-mu-card text-mu-fg"
+                  : "text-mu-fg-3"
+              )}
               onClick={() => setScope(s)}
             >
               {s === "all" ? "전체" : "오늘"}
@@ -119,25 +140,38 @@ export function LedgerDashboard({
         </div>
       </div>
 
-      <div className="rounded-xl bg-mu-sunken p-3">
-        <div className="mb-2 flex justify-between text-xs font-bold">
-          <span>사용 {formatKRW(stats.totalKrw)}</span>
-          <span>예산 {formatKRW(budget)}</span>
+      <div className="rounded-mu-lg bg-mu-sunken p-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <div>
+            <p className="text-mu-caption text-mu-fg-3">쓴 금액</p>
+            <p className="mu-num mt-1 text-mu-amount font-extrabold text-mu-fg">
+              {formatKRW(stats.totalKrw)}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-mu-caption text-mu-fg-3">예산</p>
+            <p className="mu-num mt-1 text-mu-body font-bold text-mu-fg-2">
+              {formatKRW(budget)}
+            </p>
+          </div>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-white">
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-mu-card">
           <div
-            className="h-full rounded-full bg-mu-accent"
+            className="h-full rounded-full bg-mu-accent transition-[width] duration-mu-base"
             style={{ width: `${usedPct}%` }}
           />
         </div>
-        <p className="mt-2 text-xs text-mu-fg-2">
-          남은 예산 {formatKRW(stats.remainingBudget)}
+        <p className="mt-3 text-mu-caption leading-relaxed text-mu-fg-2">
+          남은 예산{" "}
+          <span className="mu-num font-bold text-mu-fg">
+            {formatKRW(stats.remainingBudget)}
+          </span>
           {stats.dailyRecommended != null
             ? ` · 하루 권장 ${formatKRW(stats.dailyRecommended)}`
             : ""}
         </p>
-        <p className="mt-1 text-xs text-mu-fg-3">
-          일자별 중앙값 환율 기준 근사치, 실제 청구액과 다를 수 있어요.
+        <p className="mt-1 text-mu-caption text-mu-fg-3">
+          일자별 중앙값 환율 기준 근사치예요. 실제 청구액과 다를 수 있어요.
         </p>
       </div>
 
@@ -146,25 +180,34 @@ export function LedgerDashboard({
         totalKrw={stats.totalKrw}
       />
 
-      <div>
-        <p className="mb-2 text-xs font-bold text-mu-fg">일별</p>
-        <div className="flex h-24 items-end gap-1">
-          {dayEntries.map(([d, v]) => (
-            <div key={d} className="flex flex-1 flex-col items-center gap-1">
+      {dayEntries.length > 0 ? (
+        <div>
+          <p className="mb-3 text-mu-label text-mu-fg">일별</p>
+          <div className="flex h-28 items-end gap-1.5">
+            {dayEntries.map(([d, v]) => (
               <div
-                className="w-full rounded-t bg-mu-accent/80"
-                style={{ height: `${(v / maxDay) * 100}%`, minHeight: 4 }}
-                title={formatKRW(v)}
-              />
-              <span className="text-xs text-mu-fg-3">{d.slice(5)}</span>
-            </div>
-          ))}
+                key={d}
+                className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
+              >
+                <div
+                  className="w-full max-w-[2rem] rounded-t-lg bg-mu-accent"
+                  style={{
+                    height: `${Math.max(8, (v / maxDay) * 100)}%`,
+                  }}
+                  title={formatKRW(v)}
+                />
+                <span className="truncate text-mu-caption text-mu-fg-3">
+                  {d.slice(5)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {donutItems.length > 0 ? (
         <div>
-          <p className="mb-2 text-xs font-bold text-mu-fg">카테고리</p>
+          <p className="mb-3 text-mu-label text-mu-fg">카테고리</p>
           <BudgetDonutChart
             items={donutItems}
             totalBudget={Math.max(stats.totalKrw, 1)}
@@ -174,68 +217,74 @@ export function LedgerDashboard({
       ) : null}
 
       <div>
-        <p className="mb-2 text-xs font-bold text-mu-fg">사람별</p>
-        <table className="w-full text-left text-[11px]">
-          <thead>
-            <tr className="text-mu-fg-3">
-              <th className="py-1 font-semibold">이름</th>
-              <th className="py-1 font-semibold">낸 돈</th>
-              <th className="py-1 font-semibold">내 부담</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((m) => (
-              <tr key={m.id} className="border-t border-mu-line/60">
-                <td className="py-1 font-semibold">{m.displayName}</td>
-                <td className="py-1">{formatKRW(stats.byPayer[m.id] ?? 0)}</td>
-                <td className="py-1">
+        <p className="mb-3 text-mu-label text-mu-fg">사람별</p>
+        <ul className="divide-y divide-mu-line rounded-mu-lg border border-mu-line">
+          {members.map((m) => (
+            <li
+              key={m.id}
+              className="flex items-center justify-between gap-3 px-3 py-3"
+            >
+              <span className="min-w-0 truncate text-mu-body font-semibold text-mu-fg">
+                {m.displayName}
+              </span>
+              <span className="shrink-0 text-right text-mu-caption text-mu-fg-3">
+                냄{" "}
+                <span className="mu-num font-bold text-mu-fg">
+                  {formatKRW(stats.byPayer[m.id] ?? 0)}
+                </span>
+                <span className="mx-1 text-mu-line-strong">·</span>
+                몫{" "}
+                <span className="mu-num font-bold text-mu-fg">
                   {formatKRW(stats.owedByMember[m.id] ?? 0)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      <div className="rounded-xl bg-mu-sunken p-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold text-mu-fg">AI 인사이트</p>
+      <div className="rounded-mu-lg bg-mu-sunken p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-mu-label text-mu-fg">요약</p>
           <button
             type="button"
             disabled={insightLoading}
-            className="text-[11px] font-bold text-mu-accent disabled:opacity-50"
+            className="mu-focus min-h-11 px-2 text-mu-caption font-bold text-mu-accent disabled:opacity-50"
             onClick={() => onRefreshInsight?.()}
           >
             {insightLoading ? "불러오는 중…" : "새로고침"}
           </button>
         </div>
         {insight ? (
-          <div className="mt-2 text-xs text-mu-fg-2">
+          <div className="mt-3 space-y-2 text-mu-body text-mu-fg-2">
             <p className="font-bold text-mu-fg">{insight.headline}</p>
-            <ul className="mt-1 list-disc pl-4">
+            <ul className="list-disc space-y-1 pl-4">
               {insight.bullets.map((b) => (
                 <li key={b}>{b}</li>
               ))}
             </ul>
-            <p className="mt-2 font-bold">절약 팁</p>
-            <ul className="list-disc pl-4">
-              {insight.saving_tips.map((t) => (
-                <li key={t}>{t}</li>
-              ))}
-            </ul>
+            {insight.saving_tips.length > 0 ? (
+              <>
+                <p className="pt-1 font-bold text-mu-fg">절약 팁</p>
+                <ul className="list-disc space-y-1 pl-4">
+                  {insight.saving_tips.map((t) => (
+                    <li key={t}>{t}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
             {insight.warnings.map((w) => (
-              <p key={w} className="mt-1 font-semibold text-mu-err">
+              <p key={w} className="font-semibold text-mu-err">
                 {w}
               </p>
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-[11px] text-mu-fg-3">
-            새로고침을 누르면 요약이 생성돼요.
+          <p className="mt-2 text-mu-caption text-mu-fg-3">
+            새로고침을 누르면 요약을 만들어요.
           </p>
         )}
       </div>
-
     </section>
   );
 }
