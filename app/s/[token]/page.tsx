@@ -9,19 +9,25 @@ import {
   type SharedSettlementExpense,
 } from "@/lib/ledger/shared-settlement";
 import { calculateSplit } from "@/lib/ledger/share-split";
-import {
-  PAY_DEEPLINK_NOTICE,
-  openTossPay,
-  payAmountText,
-} from "@/lib/ledger/pay-links";
+import { executeTossTransfer } from "@/lib/ledger/toss";
 import { AmountCard } from "@/components/ds/AmountCard";
 import { Button } from "@/components/ds/Button";
+import { ToastProvider, useOptionalToast } from "@/components/ds/Toast";
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 const INVALID_LINK_MESSAGE = "링크가 유효하지 않아요.";
 const LOAD_FAILED_MESSAGE =
   "정산을 불러오지 못했어요. 잠시 후 다시 열어 주세요.";
+
+/**
+ * VERIFY: 데모용 호스트 입금 계좌. 공유 RPC 에 계좌 필드가 없어 임시 상수.
+ * 지갑/프로필 스키마 연동 후 서버 값으로 교체.
+ */
+const DEMO_HOST_PAYOUT = {
+  bank: "국민은행",
+  accountNo: "943202-00-709112",
+} as const;
 
 function transferStatusLabel(status: string): string {
   return status === "paid" ? "송금 완료" : "송금 전";
@@ -66,15 +72,15 @@ function expenseSubline(
   return parts.join(" · ");
 }
 
-export default function SharedSettlementPage() {
+function SharedSettlementInner() {
   const { token } = useParams<{ token: string }>();
+  const toast = useOptionalToast();
   const [data, setData] = useState<SharedSettlementDetail | null>(null);
   const [error, setError] = useState("");
-  const [meId, setMeId] = useState<string>("");
+  const [meId, setMeId] = useState("");
   const [excludeAlcohol, setExcludeAlcohol] = useState(false);
   const [excludedExpenseIds, setExcludedExpenseIds] = useState<string[]>([]);
-  const [payNote, setPayNote] = useState("");
-  const payBusy = useRef(false);
+  const busy = useRef(false);
 
   useEffect(() => {
     const supabase = getBrowserSupabase();
@@ -163,31 +169,28 @@ export default function SharedSettlementPage() {
   }
 
   async function handleTossPay() {
-    if (payBusy.current) return;
-    const amountText = payAmountText(payAmount);
-    if (!amountText) {
-      setPayNote("송금할 금액이 없어요.");
-      return;
-    }
-    payBusy.current = true;
+    if (busy.current || payAmount <= 0) return;
+    busy.current = true;
     try {
-      const result = await openTossPay({
+      await executeTossTransfer({
+        bank: DEMO_HOST_PAYOUT.bank,
+        accountNo: DEMO_HOST_PAYOUT.accountNo,
         amount: payAmount,
-        // 공유 정산 RPC 에는 계좌가 없음 — 금액만 딥링크/클립보드.
-        bank: null,
-        accountNo: null,
-        copyText: async (text) => {
-          try {
-            await navigator.clipboard.writeText(text);
-            return true;
-          } catch {
-            return false;
-          }
+        onSuccessCopy: () => {
+          toast?.show({
+            text: "계좌번호와 금액이 복사되었어요!",
+            tone: "ok",
+          });
         },
       });
-      setPayNote(result.message);
+    } catch (e) {
+      console.error("[toss-transfer]", e instanceof Error ? e.message : e);
+      toast?.show({
+        text: "송금을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.",
+        tone: "err",
+      });
     } finally {
-      payBusy.current = false;
+      busy.current = false;
     }
   }
 
@@ -220,8 +223,11 @@ export default function SharedSettlementPage() {
         />
       </div>
 
-      <section aria-label="내 몫" className="mt-4 rounded-2xl border border-mu-line bg-mu-card p-4">
-        <h2 className="text-sm font-extrabold text-mu-fg">내 몫 보기</h2>
+      <section
+        aria-label="내 몫"
+        className="mt-4 rounded-2xl border border-mu-line bg-mu-card p-4"
+      >
+        <h2 className="text-sm font-extrabold text-mu-fg">내 몫 · 1초 송금</h2>
         <label className="mt-3 block text-xs font-bold text-mu-fg-2">
           나는
           <select
@@ -258,15 +264,17 @@ export default function SharedSettlementPage() {
 
         {payAmount > 0 ? (
           <div className="mt-4 flex flex-col gap-2">
-            <Button type="button" variant="primary" onClick={() => void handleTossPay()}>
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full"
+              onClick={() => void handleTossPay()}
+            >
               토스로 {formatKRW(payAmount)} 송금하기
             </Button>
-            <p className="text-xs text-mu-fg-3">{PAY_DEEPLINK_NOTICE}</p>
-            {payNote ? (
-              <p role="status" className="text-xs font-semibold text-mu-fg-2">
-                {payNote}
-              </p>
-            ) : null}
+            <p className="text-xs text-mu-fg-3">
+              모바일에서는 토스 앱을 열고, PC에서는 계좌·금액을 복사해요.
+            </p>
           </div>
         ) : (
           <p className="mt-3 text-xs text-mu-fg-3">지금 보낼 금액이 없어요.</p>
@@ -370,5 +378,13 @@ export default function SharedSettlementPage() {
         )}
       </section>
     </div>
+  );
+}
+
+export default function SharedSettlementPage() {
+  return (
+    <ToastProvider>
+      <SharedSettlementInner />
+    </ToastProvider>
   );
 }

@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   normalizeUpstreamPlaces,
@@ -7,22 +5,64 @@ import {
   stripCitySuffix,
 } from "@/lib/places/autocomplete";
 
-const fixturesDir = join(__dirname, "fixtures");
+/** 예전 fixtures/*.json 최소 샘플 (인라인 — 파일 픽스처 제거) */
+const FIXTURE_JAPAN = [
+  {
+    type: "country",
+    code: "JP",
+    name: "일본",
+    weight: 62801,
+  },
+  {
+    type: "city",
+    code: "TYO",
+    name: "도쿄",
+    country_code: "JP",
+    country_name: "일본",
+    weight: 67113,
+  },
+];
 
-function loadFixture(name: string): unknown {
-  return JSON.parse(
-    readFileSync(join(fixturesDir, name), "utf8")
-  ) as unknown;
-}
+const FIXTURE_ICN = [
+  {
+    type: "airport",
+    code: "ICN",
+    name: "Seoul Incheon International",
+    country_code: "KR",
+    country_name: "대한민국",
+    city_code: "SEL",
+    city_name: "서울특별시",
+    weight: 33435,
+  },
+];
+
+const FIXTURE_FUKU = [
+  {
+    type: "city",
+    code: "FUK",
+    name: "후쿠오카",
+    country_code: "JP",
+    country_name: "일본",
+    weight: 3302,
+  },
+  {
+    type: "city",
+    code: "FUJ",
+    name: "후쿠에 섬",
+    country_code: "JP",
+    country_name: "일본",
+    weight: 1,
+  },
+];
 
 describe("normalizeUpstreamPlaces", () => {
   it("일본 → 첫 항목 country JP", () => {
-    const items = normalizeUpstreamPlaces(loadFixture("japan.json"), "일본", "all", 10);
+    const items = normalizeUpstreamPlaces(FIXTURE_JAPAN, "일본", "all", 10);
     expect(items[0]).toMatchObject({ type: "country", code: "JP", name: "일본" });
   });
 
   it("icn all → 첫 항목 airport ICN (한글 공식명)", () => {
-    const items = normalizeUpstreamPlaces(loadFixture("icn.json"), "icn", "all", 10);
+    const items = normalizeUpstreamPlaces(FIXTURE_ICN, "icn", "all", 10);
     expect(items[0]).toMatchObject({
       type: "airport",
       code: "ICN",
@@ -31,12 +71,7 @@ describe("normalizeUpstreamPlaces", () => {
   });
 
   it("icn cities → city SEL name 서울 matchedCode ICN", () => {
-    const items = normalizeUpstreamPlaces(
-      loadFixture("icn.json"),
-      "icn",
-      "cities",
-      10
-    );
+    const items = normalizeUpstreamPlaces(FIXTURE_ICN, "icn", "cities", 10);
     expect(items[0]).toMatchObject({
       type: "city",
       code: "SEL",
@@ -46,7 +81,7 @@ describe("normalizeUpstreamPlaces", () => {
   });
 
   it("후쿠 → city FUK 후쿠오카", () => {
-    const items = normalizeUpstreamPlaces(loadFixture("fuku.json"), "후쿠", "all", 10);
+    const items = normalizeUpstreamPlaces(FIXTURE_FUKU, "후쿠", "all", 10);
     expect(items[0]).toMatchObject({
       type: "city",
       code: "FUK",

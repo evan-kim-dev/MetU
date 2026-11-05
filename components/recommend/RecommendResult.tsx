@@ -106,6 +106,8 @@ export function RecommendResult({
   const [routeOptimizeNotice, setRouteOptimizeNotice] = useState(false);
   const [routeOptimizing, setRouteOptimizing] = useState(false);
   const routeOptimizeAttemptedRef = useRef<Set<string>>(new Set());
+  /** 진행 중 중복 fetch 방지 (state deps 에 넣으면 자기 cancel 됨) */
+  const routeOptimizeInflightRef = useRef(false);
   const {
     flightQuote,
     hotelQuote,
@@ -198,10 +200,14 @@ export function RecommendResult({
     };
   }, [enrich, initialPlan.id]); // eslint-disable-line react-hooks/exhaustive-deps -- 동일 일정 1회 보강
 
-  // 동선 GA: enrich 전·후에도 실명 POI 기준 재최적화 (동일 일정은 1회만)
+  // 동선 GA: enrich 후·미적용일 때만. 진행 중·이미 적용이면 중복 호출 금지.
   useEffect(() => {
     if (isUnrealistic) return;
+    // enrich-plan 보강 중이면 대기 (끝나면 enriching=false 로 재실행)
+    if (enriching) return;
+    // 백엔드가 이미 적용했거나, 클라이언트 최적화가 진행 중이면 스킵
     if (plan.routeOptimization?.applied) return;
+    if (routeOptimizeInflightRef.current) return;
 
     const fingerprint = plan.dailySchedule
       .map((d) => `${d.day}:${d.items.map((i) => i.title).join("|")}`)
@@ -211,6 +217,7 @@ export function RecommendResult({
     routeOptimizeAttemptedRef.current.add(key);
 
     let cancelled = false;
+    routeOptimizeInflightRef.current = true;
     setRouteOptimizing(true);
 
     void fetch("/api/route/optimize", {
@@ -250,6 +257,7 @@ export function RecommendResult({
         if (!cancelled) setRouteOptimizeNotice(true);
       })
       .finally(() => {
+        routeOptimizeInflightRef.current = false;
         if (!cancelled) setRouteOptimizing(false);
       });
 
@@ -258,6 +266,7 @@ export function RecommendResult({
     };
   }, [
     isUnrealistic,
+    enriching,
     plan.id,
     plan.destination,
     plan.country,

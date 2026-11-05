@@ -32,16 +32,28 @@ async function locateDayItems(
 ): Promise<LocatedItem[]> {
   return Promise.all(
     day.items.map(async (item, index) => {
-      const fixed = isFixedScheduleTitle(item.title);
+      const fixed = isFixedScheduleTitle(item.title) || item.fixed === true;
+
+      // 이미 위경도가 item에 있으면 외부 geocode 없이 재사용 (좌표 유실 방지)
+      const existingPoint: LatLng | null =
+        typeof item.lat === "number" &&
+        typeof item.lng === "number" &&
+        Number.isFinite(item.lat) &&
+        Number.isFinite(item.lng)
+          ? { lat: item.lat, lng: item.lng }
+          : null;
+
       const point = fixed
         ? null
-        : await geocodePlaceQuery(
+        : existingPoint ??
+          (await geocodePlaceQuery(
             item.title,
             destination,
             country,
             cache,
             inflight
-          );
+          ));
+
       return {
         index,
         title: item.title,
@@ -130,9 +142,10 @@ function optimizeLocatedDay(
 
 function applyDayOrder(day: DaySchedule, order: number[]): DaySchedule {
   const times = day.items.map((item) => item.time);
-  const reordered = order.map((idx) => day.items[idx]);
+  const reordered = order.map((idx) => day.items[idx]!);
   const items = reordered.map((item, i) => ({
     ...item,
+    // 시간대만 순차 유지, 장소·위경도·placeId 등은 새 순서대로 보존
     time: times[i] ?? item.time,
   }));
   return { ...day, items };

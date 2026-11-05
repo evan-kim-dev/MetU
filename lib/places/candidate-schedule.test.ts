@@ -68,6 +68,49 @@ describe("buildScheduleFromCandidates", () => {
     expect(a).toEqual(b);
   });
 
+  it("중간 일차는 직전 좌표에 가까운 순으로 이어져요", () => {
+    // 한 클러스터에 들어가도록 가까운 점들만 사용
+    const places: Place[] = [
+      makePlace("far-a", "attraction", 34.8, 135.7),
+      makePlace("near-a", "attraction", 34.69, 135.52),
+      makePlace("near-food", "food", 34.6905, 135.5205),
+      makePlace("near-shop", "shopping", 34.691, 135.521),
+      makePlace("near-cafe", "cafe", 34.6915, 135.5215),
+      makePlace("near-dinner", "food", 34.692, 135.522),
+      makePlace("b1", "attraction", 34.5, 135.3),
+      makePlace("b2", "food", 34.501, 135.301),
+      makePlace("c1", "attraction", 35.0, 136.0),
+      makePlace("c2", "food", 35.001, 136.001),
+    ];
+    const schedule = buildScheduleFromCandidates({
+      ...base,
+      places,
+      nights: 2,
+      styles: [...base.styles],
+    });
+    const mid = schedule[1];
+    expect(mid).toBeTruthy();
+    const coords = (mid?.items ?? []).filter(
+      (i) => typeof i.lat === "number" && typeof i.lng === "number"
+    );
+    expect(coords.length).toBeGreaterThanOrEqual(2);
+    // 연속 구간 하버사인 합이 첫→끝 직선을 크게 넘지 않으면 단방향에 가깝다
+    let path = 0;
+    for (let i = 1; i < coords.length; i++) {
+      const a = coords[i - 1]!;
+      const b = coords[i]!;
+      const dLat = ((b.lat! - a.lat!) * Math.PI) / 180;
+      const dLng = ((b.lng! - a.lng!) * Math.PI) / 180;
+      const lat1 = (a.lat! * Math.PI) / 180;
+      const lat2 = (b.lat! * Math.PI) / 180;
+      const h =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+      path += 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+    }
+    expect(path).toBeLessThan(50);
+  });
+
   it("puts coordinates on candidate-backed items", () => {
     const schedule = buildScheduleFromCandidates({
       ...base,
