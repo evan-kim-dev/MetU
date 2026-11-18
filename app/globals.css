@@ -7,7 +7,7 @@
 @layer base {
   html,
   body {
-    @apply bg-surface-base text-ink-body antialiased;
+    @apply bg-mu-bg text-mu-fg-2 antialiased;
   }
 
   /* 숫자 입력에서 브라우저 기본 스피너 제거 (온보딩 예산 입력용) */
@@ -41,16 +41,7 @@
     scrollbar-width: none;
   }
 
-  @keyframes gradient-shift {
-    0%,
-    100% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-  }
-
+  /* Wave A: 레거시 ai-* 유틸은 mu solid 별칭만 유지 (신규 사용 금지). */
   @keyframes ai-thinking-slide {
     0% {
       transform: translateX(-120%);
@@ -61,82 +52,53 @@
   }
 
   .ai-gradient-text {
-    background-image: linear-gradient(
-      to right,
-      theme("colors.brand.DEFAULT"),
-      theme("colors.brand.mid"),
-      theme("colors.brand.soft")
-    );
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: gradient-shift 5s ease-in-out infinite;
+    color: var(--mu-accent);
   }
 
   .ai-gradient-bg {
-    background-color: #2563eb;
-    background-image: linear-gradient(
-      135deg,
-      #2563eb 0%,
-      #3b82f6 45%,
-      #6366f1 100%
-    );
+    background-color: var(--mu-accent);
+    background-image: none;
   }
 
   .ai-thinking-ring {
     background: conic-gradient(
       from 90deg,
       transparent 0%,
-      theme("colors.brand.DEFAULT") 35%,
-      theme("colors.brand.soft") 70%,
+      var(--mu-accent) 35%,
+      var(--mu-accent-soft) 70%,
       transparent 100%
     );
   }
 
   .ai-surface-card {
     border-radius: 20px;
-    border: 1px solid rgba(211, 228, 254, 0.8);
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    backdrop-filter: blur(4px);
+    border: 1px solid var(--mu-line);
+    background: var(--mu-card);
   }
 
   .ai-chip {
     border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, theme("colors.brand.DEFAULT") 15%, transparent);
-    background: color-mix(in srgb, theme("colors.brand.DEFAULT") 8%, transparent);
+    border: 1px solid var(--mu-line);
+    background: var(--mu-accent-soft);
     padding: 0.25rem 0.75rem;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.025em;
-    color: theme("colors.brand.DEFAULT");
+    color: var(--mu-accent);
   }
 
   .ai-glass-chip {
     border-radius: 9999px;
-    border: 1px solid rgba(211, 228, 254, 0.8);
-    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--mu-line);
+    background: var(--mu-card);
     padding: 0.25rem 0.75rem;
     font-size: 11px;
     font-weight: 600;
-    color: #434655;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-    backdrop-filter: blur(4px);
+    color: var(--mu-fg-2);
   }
 
   .ai-page-ambient {
-    background:
-      radial-gradient(
-        ellipse 90% 45% at 50% -8%,
-        color-mix(in srgb, theme("colors.brand.DEFAULT") 10%, transparent),
-        transparent
-      ),
-      linear-gradient(
-        180deg,
-        theme("colors.surface.base") 0%,
-        theme("colors.surface.base") 100%
-      );
+    background: var(--mu-bg);
   }
 
   @keyframes buddy-dot-bounce {

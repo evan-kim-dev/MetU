@@ -420,29 +420,29 @@ export function ConnectFlow() {
   if (!isReady || !booted) {
     return (
       <div className="space-y-3 p-1" aria-busy="true">
-        <p className="text-sm text-ink-body">기기를 확인하는 중…</p>
-        <div className="h-4 animate-pulse rounded bg-surface-soft" />
-        <div className="h-4 animate-pulse rounded bg-surface-soft" />
-        <div className="h-4 animate-pulse rounded bg-surface-soft" />
+        <p className="text-sm text-mu-fg-2">기기를 확인하는 중…</p>
+        <div className="h-4 animate-pulse rounded bg-mu-sunken" />
+        <div className="h-4 animate-pulse rounded bg-mu-sunken" />
+        <div className="h-4 animate-pulse rounded bg-mu-sunken" />
       </div>
     );
   }
 
   if (isGuest) {
     return (
-      <div className="rounded-2xl border border-line-muted bg-surface-base p-5">
-        <p className="text-sm leading-relaxed text-ink-heading">
+      <div className="rounded-2xl border border-mu-line bg-mu-bg p-5">
+        <p className="text-sm leading-relaxed text-mu-fg">
           로그인하면 자동 기록을 연결할 수 있어요
         </p>
         <Link
           href="/login?next=/onboarding/automation"
-          className="ai-gradient-bg mt-4 inline-flex min-h-[52px] w-full items-center justify-center rounded-2xl text-base font-bold text-surface-white"
+          className="bg-mu-accent mt-4 inline-flex min-h-[52px] w-full items-center justify-center rounded-2xl text-base font-bold text-mu-on-accent"
         >
           로그인하기
         </Link>
         <Link
           href="/"
-          className="mt-2 inline-flex min-h-11 w-full items-center justify-center text-sm text-ink-body underline"
+          className="mt-2 inline-flex min-h-11 w-full items-center justify-center text-sm text-mu-fg-2 underline"
         >
           홈으로
         </Link>
@@ -517,12 +517,12 @@ export function ConnectFlow() {
       <div className="flex items-start justify-between gap-3">
         {showLater ? (
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-ink-body">
+            <p className="text-xs font-medium text-mu-fg-2">
               연결은 나중에 해도 돼요
             </p>
             <button
               type="button"
-              className="min-h-11 px-1 text-sm font-semibold text-ink-body underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="min-h-11 px-1 text-sm font-semibold text-mu-fg-2 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
               disabled={state.busy === "skip"}
               aria-busy={state.busy === "skip"}
               onClick={() => void skip()}
@@ -539,7 +539,7 @@ export function ConnectFlow() {
         state.phase !== "skipped" ? (
           <button
             type="button"
-            className="min-h-11 shrink-0 px-2 text-sm font-semibold text-ink-body underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="min-h-11 shrink-0 px-2 text-sm font-semibold text-mu-fg-2 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
             onClick={() => {
               clearSnapshot();
               dispatch({ type: "BACK_TO_HUB" });
@@ -697,7 +697,7 @@ export function ConnectFlow() {
       ) : null}
 
       {state.phase === "done" || state.phase === "skipped" ? (
-        <p role="status" className="text-sm text-ink-body">
+        <p role="status" className="text-sm text-mu-fg-2">
           이동하는 중…
         </p>
       ) : null}

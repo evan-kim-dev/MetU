@@ -5,13 +5,13 @@ export function SectionRetry({ onRetry }: { onRetry: () => void }) {
   return (
     <div
       role="alert"
-      className="flex items-center justify-between gap-3 text-sm text-ink-body"
+      className="flex items-center justify-between gap-3 text-sm text-mu-fg-2"
     >
       <span className="min-w-0">불러오지 못했어요</span>
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex min-h-tap shrink-0 items-center rounded-xl px-3 text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="inline-flex min-h-tap shrink-0 items-center rounded-xl px-3 text-sm font-bold text-mu-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
       >
         다시 시도
       </button>

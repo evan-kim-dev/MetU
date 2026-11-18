@@ -44,7 +44,6 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
           setItems(data.places);
           setRefreshFailed(false);
         } else {
-          // 빈 응답이면 SSR·캐시 목록을 지우지 않아요.
           setRefreshFailed(true);
         }
       })
@@ -73,7 +72,7 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
           {[0, 1].map((i) => (
             <div
               key={i}
-              className="aspect-[4/5] animate-pulse rounded-2xl bg-surface-soft"
+              className="aspect-[4/5] animate-pulse rounded-mu-xl bg-mu-sunken"
             />
           ))}
         </div>
@@ -81,11 +80,11 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
     }
 
     return (
-      <div className="rounded-2xl border border-dashed border-line-soft bg-surface-soft/50 px-4 py-8 text-center">
-        <p className="text-sm font-semibold text-ink-heading">
+      <div className="rounded-mu-xl border border-dashed border-mu-line bg-mu-sunken/50 px-4 py-8 text-center">
+        <p className="text-sm font-semibold text-mu-fg">
           추천을 불러오지 못했어요 · 다시 시도
         </p>
-        <p className="mt-1 text-xs leading-relaxed text-ink-caption">
+        <p className="mt-1 text-xs leading-relaxed text-mu-fg-3">
           잠시 후 새로고침하거나, 직접 여행을 계획해 보세요.
         </p>
       </div>
@@ -95,7 +94,7 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
   return (
     <>
       {refreshFailed && !loading ? (
-        <p className="text-xs text-ink-caption">
+        <p className="text-xs text-mu-fg-3">
           최신 추천을 갱신하지 못했어요. 캐시된 목록을 보여드려요.
         </p>
       ) : null}
@@ -110,9 +109,9 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
             key={place.id}
             type="button"
             onClick={() => setSelected(place)}
-            className="relative aspect-[4/5] overflow-hidden rounded-2xl text-left shadow-soft transition-transform active:scale-[0.98]"
+            className="relative aspect-[4/5] overflow-hidden rounded-mu-xl text-left transition-transform active:scale-[0.98]"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-brand/70 via-brand-strong/70 to-ink-heading/80" />
+            <div className="absolute inset-0 bg-mu-accent/80" />
             {!failedImageIds.has(place.id) ? (
               <Image
                 src={place.imageUrl}
@@ -128,28 +127,30 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
             ) : null}
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
 
-            <span className="absolute left-2.5 top-2.5 rounded-full bg-surface-white/85 px-2 py-0.5 text-[11px] font-extrabold text-brand-strong backdrop-blur-md">
+            <span className="absolute left-2.5 top-2.5 rounded-full border border-mu-line bg-mu-card px-2 py-0.5 text-[11px] font-extrabold text-mu-accent">
               {place.budgetLabel}
             </span>
 
-            <div className="absolute inset-x-3 bottom-3 text-surface-white">
-              <p className="text-[11px] font-medium opacity-90">{place.country}</p>
+            <div className="absolute inset-x-3 bottom-3 text-white">
+              <p className="text-[11px] font-medium opacity-90">
+                {place.country}
+              </p>
               <p className="text-base font-extrabold drop-shadow-sm">
                 {place.name}
               </p>
-              {place.highlight && (
+              {place.highlight ? (
                 <p className="mt-0.5 line-clamp-1 text-[10px] font-medium opacity-85">
                   {place.highlight}
                 </p>
-              )}
+              ) : null}
             </div>
           </button>
         ))}
       </div>
 
-      {selected && (
+      {selected ? (
         <DealDetailSheet place={selected} onClose={() => setSelected(null)} />
-      )}
+      ) : null}
     </>
   );
 }

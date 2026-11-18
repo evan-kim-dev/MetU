@@ -194,8 +194,8 @@ describe("PrimaryActions", () => {
     for (const el of [receipt, manual]) {
       expect(el.className).toMatch(/min-h-(tap|touch)/);
     }
-    expect(receipt.className).toContain("bg-brand");
-    expect(manual.className).not.toContain("bg-brand");
+    expect(receipt.className).toContain("bg-mu-accent");
+    expect(manual.className).not.toContain("bg-mu-accent");
   });
 });
 

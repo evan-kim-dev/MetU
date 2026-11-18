@@ -108,7 +108,7 @@ export function AgentHubContent() {
       aria-label="더보기"
       aria-haspopup="dialog"
       onClick={() => setMoreOpen(true)}
-      className="inline-flex h-11 w-11 items-center justify-center rounded-full text-ink-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full text-mu-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
     >
       <MoreHorizontal className="h-5 w-5" aria-hidden />
     </button>
@@ -128,7 +128,7 @@ export function AgentHubContent() {
         showConnectHint={automationOff}
       />
     ) : (
-      <p className="rounded-xl bg-surface-soft px-3 py-4 text-center text-sm text-ink-muted">
+      <p className="rounded-xl bg-mu-sunken px-3 py-4 text-center text-sm text-mu-fg-3">
         합류한 여행이 없어요. 초대 링크로 들어와 주세요.
       </p>
     );

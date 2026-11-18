@@ -7,7 +7,7 @@ interface MetULogoProps {
   className?: string;
 }
 
-const GRADIENT_TEXT = "ai-gradient-text";
+const GRADIENT_TEXT = "text-mu-accent";
 
 export function MetULogo({
   variant = "appbar",
@@ -18,7 +18,7 @@ export function MetULogo({
     return (
       <div className={`flex flex-col items-center gap-3 ${className}`}>
         {showPlannerBadge ? (
-          <span className="ai-chip">AI 여행 플래너</span>
+          <span className="rounded-full border border-mu-line bg-mu-accent-soft text-mu-accent">AI 여행 플래너</span>
         ) : null}
         <LogoMark size="hero" />
       </div>
@@ -46,7 +46,7 @@ function LogoMark({ size }: { size: "hero" | "appbar" }) {
       </span>
       <span
         className={[
-          "rounded-md border border-brand/20 bg-gradient-to-r from-brand/12 to-brand-soft/12 font-bold tracking-wider text-brand",
+          "rounded-md border border-mu-accent/20 bg-mu-accent-soft font-bold tracking-wider text-mu-accent",
           aiSize,
         ].join(" ")}
       >

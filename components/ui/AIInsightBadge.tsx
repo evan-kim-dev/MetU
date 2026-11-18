@@ -21,12 +21,10 @@ export function AIInsightBadge({
   return (
     <div
       className={[
-        "flex w-full items-start gap-2.5 rounded-xl2 px-4 py-3 backdrop-blur-sm",
-        isEaster
-          ? "border border-amber-300/90 bg-gradient-to-br from-amber-50 via-orange-50/80 to-surface-white"
-          : isFactBomb
-            ? "border border-amber-300/80 bg-gradient-to-br from-amber-50 via-surface-white to-orange-50"
-            : "border border-brand/15 bg-gradient-to-br from-brand/6 via-surface-soft to-brand-soft/8",
+        "flex w-full items-start gap-2.5 rounded-mu-xl border px-4 py-3",
+        isSpecial
+          ? "border-mu-warn/40 bg-mu-warn-soft"
+          : "border-mu-line bg-mu-accent-soft",
       ].join(" ")}
       role={loading ? "status" : undefined}
       aria-live={loading ? "polite" : undefined}
@@ -35,20 +33,20 @@ export function AIInsightBadge({
       <span
         className={[
           "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
-          isSpecial ? "bg-amber-500" : "ai-gradient-bg",
+          isSpecial ? "bg-mu-warn" : "bg-mu-accent",
           loading ? "motion-safe:animate-pulse" : "",
         ].join(" ")}
         aria-hidden
       />
       <div className="min-w-0 flex-1">
         {isSpecial ? (
-          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-amber-700">
+          <p className="mb-1 text-mu-caption font-extrabold tracking-wide text-mu-warn">
             {isEaster ? "이스터 에그 발견" : "AI 팩트폭격"}
           </p>
         ) : null}
 
         {loading ? (
-          <p className="mb-1.5 text-xs font-semibold text-ink-caption">
+          <p className="mb-1.5 text-mu-caption font-semibold text-mu-fg-3">
             AI가 생각 중… 바로 다음으로 넘어가도 돼요
           </p>
         ) : null}
@@ -56,7 +54,7 @@ export function AIInsightBadge({
         <p
           className={[
             "whitespace-pre-wrap break-words text-sm font-medium leading-relaxed",
-            isSpecial ? "text-ink-heading" : "text-brand-strong",
+            isSpecial ? "text-mu-fg" : "text-mu-accent",
             loading ? "opacity-80" : "",
           ].join(" ")}
         >

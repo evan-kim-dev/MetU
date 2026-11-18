@@ -41,12 +41,12 @@ export function UnassignedInboxBanner() {
   return (
     <Link
       href="/agent/inbox"
-      className="flex min-h-11 items-center justify-between gap-3 rounded-xl2 bg-amber-50 px-4 py-3 ring-1 ring-amber-200 transition-opacity active:opacity-90"
+      className="flex min-h-11 items-center justify-between gap-3 rounded-mu-xl border border-mu-warn/30 bg-mu-warn-soft px-4 py-3 transition-opacity active:opacity-90"
     >
-      <span className="text-sm font-bold text-amber-950">
+      <span className="text-sm font-bold text-mu-warn">
         여행 없이 모인 알림 {count}건 · {INBOX_NAME} 보기
       </span>
-      <span className="text-xs font-bold text-amber-800" aria-hidden>
+      <span className="text-xs font-bold text-mu-warn" aria-hidden>
         →
       </span>
     </Link>

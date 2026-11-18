@@ -2,6 +2,8 @@
 
 핀테크 톤(Toss/Linear): 뉴트럴 그레이 + 액센트 1색(`#2563EB`), 카드는 흰 면+1px 보더, 화면당 CTA 1개.
 
+UI 현대화·통폐합·글라스 정책·Wave 실행은 → [`docs/ui-modernization-master.md`](./ui-modernization-master.md).
+
 ## 토큰
 
 출처: `lib/design/tokens.ts` → `app/globals.css`의 `--mu-*` → Tailwind `mu-*`.
