@@ -18,6 +18,7 @@ import { TripDetailHero } from "@/components/trips/detail/TripDetailHero";
 import { TripDetailMemoSection } from "@/components/trips/detail/TripDetailMemoSection";
 import { TripDetailScheduleSection } from "@/components/trips/detail/TripDetailScheduleSection";
 import { TripDetailTipsSection } from "@/components/trips/detail/TripDetailTipsSection";
+import { TripSummaryPanel } from "@/components/trips/detail/TripSummaryPanel";
 import { useTripDetailEditor } from "@/components/trips/useTripDetailEditor";
 import type { MapPoint } from "@/lib/map/trip-points";
 
@@ -25,7 +26,25 @@ interface TripDetailContentProps {
   tripId: string;
 }
 
-type DetailTab = "schedule" | "ledger";
+type DetailTab = "summary" | "schedule" | "ledger";
+
+function nextScheduleLineFromTrip(trip: {
+  dailySchedule?: Array<{
+    dayLabel?: string;
+    items?: Array<{ title?: string; placeName?: string }>;
+  }>;
+}): string | null {
+  const days = trip.dailySchedule ?? [];
+  for (const day of days) {
+    const item = day.items?.[0];
+    if (!item) continue;
+    const place = item.placeName?.trim() || item.title?.trim();
+    if (!place) continue;
+    const dayLabel = day.dayLabel?.trim();
+    return dayLabel ? `${dayLabel} · ${place}` : place;
+  }
+  return null;
+}
 
 export function TripDetailContent({ tripId }: TripDetailContentProps) {
   const router = useRouter();
@@ -34,7 +53,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
   const isGuest = !user || provider === "guest";
   /** UI 숨김. 쓰기는 서버·RLS가 최종 방어. */
   const ledgerReadOnly = isAnonymous;
-  const [detailTab, setDetailTab] = useState<DetailTab>("schedule");
+  const [detailTab, setDetailTab] = useState<DetailTab>("summary");
   const {
     trip,
     isReady,
@@ -193,39 +212,41 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
           onSave={saveBudget}
         />
 
-        {!isGuest ? (
-          <div
-            className="flex rounded-full bg-surface-soft p-1"
-            role="tablist"
-            aria-label="여행 상세 탭"
-          >
+        <div
+          className="flex rounded-full bg-surface-soft p-1"
+          role="tablist"
+          aria-label="여행 상세 탭"
+        >
+          {(
+            [
+              ["summary", "요약"],
+              ["schedule", "일정"],
+              ["ledger", "가계부"],
+            ] as const
+          ).map(([key, label]) => (
             <button
+              key={key}
               type="button"
               role="tab"
-              aria-selected={detailTab === "schedule"}
-              onClick={() => setDetailTab("schedule")}
-              className={`flex-1 rounded-full py-2 text-sm font-bold transition ${
-                detailTab === "schedule"
+              aria-selected={detailTab === key}
+              onClick={() => setDetailTab(key)}
+              className={`min-h-tap flex-1 rounded-full py-2 text-sm font-bold transition ${
+                detailTab === key
                   ? "bg-surface-white text-brand shadow-sm"
                   : "text-ink-body"
               }`}
             >
-              일정
+              {label}
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={detailTab === "ledger"}
-              onClick={() => setDetailTab("ledger")}
-              className={`flex-1 rounded-full py-2 text-sm font-bold transition ${
-                detailTab === "ledger"
-                  ? "bg-surface-white text-brand shadow-sm"
-                  : "text-ink-body"
-              }`}
-            >
-              가계부
-            </button>
-          </div>
+          ))}
+        </div>
+
+        {detailTab === "summary" ? (
+          <TripSummaryPanel
+            tripId={tripId}
+            nextScheduleLine={nextScheduleLineFromTrip(trip)}
+            onOpenSchedule={() => setDetailTab("schedule")}
+          />
         ) : null}
 
         {!isGuest && detailTab === "ledger" ? (
@@ -329,7 +350,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
 
         <TripDetailTipsSection tips={trip.tips ?? []} />
 
-        {isGuest ? (
+        {isGuest && detailTab === "ledger" ? (
           <TripDetailGuestExpenses
             expenses={trip.expenses}
             editSection={editSection}

@@ -173,7 +173,8 @@ export default function JoinTripPage() {
     } catch (e) {
       console.error("[join] afterJoinTrip", e instanceof Error ? e.message : e);
     }
-    router.replace(`/trips/${preview!.tripId}/ledger`);
+    // EDR Phase 3: 요약 랜딩 + 정산 CTA (가계부 직행 아님)
+    router.replace(`/trips/${preview!.tripId}`);
   }
 
   return (
