@@ -2,6 +2,7 @@
 
 import { TopAppBar } from "@/components/ui/TopAppBar";
 import { BottomNav } from "@/components/ui/BottomNav";
+import { InboxTopButton } from "@/components/ui/InboxTopButton";
 
 interface MobileShellProps {
   children: React.ReactNode;
@@ -12,6 +13,8 @@ interface MobileShellProps {
   rightSlot?: React.ReactNode;
   showAppBar?: boolean;
   showBottomNav?: boolean;
+  /** 상단 바 우측 확인함. 기본 on (하단 탭에서 확인함을 뺀 뒤 입구) */
+  showInbox?: boolean;
 }
 
 /** 하단 네비 높이(72px) + 여유 공간 */
@@ -30,7 +33,16 @@ export function MobileShell({
   rightSlot,
   showAppBar = true,
   showBottomNav = true,
+  showInbox = true,
 }: MobileShellProps) {
+  const appBarRight =
+    rightSlot || showInbox ? (
+      <>
+        {rightSlot}
+        {showInbox ? <InboxTopButton /> : null}
+      </>
+    ) : undefined;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {showAppBar && (
@@ -39,7 +51,7 @@ export function MobileShell({
           showBack={showBack}
           onBack={onBack}
           backHref={backHref}
-          rightSlot={rightSlot}
+          rightSlot={appBarRight}
         />
       )}
 

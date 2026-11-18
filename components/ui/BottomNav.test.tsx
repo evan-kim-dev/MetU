@@ -4,7 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/agent/inbox",
+  usePathname: () => "/",
 }));
 
 import { BottomNav } from "@/components/ui/BottomNav";
@@ -12,27 +12,27 @@ import { BottomNav } from "@/components/ui/BottomNav";
 afterEach(() => cleanup());
 
 describe("BottomNav", () => {
-  it("하단은 여행·확인함·내 정보 3탭이에요", () => {
+  it("하단은 여행·홈·내 정보 3탭이에요", () => {
     render(<BottomNav />);
     expect(screen.getByText("여행")).toBeTruthy();
-    expect(screen.getByText("확인함")).toBeTruthy();
+    expect(screen.getByText("홈")).toBeTruthy();
     expect(screen.getByText("내 정보")).toBeTruthy();
     expect(document.body.textContent).not.toContain("가계부");
     expect(document.body.textContent).not.toContain("멧톡");
-    expect(document.body.textContent).not.toContain("홈");
+    expect(document.body.textContent).not.toContain("확인함");
   });
 
-  it("확인함 경로에서 aria-current 를 켜요", () => {
+  it("홈 경로에서 aria-current 를 켜요", () => {
     render(<BottomNav />);
-    const inbox = screen.getByText("확인함").closest("a");
-    expect(inbox?.getAttribute("href")).toBe("/agent/inbox");
-    expect(inbox?.getAttribute("aria-current")).toBe("page");
+    const home = screen.getByText("홈").closest("a");
+    expect(home?.getAttribute("href")).toBe("/");
+    expect(home?.getAttribute("aria-current")).toBe("page");
   });
 
-  it("확인함 링크는 /agent/inbox 를 유지해요", () => {
+  it("탭 링크는 여행·홈·내 정보예요", () => {
     render(<BottomNav />);
-    expect(screen.getByText("확인함").closest("a")?.getAttribute("href")).toBe(
-      "/agent/inbox"
+    expect(screen.getByText("홈").closest("a")?.getAttribute("href")).toBe(
+      "/"
     );
     expect(screen.getByText("여행").closest("a")?.getAttribute("href")).toBe(
       "/trips"
