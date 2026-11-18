@@ -10,10 +10,7 @@ interface SmartTipsProps {
   title?: string;
 }
 
-/**
- * AI 스마트 팁.
- * overflow-x-auto 로 수평 스크롤되는 카드 목록.
- */
+/** AI 스마트 팁 — 수평 스크롤 카드 목록. */
 export function SmartTips({ tips, title = "AI 팁" }: SmartTipsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +31,7 @@ export function SmartTips({ tips, title = "AI 팁" }: SmartTipsProps) {
               type="button"
               aria-label="이전 팁"
               onClick={() => scrollByCard("left")}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-line-soft bg-surface-white text-ink-caption transition-colors active:bg-surface-soft"
+              className="mu-focus flex h-8 w-8 items-center justify-center rounded-full border border-mu-line bg-mu-card text-mu-fg-3 transition-colors active:bg-mu-sunken"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -42,7 +39,7 @@ export function SmartTips({ tips, title = "AI 팁" }: SmartTipsProps) {
               type="button"
               aria-label="다음 팁"
               onClick={() => scrollByCard("right")}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-line-soft bg-surface-white text-ink-caption transition-colors active:bg-surface-soft"
+              className="mu-focus flex h-8 w-8 items-center justify-center rounded-full border border-mu-line bg-mu-card text-mu-fg-3 transition-colors active:bg-mu-sunken"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -50,7 +47,10 @@ export function SmartTips({ tips, title = "AI 팁" }: SmartTipsProps) {
         }
       />
 
-      <div ref={scrollRef} className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
+      <div
+        ref={scrollRef}
+        className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1"
+      >
         {tips.map((tip) => (
           <TipCard key={tip.id} tip={tip} />
         ))}
@@ -61,22 +61,16 @@ export function SmartTips({ tips, title = "AI 팁" }: SmartTipsProps) {
 
 const TipCard = memo(function TipCard({ tip }: { tip: SmartTip }) {
   return (
-    <article className="relative flex w-60 shrink-0 flex-col gap-3 overflow-hidden rounded-2xl border border-brand/15 bg-gradient-to-br from-surface-white via-surface-white to-brand/[0.06] p-4 shadow-soft">
-      <div
-        className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full bg-brand/10 blur-2xl"
-        aria-hidden
-      />
-      <div className="relative flex items-center gap-2.5">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand/12 to-brand-soft/12 text-lg">
+    <article className="flex w-60 shrink-0 flex-col gap-3 rounded-mu-xl border border-mu-line bg-mu-card p-4">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-mu-lg bg-mu-accent-soft text-lg">
           {tip.emoji}
         </span>
-        <span className="text-sm font-extrabold leading-snug text-ink-heading">
+        <span className="text-sm font-extrabold leading-snug text-mu-fg">
           {tip.title}
         </span>
       </div>
-      <p className="relative text-xs leading-relaxed text-ink-caption">
-        {tip.description}
-      </p>
+      <p className="text-xs leading-relaxed text-mu-fg-3">{tip.description}</p>
     </article>
   );
 });

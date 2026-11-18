@@ -33,7 +33,7 @@ export function ActiveTripSection() {
     return (
       <section className="flex flex-col gap-3">
         <SectionHeader title="진행·예정 여행" ai />
-        <div className="h-52 animate-pulse rounded-xl2 bg-surface-soft" />
+        <div className="h-52 animate-pulse rounded-mu-xl bg-mu-sunken" />
       </section>
     );
   }
@@ -44,7 +44,7 @@ export function ActiveTripSection() {
         <SectionHeader title="진행·예정 여행" ai />
         <Link
           href="/onboarding"
-          className="relative block h-52 w-full overflow-hidden rounded-xl2 shadow-soft transition-transform active:scale-[0.99]"
+          className="relative block h-52 w-full overflow-hidden rounded-mu-xl transition-transform active:scale-[0.99]"
         >
           <Image
             src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=800&q=80"
@@ -56,18 +56,18 @@ export function ActiveTripSection() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/20" />
 
-          <div className="absolute left-4 top-4 ai-glass-chip !text-ink-heading !bg-surface-white/90">
+          <div className="absolute left-4 top-4 rounded-full border border-mu-line bg-mu-card px-3 py-1 text-xs font-semibold text-mu-fg">
             다음 여행 준비
           </div>
 
-          <div className="absolute inset-x-4 bottom-4 text-surface-white">
+          <div className="absolute inset-x-4 bottom-4 text-white">
             <h3 className="text-xl font-extrabold drop-shadow-sm">
               아직 진행 중인 여행이 없어요
             </h3>
             <p className="mt-1 text-xs font-medium opacity-90">
               예산만 알려주면 AI가 코스를 짜드려요
             </p>
-            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand px-3.5 py-2 text-xs font-bold text-surface-white">
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-mu-accent px-3.5 py-2 text-xs font-bold text-mu-on-accent">
               <Plus className="h-3.5 w-3.5" strokeWidth={2.6} />
               새 여행 계획하기
             </span>
@@ -117,10 +117,10 @@ export function ActiveTripSection() {
                 setActiveIndex(index);
               }}
               className={[
-                "h-1.5 rounded-full transition-all",
+                "h-1.5 rounded-full transition-[width] motion-reduce:transition-none",
                 index === activeIndex
-                  ? "w-4 bg-brand"
-                  : "w-1.5 bg-line-muted",
+                  ? "w-4 bg-mu-accent"
+                  : "w-1.5 bg-mu-line",
               ].join(" ")}
             />
           ))}

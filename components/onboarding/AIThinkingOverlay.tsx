@@ -35,7 +35,7 @@ export function AIThinkingOverlay({ destination }: AIThinkingOverlayProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-surface-base/88 px-6 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-mu-bg/88 px-6 backdrop-blur-sm"
       role="status"
       aria-live="polite"
       aria-busy="true"
@@ -50,22 +50,22 @@ export function AIThinkingOverlay({ destination }: AIThinkingOverlayProps) {
             className="absolute inset-[2.5px] flex items-center justify-center rounded-full bg-white"
             aria-hidden
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl ai-gradient-bg">
-              <Sparkles className="h-5 w-5 text-white" strokeWidth={2.2} aria-hidden />
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-mu-accent">
+              <Sparkles className="h-5 w-5 text-mu-on-accent" strokeWidth={2.2} aria-hidden />
             </span>
           </span>
         </div>
 
         <div className="flex flex-col items-center gap-1.5">
-          <p className="text-[11px] font-bold tracking-[0.08em] text-brand">
+          <p className="text-[11px] font-bold tracking-[0.08em] text-mu-accent">
             AI 여행 플래너
           </p>
-          <p className="text-lg font-extrabold tracking-tight text-ink-heading">
+          <p className="text-lg font-extrabold tracking-tight text-mu-fg">
             맞춤 일정 만드는 중
           </p>
           <p
             className={[
-              "mt-1 min-h-[40px] max-w-[240px] text-sm leading-relaxed text-ink-caption transition-all duration-300",
+              "mt-1 min-h-[40px] max-w-[240px] text-sm leading-relaxed text-mu-fg-3 transition-colors duration-300",
               visible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0",
             ].join(" ")}
           >

@@ -27,7 +27,7 @@ function shortDate(iso: string | undefined): string | null {
 }
 
 const LINK =
-  "inline-flex min-h-tap items-center rounded-xl px-1 text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand";
+  "inline-flex min-h-tap items-center rounded-xl px-1 text-sm font-bold text-mu-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent";
 
 export function RecentExpenses({
   tripId,
@@ -49,10 +49,10 @@ export function RecentExpenses({
   return (
     <section
       aria-label="최근 지출"
-      className="flex flex-col rounded-2xl bg-surface-white p-4 shadow-soft ring-1 ring-line-soft"
+      className="flex flex-col rounded-2xl bg-mu-card p-4 border border-mu-line"
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-extrabold text-ink-heading">최근 지출</h2>
+        <h2 className="text-sm font-extrabold text-mu-fg">최근 지출</h2>
         <Link href={`/trips/${tripId}/ledger`} className={LINK}>
           전체 보기
         </Link>
@@ -68,10 +68,10 @@ export function RecentExpenses({
         <SectionRetry onRetry={onRetry} />
       ) : recent.length === 0 ? (
         <div className="flex flex-col gap-1 py-2">
-          <p className="text-sm font-bold text-ink-heading">
+          <p className="text-sm font-bold text-mu-fg">
             아직 지출이 없어요
           </p>
-          <p className="text-xs text-ink-body">
+          <p className="text-xs text-mu-fg-2">
             영수증을 찍거나 직접 추가해 보세요
           </p>
           {automationOff ? (
@@ -81,7 +81,7 @@ export function RecentExpenses({
           ) : null}
         </div>
       ) : (
-        <ul className="mt-1 divide-y divide-line-soft">
+        <ul className="mt-1 divide-y divide-mu-line">
           {recent.map((e) => {
             const date = shortDate(e.spentOn);
             const payer = nameById.get(e.paidBy);
@@ -90,19 +90,19 @@ export function RecentExpenses({
                 <div className="flex min-h-tap items-center gap-3">
                   <span
                     aria-hidden
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-soft text-sm font-bold text-brand"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-mu-sunken text-sm font-bold text-mu-accent"
                   >
                     {(e.category || "기타").slice(0, 1)}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-ink-heading">
+                    <p className="truncate text-sm font-bold text-mu-fg">
                       {e.merchant || e.label || "이름 없는 지출"}
                     </p>
-                    <p className="truncate text-xs text-ink-caption">
+                    <p className="truncate text-xs text-mu-fg-3">
                       {[date, payer].filter(Boolean).join(" · ") || "미상"}
                     </p>
                   </div>
-                  <p className="shrink-0 text-sm font-bold tabular-nums text-ink-heading">
+                  <p className="shrink-0 text-sm font-bold tabular-nums text-mu-fg">
                     {formatKRW(e.krwAmount)}
                   </p>
                 </div>

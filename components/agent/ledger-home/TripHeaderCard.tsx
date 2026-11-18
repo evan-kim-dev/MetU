@@ -49,14 +49,14 @@ export function TripHeaderCard({
   return (
     <section
       aria-label="여행 지출 현황"
-      className="flex flex-col gap-3 rounded-2xl bg-surface-white p-4 shadow-soft ring-1 ring-line-soft"
+      className="flex flex-col gap-3 rounded-2xl bg-mu-card p-4 border border-mu-line"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="truncate text-lg font-extrabold text-ink-heading">
+          <h2 className="truncate text-lg font-extrabold text-mu-fg">
             {trip.destination}
           </h2>
-          <p className="truncate text-xs text-ink-caption">
+          <p className="truncate text-xs text-mu-fg-3">
             {trip.dateRange}
             {trip.isOwner === false ? " · 공유받은 여행" : ""}
           </p>
@@ -66,7 +66,7 @@ export function TripHeaderCard({
             ref={switchRef}
             type="button"
             onClick={onSwitch}
-            className="inline-flex min-h-tap shrink-0 items-center gap-1 rounded-full bg-surface-soft px-3 text-xs font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex min-h-tap shrink-0 items-center gap-1 rounded-full bg-mu-sunken px-3 text-xs font-bold text-mu-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
           >
             <List className="h-4 w-4" aria-hidden />
             목록으로
@@ -75,7 +75,7 @@ export function TripHeaderCard({
       </div>
 
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-ink-caption">총지출</p>
+        <p className="text-xs text-mu-fg-3">총지출</p>
         {expenses.status === "loading" ? (
           <SkeletonBlock className="h-8 w-40 rounded-xl" />
         ) : expenses.status === "error" || !rows ? (
@@ -84,7 +84,7 @@ export function TripHeaderCard({
           <>
             <p
               data-testid="trip-total-krw"
-              className="text-2xl font-extrabold tabular-nums text-ink-heading"
+              className="text-2xl font-extrabold tabular-nums text-mu-fg"
             >
               {formatKRW(totalKrw(rows))}
             </p>
@@ -95,14 +95,14 @@ export function TripHeaderCard({
                   onClick={() => setOpen((v) => !v)}
                   aria-expanded={open}
                   aria-controls={detailId}
-                  className="flex min-h-tap w-full items-center gap-2 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="flex min-h-tap w-full items-center gap-2 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
                 >
-                  <span className="min-w-0 flex-1 truncate text-xs tabular-nums text-ink-body">
+                  <span className="min-w-0 flex-1 truncate text-xs tabular-nums text-mu-fg-2">
                     {foreignLine}
                   </span>
                   <ChevronDown
                     aria-hidden
-                    className={`h-4 w-4 shrink-0 text-ink-caption ${
+                    className={`h-4 w-4 shrink-0 text-mu-fg-3 ${
                       open ? "rotate-180" : ""
                     }`}
                   />

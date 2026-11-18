@@ -67,7 +67,7 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
         className="absolute inset-0 bg-black/45"
         onClick={onClose}
       />
-      <div className="relative z-10 flex max-h-[min(85dvh,680px)] w-full max-w-mobile flex-col overflow-hidden rounded-3xl bg-surface-base shadow-soft">
+      <div className="relative z-10 flex max-h-[min(85dvh,680px)] w-full max-w-mobile flex-col overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card">
         <div className="relative h-44 shrink-0">
           <Image
             src={place.imageUrl}
@@ -83,14 +83,14 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
             type="button"
             aria-label="시트 닫기"
             onClick={onClose}
-            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-surface-white backdrop-blur-sm"
+            className="mu-focus absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white"
           >
             <X className="h-5 w-5" strokeWidth={2.3} />
           </button>
-          <div className="absolute bottom-4 left-4 right-4 text-surface-white">
+          <div className="absolute bottom-4 left-4 right-4 text-white">
             <p className="text-xs font-semibold opacity-90">{place.country}</p>
             <h3 className="text-2xl font-extrabold">{place.name}</h3>
-            <p className="mt-1 text-sm font-bold text-[#93C5FD]">
+            <p className="mt-1 text-sm font-bold text-mu-accent-soft">
               {place.budgetLabel} · {place.highlight}
             </p>
           </div>
@@ -98,17 +98,15 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 rounded-xl border border-line-soft bg-surface-white px-4 py-3">
-              <CalendarDays className="h-4 w-4 shrink-0 text-brand" />
+            <div className="flex items-center gap-2 rounded-mu-lg border border-mu-line bg-mu-card px-4 py-3">
+              <CalendarDays className="h-4 w-4 shrink-0 text-mu-accent" />
               <div>
-                <p className="text-xs font-semibold text-ink-caption">추천 시기</p>
-                <p className="text-sm font-bold text-ink-heading">
-                  {place.bestMonth}
-                </p>
+                <p className="text-xs font-semibold text-mu-fg-3">추천 시기</p>
+                <p className="text-sm font-bold text-mu-fg">{place.bestMonth}</p>
               </div>
             </div>
 
-            <p className="text-sm leading-relaxed text-ink-body">
+            <p className="text-sm leading-relaxed text-mu-fg-2">
               {place.highlight}
             </p>
 
@@ -118,9 +116,9 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
                   href={flightsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line-soft bg-surface-white px-4 py-3 text-sm font-bold text-ink-heading transition-colors hover:bg-surface-soft"
+                  className="mu-focus flex min-h-11 items-center justify-center gap-2 rounded-mu-lg border border-mu-line bg-mu-card px-4 py-3 text-sm font-bold text-mu-fg transition-colors hover:bg-mu-sunken"
                 >
-                  <Plane className="h-4 w-4 text-brand" />
+                  <Plane className="h-4 w-4 text-mu-accent" />
                   항공권 검색(Google Flights)
                 </a>
               ) : null}
@@ -128,21 +126,21 @@ export function DealDetailSheet({ place, onClose }: DealDetailSheetProps) {
                 href={hotelsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line-soft bg-surface-white px-4 py-3 text-sm font-bold text-ink-heading transition-colors hover:bg-surface-soft"
+                className="mu-focus flex min-h-11 items-center justify-center gap-2 rounded-mu-lg border border-mu-line bg-mu-card px-4 py-3 text-sm font-bold text-mu-fg transition-colors hover:bg-mu-sunken"
               >
-                <BedDouble className="h-4 w-4 text-brand" />
+                <BedDouble className="h-4 w-4 text-mu-accent" />
                 호텔 검색(Google 호텔)
               </a>
             </div>
 
-            <p className="text-xs leading-relaxed text-ink-caption">
+            <p className="text-xs leading-relaxed text-mu-fg-3">
               가격은 표시하지 않아요. 검색 링크에서 날짜·좌석에 맞는 실제 요금을
               확인해주세요.
             </p>
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-line-soft bg-surface-white px-5 py-4">
+        <div className="shrink-0 border-t border-mu-line bg-mu-card px-5 py-4">
           <PrimaryButton
             onClick={() => {
               onClose();

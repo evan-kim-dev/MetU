@@ -131,23 +131,23 @@ export function MoreSheet({
               <Link
                 href={item.href}
                 onClick={onClose}
-                className="flex min-h-tap items-center gap-3 rounded-xl px-1 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="flex min-h-tap items-center gap-3 rounded-xl px-1 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-soft">
-                  <Icon className="h-4 w-4 text-brand" aria-hidden />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mu-sunken">
+                  <Icon className="h-4 w-4 text-mu-accent" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold text-ink-heading">
+                  <span className="block truncate text-sm font-bold text-mu-fg">
                     {item.title}
                   </span>
-                  <span className="block truncate text-xs text-ink-body">
+                  <span className="block truncate text-xs text-mu-fg-2">
                     {item.desc}
                   </span>
                 </span>
                 {item.key === "inbox" && unassignedCount > 0 ? (
                   <span
                     aria-label={`미배정 ${unassignedCount}건`}
-                    className="rounded-full bg-danger px-2 py-0.5 text-xs font-extrabold tabular-nums text-white"
+                    className="rounded-full bg-mu-err px-2 py-0.5 text-xs font-extrabold tabular-nums text-mu-on-accent"
                   >
                     {unassignedCount > 99 ? "99+" : unassignedCount}
                   </span>
@@ -158,7 +158,7 @@ export function MoreSheet({
         })}
       </ul>
       {tripId ? null : (
-        <p className="px-1 text-xs text-ink-caption">
+        <p className="px-1 text-xs text-mu-fg-3">
           여행을 만들면 초대·환율·음성·리포트 메뉴도 열려요
         </p>
       )}

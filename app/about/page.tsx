@@ -97,7 +97,7 @@ const PRIVACY_POINTS: string[] = [
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-[15px] font-extrabold tracking-tight text-ink-heading">
+    <h2 className="text-[15px] font-extrabold tracking-tight text-mu-fg">
       {children}
     </h2>
   );
@@ -112,8 +112,8 @@ function FeatureList({
     <ul className="divide-y divide-line-soft/80">
       {items.map((row) => (
         <li key={row.label} className="flex flex-col gap-0.5 py-3.5 first:pt-1 last:pb-0">
-          <p className="text-sm font-bold text-ink-heading">{row.label}</p>
-          <p className="text-[13px] leading-5 text-ink-caption">{row.note}</p>
+          <p className="text-sm font-bold text-mu-fg">{row.label}</p>
+          <p className="text-[13px] leading-5 text-mu-fg-3">{row.note}</p>
         </li>
       ))}
     </ul>
@@ -131,18 +131,18 @@ export default function AboutPage() {
     >
       <article className="flex flex-col px-5 pb-14 pt-6">
         <header className="flex flex-col gap-3 pb-10">
-          <p className="text-xs font-bold tracking-wide text-brand">MetU</p>
-          <h1 className="text-[1.65rem] font-extrabold leading-[1.25] tracking-tight text-ink-heading">
+          <p className="text-xs font-bold tracking-wide text-mu-accent">MetU</p>
+          <h1 className="text-[1.65rem] font-extrabold leading-[1.25] tracking-tight text-mu-fg">
             여행 중 카드 알림이 오면
             <br />
-            <span className="ai-gradient-text">입력 없이 장부가 쌓여요</span>
+            <span className="text-mu-accent">입력 없이 장부가 쌓여요</span>
           </h1>
-          <p className="max-w-[22rem] text-[15px] leading-6 text-ink-body">
+          <p className="max-w-[22rem] text-[15px] leading-6 text-mu-fg-2">
             환율 적용부터 동행자 정산까지, 결제 알림 한 줄에서 이어져요.
           </p>
         </header>
 
-        <section className="flex flex-col gap-5 border-t border-line-soft/90 pt-8">
+        <section className="flex flex-col gap-5 border-t border-mu-line/90 pt-8">
           <SectionHeading>어떻게 동작하나요</SectionHeading>
           <ol className="flex flex-col">
             {STEPS.map((step, index) => (
@@ -158,15 +158,15 @@ export default function AboutPage() {
                 ) : null}
                 <span
                   aria-hidden
-                  className="relative z-[1] flex h-8 w-8 items-center justify-center rounded-full bg-brand text-xs font-extrabold text-surface-white"
+                  className="relative z-[1] flex h-8 w-8 items-center justify-center rounded-full bg-mu-accent text-xs font-extrabold text-mu-on-accent"
                 >
                   {index + 1}
                 </span>
                 <div className="flex flex-col gap-1 pt-0.5">
-                  <p className="text-sm font-extrabold text-ink-heading">
+                  <p className="text-sm font-extrabold text-mu-fg">
                     {step.title}
                   </p>
-                  <p className="text-[13px] leading-5 text-ink-body">
+                  <p className="text-[13px] leading-5 text-mu-fg-2">
                     {step.body}
                   </p>
                 </div>
@@ -175,7 +175,7 @@ export default function AboutPage() {
           </ol>
         </section>
 
-        <section className="mt-2 flex flex-col gap-6 border-t border-line-soft/90 pt-8">
+        <section className="mt-2 flex flex-col gap-6 border-t border-mu-line/90 pt-8">
           <div className="flex flex-col gap-3">
             <SectionHeading>지금 돼요</SectionHeading>
             <FeatureList items={READY} />
@@ -186,17 +186,17 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="mt-2 flex flex-col gap-3 border-t border-line-soft/90 pt-8">
+        <section className="mt-2 flex flex-col gap-3 border-t border-mu-line/90 pt-8">
           <SectionHeading>수익 아이디어 · 검증 전</SectionHeading>
-          <p className="text-[13px] leading-5 text-ink-caption">
+          <p className="text-[13px] leading-5 text-mu-fg-3">
             매출·계약이 있는 내용이 아니에요. 제휴가 필요한 항목은 아직 협의하지
             않았어요.
           </p>
           <ul className="flex flex-col gap-4 pt-1">
             {REVENUE_IDEAS.map((idea) => (
               <li key={idea.title} className="flex flex-col gap-0.5">
-                <p className="text-sm font-bold text-ink-heading">{idea.title}</p>
-                <p className="text-[13px] leading-5 text-ink-caption">
+                <p className="text-sm font-bold text-mu-fg">{idea.title}</p>
+                <p className="text-[13px] leading-5 text-mu-fg-3">
                   {idea.note}
                 </p>
               </li>
@@ -204,13 +204,13 @@ export default function AboutPage() {
           </ul>
         </section>
 
-        <section className="mt-2 flex flex-col gap-3 border-t border-line-soft/90 pt-8">
+        <section className="mt-2 flex flex-col gap-3 border-t border-mu-line/90 pt-8">
           <SectionHeading>개인정보는 이렇게 다뤄요</SectionHeading>
           <ul className="flex flex-col gap-2.5">
             {PRIVACY_POINTS.map((point) => (
               <li
                 key={point}
-                className="flex gap-2.5 text-[13px] leading-5 text-ink-body"
+                className="flex gap-2.5 text-[13px] leading-5 text-mu-fg-2"
               >
                 <span
                   aria-hidden

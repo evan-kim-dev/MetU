@@ -18,7 +18,7 @@ type Props = {
 };
 
 const LINK =
-  "inline-flex min-h-tap items-center rounded-xl px-1 text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand";
+  "inline-flex min-h-tap items-center rounded-xl px-1 text-sm font-bold text-mu-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent";
 
 export function NeedsReviewCard({ count, featured, tripId, onAssigned }: Props) {
   const [busy, setBusy] = useState(false);
@@ -58,15 +58,15 @@ export function NeedsReviewCard({ count, featured, tripId, onAssigned }: Props) 
   return (
     <section
       aria-label="확인이 필요해요"
-      className="flex flex-col gap-3 rounded-2xl bg-surface-white p-4 shadow-soft ring-1 ring-line-soft"
+      className="flex flex-col gap-3 rounded-2xl bg-mu-card p-4 border border-mu-line"
     >
       <div className="flex items-center gap-2">
-        <h2 className="text-sm font-extrabold text-ink-heading">
+        <h2 className="text-sm font-extrabold text-mu-fg">
           확인이 필요해요
         </h2>
         <span
           data-testid="needs-review-count"
-          className="rounded-full bg-danger px-2 py-0.5 text-xs font-extrabold tabular-nums text-white"
+          className="rounded-full bg-mu-err px-2 py-0.5 text-xs font-extrabold tabular-nums text-mu-on-accent"
         >
           {count}건
         </span>
@@ -74,21 +74,21 @@ export function NeedsReviewCard({ count, featured, tripId, onAssigned }: Props) 
 
       {featured ? (
         <div className="flex flex-col gap-1">
-          <p className="truncate text-sm font-bold text-ink-heading">
+          <p className="truncate text-sm font-bold text-mu-fg">
             {reviewSummaryLine(featured.event)}
           </p>
           {reason ? (
-            <p className="line-clamp-2 text-xs text-ink-body">{reason}</p>
+            <p className="line-clamp-2 text-xs text-mu-fg-2">{reason}</p>
           ) : null}
         </div>
       ) : (
-        <p className="text-xs text-ink-body">
+        <p className="text-xs text-mu-fg-2">
           확인함에서 확인할 알림이 있어요
         </p>
       )}
 
       {failed ? (
-        <p role="alert" className="text-xs font-semibold text-danger">
+        <p role="alert" className="text-xs font-semibold text-mu-err">
           붙이지 못했어요. 잠시 뒤 다시 시도해 주세요.
         </p>
       ) : null}
@@ -99,7 +99,7 @@ export function NeedsReviewCard({ count, featured, tripId, onAssigned }: Props) 
             type="button"
             disabled={busy}
             onClick={() => void assign()}
-            className="inline-flex min-h-tap items-center rounded-xl bg-surface-soft px-4 text-sm font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
+            className="inline-flex min-h-tap items-center rounded-xl bg-mu-sunken px-4 text-sm font-bold text-mu-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent disabled:opacity-60"
           >
             {busy ? "붙이는 중…" : `${name} 여행에 붙이기`}
           </button>

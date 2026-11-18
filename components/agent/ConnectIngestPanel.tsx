@@ -109,12 +109,12 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
   }
 
   return (
-    <div className="space-y-6 px-4 py-6 text-sm text-ink-body">
+    <div className="space-y-6 px-4 py-6 text-sm text-mu-fg-2">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight text-ink-heading">
+        <h1 className="text-xl font-semibold tracking-tight text-mu-fg">
           카드 알림 자동 연결
         </h1>
-        <p className="text-ink-muted">
+        <p className="text-mu-fg-3">
           {tripId
             ? "이 여행에 카드 알림을 자동으로 모아요. 연결 코드는 만들 때 한 번만 보여 드려요."
             : "카드 알림을 먼저 연결해요. 여행은 나중에 만들어도 이어서 기록돼요."}
@@ -122,12 +122,12 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
       </header>
 
       {error ? (
-        <div className="rounded-xl bg-red-50 p-3 text-red-800" role="alert">
+        <div className="rounded-xl bg-mu-err-soft p-3 text-mu-err" role="alert">
           <p>{error.message}</p>
           {error.retryable ? (
             <button
               type="button"
-              className="mt-2 min-h-11 rounded-lg bg-white px-3 py-2 text-sm font-medium"
+              className="mt-2 min-h-11 rounded-lg bg-mu-card px-3 py-2 text-sm font-medium"
               onClick={() => void load()}
             >
               다시 시도
@@ -142,12 +142,12 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
           disabled={busy}
           aria-busy={busy}
           onClick={() => void createToken()}
-          className="min-h-touch w-full rounded-xl bg-brand px-4 py-3 font-semibold text-white disabled:opacity-50"
+          className="min-h-touch w-full rounded-xl bg-mu-accent px-4 py-3 font-semibold text-mu-on-accent disabled:opacity-50"
         >
           {busy ? "만드는 중…" : "연결 코드 만들기"}
         </button>
         {plainOnce ? (
-          <div className="space-y-2 rounded-xl bg-amber-50 p-3 text-amber-950">
+          <div className="space-y-2 rounded-xl bg-mu-warn-soft p-3 text-mu-warn">
             <p className="font-medium">
               이 화면을 벗어나면 다시 볼 수 없어요
             </p>
@@ -163,31 +163,31 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-medium text-ink-heading">내 연결 코드</h2>
+        <h2 className="font-medium text-mu-fg">내 연결 코드</h2>
         {loading ? (
           <div className="space-y-2" aria-hidden>
-            <div className="h-12 animate-pulse rounded-xl bg-surface-soft" />
-            <div className="h-12 animate-pulse rounded-xl bg-surface-soft" />
-            <div className="h-12 animate-pulse rounded-xl bg-surface-soft" />
+            <div className="h-12 animate-pulse rounded-xl bg-mu-sunken" />
+            <div className="h-12 animate-pulse rounded-xl bg-mu-sunken" />
+            <div className="h-12 animate-pulse rounded-xl bg-mu-sunken" />
           </div>
         ) : tokens.length === 0 ? (
-          <p className="text-ink-muted">아직 만든 연결 코드가 없어요</p>
+          <p className="text-mu-fg-3">아직 만든 연결 코드가 없어요</p>
         ) : (
           <ul className="space-y-2">
             {tokens.map((t) => (
               <li
                 key={t.id}
-                className="rounded-xl border border-line-muted px-3 py-2"
+                className="rounded-xl border border-mu-line px-3 py-2"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-medium text-ink-heading">
+                    <p className="font-medium text-mu-fg">
                       {t.label || "이름 없음"}
                     </p>
-                    <p className="text-xs text-ink-muted">
+                    <p className="text-xs text-mu-fg-3">
                       만든 날짜 {formatCreated(t.createdAt)}
                     </p>
-                    <p className="text-xs text-ink-muted">
+                    <p className="text-xs text-mu-fg-3">
                       {t.revoked
                         ? "중지됨"
                         : t.lastUsedAt
@@ -197,8 +197,8 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
                     <span
                       className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${
                         t.revoked
-                          ? "bg-surface-soft text-ink-muted"
-                          : "bg-green-50 text-green-900"
+                          ? "bg-mu-sunken text-mu-fg-3"
+                          : "bg-mu-ok-soft text-mu-ok"
                       }`}
                     >
                       {t.revoked ? "중지됨" : "사용 중"}
@@ -215,14 +215,14 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
                           <button
                             type="button"
                             disabled={busy}
-                            className="min-h-11 flex-1 rounded-lg bg-red-600 px-2 text-white"
+                            className="min-h-11 flex-1 rounded-lg bg-mu-err px-2 text-mu-on-accent"
                             onClick={() => void revoke(t.id)}
                           >
                             중지
                           </button>
                           <button
                             type="button"
-                            className="min-h-11 flex-1 rounded-lg border border-line-muted px-2"
+                            className="min-h-11 flex-1 rounded-lg border border-mu-line px-2"
                             onClick={() => setRevokeTarget(null)}
                           >
                             취소
@@ -233,7 +233,7 @@ export function ConnectIngestPanel({ tripId }: { tripId?: string | null }) {
                       <button
                         type="button"
                         disabled={busy}
-                        className="min-h-11 shrink-0 rounded-lg px-3 text-red-600"
+                        className="min-h-11 shrink-0 rounded-lg px-3 text-mu-err"
                         onClick={() => setRevokeTarget(t.id)}
                       >
                         사용 중지

@@ -60,8 +60,8 @@ export function ActiveTripSmartTips() {
       <div className="flex flex-col gap-3">
         <SectionHeader title="AI 팁" ai />
         <div className="flex gap-3 overflow-hidden" aria-busy="true">
-          <div className="h-28 w-60 shrink-0 animate-pulse rounded-2xl bg-surface-soft" />
-          <div className="h-28 w-60 shrink-0 animate-pulse rounded-2xl bg-surface-soft" />
+          <div className="h-28 w-60 shrink-0 animate-pulse rounded-mu-xl bg-mu-sunken" />
+          <div className="h-28 w-60 shrink-0 animate-pulse rounded-mu-xl bg-mu-sunken" />
         </div>
       </div>
     );
@@ -82,12 +82,12 @@ export function ActiveTripSmartTips() {
           aria-busy="true"
           aria-label="맞춤 팁 생성 중"
         >
-          <div className="h-28 w-60 shrink-0 animate-pulse rounded-2xl bg-surface-soft/80" />
-          <div className="h-28 w-60 shrink-0 animate-pulse rounded-2xl bg-surface-soft/80" />
+          <div className="h-28 w-60 shrink-0 animate-pulse rounded-mu-xl bg-mu-sunken/80" />
+          <div className="h-28 w-60 shrink-0 animate-pulse rounded-mu-xl bg-mu-sunken/80" />
         </div>
       ) : null}
       {!loading && loadFailed ? (
-        <p className="px-1 text-xs text-ink-caption">
+        <p className="px-1 text-xs text-mu-fg-3">
           기본 팁을 보여드려요. 연결되면 AI 팁으로 바뀌어요.
         </p>
       ) : null}

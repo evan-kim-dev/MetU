@@ -149,22 +149,22 @@ export function DemoModePanel() {
   const steps = scenario === "mingling" ? MINGLING_STEPS : OSAKA_STEPS;
 
   return (
-    <section className="rounded-2xl bg-surface-soft p-4 ring-1 ring-line-soft">
+    <section className="rounded-2xl bg-mu-sunken p-4 border border-mu-line">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex min-h-11 w-full items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="flex min-h-11 w-full items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
         aria-expanded={open}
       >
         <span>
-          <span className="block text-sm font-extrabold text-ink-heading">
+          <span className="block text-sm font-extrabold text-mu-fg">
             데모 모드
           </span>
-          <span className="block text-xs text-ink-body">
+          <span className="block text-xs text-mu-fg-2">
             밍글링·오사카 시드로 알림→기록 흐름을 재현해요
           </span>
         </span>
-        <span className="text-xs font-bold text-brand">
+        <span className="text-xs font-bold text-mu-accent">
           {open ? "접기" : "펼치기"}
         </span>
       </button>
@@ -175,7 +175,7 @@ export function DemoModePanel() {
             type="button"
             disabled={busy}
             onClick={() => void seed("mingling")}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand px-3 text-sm font-bold text-surface-white disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-mu-accent px-3 text-sm font-bold text-mu-on-accent disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
           >
             밍글링 데모 만들기
           </button>
@@ -183,7 +183,7 @@ export function DemoModePanel() {
             type="button"
             disabled={busy}
             onClick={() => void seed("osaka")}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-surface-white px-3 text-sm font-bold text-ink-heading ring-1 ring-line-soft disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-mu-card px-3 text-sm font-bold text-mu-fg border border-mu-line disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
           >
             오사카 데모 만들기
           </button>
@@ -194,7 +194,7 @@ export function DemoModePanel() {
                 type="button"
                 disabled={busy}
                 onClick={() => void notify(step)}
-                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-surface-white px-2 text-xs font-bold text-ink-heading ring-1 ring-line-soft disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-mu-card px-2 text-xs font-bold text-mu-fg border border-mu-line disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
               >
                 합성 알림 보내기 {step}/{steps.length}
               </button>
@@ -204,39 +204,39 @@ export function DemoModePanel() {
             type="button"
             disabled={busy}
             onClick={() => void resetMingling()}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-surface-white px-3 text-sm font-bold text-ink-heading ring-1 ring-line-soft disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-mu-card px-3 text-sm font-bold text-mu-fg border border-mu-line disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
           >
             데모 초기화
           </button>
           {message ? (
-            <p role="status" className="text-xs text-ink-body">
+            <p role="status" className="text-xs text-mu-fg-2">
               {message}
             </p>
           ) : null}
           {last ? (
-            <p className="text-xs text-ink-body">
+            <p className="text-xs text-mu-fg-2">
               이벤트 {last.eventId.slice(0, 8)}… · 수락 상태 {last.status}
               {last.polled ? ` · 처리 ${last.polled}` : ""}
               {last.duplicate ? " · 중복" : ""}
             </p>
           ) : null}
           {tripId ? (
-            <div className="flex flex-wrap gap-3 text-xs font-bold text-brand">
+            <div className="flex flex-wrap gap-3 text-xs font-bold text-mu-accent">
               <Link
                 href={`/trips/${tripId}/ledger`}
-                className="inline-flex min-h-11 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-11 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
               >
                 데모 가계부
               </Link>
               <Link
                 href={`/trips/${tripId}/ledger?step=invite`}
-                className="inline-flex min-h-11 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-11 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
               >
                 초대 QR 열기
               </Link>
               <Link
                 href={`/trips/${tripId}/ledger/settle`}
-                className="inline-flex min-h-11 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-11 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
               >
                 데모 정산
               </Link>

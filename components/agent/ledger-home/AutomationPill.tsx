@@ -11,23 +11,23 @@ const LOOK: Record<
 > = {
   ok: {
     label: "자동 기록 켜짐",
-    tone: "bg-mint/30 text-success",
-    dot: "bg-success",
+    tone: "bg-mu-ok-soft text-mu-ok",
+    dot: "bg-mu-ok",
   },
   silent: {
     label: "자동 기록 켜짐",
-    tone: "bg-mint/30 text-success",
-    dot: "bg-success",
+    tone: "bg-mu-ok-soft text-mu-ok",
+    dot: "bg-mu-ok",
   },
   unverified: {
     label: "연결 확인 필요",
-    tone: "bg-amber-50 text-amber-900 ring-1 ring-amber-200",
-    dot: "bg-amber-500",
+    tone: "bg-mu-warn-soft text-mu-warn ring-1 ring-mu-warn/30",
+    dot: "bg-mu-warn",
   },
   off: {
     label: "자동 기록 꺼짐 · 연결하기",
-    tone: "bg-surface-soft text-ink-body",
-    dot: "bg-ink-caption",
+    tone: "bg-mu-sunken text-mu-fg-2",
+    dot: "bg-mu-fg-3",
   },
 };
 
@@ -38,7 +38,7 @@ export function AutomationPill({ state }: { state: AutomationPillState }) {
       href="/onboarding/automation"
       data-testid="automation-pill"
       data-state={state}
-      className="inline-flex min-h-tap items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      className="inline-flex min-h-tap items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
     >
       <span
         className={`inline-flex h-8 items-center gap-2 rounded-full px-3 text-xs font-bold ${look.tone}`}

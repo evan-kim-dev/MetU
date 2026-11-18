@@ -53,11 +53,11 @@ export function HomeNotificationBell() {
     <Link
       href="/notifications"
       aria-label={unread > 0 ? `알림 ${unread}개` : "알림"}
-      className="relative z-10 flex min-h-11 min-w-11 items-center justify-center rounded-full text-ink-heading transition-colors active:bg-surface-soft"
+      className="mu-focus relative z-10 flex min-h-11 min-w-11 items-center justify-center rounded-full text-mu-fg transition-colors active:bg-mu-sunken"
     >
       <Bell className="h-5 w-5" strokeWidth={2.2} />
       {unread > 0 ? (
-        <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-bold leading-none text-white">
+        <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-mu-accent px-1 text-mu-caption font-bold leading-none text-mu-on-accent">
           {unread > 9 ? "9+" : unread}
         </span>
       ) : null}

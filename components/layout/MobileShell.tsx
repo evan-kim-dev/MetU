@@ -58,7 +58,7 @@ export function MobileShell({
       <main
         className={`relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain ${
           showBottomNav ? BOTTOM_NAV_PADDING : ""
-        } ${showBottomNav ? "ai-page-ambient" : ""}`}
+        }`}
       >
         {children}
       </main>
