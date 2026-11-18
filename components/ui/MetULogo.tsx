@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 type MetULogoVariant = "appbar" | "hero";
 
@@ -39,19 +40,21 @@ export function MetULogo({
     );
   }
 
-  // 락업은 흰 글자라 밝은 앱바에서는 안 보여요 → 검은 칩 위에 올려요.
+  // 흰 글자 락업 → 컴팩트 다크 칩. 탭하면 홈.
   return (
-    <span
-      className={`inline-flex items-center rounded-mu-lg bg-mu-fg px-2.5 py-1 ${className}`}
+    <Link
+      href="/"
+      aria-label="MetU 홈"
+      className={`mu-focus inline-flex items-center rounded-mu-md bg-mu-fg px-2 py-0.5 ${className}`}
     >
       <Image
         src={LOCKUP_SRC}
-        alt="MetU"
-        width={140}
-        height={56}
+        alt=""
+        width={120}
+        height={48}
         priority
-        className="h-8 w-auto max-w-[9rem] object-contain object-center"
+        className="h-7 w-auto max-w-[7.25rem] object-contain object-left"
       />
-    </span>
+    </Link>
   );
 }

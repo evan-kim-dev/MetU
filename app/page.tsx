@@ -7,7 +7,6 @@ import { SectionSkeleton } from "@/components/ui/PageSkeleton";
 import { ActiveTripSection } from "@/components/home/ActiveTripSection";
 import { AISmartTipsShortcut } from "@/components/home/AISmartTipsShortcut";
 import { HomeGreeting } from "@/components/home/HomeGreeting";
-import { HomeNotificationBell } from "@/components/home/HomeNotificationBell";
 import { GuestHomeCard } from "@/components/home/GuestHomeCard";
 import { FirstRunChecklist } from "@/components/home/FirstRunChecklist";
 import { AutomationStatusBanner } from "@/components/home/AutomationStatusBanner";
@@ -24,7 +23,7 @@ export default async function HomePage() {
   const { recommended } = await loadHomeData();
 
   return (
-    <MobileShell rightSlot={<HomeNotificationBell />}>
+    <MobileShell>
       <div className="flex flex-col gap-7 px-5 pb-2 pt-5">
         <section className="flex flex-col gap-2 animate-fade-up">
           <HomeGreeting />
