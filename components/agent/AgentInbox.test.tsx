@@ -111,7 +111,7 @@ describe("AgentInbox", () => {
     getBrowserSupabase.mockReturnValue(null);
     render(<AgentInbox />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      "수신함"
+      "확인함"
     );
     expect(screen.queryByText("에이전트 인박스")).toBeNull();
     expect(

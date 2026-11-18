@@ -20,7 +20,7 @@ describe("normalizeIngestSource", () => {
 
 describe("ingestStatusMessage", () => {
   it("explains unassigned and duplicate", () => {
-    expect(ingestStatusMessage("unassigned")).toContain("수신함");
+    expect(ingestStatusMessage("unassigned")).toContain("확인함");
     expect(ingestStatusMessage("ignored")).toContain("테스트");
     expect(ingestStatusMessage("received", true)).toContain("중복");
   });
@@ -35,7 +35,7 @@ describe("ingestStatusMessage — 사유별 문구", () => {
       expect(ingestStatusMessage("unassigned", false, { reason })).not.toContain(
         "여행이 없어서"
       );
-      expect(ingestStatusMessage("unassigned", false, { reason })).toContain("수신함");
+      expect(ingestStatusMessage("unassigned", false, { reason })).toContain("확인함");
     }
   });
 

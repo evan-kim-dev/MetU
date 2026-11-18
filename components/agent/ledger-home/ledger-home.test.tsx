@@ -327,7 +327,7 @@ describe("NeedsReviewCard", () => {
     vi.unstubAllGlobals();
   });
 
-  it("제안이 없으면 붙이기 버튼 없이 수신함 링크만 있어요", () => {
+  it("제안이 없으면 붙이기 버튼 없이 확인함 링크만 있어요", () => {
     const featured = {
       event: makeEvent({ id: "ev-osaka", createdAt: "2026-09-11T03:00:00Z" }),
       suggest: null,
@@ -337,7 +337,7 @@ describe("NeedsReviewCard", () => {
     );
     expect(screen.queryByRole("button", { name: /붙이기/ })).toBeNull();
     expect(
-      screen.getByRole("link", { name: "수신함에서 정리하기" }).getAttribute("href")
+      screen.getByRole("link", { name: "확인함에서 정리하기" }).getAttribute("href")
     ).toBe("/agent/inbox");
   });
 });

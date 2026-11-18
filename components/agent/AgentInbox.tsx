@@ -597,8 +597,8 @@ export function AgentInbox({
           className="min-h-11 rounded-lg border border-danger/40 px-3 py-1.5 text-xs font-bold text-danger disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           onClick={() => {
             const msg = hasLinkedExpense
-              ? "수신함에서만 지울까요? 이미 가계부에 들어간 지출은 그대로 남아요."
-              : "이 알림을 수신함에서 완전히 삭제할까요? (「나중에」와 달리 되돌릴 수 없어요)";
+              ? "확인함에서만 지울까요? 이미 가계부에 들어간 지출은 그대로 남아요."
+              : "이 알림을 확인함에서 완전히 삭제할까요? (「나중에」와 달리 되돌릴 수 없어요)";
             if (typeof window !== "undefined" && !window.confirm(msg)) {
               return;
             }
@@ -854,7 +854,7 @@ export function AgentInbox({
               <li key={`${event.id}-r-${it.ref}`}>
                 {agentReasonMessage(it.reasonCode) ||
                   (it.reasons ?? []).join(" · ") ||
-                  `${it.draft?.merchant ?? "항목"} 확인 필요`}
+                  `${it.draft?.merchant ?? "항목"} 확인이 필요해요`}
               </li>
             ))}
           </ul>
@@ -873,21 +873,21 @@ export function AgentInbox({
   const connectHref = tripId
     ? `/trips/${tripId}/ledger/connect`
     : "/onboarding/automation";
-  const backHref = tripId ? `/trips/${tripId}/ledger` : "/agent";
+  const backHref = tripId ? `/trips/${tripId}/ledger` : "/trips";
   const connected = uiState === "ok" || uiState === "silent";
   const unassignedCount = groups.unassigned.length;
   const noTrips = allTrips.length === 0 && trips.length === 0;
 
   return (
     <MobileShell
-      title="수신함"
+      title="확인함"
       showBack
       backHref={backHref}
       showBottomNav={showBottomNav}
     >
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-4">
         <p className="text-xs leading-relaxed text-ink-body">
-          받은 카드 알림
+          확정 전 대기열이에요. 확인하면 가계부에 들어가요.
         </p>
 
         {isGuest ? (
@@ -1052,13 +1052,13 @@ export function AgentInbox({
                 {groups.review.length > 0 ? (
                   <section className="flex flex-col gap-2">
                     <h2 className="text-sm font-extrabold text-ink-heading">
-                      확인 필요
+                      확인이 필요해요
                     </h2>
                     {groups.review.map((e) => (
                       <EventCard
                         key={e.id}
                         event={e}
-                        label="확인 필요"
+                        label="확인이 필요해요"
                         tone="border-amber-200 bg-amber-50/80"
                       />
                     ))}

@@ -25,8 +25,8 @@ import {
 import { Sheet } from "@/components/ds/Sheet";
 import { useOptionalToast } from "@/components/ds/Toast";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { TABLES } from "@/lib/constants";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
+import { fetchTripInboxCount } from "@/lib/ledger/inbox-count";
 import type { HostStepKey } from "@/lib/ledger/journey-state";
 import {
   buildLocalInsight,
@@ -135,27 +135,19 @@ export function LedgerShell({
       m = await listMembers(supabase, tripId);
     }
     const owner = m.find((row) => row.isOwner && row.userId === user.id);
-    const [e, p, pendingRes, proposalRes] = await Promise.all([
+    const [e, p, pendingCount] = await Promise.all([
       listExpenses(supabase, tripId),
       listCardProfiles(supabase),
-      supabase
-        .from("agent_events")
-        .select("id", { count: "exact", head: true })
-        .eq("trip_id", tripId)
-        .eq("user_id", user.id)
-        .in("status", ["received", "processing", "needs_review", "failed"]),
-      owner
-        ? supabase
-            .from(TABLES.tripExpenseProposals)
-            .select("id", { count: "exact", head: true })
-            .eq("trip_id", tripId)
-            .eq("status", "pending")
-        : Promise.resolve({ count: 0 }),
+      fetchTripInboxCount(supabase, {
+        tripId,
+        userId: user.id,
+        includeProposals: Boolean(owner),
+      }),
     ]);
     setMembers(m);
     setExpenses(e);
     setProfiles(p as typeof profiles);
-    setInboxCount((pendingRes.count ?? 0) + (proposalRes.count ?? 0));
+    setInboxCount(pendingCount);
     setLoading(false);
   }, [tripId, user, provider]);
 

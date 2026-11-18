@@ -194,7 +194,7 @@ describe("AgentHubContent", () => {
     render(<AgentHubContent />);
     expect(screen.getByText("여행을 만들면 가계부가 시작돼요")).toBeTruthy();
     expect(screen.queryByTestId("automation-pill")).toBeNull();
-    expect(screen.queryByText("확인 필요")).toBeNull();
+    expect(screen.queryByText("확인이 필요해요")).toBeNull();
     expect(
       screen.getByRole("link", { name: "AI로 일정까지 계획하기" }).getAttribute("href")
     ).toBe("/onboarding");
@@ -229,7 +229,7 @@ describe("AgentHubContent", () => {
     );
     expect(await screen.findByText("야키토리")).toBeTruthy();
     expect(await screen.findByRole("link", { name: "정산 보기" })).toBeTruthy();
-    expect(screen.queryByText("확인 필요")).toBeNull();
+    expect(screen.queryByText("확인이 필요해요")).toBeNull();
     expect(screen.queryByText(/카드 알림 자동 기록이 켜져 있어요/)).toBeNull();
     expect(screen.queryByText(/자동 기록 꺼짐 · 연결하면/)).toBeNull();
   });
@@ -333,7 +333,7 @@ describe("AgentHubContent", () => {
     await enterTokyoHome();
     expect((await screen.findByTestId("needs-review-count")).textContent).toBe("1건");
     expect(screen.queryByRole("button", { name: /붙이기/ })).toBeNull();
-    expect(screen.getByRole("link", { name: "수신함에서 정리하기" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "확인함에서 정리하기" })).toBeTruthy();
   });
 
   it("더보기: 열고 닫으면 포커스가 버튼으로 돌아오고 링크가 도달 가능해요", async () => {

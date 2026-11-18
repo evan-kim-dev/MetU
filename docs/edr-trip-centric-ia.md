@@ -318,14 +318,14 @@ MetU의 기준 단위를 **기능(AI/지도/가계부/에이전트)** 이 아니
 
 **목표:** 대기열·배지·이름을 하나. (사용성: “어디 인박스?” 제거)
 
-- [ ] 상태 배지 카피 **단일 소스** (자동 기록 / 확인 필요 / 수정됨)
-- [ ] events + proposals → 확인함 **한 목록**
-- [ ] 전역+여행 필터 = 같은 컴포넌트 (**주 입구 1**)
-- [ ] 건수 **단일 헬퍼** (배너·쉘·홈 불일치 해소)
-- [ ] share-target·자동화 → 확인함 랜딩 일관
-- [ ] 중복 인박스/제안함 메뉴·카피 제거 또는 리다이렉트
+- [x] 상태 배지 카피 **단일 소스** (`lib/ledger/inbox-copy.ts` + `event-status` 정렬)
+- [x] events + proposals → 확인함 **한 목록** (여행 인박스: ProposalInbox 배지 + AgentInbox 동일 화면)
+- [x] 전역+여행 필터 = 같은 `AgentInbox` (**주 입구** `/agent/inbox`, 여행은 `tripId` 필터)
+- [x] 건수 **단일 헬퍼** (`lib/ledger/inbox-count.ts` → LedgerShell·TripJourney·배너)
+- [x] share-target·자동화 → 확인함 카피/랜딩 일관
+- [x] 수신함 카피 → 확인함으로 통일 (허브 MoreSheet·NeedsReview·Receipt 등)
 
-**완료 조건:** 확인함을 두 곳으로 설명하지 않음.
+**완료 조건:** 확인함을 두 곳으로 설명하지 않음. ✅
 
 ---
 
