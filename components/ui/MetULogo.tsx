@@ -11,7 +11,7 @@ interface MetULogoProps {
 
 /** 앱 아이콘 (파비콘·PWA·로그인 히어로). */
 const ICON_SRC = "/brand/metu-icon.png";
-/** 웹 상단 가로 워드마크 + 마스코트. */
+/** 웹 상단 가로 워드마크 + 마스코트 (검은 배경용 흰 글자). */
 const LOCKUP_SRC = "/brand/metu-lockup.png";
 
 export function MetULogo({
@@ -39,15 +39,18 @@ export function MetULogo({
     );
   }
 
+  // 락업은 흰 글자라 밝은 앱바에서는 안 보여요 → 검은 칩 위에 올려요.
   return (
-    <span className={`inline-flex items-center ${className}`}>
+    <span
+      className={`inline-flex items-center rounded-mu-lg bg-mu-fg px-2.5 py-1 ${className}`}
+    >
       <Image
         src={LOCKUP_SRC}
         alt="MetU"
-        width={120}
-        height={48}
+        width={140}
+        height={56}
         priority
-        className="h-9 w-auto max-w-[7.5rem] object-contain object-center"
+        className="h-8 w-auto max-w-[9rem] object-contain object-center"
       />
     </span>
   );
