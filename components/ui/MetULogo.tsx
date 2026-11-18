@@ -9,8 +9,10 @@ interface MetULogoProps {
   className?: string;
 }
 
-/** 앱 아이콘·워드마크 일체형 (`public/brand/metu-icon.png`). */
+/** 앱 아이콘 (파비콘·PWA·로그인 히어로). */
 const ICON_SRC = "/brand/metu-icon.png";
+/** 웹 상단 가로 워드마크 + 마스코트. */
+const LOCKUP_SRC = "/brand/metu-lockup.png";
 
 export function MetULogo({
   variant = "appbar",
@@ -40,12 +42,12 @@ export function MetULogo({
   return (
     <span className={`inline-flex items-center ${className}`}>
       <Image
-        src={ICON_SRC}
+        src={LOCKUP_SRC}
         alt="MetU"
-        width={36}
-        height={36}
+        width={120}
+        height={48}
         priority
-        className="h-9 w-9 rounded-mu-md"
+        className="h-9 w-auto max-w-[7.5rem] object-contain object-center"
       />
     </span>
   );
