@@ -25,16 +25,20 @@ describe("fetchTripInboxCount", () => {
             count: table === "agent_events" ? 2 : 0,
           }),
       };
-      if (table !== "agent_events") {
-        return {
-          select: () => ({
-            eq: () => ({
-              eq: () => Promise.resolve({ count: 4 }),
-            }),
+      if (table === "agent_events") return chain;
+      const count =
+        table === "trip_expense_proposals"
+          ? 3
+          : table === "trip_bot_proposals"
+            ? 1
+            : 0;
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => Promise.resolve({ count }),
           }),
-        };
-      }
-      return chain;
+        }),
+      };
     });
 
     const n = await fetchTripInboxCount(

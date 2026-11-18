@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Settings } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CardProfileSettings } from "@/components/ledger/CardProfileSettings";
+import { CashWithdrawSheet } from "@/components/ledger/CashWithdrawSheet";
 import { HostPayoutSettings } from "@/components/ledger/HostPayoutSettings";
 import { HostTransferSettings } from "@/components/ledger/HostTransferSettings";
 import { CashRateSettings } from "@/components/ledger/CashRateSettings";
@@ -24,6 +25,11 @@ import {
 } from "@/components/ledger/journey/host/AddExpenseSheet";
 import { Sheet } from "@/components/ds/Sheet";
 import { useOptionalToast } from "@/components/ds/Toast";
+import {
+  TripIntentSheet,
+  type TripIntent,
+} from "@/components/trips/TripIntentSheet";
+import { TripBotSheet } from "@/components/trips/TripBotSheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
 import { fetchTripInboxCount } from "@/lib/ledger/inbox-count";
@@ -41,6 +47,7 @@ import {
 import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { useTrips } from "@/lib/trips/TripProvider";
 
 type Props = {
   tripId: string;
@@ -50,11 +57,23 @@ type Props = {
 };
 
 /** 가계부 탭에서 넘어오는 ?add= / ?settings= 값. 알 수 없는 값은 무시한다. */
-type EntryIntent = "manual" | "receipt" | "voice" | "settings-fx";
+type EntryIntent =
+  | "manual"
+  | "receipt"
+  | "voice"
+  | "cash"
+  | "settings-fx";
 
 function readEntryIntent(params: URLSearchParams): EntryIntent | null {
   const add = params.get("add");
-  if (add === "manual" || add === "receipt" || add === "voice") return add;
+  if (
+    add === "manual" ||
+    add === "receipt" ||
+    add === "voice" ||
+    add === "cash"
+  ) {
+    return add;
+  }
   if (params.get("settings") === "fx") return "settings-fx";
   return null;
 }
@@ -78,7 +97,9 @@ export function LedgerShell({
   step = "record",
   onNavigate,
 }: Props) {
+  const router = useRouter();
   const { user, provider, isAnonymous } = useAuth();
+  const { getTrip } = useTrips();
   const searchParams = useSearchParams();
   const intent = readEntryIntent(searchParams);
   /** UI 숨김만. 권한은 서버 라우트·RLS가 최종 방어. */
@@ -113,6 +134,18 @@ export function LedgerShell({
   const [insightLoading, setInsightLoading] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [intentOpen, setIntentOpen] = useState(false);
+  const [cashOpen, setCashOpen] = useState(false);
+  const [botOpen, setBotOpen] = useState(false);
+
+  const planAllocation = useMemo(() => {
+    const trip = getTrip(tripId);
+    return (trip?.budgetAllocation ?? []).map((a) => ({
+      id: a.id,
+      label: a.label,
+      amount: a.amount,
+    }));
+  }, [getTrip, tripId]);
 
   const reload = useCallback(async () => {
     const supabase = getBrowserSupabase();
@@ -169,6 +202,28 @@ export function LedgerShell({
     setAddTab(tab);
   }
 
+  function handleTripIntent(selected: TripIntent) {
+    if (selected === "schedule") {
+      router.push(`/trips/${tripId}`);
+      return;
+    }
+    if (selected === "expense") {
+      openAdd("paste");
+      return;
+    }
+    if (selected === "split") {
+      onNavigate?.("adjust");
+      return;
+    }
+    if (selected === "cash") {
+      setCashOpen(true);
+      return;
+    }
+    if (selected === "bot") {
+      setBotOpen(true);
+    }
+  }
+
   // 가계부 탭의 바로가기: manual 은 확인 시트를 바로 열고, receipt/voice 는 지출 추가 시트를
   // 그 탭으로 열어 첫 버튼에 포커스만 준다. 파일 선택창은 사용자 제스처가 필요해서 열지 않는다.
   const canEnter = !loading && members.length > 0 && !guestReadonly;
@@ -178,6 +233,10 @@ export function LedgerShell({
     if (intent === "manual") {
       setQueue([newManualDraft()]);
       setQueueIndex(0);
+      return;
+    }
+    if (intent === "cash") {
+      setCashOpen(true);
       return;
     }
     if (intent === "settings-fx") {
@@ -354,9 +413,11 @@ export function LedgerShell({
                   cancelNotice={cancelNotice}
                   onDismissCancel={() => setCancelNotice(null)}
                   onOpenAdd={openAdd}
+                  onOpenIntent={() => setIntentOpen(true)}
                   onAdjust={() => onNavigate?.("adjust")}
                   onSettle={() => onNavigate?.("settle")}
                   dashboard={dashboard}
+                  planAllocation={planAllocation}
                 />
               )}
             </>
@@ -455,19 +516,36 @@ export function LedgerShell({
       ) : null}
 
       {!guestReadonly ? (
-        <AddExpenseSheet
-          tripId={tripId}
-          tab={addTab}
-          onTabChange={setAddTab}
-          onClose={() => setAddTab(null)}
-          focusFirst={addFocusFirst}
-          onDrafts={openDrafts}
-          onCancelNotice={(draft) => {
-            setAddTab(null);
-            setCancelNotice(draft);
-          }}
-          onManual={() => openDrafts([newManualDraft()])}
-        />
+        <>
+          <TripIntentSheet
+            open={intentOpen}
+            onClose={() => setIntentOpen(false)}
+            onSelect={handleTripIntent}
+          />
+          <CashWithdrawSheet
+            open={cashOpen}
+            onClose={() => setCashOpen(false)}
+            onDraft={(draft) => openDrafts([draft])}
+          />
+          <TripBotSheet
+            tripId={tripId}
+            open={botOpen}
+            onClose={() => setBotOpen(false)}
+          />
+          <AddExpenseSheet
+            tripId={tripId}
+            tab={addTab}
+            onTabChange={setAddTab}
+            onClose={() => setAddTab(null)}
+            focusFirst={addFocusFirst}
+            onDrafts={openDrafts}
+            onCancelNotice={(draft) => {
+              setAddTab(null);
+              setCancelNotice(draft);
+            }}
+            onManual={() => openDrafts([newManualDraft()])}
+          />
+        </>
       ) : null}
 
       {queue.length > 0 && !guestReadonly ? (

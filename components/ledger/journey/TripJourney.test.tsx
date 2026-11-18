@@ -20,6 +20,9 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace }),
 }));
 vi.mock("@/lib/auth/AuthProvider", () => ({ useAuth: () => useAuth() }));
+vi.mock("@/lib/trips/TripProvider", () => ({
+  useTrips: () => ({ getTrip: () => undefined }),
+}));
 vi.mock("@/lib/hooks/useAutomationStatus", () => ({
   useAutomationStatus: (...a: unknown[]) => useAutomationStatus(...a),
 }));

@@ -16,8 +16,12 @@ const confirmSheet = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(search),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 vi.mock("@/lib/auth/AuthProvider", () => ({ useAuth: () => useAuth() }));
+vi.mock("@/lib/trips/TripProvider", () => ({
+  useTrips: () => ({ getTrip: () => undefined }),
+}));
 vi.mock("@/lib/ledger/supabase", () => ({
   listMembers: (...a: unknown[]) => listMembers(...a),
   listExpenses: (...a: unknown[]) => listExpenses(...a),
@@ -152,6 +156,15 @@ describe("LedgerShell 바로가기 쿼리", () => {
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByText("음성 입력"))
     );
+    expect(screen.queryByTestId("confirm-sheet")).toBeNull();
+  });
+
+  it("?add=cash 는 현금 인출 시트를 열어요", async () => {
+    search = "add=cash";
+    render(<LedgerShell tripId="t1" />);
+    expect(
+      await screen.findByRole("dialog", { name: "현금 인출·환전" })
+    ).toBeTruthy();
     expect(screen.queryByTestId("confirm-sheet")).toBeNull();
   });
 

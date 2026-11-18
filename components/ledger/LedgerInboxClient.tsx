@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { AgentInbox } from "@/components/agent/AgentInbox";
+import { BotProposalInbox } from "@/components/ledger/BotProposalInbox";
 import { ProposalInbox } from "@/components/ledger/ProposalInbox";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
@@ -59,6 +60,7 @@ export function LedgerInboxClient({ tripId }: Props) {
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-4">
+      <BotProposalInbox tripId={tripId} isHost={isOwner} />
       {isOwner ? (
         <ProposalInbox
           tripId={tripId}

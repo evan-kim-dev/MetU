@@ -17,7 +17,7 @@ interface PublicProfileContentProps {
 
 function Avatar({ src, name }: { src: string | null; name: string }) {
   return (
-    <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-surface-base bg-surface-soft shadow-sm">
+    <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-mu-card bg-mu-sunken shadow-sm">
       <SafeAvatar
         src={src}
         alt={`${name} 프로필`}
@@ -130,19 +130,19 @@ export function PublicProfileContent({ userId }: PublicProfileContentProps) {
     <MobileShell title="프로필" showBack onBack={goBack}>
       <div className="flex flex-col gap-6 px-5 pb-10 pt-6">
         {loading && !display ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-ink-caption">
-            <div className="h-24 w-24 animate-pulse rounded-full bg-surface-soft" />
+          <div className="flex flex-col items-center gap-3 py-16 text-mu-fg-3">
+            <div className="h-24 w-24 animate-pulse rounded-full bg-mu-sunken" />
             <p className="text-sm">프로필을 불러오는 중…</p>
           </div>
         ) : !display ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <UserRound className="h-10 w-10 text-ink-caption" />
-            <p className="text-base font-bold text-ink-heading">
+            <UserRound className="h-10 w-10 text-mu-fg-3" aria-hidden />
+            <p className="text-base font-bold text-mu-fg">
               {loadError
                 ? "프로필을 불러오지 못했어요"
                 : "프로필을 찾을 수 없어요"}
             </p>
-            <p className="text-sm text-ink-caption">
+            <p className="text-sm text-mu-fg-3">
               {loadError
                 ? "네트워크 상태를 확인한 뒤 다시 시도해 주세요."
                 : "탈퇴했거나 아직 공개 정보가 없는 계정일 수 있어요."}
@@ -150,27 +150,27 @@ export function PublicProfileContent({ userId }: PublicProfileContentProps) {
           </div>
         ) : (
           <>
-            <section className="rounded-xl2 bg-surface-white p-6 shadow-soft">
+            <section className="rounded-mu-xl border border-mu-line bg-mu-card p-6">
               <div className="flex flex-col items-center text-center">
                 <Avatar src={display.avatar} name={display.name} />
-                <h1 className="mt-4 text-xl font-extrabold text-ink-heading">
+                <h1 className="mt-4 text-xl font-extrabold text-mu-fg">
                   {display.name}
                 </h1>
-                <p className="mt-1 text-xs font-semibold text-brand">
+                <p className="mt-1 text-xs font-semibold text-mu-accent">
                   {display.membershipLabel}
                 </p>
                 {display.homeCity ? (
-                  <p className="mt-2 inline-flex items-center gap-1 text-sm text-ink-caption">
-                    <MapPin className="h-3.5 w-3.5" />
+                  <p className="mt-2 inline-flex items-center gap-1 text-sm text-mu-fg-3">
+                    <MapPin className="h-3.5 w-3.5" aria-hidden />
                     {display.homeCity}
                   </p>
                 ) : null}
                 {display.bio ? (
-                  <p className="mt-3 max-w-[280px] text-sm leading-relaxed text-ink-body">
+                  <p className="mt-3 max-w-[280px] text-sm leading-relaxed text-mu-fg-2">
                     {display.bio}
                   </p>
                 ) : notFound && fallbackFromPosts ? (
-                  <p className="mt-3 text-sm text-ink-caption">
+                  <p className="mt-3 text-sm text-mu-fg-3">
                     커뮤니티에서 본 작성자 정보예요.
                   </p>
                 ) : null}
@@ -178,15 +178,15 @@ export function PublicProfileContent({ userId }: PublicProfileContentProps) {
             </section>
 
             {display.styles.length > 0 ? (
-              <section className="rounded-xl2 bg-surface-white p-5 shadow-soft">
-                <h2 className="mb-3 text-sm font-extrabold text-ink-heading">
+              <section className="rounded-mu-xl border border-mu-line bg-mu-card p-5">
+                <h2 className="mb-3 text-sm font-extrabold text-mu-fg">
                   여행 스타일
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {display.styles.map((style) => (
                     <span
                       key={style}
-                      className="rounded-full bg-surface-soft px-3 py-1 text-xs font-semibold text-brand-strong"
+                      className="rounded-full bg-mu-accent-soft px-3 py-1 text-xs font-semibold text-mu-accent"
                     >
                       {STYLE_LABELS[style] ?? style}
                     </span>

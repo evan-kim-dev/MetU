@@ -5,10 +5,15 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useLedger } from "@/lib/ledger/useLedger";
 import { useTrips } from "@/lib/trips/TripProvider";
 import { useRouter } from "next/navigation";
-import { Check, MapPin, Share2, Trash2, Users } from "lucide-react";
+import { Check, MapPin, Plus, Share2, Trash2, Users } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { TripBotSheet } from "@/components/trips/TripBotSheet";
 import { TripInfoCard } from "@/components/trips/TripDetailParts";
+import {
+  TripIntentSheet,
+  type TripIntent,
+} from "@/components/trips/TripIntentSheet";
 import { TripDetailBudgetSection } from "@/components/trips/detail/TripDetailBudgetSection";
 import { TripDetailHero } from "@/components/trips/detail/TripDetailHero";
 import { TripDetailMemoSection } from "@/components/trips/detail/TripDetailMemoSection";
@@ -102,7 +107,34 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
   const [mapHighlightKey, setMapHighlightKey] = useState<string | undefined>();
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderError, setReorderError] = useState("");
+  const [intentOpen, setIntentOpen] = useState(false);
+  const [botOpen, setBotOpen] = useState(false);
   const scheduleItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const handleTripIntent = useCallback(
+    (intent: TripIntent) => {
+      if (intent === "schedule") {
+        setDetailTab("schedule");
+        return;
+      }
+      if (intent === "expense") {
+        router.push(`/trips/${tripId}/ledger?add=manual`);
+        return;
+      }
+      if (intent === "split") {
+        router.push(`/trips/${tripId}/ledger?step=adjust`);
+        return;
+      }
+      if (intent === "cash") {
+        router.push(`/trips/${tripId}/ledger?add=cash`);
+        return;
+      }
+      if (intent === "bot") {
+        setBotOpen(true);
+      }
+    },
+    [router, tripId]
+  );
 
   const handleSelectMapPoint = useCallback((point: MapPoint) => {
     setMapHighlightKey(point.key);
@@ -199,6 +231,7 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
           onOpenEdit={openBudgetEdit}
           onCancel={() => setEditSection(null)}
           onSave={saveBudget}
+          onReviewSchedule={() => setDetailTab("schedule")}
         />
 
         <div
@@ -322,6 +355,29 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
           </button>
         ) : null}
       </div>
+
+      {canEdit && !isGuest ? (
+        <>
+          <button
+            type="button"
+            aria-label="추가"
+            onClick={() => setIntentOpen(true)}
+            className="mu-focus fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50%-11rem))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-mu-accent text-mu-on-accent shadow-mu-float"
+          >
+            <Plus className="h-6 w-6" strokeWidth={2.2} aria-hidden />
+          </button>
+          <TripIntentSheet
+            open={intentOpen}
+            onClose={() => setIntentOpen(false)}
+            onSelect={handleTripIntent}
+          />
+          <TripBotSheet
+            tripId={tripId}
+            open={botOpen}
+            onClose={() => setBotOpen(false)}
+          />
+        </>
+      ) : null}
     </MobileShell>
   );
 }
