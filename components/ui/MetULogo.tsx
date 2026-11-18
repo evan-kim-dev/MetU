@@ -12,7 +12,7 @@ interface MetULogoProps {
 
 /** 앱 아이콘 (파비콘·PWA·로그인 히어로). */
 const ICON_SRC = "/brand/metu-icon.png";
-/** 웹 상단 가로 워드마크 + 마스코트 (검은 배경용 흰 글자). */
+/** 웹 상단 가로 워드마크 + 마스코트 (투명 배경, 밝은 바용 파란 글자). */
 const LOCKUP_SRC = "/brand/metu-lockup.png";
 
 export function MetULogo({
@@ -40,12 +40,11 @@ export function MetULogo({
     );
   }
 
-  // 흰 글자 락업 → 컴팩트 다크 칩. 탭하면 홈.
   return (
     <Link
       href="/"
       aria-label="MetU 홈"
-      className={`mu-focus inline-flex items-center rounded-mu-md bg-mu-fg px-2 py-0.5 ${className}`}
+      className={`mu-focus inline-flex items-center ${className}`}
     >
       <Image
         src={LOCKUP_SRC}
@@ -53,7 +52,7 @@ export function MetULogo({
         width={120}
         height={48}
         priority
-        className="h-7 w-auto max-w-[7.25rem] object-contain object-left"
+        className="h-8 w-auto max-w-[8rem] object-contain object-left"
       />
     </Link>
   );
