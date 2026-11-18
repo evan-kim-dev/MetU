@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CircleUserRound,
-  Inbox,
+  Home,
   Route,
   type LucideIcon,
 } from "lucide-react";
@@ -13,26 +13,26 @@ interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** pathname 매칭에 href 대신 쓰는 접두 (확인함=/agent/inbox) */
+  /** pathname 매칭에 href 대신 쓰는 접두 */
   matchPrefix?: string;
+  /** true 면 접두가 "/" 일 때도 exact 만 활성 (홈) */
+  exact?: boolean;
 }
 
 /**
- * EDR trip-centric IA Phase 1: 하단 3탭.
- * 여행 · 확인함 · 내 정보. 홈/멧톡/가계부 허브는 하단에서 제거.
+ * 하단 3탭: 여행 · 홈 · 내 정보.
+ * 확인함은 상단 바 우측(`InboxTopButton`).
  */
 const NAV_ITEMS: NavItem[] = [
   { href: "/trips", label: "여행", icon: Route },
-  {
-    href: "/agent/inbox",
-    label: "확인함",
-    icon: Inbox,
-    matchPrefix: "/agent/inbox",
-  },
+  { href: "/", label: "홈", icon: Home, exact: true },
   { href: "/profile", label: "내 정보", icon: CircleUserRound },
 ];
 
 function isActive(pathname: string, item: NavItem) {
+  if (item.exact) {
+    return pathname === item.href;
+  }
   const prefix = item.matchPrefix ?? item.href;
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
@@ -92,7 +92,7 @@ function SideNavItem({
 
 /**
  * 하단 고정 네비게이션 바.
- * 모바일 캔버스 내부에 고정. 주 입구는 여행·확인함·내 정보만.
+ * 모바일 캔버스 내부에 고정. 주 입구는 여행·홈·내 정보.
  */
 export function BottomNav() {
   const pathname = usePathname();

@@ -63,7 +63,7 @@ export function TopAppBar({
           )}
         </div>
 
-        <div className="relative z-10 flex w-10 items-center justify-end">
+        <div className="relative z-10 flex min-w-10 items-center justify-end gap-0.5">
           {rightSlot}
         </div>
       </div>
