@@ -376,7 +376,7 @@ export default function ShareTargetPage() {
           <p className="text-xs text-ink-muted">
             여행은 나중에 만들어도 돼요. 텍스트는{" "}
             <Link href="/agent/inbox" className="font-bold text-brand">
-              수신함
+              확인함
             </Link>
             에 미할당으로 들어가요.{" "}
             <Link href="/onboarding" className="font-bold text-mu-accent">

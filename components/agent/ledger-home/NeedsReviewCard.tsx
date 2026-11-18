@@ -57,11 +57,13 @@ export function NeedsReviewCard({ count, featured, tripId, onAssigned }: Props) 
 
   return (
     <section
-      aria-label="확인 필요"
+      aria-label="확인이 필요해요"
       className="flex flex-col gap-3 rounded-2xl bg-surface-white p-4 shadow-soft ring-1 ring-line-soft"
     >
       <div className="flex items-center gap-2">
-        <h2 className="text-sm font-extrabold text-ink-heading">확인 필요</h2>
+        <h2 className="text-sm font-extrabold text-ink-heading">
+          확인이 필요해요
+        </h2>
         <span
           data-testid="needs-review-count"
           className="rounded-full bg-danger px-2 py-0.5 text-xs font-extrabold tabular-nums text-white"
@@ -81,7 +83,7 @@ export function NeedsReviewCard({ count, featured, tripId, onAssigned }: Props) 
         </div>
       ) : (
         <p className="text-xs text-ink-body">
-          수신함에서 확인할 알림이 있어요
+          확인함에서 확인할 알림이 있어요
         </p>
       )}
 
@@ -103,7 +105,7 @@ export function NeedsReviewCard({ count, featured, tripId, onAssigned }: Props) 
           </button>
         ) : null}
         <Link href="/agent/inbox" className={LINK}>
-          수신함에서 정리하기
+          확인함에서 정리하기
         </Link>
       </div>
     </section>

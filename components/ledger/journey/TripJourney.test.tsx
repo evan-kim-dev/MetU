@@ -151,7 +151,7 @@ describe("TripJourney", () => {
   it("?step 무효면 기본 단계로 해석해요", async () => {
     search = "step=hack";
     render(<TripJourney tripId="t1" />);
-    await screen.findByRole("navigation", { name: "정산 단계" });
+    await screen.findByRole("navigation", { name: "가계부 · 정산" });
     // settle 기본 → SettleStep 이 CTA 소유 (로드 후 버튼 등장)
     expect(
       await screen.findByRole("heading", { name: "이 금액으로 정산해요" })
@@ -188,8 +188,8 @@ describe("TripJourney", () => {
   it("묶음 칸 탭 시 세부 step 쿼리를 push해요", async () => {
     search = "step=settle";
     render(<TripJourney tripId="t1" />);
-    await screen.findByRole("navigation", { name: "정산 단계" });
-    const nav = screen.getByRole("navigation", { name: "정산 단계" });
+    await screen.findByRole("navigation", { name: "가계부 · 정산" });
+    const nav = screen.getByRole("navigation", { name: "가계부 · 정산" });
     const prepBtn = Array.from(nav.querySelectorAll("button")).find((b) =>
       (b.getAttribute("aria-label") ?? "").startsWith("준비")
     );
@@ -261,7 +261,7 @@ describe("TripJourney", () => {
     it("?step=pay 에도 머물러요", async () => {
       search = "step=pay";
       render(<TripJourney tripId="t1" />);
-      await screen.findByRole("navigation", { name: "정산 단계" });
+      await screen.findByRole("navigation", { name: "가계부 · 정산" });
       await waitFor(() => expect(listMembers).toHaveBeenCalled());
       expect(replace).not.toHaveBeenCalled();
     });
@@ -280,7 +280,7 @@ describe("TripJourney", () => {
     it("게스트 칸 탭은 게스트 키만 push 해요", async () => {
       search = "step=share";
       render(<TripJourney tripId="t1" />);
-      const nav = await screen.findByRole("navigation", { name: "정산 단계" });
+      const nav = await screen.findByRole("navigation", { name: "가계부 · 정산" });
       const payBtn = Array.from(nav.querySelectorAll("button")).find((b) =>
         (b.getAttribute("aria-label") ?? "").startsWith("송금")
       );

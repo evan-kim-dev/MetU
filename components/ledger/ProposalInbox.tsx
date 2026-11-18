@@ -94,10 +94,15 @@ export function ProposalInbox({
 
   return (
     <section
-      aria-label="게스트 제안"
+      aria-label="제안 · 확인이 필요해요"
       className="rounded-mu-xl border border-mu-line bg-mu-card p-4"
     >
-      <h2 className="text-sm font-extrabold text-mu-fg">게스트 제안</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="text-sm font-extrabold text-mu-fg">게스트 제안</h2>
+        <span className="rounded-full bg-mu-warn-soft px-2 py-0.5 text-mu-caption font-bold text-mu-warn">
+          확인이 필요해요
+        </span>
+      </div>
       <ul className="mt-2 flex flex-col gap-2">
         {rows.map((p) => (
           <li

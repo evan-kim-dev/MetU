@@ -246,7 +246,7 @@ export function StepVerify({
                 href="/agent/inbox"
                 className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
-                수신함에서 붙이기
+                확인함에서 붙이기
               </Link>
             ) : null}
           </div>

@@ -30,7 +30,7 @@ const ACCEPT = "image/jpeg,image/png,image/webp";
 const DONE_TEXT: Record<Done, string> = {
   saved: "영수증을 읽어서 가계부에 넣었어요.",
   merged: "이미 있는 지출에 영수증을 붙였어요.",
-  review: "영수증을 읽었어요. 수신함에서 확인해 주세요.",
+  review: "영수증을 읽었어요. 확인함에서 확인해 주세요.",
   not_receipt: "영수증이 아닌 것 같아요.",
   failed: "영수증을 읽지 못했어요. 붙여넣기·직접 입력으로 이어서 적어 주세요.",
 };
@@ -248,8 +248,8 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
         onClick={() => setInstant((v) => !v)}
       >
         {instant
-          ? "수신함 없이 바로 확인하는 중이에요 (눌러서 끄기)"
-          : "수신함 없이 바로 확인할래요"}
+          ? "확인함 없이 바로 확인하는 중이에요 (눌러서 끄기)"
+          : "확인함 없이 바로 확인할래요"}
       </button>
       {phase === "uploading" ? (
         <p role="status" className="text-xs font-semibold text-mu-fg-3">
@@ -283,7 +283,7 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
               href={`/trips/${tripId}/ledger/inbox`}
               className="inline-flex min-h-11 items-center font-bold text-mu-accent"
             >
-              수신함 열기
+              확인함 열기
             </Link>
           ) : null}
         </p>
@@ -295,7 +295,7 @@ export function ReceiptUploader({ tripId, onDraft }: Props) {
             href={`/trips/${tripId}/ledger/inbox`}
             className="inline-flex min-h-11 items-center font-bold text-mu-accent"
           >
-            수신함
+            확인함
           </Link>
           에서 확인해 주세요.
         </p>

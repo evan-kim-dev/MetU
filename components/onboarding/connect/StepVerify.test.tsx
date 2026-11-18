@@ -139,11 +139,11 @@ describe("StepVerify", () => {
     );
     expect(screen.getByText("아직 여행에 안 붙었어요")).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "수신함에서 붙이기" }).getAttribute("href")
+      screen.getByRole("link", { name: "확인함에서 붙이기" }).getAttribute("href")
     ).toBe("/agent/inbox");
   });
 
-  it("안 붙은/실패한 실제 알림은 사유를 한 줄로 알려줘요 (수신함과 같은 문구)", () => {
+  it("안 붙은/실패한 실제 알림은 사유를 한 줄로 알려줘요 (확인함과 같은 문구)", () => {
     const render1 = (e: AutomationStatusEvent) =>
       render(
         <StepVerify

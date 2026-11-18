@@ -30,6 +30,7 @@ import {
   type JourneySettlement,
   type JourneyStepKey,
 } from "@/lib/ledger/journey-state";
+import { fetchTripInboxCount } from "@/lib/ledger/inbox-count";
 import { computeBalances } from "@/lib/ledger/settle";
 import {
   fetchLatestSettlement,
@@ -85,23 +86,22 @@ export function TripJourney({ tripId }: Props) {
     }
     let cancelled = false;
     void (async () => {
-      const [members, expenses, latest, pendingRes] = await Promise.all([
+      const [members, expenses, latest, pendingCount] = await Promise.all([
         listMembers(supabase, tripId),
         listExpenses(supabase, tripId),
         fetchLatestSettlement(supabase, tripId),
-        supabase
-          .from("agent_events")
-          .select("id", { count: "exact", head: true })
-          .eq("trip_id", tripId)
-          .eq("user_id", user.id)
-          .in("status", ["received", "processing", "needs_review", "failed"]),
+        fetchTripInboxCount(supabase, {
+          tripId,
+          userId: user.id,
+          includeProposals: false,
+        }),
       ]);
       if (cancelled) return;
       setMemberCount(Math.max(1, members.length));
       setExpenseCount(expenses.length);
       setMemberRows(members);
       setExpenseRows(expenses);
-      setPendingReviewCount(pendingRes.count ?? 0);
+      setPendingReviewCount(pendingCount);
       const me = members.find((m) => m.userId === user.id);
       const liveBalances = computeBalances(
         members.map((m) => m.id),
@@ -369,11 +369,11 @@ export function TripJourney({ tripId }: Props) {
           steps={stepsForUi}
           currentKey={currentPhase ?? stepsForUi[0]?.key ?? "prep"}
           onSelect={onSelectPhase}
-          onBack={() => router.push("/agent")}
+          onBack={() => router.push(`/trips/${tripId}`)}
           title={
             stepsForUi.find((s) => s.key === currentPhase)?.label ?? "가계부"
           }
-          navAriaLabel="정산 단계"
+          navAriaLabel="가계부 · 정산"
         />
         <div className="flex-1 overflow-y-auto">{body}</div>
         {role === "host" && cta ? (

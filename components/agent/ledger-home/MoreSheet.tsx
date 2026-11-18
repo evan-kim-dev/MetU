@@ -46,7 +46,7 @@ function buildItems(tripId: string | null): { global: Item[]; trip: Item[] } {
       {
         key: "inbox",
         href: "/agent/inbox",
-        title: "내 수신함",
+        title: "확인함",
         desc: "여행에 붙이지 못한 알림을 정리해요",
         icon: Inbox,
       },

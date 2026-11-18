@@ -19,7 +19,7 @@ describe("GateNotice", () => {
       screen.getByText("자동 기록을 연결해 보세요")
     ).toBeTruthy();
     expect(
-      screen.getByText("설정을 마치면 내 여행으로 돌아가요.")
+      screen.getByText("설정을 마치면 여행으로 돌아가요.")
     ).toBeTruthy();
   });
 

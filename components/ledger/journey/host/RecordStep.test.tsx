@@ -68,7 +68,7 @@ describe("RecordStep", () => {
     expect(h.onSettle).toHaveBeenCalledTimes(1);
   });
 
-  it("총지출·건수와 최근순 목록(외화·결제자), 누르면 분담 단계로", () => {
+  it("실제 지출·건수와 최근순 목록(외화·결제자), 누르면 분담 단계로", () => {
     const h = renderStep({
       expenses: [
         exp({ id: "a", merchant: "카페", spentOn: "2026-07-20", krwAmount: 4500 }),
@@ -84,9 +84,9 @@ describe("RecordStep", () => {
         }),
       ],
     });
-    expect(screen.getByLabelText("총지출 ₩15,500")).toBeTruthy();
+    expect(screen.getByLabelText("실제 지출 ₩15,500")).toBeTruthy();
     expect(
-      screen.getByText((t) => t.includes("지출 2건"))
+      screen.getByText((t) => t.includes("확정 2건"))
     ).toBeTruthy();
     const list = screen.getByRole("heading", { name: "최근 지출" }).closest("section")!;
     const rows = within(list)

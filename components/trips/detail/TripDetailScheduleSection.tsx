@@ -28,7 +28,7 @@ export type TripDetailScheduleSectionProps = {
   trip: Trip;
   canEdit: boolean;
   isGuest: boolean;
-  detailTab: "schedule" | "ledger";
+  detailTab: "summary" | "schedule";
   spendByPlaceId?: Record<string, number>;
   mapHighlightKey?: string;
   onSelectMapPoint: (point: MapPoint) => void;
@@ -65,7 +65,6 @@ export function TripDetailScheduleSection(props: TripDetailScheduleSectionProps)
   const {
     trip,
     canEdit,
-    isGuest,
     detailTab,
     spendByPlaceId,
     mapHighlightKey,
@@ -90,7 +89,7 @@ export function TripDetailScheduleSection(props: TripDetailScheduleSectionProps)
 
   return (
     <>
-        {(isGuest || detailTab === "schedule") &&
+        {detailTab === "schedule" &&
         trip.dailySchedule &&
         trip.dailySchedule.length > 0 ? (
           <TripMapPanel
@@ -104,7 +103,7 @@ export function TripDetailScheduleSection(props: TripDetailScheduleSectionProps)
         ) : null}
 
         {/* AI 일정표 */}
-        {(isGuest || detailTab === "schedule") &&
+        {detailTab === "schedule" &&
         trip.dailySchedule &&
         trip.dailySchedule.length > 0 ? (
           <section className="rounded-2xl border-0 bg-surface-white p-5 shadow-sm">

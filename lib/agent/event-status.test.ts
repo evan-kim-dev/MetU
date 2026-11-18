@@ -13,7 +13,7 @@ import {
 describe("agentEventStatusLabel", () => {
   it("maps known statuses", () => {
     expect(agentEventStatusLabel("unassigned")).toBe("여행 없음·보관됨");
-    expect(agentEventStatusLabel("done")).toBe("가계부 저장됨");
+    expect(agentEventStatusLabel("done")).toBe("자동 기록됨");
     expect(agentEventStatusLabel("ignored")).toBe("나중에");
   });
 
@@ -195,7 +195,7 @@ describe("사유(reason) → 한국어 한 줄", () => {
       status: "needs_review",
       reasonCode: "mystery",
     });
-    expect(unassigned).toBe("수신함에 보관했어요. 여행에 붙여 주세요");
+    expect(unassigned).toBe("확인함에 보관했어요. 여행에 붙여 주세요");
     expect(failed).toBe("처리하지 못했어요. 다시 처리해 주세요");
     expect(review).toBe("확인이 필요해요");
     expect(unassigned).not.toContain("mystery");

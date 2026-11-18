@@ -27,8 +27,8 @@ export function formatSmsPreviewLabel(
 const AGENT_EVENT_STATUS_LABELS: Record<string, string> = {
   received: "처리 대기",
   processing: "처리 중",
-  done: "가계부 저장됨",
-  needs_review: "확인 필요",
+  done: "자동 기록됨",
+  needs_review: "확인이 필요해요",
   ignored: "나중에",
   failed: "실패",
   unassigned: "여행 없음·보관됨",
@@ -51,10 +51,10 @@ export function agentEventStatusLabel(status: string): string {
  * "여행이 없어서" 는 no_trips 에만 쓴다.
  */
 export const AGENT_REASON_MESSAGES: Readonly<Record<string, string>> = {
-  no_trips: "여행이 없어서 수신함에 보관했어요",
-  no_dates: "여행 날짜를 넣으면 자동으로 붙어요. 수신함에 보관했어요",
+  no_trips: "여행이 없어서 확인함에 보관했어요",
+  no_dates: "여행 날짜를 넣으면 자동으로 붙어요. 확인함에 보관했어요",
   outside_window:
-    "여행 날짜와 달라서 수신함에 보관했어요. 수신함에서 붙일 수 있어요",
+    "여행 날짜와 달라서 확인함에 보관했어요. 확인함에서 붙일 수 있어요",
   trip_match_uncertain: "여행 날짜가 정확히 맞지 않아 확인이 필요해요",
   "no-owner-member":
     "이 여행의 멤버로 확인되지 않아 처리하지 못했어요. 여행을 확인한 뒤 다시 처리해 주세요",
@@ -66,7 +66,7 @@ export const AGENT_REASON_MESSAGES: Readonly<Record<string, string>> = {
 
 /** 상태별 일반 문구 — 모르는 사유일 때만 쓴다. */
 const GENERIC_REASON_BY_STATUS: Readonly<Record<string, string>> = {
-  unassigned: "수신함에 보관했어요. 여행에 붙여 주세요",
+  unassigned: "확인함에 보관했어요. 여행에 붙여 주세요",
   needs_review: "확인이 필요해요",
   failed: "처리하지 못했어요. 다시 처리해 주세요",
 };
