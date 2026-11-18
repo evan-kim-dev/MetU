@@ -2,7 +2,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 상태 | Wave A 완료 (`#105`). 다음은 Wave B **개념 통폐합** |
+| 상태 | Wave B 1차 완료 (허브·ledger-home 삭제 · 확인함 쉘 단일화) |
 | 작성일 | 2026-11-19 |
 | 목적 | **한 번에** UI를 손볼 때의 단일 기준서 (팀·에이전트 공유) |
 | 관련 | `docs/design-system.md` · `docs/edr-trip-centric-ia.md` · `docs/hallmark-audit-triage.md` · `lib/design/tokens.ts` |
@@ -171,13 +171,13 @@ B1에서 export 대량 정리함. 다음은 통폐합 후 안 쓰이는 **구 �
 
 **완료 체감:** “가계부 탭이 뭐예요?”가 안 나오고, 그라데이션 CTA가 없다.
 
-### Wave B — 쉘·개념 단일화 (다음, 파일 강제 병합 금지)
+### Wave B — 쉘·개념 단일화 (파일 강제 병합 금지)
 
-1. **가계부 쉘 1** — `SharedTripContent`의 `LedgerTab` → `TripJourney`(또는 동일 쉘)로 흡수 후 `LedgerTab` 삭제 후보  
-2. **확인함 1** — `/agent/inbox`와 `/trips/.../ledger/inbox`가 같은 리스트·필터 컴포넌트를 쓰게 (라우트는 딥링크 유지, UI 중복만 제거). `AgentInbox`를 키우지 말고 **공유 모듈 추출** 또는 손댈 때 **분해**  
-3. 중복 Resume / NeedsReview / 인박스 배너 입구 정리  
-4. 게스트·호스트 같은 트리  
-5. 통폐합 후 죽은 것 삭제: `AgentHubContent`(+테스트) 등 `rg -w` 0건만  
+1. **가계부 쉘 1** — 여행 상세·`/ledger`는 `TripJourney`. 공유 플랜만 `LedgerTab` readOnly 유지 (EDR)  
+2. **확인함 1** — `AgentInbox` 단일 리스트. 여행 확인함은 `LedgerInboxClient`가 쉘+제안·`embedded`로 조합 (딥링크 유지, 이중 MobileShell 제거)  
+3. 중복 허브 삭제 — `AgentHubContent` + `ledger-home/**`  
+4. 게스트·호스트는 `TripJourney` 트리 (`guest/` 스텝)  
+5. 남은 것: 홈 `UnassignedInboxBanner` vs 상단 뱃지 카피 정리(선택), `LedgerTab` 공유 전용 축소(손댈 때)  
 
 ### Wave C — 품질·선택 (여력)
 

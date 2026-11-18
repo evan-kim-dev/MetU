@@ -10,6 +10,7 @@ describe("gateLabel", () => {
     expect(gateLabel("/trips/abc/ledger")).toBe("여행 가계부");
     expect(gateLabel("/agent")).toBe("가계부");
     expect(gateLabel("/agent/inbox")).toBe("확인함");
+    expect(gateLabel("/trips/abc/ledger/inbox")).toBe("확인함");
     expect(gateLabel("/profile")).toBe("내 정보");
   });
 
