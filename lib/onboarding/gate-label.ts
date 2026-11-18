@@ -14,6 +14,7 @@ export function gateLabel(path: string): string | null {
   if (noQuery === "/agent/inbox" || noQuery.startsWith("/agent/inbox/")) {
     return "확인함";
   }
+  if (/^\/trips\/[^/]+\/ledger\/inbox\/?$/.test(noQuery)) return "확인함";
   if (noQuery === "/agent") return "가계부";
   if (noQuery === "/profile") return "내 정보";
   if (/^\/trips\/[^/]+\/ledger\/?$/.test(noQuery)) return "여행 가계부";

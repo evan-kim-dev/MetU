@@ -901,7 +901,9 @@ export function AgentInbox({
               카드·은행 알림을 자동으로 모아 가계부에 넣어 드려요.
             </p>
             <Link
-              href="/login?next=/agent/inbox"
+              href={`/login?next=${encodeURIComponent(
+                tripId ? `/trips/${tripId}/ledger/inbox` : "/agent/inbox"
+              )}`}
               className="bg-mu-accent mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-2xl text-sm font-bold text-mu-on-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
             >
               로그인하기

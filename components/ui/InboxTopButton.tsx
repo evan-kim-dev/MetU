@@ -17,7 +17,9 @@ export function InboxTopButton() {
   const { user, provider, isReady } = useAuth();
   const [count, setCount] = useState(0);
   const active =
-    pathname === "/agent/inbox" || pathname.startsWith("/agent/inbox/");
+    pathname === "/agent/inbox" ||
+    pathname.startsWith("/agent/inbox/") ||
+    /\/trips\/[^/]+\/ledger\/inbox\/?$/.test(pathname);
 
   const refresh = useCallback(async () => {
     if (!user || provider === "guest") {

@@ -2,7 +2,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 상태 | Wave B in progress — 허브·ledger-home 삭제 · 확인함 쉘 단일화 |
+| 상태 | Wave B 1차 완료 (허브·ledger-home 삭제 · 확인함 쉘 단일화) |
 | 작성일 | 2026-11-19 |
 | 목적 | **한 번에** UI를 손볼 때의 단일 기준서 (팀·에이전트 공유) |
 | 관련 | `docs/design-system.md` · `docs/edr-trip-centric-ia.md` · `docs/hallmark-audit-triage.md` · `lib/design/tokens.ts` |

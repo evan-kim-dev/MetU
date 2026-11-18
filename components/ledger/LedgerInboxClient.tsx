@@ -64,11 +64,13 @@ export function LedgerInboxClient({ tripId }: Props) {
       !isAnonymous
   );
 
+  // 여행 여정 안이므로 하단 내비는 항상 둡니다. (/agent/inbox 는 자동화 상태에 따름)
   return (
     <MobileShell
       title={INBOX_NAME}
       showBack
       backHref={`/trips/${tripId}/ledger`}
+      showBottomNav
     >
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-4">
         <p className="text-xs leading-relaxed text-mu-fg-2">
