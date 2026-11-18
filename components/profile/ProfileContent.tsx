@@ -53,7 +53,7 @@ function ProfileAvatar({ src, alt }: { src: string; alt: string }) {
 
   if (!value || failed) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-surface-soft text-3xl">
+      <div className="flex h-full w-full items-center justify-center bg-mu-sunken text-3xl">
         👤
       </div>
     );

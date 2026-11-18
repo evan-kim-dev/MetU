@@ -30,6 +30,7 @@ function exp(over: Partial<LedgerExpenseRow> & { id: string }): LedgerExpenseRow
 function renderStep(props: Partial<React.ComponentProps<typeof RecordStep>> = {}) {
   const handlers = {
     onOpenAdd: vi.fn(),
+    onOpenIntent: vi.fn(),
     onAdjust: vi.fn(),
     onSettle: vi.fn(),
     onDismissCancel: vi.fn(),
@@ -60,12 +61,29 @@ describe("RecordStep", () => {
     expect(screen.queryByText("지출 분석 보기")).toBeNull();
   });
 
-  it("주 CTA 「지출 추가」와 보조 「다음: 정산하기」", () => {
+  it("주 CTA 「추가」는 의도 시트, 보조 「다음: 정산하기」", () => {
     const h = renderStep();
-    fireEvent.click(screen.getByRole("button", { name: "지출 추가" }));
-    expect(h.onOpenAdd).toHaveBeenCalledWith("paste");
+    fireEvent.click(screen.getByRole("button", { name: "추가" }));
+    expect(h.onOpenIntent).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "다음: 정산하기" }));
     expect(h.onSettle).toHaveBeenCalledTimes(1);
+  });
+
+  it("항공·숙소는 플랜 매칭 배지를 보여 줘요 (예상≠실제)", () => {
+    renderStep({
+      planAllocation: [{ id: "1", label: "숙소", amount: 400_000 }],
+      expenses: [
+        exp({
+          id: "h1",
+          category: "숙소",
+          merchant: "호텔",
+          krwAmount: 450_000,
+          spentOn: "2026-07-20",
+        }),
+      ],
+    });
+    expect(screen.getByText(/숙소 예상/)).toBeTruthy();
+    expect(screen.getByText(/플랜보다/)).toBeTruthy();
   });
 
   it("실제 지출·건수와 최근순 목록(외화·결제자), 누르면 분담 단계로", () => {

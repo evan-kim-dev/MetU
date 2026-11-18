@@ -15,10 +15,10 @@
   "components/map": 11,
   "components/notifications": 16,
   "components/onboarding": 445,
-  "components/profile": 112,
+  "components/profile": 105,
   "components/pwa": 18,
   "components/recommend": 144,
-  "components/trips": 526,
+  "components/trips": 523,
   "components/ui": 148,
   "components/ds": 0
 }

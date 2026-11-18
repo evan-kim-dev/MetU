@@ -112,7 +112,7 @@ describe("/join/[token]", () => {
     ).toBeTruthy();
   });
 
-  it("합류에 성공하면 목록 갱신(afterJoinTrip)을 호출하고 가계부로 이동한다", async () => {
+  it("합류에 성공하면 목록 갱신(afterJoinTrip)을 호출하고 여행 요약으로 이동한다", async () => {
     useAuth.mockReturnValue({ user: { id: "u-b" }, provider: "kakao" });
     rpc.mockImplementation(async (name: string) => {
       if (name === "preview_trip_invite") return { data: preview, error: null };
@@ -133,7 +133,7 @@ describe("/join/[token]", () => {
       p_display_name: "새친구",
     });
     expect(afterJoinTrip).toHaveBeenCalledWith(TRIP);
-    expect(replace).toHaveBeenCalledWith(`/trips/${TRIP}/ledger`);
+    expect(replace).toHaveBeenCalledWith(`/trips/${TRIP}`);
     expect(afterJoinTrip.mock.invocationCallOrder[0]!).toBeLessThan(
       replace.mock.invocationCallOrder[0]!
     );
@@ -154,7 +154,7 @@ describe("/join/[token]", () => {
     fireEvent.click(await screen.findByRole("button", { name: "참여하기" }));
 
     await waitFor(() =>
-      expect(replace).toHaveBeenCalledWith(`/trips/${TRIP}/ledger`)
+      expect(replace).toHaveBeenCalledWith(`/trips/${TRIP}`)
     );
     expect(console.error).toHaveBeenCalled();
   });

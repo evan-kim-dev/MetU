@@ -19,7 +19,13 @@ import { ExpenseRow } from "@/components/ds/ExpenseRow";
 import { CashPocketCard } from "@/components/ledger/CashPocketCard";
 import type { AddExpenseTab } from "@/components/ledger/journey/host/AddExpenseSheet";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
+import {
+  isTravelBigTicket,
+  matchExpenseToPlan,
+  type PlanAlloc,
+} from "@/lib/ledger/plan-match";
 import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
+import { formatKRW } from "@/lib/shared/format";
 
 type Props = {
   tripId: string;
@@ -30,12 +36,16 @@ type Props = {
   cancelNotice: ExpenseDraftInput | null;
   onDismissCancel: () => void;
   onOpenAdd: (tab: AddExpenseTab) => void;
+  /** 주 CTA: 의도 선택 시트 (일정·분담·현금·봇 포함) */
+  onOpenIntent: () => void;
   /** 지출을 누르면 분담(선택) 단계로 가요. */
   onAdjust: () => void;
   /** 주 흐름: 기록 → 정산. */
   onSettle: () => void;
   /** 통계 카드 (LedgerDashboard) */
   dashboard: React.ReactNode;
+  /** 플랜 예산 배분 — 항공·숙소 매칭 안내 (예상≠실제) */
+  planAllocation?: ReadonlyArray<PlanAlloc>;
 };
 
 function sortRecent(list: LedgerExpenseRow[]): LedgerExpenseRow[] {
@@ -75,9 +85,11 @@ export function RecordStep({
   cancelNotice,
   onDismissCancel,
   onOpenAdd,
+  onOpenIntent,
   onAdjust,
   onSettle,
   dashboard,
+  planAllocation = [],
 }: Props) {
   const total = expenses.reduce(
     (s, e) => s + (Number.isFinite(e.krwAmount) ? e.krwAmount : 0),
@@ -85,6 +97,38 @@ export function RecordStep({
   );
   const nameOf = (id: string) => members.find((m) => m.id === id)?.displayName;
   const recent = sortRecent(expenses);
+
+  function planHint(e: LedgerExpenseRow): {
+    status: "review";
+    statusLabel: string;
+  } | null {
+    const label = e.merchantKo || e.merchant || e.label || "";
+    if (!isTravelBigTicket(e.category, label)) return null;
+    const match = matchExpenseToPlan({
+      category: e.category,
+      label,
+      merchant: e.merchant,
+      krwAmount: e.krwAmount,
+      allocation: planAllocation,
+    });
+    if (!match) {
+      return {
+        status: "review",
+        statusLabel: "항공·숙소 · 플랜과 따로 확인",
+      };
+    }
+    const delta = match.deltaKrw;
+    const deltaLabel =
+      delta === 0
+        ? "플랜과 같아요"
+        : delta > 0
+          ? `플랜보다 ${formatKRW(delta)} 더`
+          : `플랜보다 ${formatKRW(-delta)} 덜`;
+    return {
+      status: "review",
+      statusLabel: `${match.allocLabel} 예상 ${formatKRW(match.planAmountKrw)} · ${deltaLabel}`,
+    };
+  }
 
   return (
     <div className="flex flex-col gap-5 pb-24">
@@ -205,18 +249,27 @@ export function RecordStep({
           </div>
         ) : (
           <div className="px-4 pb-1">
-            {recent.map((e) => (
-              <ExpenseRow
-                key={e.id}
-                merchant={e.merchantKo || e.merchant || e.label || "지출"}
-                amount={Number.isFinite(e.krwAmount) ? e.krwAmount : 0}
-                meta={expenseMeta(e, nameOf(e.paidBy))}
-                icon={
-                  <Receipt className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-                }
-                onClick={onAdjust}
-              />
-            ))}
+            {recent.map((e) => {
+              const hint = planHint(e);
+              return (
+                <ExpenseRow
+                  key={e.id}
+                  merchant={e.merchantKo || e.merchant || e.label || "지출"}
+                  amount={Number.isFinite(e.krwAmount) ? e.krwAmount : 0}
+                  meta={expenseMeta(e, nameOf(e.paidBy))}
+                  status={hint?.status ?? null}
+                  statusLabel={hint?.statusLabel}
+                  icon={
+                    <Receipt
+                      className="h-5 w-5"
+                      strokeWidth={1.75}
+                      aria-hidden
+                    />
+                  }
+                  onClick={onAdjust}
+                />
+              );
+            })}
           </div>
         )}
       </section>
@@ -263,8 +316,8 @@ export function RecordStep({
       </Link>
 
       <BottomCTA
-        label="지출 추가"
-        onClick={() => onOpenAdd("paste")}
+        label="추가"
+        onClick={onOpenIntent}
         secondary={{ label: "다음: 정산하기", onClick: onSettle }}
       />
     </div>

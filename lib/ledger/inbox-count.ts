@@ -39,12 +39,19 @@ export async function fetchTripInboxCount(
 
   let proposalCount = 0;
   if (args.includeProposals) {
-    const proposalRes = await supabase
-      .from(TABLES.tripExpenseProposals)
-      .select("id", { count: "exact", head: true })
-      .eq("trip_id", args.tripId)
-      .eq("status", "pending");
-    proposalCount = proposalRes.count ?? 0;
+    const [proposalRes, botRes] = await Promise.all([
+      supabase
+        .from(TABLES.tripExpenseProposals)
+        .select("id", { count: "exact", head: true })
+        .eq("trip_id", args.tripId)
+        .eq("status", "pending"),
+      supabase
+        .from(TABLES.tripBotProposals)
+        .select("id", { count: "exact", head: true })
+        .eq("trip_id", args.tripId)
+        .eq("status", "pending"),
+    ]);
+    proposalCount = (proposalRes.count ?? 0) + (botRes.count ?? 0);
   }
 
   return sumInboxCounts(pendingRes.count, proposalCount);

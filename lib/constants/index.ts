@@ -25,6 +25,7 @@ export const TABLES = {
   tripExpenseSplitHistory: "trip_expense_split_history",
   tripExpenseProposals: "trip_expense_proposals",
   tripCashRates: "trip_cash_rates",
+  tripBotProposals: "trip_bot_proposals",
   fxRates: "fx_rates",
   tripSettlements: "trip_settlements",
   tripSettlementTransfers: "trip_settlement_transfers",
