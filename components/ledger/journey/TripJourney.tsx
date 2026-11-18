@@ -369,11 +369,11 @@ export function TripJourney({ tripId }: Props) {
           steps={stepsForUi}
           currentKey={currentPhase ?? stepsForUi[0]?.key ?? "prep"}
           onSelect={onSelectPhase}
-          onBack={() => router.push("/agent")}
+          onBack={() => router.push(`/trips/${tripId}`)}
           title={
             stepsForUi.find((s) => s.key === currentPhase)?.label ?? "가계부"
           }
-          navAriaLabel="정산 단계"
+          navAriaLabel="가계부 · 정산"
         />
         <div className="flex-1 overflow-y-auto">{body}</div>
         {role === "host" && cta ? (

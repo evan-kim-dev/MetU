@@ -28,7 +28,7 @@ export type TripDetailScheduleSectionProps = {
   trip: Trip;
   canEdit: boolean;
   isGuest: boolean;
-  detailTab: "summary" | "schedule" | "ledger";
+  detailTab: "summary" | "schedule";
   spendByPlaceId?: Record<string, number>;
   mapHighlightKey?: string;
   onSelectMapPoint: (point: MapPoint) => void;

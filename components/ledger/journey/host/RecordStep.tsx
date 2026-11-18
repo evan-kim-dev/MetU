@@ -16,6 +16,7 @@ import { BottomCTA } from "@/components/ds/BottomCTA";
 import { Button } from "@/components/ds/Button";
 import { EmptyState } from "@/components/ds/EmptyState";
 import { ExpenseRow } from "@/components/ds/ExpenseRow";
+import { CashPocketCard } from "@/components/ledger/CashPocketCard";
 import type { AddExpenseTab } from "@/components/ledger/journey/host/AddExpenseSheet";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
 import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
@@ -88,15 +89,17 @@ export function RecordStep({
   return (
     <div className="flex flex-col gap-5 pb-24">
       <AmountCard
-        label="총지출"
+        label="실제 지출"
         amount={total}
         sub={
           expenses.length > 0
-            ? `지출 ${expenses.length}건 · 누르면 분담을 바꿔요`
+            ? `확정 ${expenses.length}건 · 누르면 분담을 바꿔요`
             : "아직 기록이 없어요"
         }
         tone={expenses.length > 0 ? "accent" : "neutral"}
       />
+
+      <CashPocketCard expenses={expenses} />
 
       <div
         className="grid grid-cols-3 gap-2"

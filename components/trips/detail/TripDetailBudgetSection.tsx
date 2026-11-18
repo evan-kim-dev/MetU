@@ -36,7 +36,7 @@ export function TripDetailBudgetSection({
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Wallet className="h-5 w-5 text-brand" />
-          <h3 className="text-lg font-extrabold text-ink-heading">예산</h3>
+          <h3 className="text-lg font-extrabold text-ink-heading">예산 한도</h3>
         </div>
         {canEdit && !editing ? (
           <TripIconButton label="예산 수정" onClick={onOpenEdit}>
@@ -48,7 +48,9 @@ export function TripDetailBudgetSection({
       {editing ? (
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-ink-caption">총 예산</span>
+            <span className="text-xs font-semibold text-ink-caption">
+              예산 한도 (원)
+            </span>
             <input
               inputMode="numeric"
               value={draftBudget}
@@ -79,14 +81,16 @@ export function TripDetailBudgetSection({
       ) : (
         <div className="flex flex-col gap-5">
           <div>
-            <div className="flex items-end justify-between">
+            <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-medium text-ink-caption">남은 예산</p>
-                <p className="text-2xl font-extrabold text-ink-heading">
+                <p className="text-xs font-medium text-ink-caption">남은 한도</p>
+                <p className="mu-num text-2xl font-extrabold text-ink-heading">
                   {formatKRW(remaining)}
                 </p>
               </div>
-              <p className="text-sm font-semibold text-brand">{usedPercent}% 사용</p>
+              <p className="text-sm font-semibold text-brand">
+                {usedPercent}% 사용
+              </p>
             </div>
             <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-soft">
               <div
@@ -94,8 +98,23 @@ export function TripDetailBudgetSection({
                 style={{ width: `${Math.min(usedPercent, 100)}%` }}
               />
             </div>
-            <p className="mt-2 text-xs text-ink-caption">
-              총 {formatKRW(trip.budget)} 중 {formatKRW(trip.spent)} 사용
+            <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-xl bg-surface-soft px-3 py-2">
+                <dt className="font-medium text-ink-caption">예산 한도</dt>
+                <dd className="mu-num mt-0.5 font-bold text-ink-heading">
+                  {formatKRW(trip.budget)}
+                </dd>
+              </div>
+              <div className="rounded-xl bg-surface-soft px-3 py-2">
+                <dt className="font-medium text-ink-caption">실제 지출</dt>
+                <dd className="mu-num mt-0.5 font-bold text-ink-heading">
+                  {formatKRW(trip.spent)}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-2 text-xs leading-relaxed text-ink-caption">
+              실제 지출은 확인·확정된 가계부 합이에요. 일정 예상 비용과는 따로
+              봐요.
             </p>
           </div>
 

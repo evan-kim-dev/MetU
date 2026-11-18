@@ -2,9 +2,6 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { LedgerTab } from "@/components/trips/ledger/LedgerTab";
-import type { ExpenseDraft } from "@/components/trips/ledger/ExpenseForm";
-import type { ExpenseParseItemOut } from "@/lib/ai/contracts";
 import { useLedger } from "@/lib/ledger/useLedger";
 import { useTrips } from "@/lib/trips/TripProvider";
 import { useRouter } from "next/navigation";
@@ -13,7 +10,6 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { TripInfoCard } from "@/components/trips/TripDetailParts";
 import { TripDetailBudgetSection } from "@/components/trips/detail/TripDetailBudgetSection";
-import { TripDetailGuestExpenses } from "@/components/trips/detail/TripDetailGuestExpenses";
 import { TripDetailHero } from "@/components/trips/detail/TripDetailHero";
 import { TripDetailMemoSection } from "@/components/trips/detail/TripDetailMemoSection";
 import { TripDetailScheduleSection } from "@/components/trips/detail/TripDetailScheduleSection";
@@ -26,7 +22,10 @@ interface TripDetailContentProps {
   tripId: string;
 }
 
-type DetailTab = "summary" | "schedule" | "ledger";
+/** 일정·요약은 인페이지. 가계부·정산은 TripJourney(/ledger) 단일 쉘. */
+type DetailTab = "summary" | "schedule";
+
+type NavTab = DetailTab | "ledger" | "settle";
 
 function nextScheduleLineFromTrip(trip: {
   dailySchedule?: Array<{
@@ -48,11 +47,9 @@ function nextScheduleLineFromTrip(trip: {
 
 export function TripDetailContent({ tripId }: TripDetailContentProps) {
   const router = useRouter();
-  const { user, provider, isAnonymous } = useAuth();
+  const { user, provider } = useAuth();
   const { updateTrip } = useTrips();
   const isGuest = !user || provider === "guest";
-  /** UI 숨김. 쓰기는 서버·RLS가 최종 방어. */
-  const ledgerReadOnly = isAnonymous;
   const [detailTab, setDetailTab] = useState<DetailTab>("summary");
   const {
     trip,
@@ -67,20 +64,12 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
     shareError,
     draftBudget,
     setDraftBudget,
-    editingExpenseId,
-    setEditingExpenseId,
-    expenseForm,
-    setExpenseForm,
     draftMemo,
     setDraftMemo,
     editingDayIndex,
     draftDay,
     openBudgetEdit,
     saveBudget,
-    openExpenseEdit,
-    openExpenseAdd,
-    saveExpense,
-    deleteExpense,
     openMemoEdit,
     saveMemo,
     openDayEdit,
@@ -222,23 +211,38 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
               ["summary", "요약"],
               ["schedule", "일정"],
               ["ledger", "가계부"],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={detailTab === key}
-              onClick={() => setDetailTab(key)}
-              className={`min-h-tap flex-1 rounded-full py-2 text-sm font-bold transition ${
-                detailTab === key
-                  ? "bg-surface-white text-brand shadow-sm"
-                  : "text-ink-body"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+              ["settle", "정산"],
+            ] as const satisfies ReadonlyArray<readonly [NavTab, string]>
+          ).map(([key, label]) => {
+            const selected =
+              key === "ledger" || key === "settle" ? false : detailTab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => {
+                  if (key === "ledger") {
+                    router.push(`/trips/${tripId}/ledger`);
+                    return;
+                  }
+                  if (key === "settle") {
+                    router.push(`/trips/${tripId}/ledger?step=settle`);
+                    return;
+                  }
+                  setDetailTab(key);
+                }}
+                className={`min-h-tap flex-1 rounded-full px-1 py-2 text-xs font-bold transition sm:text-sm ${
+                  selected
+                    ? "bg-surface-white text-brand shadow-sm"
+                    : "text-ink-body"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {detailTab === "summary" ? (
@@ -246,61 +250,6 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
             tripId={tripId}
             nextScheduleLine={nextScheduleLineFromTrip(trip)}
             onOpenSchedule={() => setDetailTab("schedule")}
-          />
-        ) : null}
-
-        {!isGuest && detailTab === "ledger" ? (
-          <LedgerTab
-            tripId={tripId}
-            readOnly={ledgerReadOnly}
-            canInvite={canEdit && !ledgerReadOnly}
-            loading={ledger.loading}
-            error={ledger.error}
-            members={ledger.members}
-            expenses={ledger.expenses}
-            totalKrw={ledger.totalKrw}
-            defaultCurrency={ledger.defaultCurrency}
-            placeOptions={ledger.placeOptions}
-            meId={
-              ledger.members.find((m) => user?.id && m.userId === user.id)?.id ??
-              ledger.members.find((m) => m.isOwner)?.id ??
-              ledger.members[0]?.id
-            }
-            settlement={ledger.settlement}
-            onAddMember={
-              canEdit && !ledgerReadOnly ? ledger.addMember : undefined
-            }
-            onRemoveMember={
-              canEdit && !ledgerReadOnly ? ledger.removeMember : undefined
-            }
-            onDeleteExpense={
-              ledgerReadOnly ? undefined : ledger.removeExpense
-            }
-            onExpenseFxChanged={() => void ledger.reload()}
-            onSaveExpense={async (
-              draft: ExpenseDraft,
-              expenseId?: string,
-              parseMeta?: ExpenseParseItemOut
-            ) => {
-              const participantIds =
-                parseMeta?.participantIds && parseMeta.participantIds.length > 0
-                  ? parseMeta.participantIds
-                  : null;
-              const upsert = await ledger.buildUpsertFromAmount({
-                paidBy: draft.paidBy,
-                label: draft.label.trim(),
-                category: draft.category,
-                amount: Number(draft.amount),
-                currency: draft.currency,
-                placeId: draft.placeId || null,
-                spentOn: draft.spentOn || null,
-                dayIndex: draft.dayIndex ? Number(draft.dayIndex) : null,
-                participantIds,
-              });
-              if (!upsert) return false;
-              const row = await ledger.saveExpense(upsert, expenseId);
-              return Boolean(row);
-            }}
           />
         ) : null}
 
@@ -349,22 +298,6 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
         ) : null}
 
         <TripDetailTipsSection tips={trip.tips ?? []} />
-
-        {isGuest && detailTab === "ledger" ? (
-          <TripDetailGuestExpenses
-            expenses={trip.expenses}
-            editSection={editSection}
-            editingExpenseId={editingExpenseId}
-            expenseForm={expenseForm}
-            setExpenseForm={setExpenseForm}
-            openExpenseAdd={openExpenseAdd}
-            openExpenseEdit={openExpenseEdit}
-            saveExpense={saveExpense}
-            deleteExpense={deleteExpense}
-            setEditSection={setEditSection}
-            setEditingExpenseId={setEditingExpenseId}
-          />
-        ) : null}
 
         <TripDetailMemoSection
           canEdit={canEdit}
