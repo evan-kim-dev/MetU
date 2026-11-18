@@ -1,67 +1,59 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bot,
   CircleUserRound,
-  Home,
-  MessageSquareText,
+  Inbox,
   Route,
   type LucideIcon,
 } from "lucide-react";
-import {
-  useCommunityActions,
-  useCommunityState,
-} from "@/lib/community/CommunityProvider";
-import { useChatRoomSummaries } from "@/lib/community/useChatRoomSummaries";
 
 interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** pathname 매칭에 href 대신 쓰는 접두 (확인함=/agent/inbox) */
+  matchPrefix?: string;
 }
 
-const LEFT_ITEMS: NavItem[] = [
-  { href: "/trips", label: "내 여행", icon: Route },
-  { href: "/agent", label: "가계부", icon: Bot },
+/**
+ * EDR trip-centric IA Phase 1: 하단 3탭.
+ * 여행 · 확인함 · 내 정보. 홈/멧톡/가계부 허브는 하단에서 제거.
+ */
+const NAV_ITEMS: NavItem[] = [
+  { href: "/trips", label: "여행", icon: Route },
+  {
+    href: "/agent/inbox",
+    label: "확인함",
+    icon: Inbox,
+    matchPrefix: "/agent/inbox",
+  },
+  { href: "/profile", label: "내 정보", icon: CircleUserRound },
 ];
 
-const RIGHT_ITEMS: NavItem[] = [
-  { href: "/opod", label: "멧톡", icon: MessageSquareText },
-  { href: "/profile", label: "프로필", icon: CircleUserRound },
-];
-
-const HOME_ITEM: NavItem = { href: "/", label: "홈", icon: Home };
-
-function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+function isActive(pathname: string, item: NavItem) {
+  const prefix = item.matchPrefix ?? item.href;
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
 function NavIcon({
   icon: Icon,
   active,
-  size = "md",
 }: {
   icon: LucideIcon;
   active: boolean;
-  size?: "md" | "lg";
 }) {
-  const iconClass = size === "lg" ? "h-5 w-5" : "h-4 w-4";
-
   return (
     <span
       className={[
-        "relative flex items-center justify-center transition-colors duration-mu",
-        size === "md" ? "h-7 w-7 rounded-mu-sm" : "h-10 w-10 rounded-full",
+        "relative flex h-7 w-7 items-center justify-center rounded-mu-sm transition-colors duration-mu",
         active ? "bg-mu-accent-soft" : "bg-transparent",
       ].join(" ")}
     >
       <Icon
         className={[
-          iconClass,
-          "transition-colors duration-mu",
+          "h-4 w-4 transition-colors duration-mu",
           active ? "text-mu-accent" : "text-mu-fg-3",
         ].join(" ")}
         strokeWidth={active ? 2.25 : 1.75}
@@ -73,125 +65,48 @@ function NavIcon({
 }
 
 function SideNavItem({
-  href,
-  label,
-  icon,
+  item,
   active,
-  badgeCount,
-}: NavItem & { active: boolean; badgeCount?: number }) {
-  const ariaLabel =
-    badgeCount && badgeCount > 0
-      ? `${label}, 새 메시지 ${badgeCount}개`
-      : undefined;
-
+}: {
+  item: NavItem;
+  active: boolean;
+}) {
   return (
     <Link
-      href={href}
-      aria-label={ariaLabel}
+      href={item.href}
       className="mu-focus relative flex min-h-tap w-full flex-col items-center justify-center gap-px px-1.5 transition-colors active:scale-[0.97] hover:opacity-90"
       aria-current={active ? "page" : undefined}
     >
-      <NavIcon icon={icon} active={active} />
+      <NavIcon icon={item.icon} active={active} />
       <span
         className={[
           "whitespace-nowrap text-mu-caption transition-colors",
           active ? "font-bold text-mu-accent" : "font-semibold text-mu-fg-3",
         ].join(" ")}
       >
-        {label}
+        {item.label}
       </span>
-      {badgeCount && badgeCount > 0 ? (
-        <span className="absolute right-1.5 top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-kakao px-1.5 py-0.5 text-mu-caption font-extrabold leading-none text-kakao-ink">
-          {badgeCount > 999 ? "999+" : badgeCount}
-        </span>
-      ) : null}
     </Link>
   );
 }
 
 /**
  * 하단 고정 네비게이션 바.
- * 모바일 캔버스 내부에 고정되며 홈 버튼을 중앙에 강조한다.
+ * 모바일 캔버스 내부에 고정. 주 입구는 여행·확인함·내 정보만.
  */
 export function BottomNav() {
   const pathname = usePathname();
-  const homeActive = isActive(pathname, HOME_ITEM.href);
-  const { posts } = useCommunityState();
-  const { isPartyHost, isPartyJoined } = useCommunityActions();
-
-  const chatRoomPostIds = useMemo(
-    () =>
-      posts
-        .filter(
-          (post) =>
-            post.category === "party" &&
-            (isPartyHost(post) || isPartyJoined(post))
-        )
-        .map((post) => post.id),
-    [isPartyHost, isPartyJoined, posts]
-  );
-
-  const { unreadCountByPostId } = useChatRoomSummaries(chatRoomPostIds, true);
-  const opodUnreadCount = useMemo(
-    () =>
-      Object.values(unreadCountByPostId).reduce((sum, count) => sum + count, 0),
-    [unreadCountByPostId]
-  );
-
-  const HomeIcon = HOME_ITEM.icon;
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center">
       <div className="pointer-events-auto w-full max-w-mobile overflow-visible border-t border-mu-line bg-mu-card/95 pb-[env(safe-area-inset-bottom)] shadow-mu-sheet backdrop-blur-md">
-        <ul className="grid h-14 grid-cols-5 items-center overflow-visible px-1">
-          {LEFT_ITEMS.map((item) => (
+        <ul className="grid h-14 grid-cols-3 items-center overflow-visible px-2">
+          {NAV_ITEMS.map((item) => (
             <li
               key={item.href}
               className="flex h-full items-center justify-center"
             >
-              <SideNavItem {...item} active={isActive(pathname, item.href)} />
-            </li>
-          ))}
-
-          <li className="relative flex h-full flex-col items-center justify-center gap-px overflow-visible">
-            <span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-visible">
-              <Link
-                href={HOME_ITEM.href}
-                aria-current={homeActive ? "page" : undefined}
-                aria-label="홈"
-                className={[
-                  "mu-focus absolute left-1/2 top-1/2 z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-[calc(50%+12px)] items-center justify-center rounded-full border-[3px] border-mu-card bg-mu-accent transition-transform active:scale-95",
-                  homeActive ? "ring-2 ring-mu-accent/40" : "",
-                ].join(" ")}
-              >
-                <HomeIcon
-                  className="h-6 w-6 fill-mu-on-accent text-mu-on-accent"
-                  strokeWidth={1.75}
-                />
-              </Link>
-            </span>
-            <span
-              className={[
-                "whitespace-nowrap text-mu-caption font-bold transition-colors",
-                homeActive ? "text-mu-accent" : "text-mu-fg-3",
-              ].join(" ")}
-            >
-              {HOME_ITEM.label}
-            </span>
-          </li>
-
-          {RIGHT_ITEMS.map((item) => (
-            <li
-              key={item.href}
-              className="flex h-full items-center justify-center"
-            >
-              <SideNavItem
-                {...item}
-                active={isActive(pathname, item.href)}
-                badgeCount={
-                  item.href === "/opod" ? opodUnreadCount : undefined
-                }
-              />
+              <SideNavItem item={item} active={isActive(pathname, item)} />
             </li>
           ))}
         </ul>

@@ -5,10 +5,12 @@ import { gateLabel } from "@/lib/onboarding/gate-label";
 describe("gateLabel", () => {
   it("maps known paths", () => {
     expect(gateLabel("/")).toBe("홈");
-    expect(gateLabel("/trips")).toBe("내 여행");
+    expect(gateLabel("/trips")).toBe("여행");
     expect(gateLabel("/trips/new")).toBe("여행 만들기");
     expect(gateLabel("/trips/abc/ledger")).toBe("여행 가계부");
     expect(gateLabel("/agent")).toBe("가계부");
+    expect(gateLabel("/agent/inbox")).toBe("확인함");
+    expect(gateLabel("/profile")).toBe("내 정보");
   });
 
   it("unknown internal path -> 원래 보려던 화면", () => {

@@ -9,9 +9,13 @@ export function gateLabel(path: string): string | null {
 
   const noQuery = raw.split("?")[0]?.split("#")[0] ?? raw;
   if (noQuery === "/") return "홈";
-  if (noQuery === "/trips") return "내 여행";
+  if (noQuery === "/trips") return "여행";
   if (noQuery === "/trips/new") return "여행 만들기";
+  if (noQuery === "/agent/inbox" || noQuery.startsWith("/agent/inbox/")) {
+    return "확인함";
+  }
   if (noQuery === "/agent") return "가계부";
+  if (noQuery === "/profile") return "내 정보";
   if (/^\/trips\/[^/]+\/ledger\/?$/.test(noQuery)) return "여행 가계부";
   return "원래 보려던 화면";
 }

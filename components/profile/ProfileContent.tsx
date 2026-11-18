@@ -10,7 +10,9 @@ import {
   FileText,
   Globe,
   MapPin,
+  MessageSquareText,
   Sparkles,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -419,6 +421,58 @@ export function ProfileContent() {
                 </div>
               ) : null}
             </div>
+          </section>
+
+          <section
+            aria-label="커뮤니티"
+            className="rounded-xl2 bg-surface-white p-6 shadow-soft"
+          >
+            <h3 className="mb-1 text-xl font-semibold text-ink-heading">
+              커뮤니티
+            </h3>
+            <p className="mb-4 text-sm text-ink-caption">
+              여행 본 흐름 밖 부가 기능이에요.
+            </p>
+            <ul className="flex flex-col">
+              <li>
+                <Link
+                  href="/opod"
+                  className="flex min-h-[44px] items-center justify-between py-4 transition-colors active:bg-surface-soft"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-membership">
+                      <MessageSquareText
+                        className="h-4 w-4 text-ink-body"
+                        strokeWidth={2.2}
+                      />
+                    </span>
+                    <span className="text-sm font-semibold tracking-wide text-ink-heading">
+                      멧톡
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-line-muted" />
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/board"
+                  className="flex min-h-[44px] items-center justify-between border-t border-membership py-4 transition-colors active:bg-surface-soft"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-membership">
+                      <Users
+                        className="h-4 w-4 text-ink-body"
+                        strokeWidth={2.2}
+                      />
+                    </span>
+                    <span className="text-sm font-semibold tracking-wide text-ink-heading">
+                      여행 보드
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-line-muted" />
+                </Link>
+              </li>
+            </ul>
           </section>
 
           <section className="rounded-xl2 bg-surface-white p-6 shadow-soft">
