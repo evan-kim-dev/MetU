@@ -51,7 +51,7 @@ MetU의 기준 단위를 **기능(AI/지도/가계부/에이전트)** 이 아니
 | 하단 네비 | 5탭: `/trips`, `/agent`, `/`, `/opod`, `/profile` | `components/ui/BottomNav.tsx` |
 | 여행 상세 | `/trips/[id]` — 히어로·예산·`schedule\|ledger` 인페이지 탭. 전용 요약 대시보드 없음 | `TripDetailContent.tsx` |
 | 가계부 여정 | `/trips/[id]/ledger` — `TripJourney` + `?step=`. 호스트=`LedgerShell`, 게스트=`Guest*` | `TripJourney.tsx`, `journey-state.ts` |
-| 에이전트 허브 | `/agent` — 여행 pick + 미니 대시보드 (가계부 탭 역할) | `AgentHubContent.tsx` |
+| 에이전트 허브 | `/agent` → 여행 리다이렉트 (허브 UI 삭제) | `AgentRedirect` |
 | 확인함 | `/agent/inbox`(전역·미배정 포함) + `/trips/.../ledger/inbox`(트립 + proposals) | `AgentInbox.tsx`, `LedgerInboxClient.tsx` |
 | 데이터 | `agent_events`는 동일 원장·스코프만 다름. `trip_expense_proposals`는 별도 | — |
 | 디자인 | 홈/온보딩 레거시 톤 vs 가계부 `mu-*` 이원화 | `docs/design-system.md`, D2/D4/D5 대기 |
@@ -391,7 +391,7 @@ MetU의 기준 단위를 **기능(AI/지도/가계부/에이전트)** 이 아니
 
 **목표:** 통폐합이 실제로 덜 헷갈리는지 확인하고 문서·품질을 맞춘다.
 
-- [x] §3.5 맵: 하단·확인함·허브·상세 LedgerTab 흡수 반영. 공유 `LedgerTab`·`AgentHubContent` 컴포넌트는 잔존(입구 제거)
+- [x] §3.5 맵: 하단·확인함·허브·상세 LedgerTab 흡수 반영. 공유 `LedgerTab`만 잔존. `AgentHubContent`+`ledger-home/**` 삭제(Wave B)
 - [x] §3.2 가드레일: 주 입구 축소·상태 언어·터치 44px 유지 방향. 전수 수동은 PR 체크
 - [ ] 과업 3종 수동 기록
 - [x] `docs/pitch-notes.md` 를 “여행 요약 한 흐름”으로 수정

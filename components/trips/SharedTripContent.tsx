@@ -209,6 +209,10 @@ export function SharedTripContent({ token }: SharedTripContentProps) {
           </div>
         </section>
 
+        {/*
+          공유 플랜(`/trips/share`) 읽기 전용. 호스트 가계부 쉘은 TripJourney만.
+          EDR: 상세 LedgerTab 흡수 완료 · 공유 페이지만 LedgerTab 유지.
+        */}
         {ledgerMembers.length > 0 || ledgerExpenses.length > 0 ? (
           <LedgerTab
             readOnly

@@ -120,10 +120,16 @@ function looksLikeJwtExpired(message: string): boolean {
 export function AgentInbox({
   tripId,
   trips: tripsProp,
+  embedded = false,
 }: {
   /** When omitted, shows all of the user's events (user-scoped inbox). */
   tripId?: string | null;
   trips?: TripOption[];
+  /**
+   * true면 MobileShell·바깥 패딩 없이 본문만.
+   * 여행 확인함(`LedgerInboxClient`)이 쉘을 소유할 때 사용.
+   */
+  embedded?: boolean;
 }) {
   const { user, provider, isReady: authReady, isLoggedIn } = useAuth();
   const isGuest = provider === "guest" || !user;
@@ -878,17 +884,13 @@ export function AgentInbox({
   const unassignedCount = groups.unassigned.length;
   const noTrips = allTrips.length === 0 && trips.length === 0;
 
-  return (
-    <MobileShell
-      title="확인함"
-      showBack
-      backHref={backHref}
-      showBottomNav={showBottomNav}
-    >
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-4">
-        <p className="text-xs leading-relaxed text-mu-fg-2">
-          확정 전 대기열이에요. 확인하면 가계부에 들어가요.
-        </p>
+  const body = (
+      <>
+        {!embedded ? (
+          <p className="text-xs leading-relaxed text-mu-fg-2">
+            확정 전 대기열이에요. 확인하면 가계부에 들어가요.
+          </p>
+        ) : null}
 
         {isGuest ? (
           <section className="rounded-2xl border border-mu-line bg-mu-card p-5 text-center">
@@ -1150,8 +1152,11 @@ export function AgentInbox({
             )}
           </>
         )}
-      </div>
+      </>
+  );
 
+  const sheets = (
+    <>
       <Sheet
         open={Boolean(editEvent)}
         onClose={() => setEditEvent(null)}
@@ -1233,6 +1238,29 @@ export function AgentInbox({
         onCreated={onTripCreated}
         reason="inbox"
       />
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <>
+        {body}
+        {sheets}
+      </>
+    );
+  }
+
+  return (
+    <MobileShell
+      title="확인함"
+      showBack
+      backHref={backHref}
+      showBottomNav={showBottomNav}
+    >
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-4">
+        {body}
+      </div>
+      {sheets}
     </MobileShell>
   );
 }
