@@ -3,7 +3,7 @@
  * - Hashed static assets: cache-first
  * - POST /share-target: stash in share-inbox-v1 (client reads; no server image storage)
  */
-const CACHE_VERSION = "metu-static-v3";
+const CACHE_VERSION = "metu-static-v4";
 const STATIC_CACHE = CACHE_VERSION;
 const SHARE_INBOX = "share-inbox-v1";
 const SHARE_MAX_FILE_BYTES = 5 * 1024 * 1024;

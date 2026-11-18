@@ -16,6 +16,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { HomeNotificationBell } from "@/components/home/HomeNotificationBell";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { PROFILE_STYLE_OPTIONS } from "@/lib/mock/profile";
@@ -435,9 +436,12 @@ export function ProfileContent() {
             </p>
             <ul className="flex flex-col">
               <li>
+                <HomeNotificationBell variant="row" />
+              </li>
+              <li>
                 <Link
                   href="/opod"
-                  className="flex min-h-[44px] items-center justify-between py-4 transition-colors active:bg-mu-sunken"
+                  className="flex min-h-[44px] items-center justify-between border-t border-membership py-4 transition-colors active:bg-mu-sunken"
                 >
                   <span className="flex items-center gap-3">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-membership">
