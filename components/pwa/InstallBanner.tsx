@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Download, Share, X } from "lucide-react";
+import { Share, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 const DISMISS_KEY = "metu-pwa-install-dismissed-at";
@@ -168,10 +168,15 @@ export function InstallBanner() {
           : "calc(env(safe-area-inset-bottom) + 1rem)",
       }}
     >
-      <div className="pointer-events-auto flex max-h-14 w-full max-w-mobile items-center gap-2 rounded-2xl border border-brand/20 bg-surface-white/95 px-3 py-2 shadow-soft backdrop-blur-md">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
-          <Download className="h-4 w-4" strokeWidth={2.2} />
-        </span>
+      <div className="pointer-events-auto flex max-h-14 w-full max-w-mobile items-center gap-2 rounded-2xl border border-mu-line bg-mu-card/95 px-3 py-2 shadow-soft backdrop-blur-md">
+        {/* eslint-disable-next-line @next/next/no-img-element -- tiny PWA install chip */}
+        <img
+          src="/brand/metu-icon.png"
+          alt=""
+          width={36}
+          height={36}
+          className="h-9 w-9 shrink-0 rounded-xl"
+        />
         <p className="min-w-0 flex-1 truncate text-sm font-bold text-ink-heading">
           {mode === "ios"
             ? "홈 화면에 추가하면 앱처럼 열려요"
@@ -221,7 +226,7 @@ export function InstallBanner() {
           <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm leading-6 text-ink-body">
             <li>
               아래 공유 버튼(
-              <Share className="inline h-3.5 w-3.5 align-text-bottom text-brand" />
+              <Share className="inline h-3.5 w-3.5 align-text-bottom text-mu-accent" />
               )을 눌러요
             </li>
             <li>&apos;홈 화면에 추가&apos;를 눌러요</li>

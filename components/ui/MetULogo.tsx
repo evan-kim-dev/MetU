@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 type MetULogoVariant = "appbar" | "hero";
 
 interface MetULogoProps {
@@ -7,7 +9,8 @@ interface MetULogoProps {
   className?: string;
 }
 
-const GRADIENT_TEXT = "text-mu-accent";
+/** 앱 아이콘·워드마크 일체형 (`public/brand/metu-icon.png`). */
+const ICON_SRC = "/brand/metu-icon.png";
 
 export function MetULogo({
   variant = "appbar",
@@ -18,40 +21,32 @@ export function MetULogo({
     return (
       <div className={`flex flex-col items-center gap-3 ${className}`}>
         {showPlannerBadge ? (
-          <span className="rounded-full border border-mu-line bg-mu-accent-soft text-mu-accent">AI 여행 플래너</span>
+          <span className="rounded-full border border-mu-line bg-mu-accent-soft px-3 py-1 text-xs font-bold text-mu-accent">
+            AI 여행 플래너
+          </span>
         ) : null}
-        <LogoMark size="hero" />
+        <Image
+          src={ICON_SRC}
+          alt="MetU"
+          width={128}
+          height={128}
+          priority
+          className="h-28 w-28 rounded-[1.75rem] shadow-soft"
+        />
       </div>
     );
   }
 
   return (
-    <span className={className}>
-      <LogoMark size="appbar" />
-    </span>
-  );
-}
-
-function LogoMark({ size }: { size: "hero" | "appbar" }) {
-  const textSize =
-    size === "hero" ? "text-[40px] leading-none" : "text-lg leading-none";
-
-  const aiSize =
-    size === "hero" ? "px-1.5 py-0.5 text-[11px]" : "px-1 py-px text-[9px]";
-
-  return (
-    <span className={`inline-flex items-center gap-1.5 ${textSize}`}>
-      <span className={`font-extrabold tracking-tight ${GRADIENT_TEXT}`}>
-        Met U
-      </span>
-      <span
-        className={[
-          "rounded-md border border-mu-accent/20 bg-mu-accent-soft font-bold tracking-wider text-mu-accent",
-          aiSize,
-        ].join(" ")}
-      >
-        AI
-      </span>
+    <span className={`inline-flex items-center ${className}`}>
+      <Image
+        src={ICON_SRC}
+        alt="MetU"
+        width={36}
+        height={36}
+        priority
+        className="h-9 w-9 rounded-mu-md"
+      />
     </span>
   );
 }
