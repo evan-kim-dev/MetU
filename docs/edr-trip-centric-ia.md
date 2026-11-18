@@ -6,8 +6,8 @@
 | 작성일 | 2026-11-18 |
 | 수락일 | 2026-11-18 |
 | 대상 | MetU (budgettrip-ai) 모바일 PWA |
-| 관련 | `docs/prd-v1.md`, `docs/pitch-notes.md`, `docs/design-system.md`, `docs/refactor-map.md` |
-| 결정 범위 | IA · **기능 통폐합** · UX 사용성(탭 수·중복 진입·상태 언어) · 데이터 경계 · 마이그레이션 순서. DB 대변경·송금 API·네이티브·SF 전면 리스킨은 범위 밖 |
+| 관련 | `docs/ui-modernization-master.md` (§1.5 최소화 원칙 · Wave), `docs/prd-v1.md`, `docs/pitch-notes.md`, `docs/design-system.md`, `docs/refactor-map.md` |
+| 결정 범위 | IA · **기능 통폐합** · UX 사용성(탭 수·중복 진입·상태 언어) · 데이터 경계 · 마이그레이션 순서. DB 대변경·송금 API·네이티브·SF 전면 리스킨은 범위 밖. **파일 강제 병합·god file 키우기는 아님** (개념·진입 합치기 → 죽은 코드 삭제 → 손댈 때만 O7 분해) |
 
 ---
 
