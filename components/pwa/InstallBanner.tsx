@@ -226,7 +226,7 @@ export function InstallBanner() {
           <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm leading-6 text-ink-body">
             <li>
               아래 공유 버튼(
-              <Share className="inline h-3.5 w-3.5 align-text-bottom text-brand" />
+              <Share className="inline h-3.5 w-3.5 align-text-bottom text-mu-accent" />
               )을 눌러요
             </li>
             <li>&apos;홈 화면에 추가&apos;를 눌러요</li>
