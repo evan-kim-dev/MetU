@@ -211,8 +211,8 @@ async function createSettleSuggestion(
     .maybeSingle();
 
   if (openExisting?.id) {
-    // 같은 open settle 이 있으면 payload 를 최신 basis 로 갱신
-    await admin
+    // service_role 만 update 가능 (authenticated update 회수됨)
+    const { error: updErr } = await admin
       .from("trip_suggestions")
       .update({
         payload: {
@@ -222,6 +222,9 @@ async function createSettleSuggestion(
         },
       })
       .eq("id", openExisting.id);
+    if (updErr) {
+      console.error("[createSettleSuggestion] refresh", updErr.message);
+    }
     return String(openExisting.id);
   }
 

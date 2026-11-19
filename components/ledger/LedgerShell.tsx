@@ -33,6 +33,10 @@ import { TripBotSheet } from "@/components/trips/TripBotSheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
 import { fetchTripInboxCount } from "@/lib/ledger/inbox-count";
+import {
+  fetchOpenBudgetSuggestions,
+  type OpenBudgetSuggestion,
+} from "@/lib/ledger/open-suggestions";
 import type { HostStepKey } from "@/lib/ledger/journey-state";
 import {
   buildLocalInsight,
@@ -133,6 +137,9 @@ export function LedgerShell({
   > | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
+  const [openSuggestions, setOpenSuggestions] = useState<
+    OpenBudgetSuggestion[]
+  >([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [intentOpen, setIntentOpen] = useState(false);
   const [cashOpen, setCashOpen] = useState(false);
@@ -185,7 +192,7 @@ export function LedgerShell({
       m = await listMembers(supabase, tripId);
     }
     const owner = m.find((row) => row.isOwner && row.userId === user.id);
-    const [e, p, pendingCount] = await Promise.all([
+    const [e, p, pendingCount, suggestions] = await Promise.all([
       listExpenses(supabase, tripId),
       listCardProfiles(supabase),
       fetchTripInboxCount(supabase, {
@@ -193,11 +200,15 @@ export function LedgerShell({
         userId: user.id,
         includeProposals: Boolean(owner),
       }),
+      owner
+        ? fetchOpenBudgetSuggestions(supabase, tripId)
+        : Promise.resolve([] as OpenBudgetSuggestion[]),
     ]);
     setMembers(m);
     setExpenses(e);
     setProfiles(p as typeof profiles);
     setInboxCount(pendingCount);
+    setOpenSuggestions(suggestions);
     setLoading(false);
   }, [tripId, user, provider]);
 
@@ -427,6 +438,8 @@ export function LedgerShell({
                   expenses={expenses}
                   members={members}
                   inboxCount={inboxCount}
+                  openSuggestions={openSuggestions}
+                  onSuggestionSettled={() => void reload()}
                   cancelNotice={cancelNotice}
                   onDismissCancel={() => setCancelNotice(null)}
                   onOpenAdd={openAdd}

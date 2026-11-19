@@ -45,56 +45,19 @@ function asPlanItems(raw: unknown): PlanItem[] | null {
   return out;
 }
 
-async function claimOpenSuggestion(args: {
-  suggestionId: string;
-  tripId: string;
-  actorUserId: string;
-}): Promise<SuggestionRow | null> {
-  const admin = getAgentAdmin();
-  if (!admin) return null;
-  const decidedAt = new Date().toISOString();
-  const { data, error } = await admin
-    .from(TABLES.tripSuggestions)
-    .update({
-      status: "accepted",
-      decided_by: args.actorUserId,
-      decided_at: decidedAt,
-    })
-    .eq("id", args.suggestionId)
-    .eq("trip_id", args.tripId)
-    .eq("status", "open")
-    .select("id, trip_id, type, status, payload")
-    .maybeSingle();
-  if (error) {
-    console.error("[claimOpenSuggestion]", error.message);
-    return null;
-  }
-  return data as SuggestionRow | null;
-}
-
-async function reopenSuggestion(args: {
-  suggestionId: string;
-  actorUserId: string;
-}): Promise<void> {
-  const admin = getAgentAdmin();
-  if (!admin) return;
-  await admin
-    .from(TABLES.tripSuggestions)
-    .update({
-      status: "open",
-      decided_by: null,
-      decided_at: null,
-    })
-    .eq("id", args.suggestionId)
-    .eq("status", "accepted")
-    .eq("decided_by", args.actorUserId);
+function mapRpcError(message: string): string {
+  if (message.includes("not-found")) return "not-found";
+  if (message.includes("not-open")) return "not-open";
+  if (message.includes("forbidden")) return "host-only";
+  if (message.includes("wrong-type")) return "wrong-type";
+  if (message.includes("has_paid")) return "has-paid";
+  return "rpc-failed";
 }
 
 /**
  * 호스트가 Suggestion 수락.
- * settle: 원장에서 transfers 재계산 후 settlement 스냅샷.
- * rebalance: daily_schedule 패치.
- * record: confirmEventReviews 로 지출 확정.
+ * settle/rebalance 는 agent_accept_* RPC 한 트랜잭션.
+ * record 는 confirmEventReviews 후 mark accepted.
  */
 export async function acceptSuggestion(args: {
   actorUserId: string;
@@ -122,128 +85,92 @@ export async function acceptSuggestion(args: {
     .maybeSingle();
 
   if (!peek) return { ok: false, error: "not-found" };
-  if (String((peek as SuggestionRow).status) !== "open") {
-    return { ok: false, error: "not-open" };
-  }
-
-  const claimed = await claimOpenSuggestion({
-    suggestionId: args.suggestionId,
-    tripId: args.tripId,
-    actorUserId: args.actorUserId,
-  });
-  if (!claimed) {
+  const suggestion = peek as SuggestionRow;
+  if (suggestion.status !== "open") {
     return { ok: false, error: "not-open" };
   }
 
   const payload =
-    claimed.payload && typeof claimed.payload === "object"
-      ? claimed.payload
+    suggestion.payload && typeof suggestion.payload === "object"
+      ? suggestion.payload
       : {};
 
-  let settlementId: string | null = null;
-
-  try {
-    if (claimed.type === "settle") {
-      const basisPayload = await computeTripSettlementBasis(args.tripId);
-      if (!basisPayload || basisPayload.transfers.length === 0) {
-        await reopenSuggestion({
-          suggestionId: args.suggestionId,
-          actorUserId: args.actorUserId,
-        });
-        return { ok: false, error: "basis-unavailable" };
-      }
-      const { data, error } = await admin.rpc("agent_create_settlement", {
-        p_actor: args.actorUserId,
-        p_trip_id: args.tripId,
-        p_mode: "manual",
-        p_basis_hash: basisPayload.basis,
-        p_transfers: basisPayload.transfers,
-      });
-      if (error) {
-        console.error("[acceptSuggestion] settle", error.message);
-        await reopenSuggestion({
-          suggestionId: args.suggestionId,
-          actorUserId: args.actorUserId,
-        });
-        return { ok: false, error: "settle-failed" };
-      }
-      settlementId = data ? String(data) : null;
-    } else if (claimed.type === "rebalance") {
-      const adjusted = asPlanItems(payload.adjustedItems);
-      if (!adjusted) {
-        await reopenSuggestion({
-          suggestionId: args.suggestionId,
-          actorUserId: args.actorUserId,
-        });
-        return { ok: false, error: "bad-rebalance-payload" };
-      }
-      const nextSchedule = mergeAdjustedIntoSchedule(
-        trip.daily_schedule,
-        adjusted
-      );
-      const { error } = await admin
-        .from(TABLES.trips)
-        .update({ daily_schedule: nextSchedule })
-        .eq("id", args.tripId);
-      if (error) {
-        console.error("[acceptSuggestion] rebalance", error.message);
-        await reopenSuggestion({
-          suggestionId: args.suggestionId,
-          actorUserId: args.actorUserId,
-        });
-        return { ok: false, error: "rebalance-failed" };
-      }
-    } else if (claimed.type === "record") {
-      const eventId =
-        typeof payload.eventId === "string" ? payload.eventId : null;
-      const sourceIndex =
-        typeof payload.sourceIndex === "number" &&
-        Number.isInteger(payload.sourceIndex)
-          ? payload.sourceIndex
-          : 0;
-      if (!eventId) {
-        await reopenSuggestion({
-          suggestionId: args.suggestionId,
-          actorUserId: args.actorUserId,
-        });
-        return { ok: false, error: "bad-record-payload" };
-      }
-      const mergeInto =
-        typeof payload.mergeInto === "string" ? payload.mergeInto : null;
-      // 동적 import — run.ts ↔ accept 순환 방지
-      const { confirmEventReviews } = await import("@/lib/agent/run");
-      const outcome = await confirmEventReviews(
-        eventId,
-        args.actorUserId,
-        {
-          items: [{ index: sourceIndex }],
-          mode: mergeInto ? "merge" : "separate",
-        }
-      );
-      if (!outcome.ok) {
-        await reopenSuggestion({
-          suggestionId: args.suggestionId,
-          actorUserId: args.actorUserId,
-        });
-        return { ok: false, error: outcome.error };
-      }
-    } else {
-      await reopenSuggestion({
-        suggestionId: args.suggestionId,
-        actorUserId: args.actorUserId,
-      });
-      return { ok: false, error: "unknown-type" };
+  if (suggestion.type === "settle") {
+    const basisPayload = await computeTripSettlementBasis(args.tripId);
+    if (!basisPayload || basisPayload.transfers.length === 0) {
+      return { ok: false, error: "basis-unavailable" };
     }
-  } catch (err) {
-    console.error("[acceptSuggestion]", err);
-    await reopenSuggestion({
-      suggestionId: args.suggestionId,
-      actorUserId: args.actorUserId,
+    const { data, error } = await admin.rpc("agent_accept_settle_suggestion", {
+      p_actor: args.actorUserId,
+      p_suggestion_id: args.suggestionId,
+      p_basis_hash: basisPayload.basis,
+      p_transfers: basisPayload.transfers,
     });
-    return { ok: false, error: "accept-failed" };
+    if (error) {
+      console.error("[acceptSuggestion] settle", error.message);
+      return { ok: false, error: mapRpcError(error.message) };
+    }
+    return {
+      ok: true,
+      type: "settle",
+      settlementId: data ? String(data) : null,
+    };
   }
 
-  return { ok: true, type: claimed.type, settlementId };
+  if (suggestion.type === "rebalance") {
+    const adjusted = asPlanItems(payload.adjustedItems);
+    if (!adjusted) {
+      return { ok: false, error: "bad-rebalance-payload" };
+    }
+    const nextSchedule = mergeAdjustedIntoSchedule(
+      trip.daily_schedule,
+      adjusted
+    );
+    const { error } = await admin.rpc("agent_accept_rebalance_suggestion", {
+      p_actor: args.actorUserId,
+      p_suggestion_id: args.suggestionId,
+      p_daily_schedule: nextSchedule,
+    });
+    if (error) {
+      console.error("[acceptSuggestion] rebalance", error.message);
+      return { ok: false, error: mapRpcError(error.message) };
+    }
+    return { ok: true, type: "rebalance" };
+  }
+
+  if (suggestion.type === "record") {
+    const eventId =
+      typeof payload.eventId === "string" ? payload.eventId : null;
+    const sourceIndex =
+      typeof payload.sourceIndex === "number" &&
+      Number.isInteger(payload.sourceIndex)
+        ? payload.sourceIndex
+        : 0;
+    if (!eventId) {
+      return { ok: false, error: "bad-record-payload" };
+    }
+    const mergeInto =
+      typeof payload.mergeInto === "string" ? payload.mergeInto : null;
+    const { confirmEventReviews } = await import("@/lib/agent/run");
+    const outcome = await confirmEventReviews(eventId, args.actorUserId, {
+      items: [{ index: sourceIndex }],
+      mode: mergeInto ? "merge" : "separate",
+    });
+    if (!outcome.ok) {
+      return { ok: false, error: outcome.error };
+    }
+    const { error } = await admin.rpc("agent_mark_suggestion_accepted", {
+      p_actor: args.actorUserId,
+      p_suggestion_id: args.suggestionId,
+    });
+    if (error) {
+      console.error("[acceptSuggestion] mark record", error.message);
+      // 지출은 이미 확정됨 — status 실패는 로그만
+    }
+    return { ok: true, type: "record" };
+  }
+
+  return { ok: false, error: "unknown-type" };
 }
 
 export async function dismissSuggestion(args: {
@@ -264,23 +191,25 @@ export async function dismissSuggestion(args: {
     return { ok: false, error: "host-only" };
   }
 
-  const { data: row, error } = await admin
+  const { data: peek } = await admin
     .from(TABLES.tripSuggestions)
-    .update({
-      status: "dismissed",
-      decided_by: args.actorUserId,
-      decided_at: new Date().toISOString(),
-    })
+    .select("id, type, status")
     .eq("id", args.suggestionId)
     .eq("trip_id", args.tripId)
-    .eq("status", "open")
-    .select("id, type")
     .maybeSingle();
 
+  if (!peek) return { ok: false, error: "not-found" };
+  if (String(peek.status) !== "open") {
+    return { ok: false, error: "not-open" };
+  }
+
+  const { error } = await admin.rpc("agent_dismiss_suggestion", {
+    p_actor: args.actorUserId,
+    p_suggestion_id: args.suggestionId,
+  });
   if (error) {
     console.error("[dismissSuggestion]", error.message);
-    return { ok: false, error: "update-failed" };
+    return { ok: false, error: mapRpcError(error.message) };
   }
-  if (!row) return { ok: false, error: "not-found" };
-  return { ok: true, type: String(row.type) };
+  return { ok: true, type: String(peek.type) };
 }

@@ -17,8 +17,10 @@ import { Button } from "@/components/ds/Button";
 import { EmptyState } from "@/components/ds/EmptyState";
 import { ExpenseRow } from "@/components/ds/ExpenseRow";
 import { CashPocketCard } from "@/components/ledger/CashPocketCard";
+import { OpenBudgetSuggestionCard } from "@/components/ledger/OpenBudgetSuggestionCard";
 import type { AddExpenseTab } from "@/components/ledger/journey/host/AddExpenseSheet";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
+import type { OpenBudgetSuggestion } from "@/lib/ledger/open-suggestions";
 import {
   isTravelBigTicket,
   matchExpenseToPlan,
@@ -35,6 +37,9 @@ type Props = {
   members: TripMember[];
   /** 확인할 자동 수집 알림 + 대기 중인 게스트 제안 */
   inboxCount: number;
+  /** open rebalance·settle Suggestion (Today 카드) */
+  openSuggestions?: OpenBudgetSuggestion[];
+  onSuggestionSettled?: () => void;
   cancelNotice: ExpenseDraftInput | null;
   onDismissCancel: () => void;
   onOpenAdd: (tab: AddExpenseTab) => void;
@@ -96,6 +101,8 @@ export function RecordStep({
   expenses,
   members,
   inboxCount,
+  openSuggestions = [],
+  onSuggestionSettled,
   cancelNotice,
   onDismissCancel,
   onOpenAdd,
@@ -209,6 +216,16 @@ export function RecordStep({
           </button>
         ))}
       </div>
+
+      {openSuggestions.map((s) => (
+        <OpenBudgetSuggestionCard
+          key={s.id}
+          tripId={tripId}
+          suggestion={s}
+          onSettled={() => onSuggestionSettled?.()}
+          onGoSettle={s.type === "settle" ? onSettle : undefined}
+        />
+      ))}
 
       {inboxCount > 0 ? (
         <section className="overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card">
