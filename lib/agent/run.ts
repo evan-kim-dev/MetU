@@ -1,7 +1,12 @@
 import "server-only";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
-import { runDomainFollowUps } from "@/lib/agent/domain-followup";
+import {
+  pushFollowUpEventId,
+  runDomainFollowUps,
+} from "@/lib/agent/domain-followup";
+import { createEvent } from "@/lib/agent/ingest";
+import { maybeSuggestRebalance } from "@/lib/agent/rebalance-run";
 import { extractTextDrafts } from "@/lib/agent/extract-text";
 import { detectImageMime } from "@/lib/agent/image-magic";
 import {
@@ -698,11 +703,15 @@ export async function processEvent(eventId: string): Promise<void> {
           eventId: event.id,
           payload,
         });
+        const rebalance = await maybeSuggestRebalance({
+          tripId: event.trip_id,
+          actorUserId: ctx.trip.user_id,
+        });
         await admin
           .from("agent_events")
           .update({
             status: "done",
-            result: settlement,
+            result: { ...settlement, rebalance },
             processed_at: new Date().toISOString(),
             error: null,
           })
@@ -1228,8 +1237,6 @@ export async function processEvent(eventId: string): Promise<void> {
           flags: expenseFlags,
           reasonCode: "suggestion_only",
         });
-        // fall through to suggestion create below via review path — handled after loop
-        // Actually we continue after creating suggestion RPC
         if (admin && event.trip_id) {
           try {
             await admin.rpc("agent_create_suggestion", {
@@ -1591,6 +1598,21 @@ export async function confirmEventReviews(
       processed_at: new Date().toISOString(),
     })
     .eq("id", eventId);
+
+  const tripId = row.trip_id as string;
+  const domainFollowUpIds: string[] = [];
+  for (const expenseId of expenseIds) {
+    const domainCreated = await createEvent({
+      userId: actorId,
+      tripId,
+      source: "domain",
+      kind: "domain",
+      payload: { type: "expense_changed", expenseId },
+      idempotencyKey: `expense_changed:${tripId}:${expenseId}`,
+    });
+    pushFollowUpEventId(domainFollowUpIds, domainCreated);
+  }
+  await runDomainFollowUps("text", domainFollowUpIds, processEvent);
 
   return { ok: true, expenseIds, status: nextStatus };
 }

@@ -370,6 +370,9 @@ vi.mock("@/lib/agent/domain-followup", () => ({
 vi.mock("@/lib/agent/handlers/settlement", () => ({
   onExpenseChanged: async () => ({}),
 }));
+vi.mock("@/lib/agent/rebalance-run", () => ({
+  maybeSuggestRebalance: async () => ({ suggested: false }),
+}));
 vi.mock("@/lib/agent/receipt-vision", () => ({
   extractReceiptFromImage: async () => ({ ok: false, error: "no_api_key" }),
 }));
