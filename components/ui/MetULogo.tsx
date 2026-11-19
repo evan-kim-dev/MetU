@@ -10,9 +10,7 @@ interface MetULogoProps {
   className?: string;
 }
 
-/** 앱 아이콘 (파비콘·PWA·로그인 히어로). */
-const ICON_SRC = "/brand/metu-icon.png";
-/** 웹 상단 가로 워드마크 + 마스코트 (투명 배경, 흰 글자 + 파란 외곽). */
+/** 웹 상단·로그인 히어로 공통: 가로 워드마크 + 마스코트 (투명 배경). */
 const LOCKUP_SRC = "/brand/metu-lockup.png";
 
 export function MetULogo({
@@ -28,13 +26,14 @@ export function MetULogo({
             AI 여행 플래너
           </span>
         ) : null}
+        {/* 상단바와 같은 lockup (사각 아이콘 칩 없음) */}
         <Image
-          src={ICON_SRC}
+          src={LOCKUP_SRC}
           alt="MetU"
-          width={128}
-          height={128}
+          width={280}
+          height={112}
           priority
-          className="h-28 w-28 rounded-[1.75rem] shadow-soft"
+          className="h-16 w-auto max-w-[14rem] object-contain"
         />
       </div>
     );
