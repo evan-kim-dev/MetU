@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { FxAttribution } from "@/components/fx/FxAttribution";
 import { DEFAULTS } from "@/lib/constants";
 import { useProfile } from "@/lib/profile/ProfileProvider";
 import { useTrips } from "@/lib/trips/TripProvider";
@@ -185,11 +184,10 @@ export function HomeGreeting() {
         </div>
       </div>
       {isLastKnown && rateDate ? (
-        <p className="text-right text-[10px] text-mu-fg-3">
+        <p className="text-right text-mu-caption text-mu-fg-3">
           마지막 업데이트 {rateDate}
         </p>
       ) : null}
-      <FxAttribution className="text-right text-[10px] leading-snug text-mu-fg-3" />
     </div>
   );
 }
