@@ -20,14 +20,12 @@ const FEATURES = ["예산 맞춤", "AI 일정", "자동 가계부", "정산"] as
 export function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signInWithKakao, continueAsGuest } = useAuthActions();
+  const { signInWithKakao } = useAuthActions();
 
   const [kakaoLoading, setKakaoLoading] = useState(false);
   const [kakaoSlowHint, setKakaoSlowHint] = useState(false);
-  const [guestLoading, setGuestLoading] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
-  const [guestError, setGuestError] = useState(false);
   const [postLoginStatus, setPostLoginStatus] = useState<string | null>(null);
   const deleted = searchParams.get("deleted") === "1";
   const slowLoginTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,10 +97,9 @@ export function LoginContent() {
   }, [kakaoLoading]);
 
   const handleKakaoLogin = async () => {
-    if (kakaoLoading || guestLoading) return;
+    if (kakaoLoading) return;
     setKakaoLoading(true);
     setError(null);
-    setGuestError(false);
 
     const result = await signInWithKakao();
     if (!result.ok) {
@@ -111,27 +108,12 @@ export function LoginContent() {
     }
   };
 
-  const handleGuest = async () => {
-    if (guestLoading || kakaoLoading) return;
-    setGuestLoading(true);
-    setGuestError(false);
-    setError(null);
-
-    const result = await continueAsGuest();
-    if (!result.ok) {
-      setGuestError(true);
-      setGuestLoading(false);
-      return;
-    }
-    goNext();
-  };
-
   const handleEmailSignedIn = () => {
     startPostLoginStatus();
     goNext();
   };
 
-  const anyLoading = kakaoLoading || guestLoading;
+  const anyLoading = kakaoLoading;
 
   return (
     <div className="relative flex min-h-dvh flex-col overflow-y-auto overscroll-contain bg-mu-bg">
@@ -178,24 +160,13 @@ export function LoginContent() {
           style={{ animationDelay: "180ms" }}
         >
           <div className="flex flex-col gap-3">
-            {deleted && !error && !guestError ? (
+            {deleted && !error ? (
               <AuthMessage kind="info">
                 회원 탈퇴가 완료되었어요. 이용해 주셔서 감사합니다.
               </AuthMessage>
             ) : null}
             {error ? (
               <AuthMessage kind="error">{error.message}</AuthMessage>
-            ) : null}
-            {guestError ? (
-              <AuthMessage
-                kind="error"
-                action={{
-                  label: "다시 시도",
-                  onClick: () => void handleGuest(),
-                }}
-              >
-                둘러보기를 시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.
-              </AuthMessage>
             ) : null}
             {postLoginStatus ? (
               <p role="status" className="text-center text-xs text-mu-fg-2">
@@ -228,7 +199,6 @@ export function LoginContent() {
               onClick={() => {
                 setEmailOpen((prev) => !prev);
                 setError(null);
-                setGuestError(false);
               }}
               disabled={anyLoading}
               aria-expanded={emailOpen}
@@ -241,28 +211,6 @@ export function LoginContent() {
             {emailOpen ? (
               <EmailAuthForm variant="full" onSignedIn={handleEmailSignedIn} />
             ) : null}
-
-            <div className="flex flex-col gap-1.5">
-              <button
-                type="button"
-                onClick={() => void handleGuest()}
-                disabled={anyLoading}
-                aria-busy={guestLoading}
-                className="min-h-touch w-full rounded-2xl border-0 bg-mu-card text-sm font-semibold text-mu-fg-2 shadow-sm backdrop-blur-sm transition-colors active:scale-99 active:bg-mu-sunken disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent/40"
-              >
-                {guestLoading ? (
-                  <span className="inline-flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                    들어가는 중…
-                  </span>
-                ) : (
-                  "로그인 없이 둘러보기"
-                )}
-              </button>
-              <p className="text-center text-xs leading-5 text-mu-fg-2">
-                둘러보기에서는 저장과 자동 기록 연결 같은 일부 기능이 제한돼요.
-              </p>
-            </div>
           </div>
 
           <p className="text-center text-xs leading-5 text-mu-fg-2">

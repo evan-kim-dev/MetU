@@ -205,6 +205,13 @@ export function TripsPageContent() {
                     AI로 일정까지 계획하기
                   </Link>
                 </>
+              ) : isGuest ? (
+                <Link
+                  href={`/login?next=${encodeURIComponent("/trips")}`}
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-mu-accent px-6 text-sm font-bold text-mu-on-accent transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
+                >
+                  로그인하고 여행 만들기
+                </Link>
               ) : (
                 <p className="text-center text-sm text-mu-fg-3">
                   초대 링크로 합류한 뒤에는 새 여행을 만들 수 없어요.

@@ -21,7 +21,6 @@ vi.mock("@/components/trips/QuickTripSheet", () => ({
 }));
 
 import { FirstRunChecklist } from "@/components/home/FirstRunChecklist";
-import { GuestHomeCard } from "@/components/home/GuestHomeCard";
 import {
   FIRST_RUN_DISMISSED_KEY,
   FIRST_RUN_DONE_KEY,
@@ -65,7 +64,7 @@ function mockLoggedIn(overrides?: {
 }
 
 describe("FirstRunChecklist", () => {
-  it("does not render for guests; GuestHomeCard does", () => {
+  it("does not render for cookie guests", () => {
     useAuth.mockReturnValue({
       isReady: true,
       isLoggedIn: true,
@@ -79,8 +78,6 @@ describe("FirstRunChecklist", () => {
     useTrips.mockReturnValue({ trips: [], activeTrips: [], isReady: true });
     const { container: c1 } = render(<FirstRunChecklist />);
     expect(c1.textContent).toBe("");
-    render(<GuestHomeCard />);
-    expect(screen.getByText("둘러보는 중이에요")).toBeTruthy();
   });
 
   it("does not render while loading", () => {

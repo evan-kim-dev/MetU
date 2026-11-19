@@ -99,9 +99,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** 호스트 기록 단계는 "최근 지출", 게스트 읽기 전용은 "지출 목록" 이 보이면 로드 끝. */
+/** 호스트 기록 단계는 "오늘 지출", 게스트 읽기 전용은 "지출 목록" 이 보이면 로드 끝. */
 async function loaded() {
-  await screen.findByText(/^(최근 지출|지출 목록)$/);
+  await screen.findByText(/^(오늘 지출|지출 목록)$/);
 }
 
 describe("LedgerShell 바로가기 쿼리", () => {
