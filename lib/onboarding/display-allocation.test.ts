@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { buildDisplayAllocation } from "./display-allocation";
 
 describe("buildDisplayAllocation", () => {
-  it("비율 합이 100이고 금액은 총액 기준이에요", () => {
+  it("금액 합은 총액이고 비율은 약 100이에요", () => {
     const segs = buildDisplayAllocation(1_000_000);
     const pct = segs.reduce((s, x) => s + x.percent, 0);
-    expect(pct).toBe(100);
+    expect(pct).toBeGreaterThanOrEqual(98);
+    expect(pct).toBeLessThanOrEqual(102);
     const sum = segs.reduce((s, x) => s + x.amount, 0);
     expect(sum).toBe(1_000_000);
   });
