@@ -81,7 +81,7 @@ export function loadTravelDraft(): TravelDraft | null {
     if (!parsed || typeof parsed !== "object") return null;
     const v = parsed as Record<string, unknown>;
     if (typeof v.step !== "number" || !Number.isFinite(v.step)) return null;
-    const step = Math.min(4, Math.max(1, Math.floor(v.step)));
+    const step = Math.min(2, Math.max(1, Math.floor(v.step)));
     const form = parseForm(v.form);
     if (!form) return null;
     return { step, form };
@@ -93,7 +93,7 @@ export function loadTravelDraft(): TravelDraft | null {
 export function saveTravelDraft(draft: TravelDraft): void {
   try {
     if (typeof sessionStorage === "undefined") return;
-    const step = Math.min(4, Math.max(1, Math.floor(draft.step)));
+    const step = Math.min(2, Math.max(1, Math.floor(draft.step)));
     sessionStorage.setItem(
       TRAVEL_DRAFT_KEY,
       JSON.stringify({ step, form: draft.form })

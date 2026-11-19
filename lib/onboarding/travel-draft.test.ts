@@ -16,7 +16,7 @@ afterEach(() => {
 describe("travel-draft", () => {
   it("저장 후 같은 step·form 을 복원해요", () => {
     const draft = {
-      step: 3,
+      step: 2,
       form: {
         ...INITIAL_FORM,
         budget: "50",
@@ -39,8 +39,8 @@ describe("travel-draft", () => {
     expect(loadTravelDraft()).toBeNull();
   });
 
-  it("step 범위는 1~4 로 클램프해요", () => {
+  it("step 범위는 1~2 로 클램프해요", () => {
     saveTravelDraft({ step: 99, form: INITIAL_FORM });
-    expect(loadTravelDraft()?.step).toBe(4);
+    expect(loadTravelDraft()?.step).toBe(2);
   });
 });

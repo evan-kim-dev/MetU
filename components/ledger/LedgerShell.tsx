@@ -138,14 +138,31 @@ export function LedgerShell({
   const [cashOpen, setCashOpen] = useState(false);
   const [botOpen, setBotOpen] = useState(false);
 
-  const planAllocation = useMemo(() => {
+  const tripMeta = useMemo(() => {
     const trip = getTrip(tripId);
-    return (trip?.budgetAllocation ?? []).map((a) => ({
+    const planAllocation = (trip?.budgetAllocation ?? []).map((a) => ({
       id: a.id,
       label: a.label,
       amount: a.amount,
     }));
+    let tripDays = 1;
+    if (trip?.startDate && trip?.endDate) {
+      const a = Date.parse(`${trip.startDate}T00:00:00Z`);
+      const b = Date.parse(`${trip.endDate}T00:00:00Z`);
+      if (Number.isFinite(a) && Number.isFinite(b) && b >= a) {
+        tripDays = Math.floor((b - a) / 86_400_000) + 1;
+      }
+    } else if (trip?.dailySchedule && trip.dailySchedule.length > 0) {
+      tripDays = trip.dailySchedule.length;
+    }
+    return {
+      planAllocation,
+      tripBudgetKrw: trip?.budget ?? 0,
+      tripDays,
+    };
   }, [getTrip, tripId]);
+
+  const planAllocation = tripMeta.planAllocation;
 
   const reload = useCallback(async () => {
     const supabase = getBrowserSupabase();
@@ -418,6 +435,8 @@ export function LedgerShell({
                   onSettle={() => onNavigate?.("settle")}
                   dashboard={dashboard}
                   planAllocation={planAllocation}
+                  tripBudgetKrw={tripMeta.tripBudgetKrw}
+                  tripDays={tripMeta.tripDays}
                 />
               )}
             </>

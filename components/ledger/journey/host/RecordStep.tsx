@@ -6,12 +6,12 @@ import {
   ChevronRight,
   ClipboardPaste,
   FileText,
-  Inbox,
   Mic,
   Receipt,
+  Scale,
+  Sparkles,
   X,
 } from "lucide-react";
-import { AmountCard } from "@/components/ds/AmountCard";
 import { BottomCTA } from "@/components/ds/BottomCTA";
 import { Button } from "@/components/ds/Button";
 import { EmptyState } from "@/components/ds/EmptyState";
@@ -24,8 +24,10 @@ import {
   matchExpenseToPlan,
   type PlanAlloc,
 } from "@/lib/ledger/plan-match";
+import { deriveTodayBudget } from "@/lib/ledger/today-budget";
 import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
 import { formatKRW } from "@/lib/shared/format";
+import { cn } from "@/lib/design/tokens";
 
 type Props = {
   tripId: string;
@@ -46,6 +48,10 @@ type Props = {
   dashboard: React.ReactNode;
   /** 플랜 예산 배분 — 항공·숙소 매칭 안내 (예상≠실제) */
   planAllocation?: ReadonlyArray<PlanAlloc>;
+  /** 총 예산(표시용 일 한도 계산) */
+  tripBudgetKrw?: number;
+  /** 여행 일수(없으면 1) */
+  tripDays?: number;
 };
 
 function sortRecent(list: LedgerExpenseRow[]): LedgerExpenseRow[] {
@@ -76,7 +82,15 @@ const QUICK_ACTIONS: Array<{
   { tab: "voice", label: "음성", icon: Mic },
 ];
 
-/** 호스트 ③ 기록 단계: 요약 · 확인할 것 · 최근 지출. 입력은 지출 추가 시트에서 해요. */
+function todayIsoLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** 호스트 ③ 기록 단계: Today 히어로 · 에이전트 1건 · 오늘 지출. */
 export function RecordStep({
   tripId,
   expenses,
@@ -90,13 +104,20 @@ export function RecordStep({
   onSettle,
   dashboard,
   planAllocation = [],
+  tripBudgetKrw = 0,
+  tripDays = 1,
 }: Props) {
-  const total = expenses.reduce(
-    (s, e) => s + (Number.isFinite(e.krwAmount) ? e.krwAmount : 0),
-    0
-  );
+  const today = todayIsoLocal();
+  const todayView = deriveTodayBudget({
+    totalBudgetKrw: tripBudgetKrw,
+    tripDays,
+    expenses,
+    todayIso: today,
+  });
   const nameOf = (id: string) => members.find((m) => m.id === id)?.displayName;
-  const recent = sortRecent(expenses);
+  const todayExpenses = sortRecent(
+    expenses.filter((e) => e.spentOn === today)
+  );
 
   function planHint(e: LedgerExpenseRow): {
     status: "review";
@@ -130,18 +151,42 @@ export function RecordStep({
     };
   }
 
+  const remainingPositive = todayView.remainingKrw >= 0;
+
   return (
     <div className="flex flex-col gap-5 pb-24">
-      <AmountCard
-        label="실제 지출"
-        amount={total}
-        sub={
-          expenses.length > 0
-            ? `확정 ${expenses.length}건 · 누르면 분담을 바꿔요`
-            : "아직 기록이 없어요"
-        }
-        tone={expenses.length > 0 ? "accent" : "neutral"}
-      />
+      <section
+        className={cn(
+          "rounded-mu-xl border px-5 py-5",
+          remainingPositive
+            ? "border-mu-ok/25 bg-mu-ok-soft"
+            : "border-mu-err/25 bg-mu-err-soft"
+        )}
+        aria-label={`오늘 쓸 수 있는 돈 ${formatKRW(Math.max(0, todayView.remainingKrw))}`}
+      >
+        <p className="text-mu-caption font-medium text-mu-fg-2">
+          오늘 쓸 수 있는 돈
+        </p>
+        <p className="mu-num mt-1 text-3xl font-bold tracking-tight text-mu-fg">
+          {formatKRW(Math.max(0, todayView.remainingKrw))}
+        </p>
+        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-mu-card/80">
+          <div
+            className={cn(
+              "h-full rounded-full transition-[width] duration-mu-base",
+              remainingPositive ? "bg-mu-ok" : "bg-mu-err"
+            )}
+            style={{
+              width: `${Math.round(Math.min(1, todayView.usedRatio) * 100)}%`,
+            }}
+          />
+        </div>
+        <p className="mt-2 text-mu-caption text-mu-fg-3">
+          일 예산 {formatKRW(todayView.dayBudgetKrw)} · 오늘{" "}
+          {formatKRW(todayView.spentTodayKrw)} 씀
+          {tripBudgetKrw <= 0 ? " · 총예산 미설정" : ""}
+        </p>
+      </section>
 
       <CashPocketCard expenses={expenses} />
 
@@ -166,26 +211,67 @@ export function RecordStep({
       </div>
 
       {inboxCount > 0 ? (
-        <Link
-          href={`/trips/${tripId}/ledger/inbox`}
-          className="mu-focus flex min-h-tap items-center gap-3 rounded-mu-lg border border-mu-line bg-mu-warn-soft px-4 py-3"
-        >
-          <Inbox
-            className="h-5 w-5 shrink-0 text-mu-warn"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-          <span className="min-w-0 flex-1 text-mu-body text-mu-fg">
-            확인할 알림·제안{" "}
-            <span className="mu-num font-bold">{inboxCount}건</span>
-          </span>
-          <ChevronRight
-            className="h-5 w-5 shrink-0 text-mu-fg-3"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-        </Link>
+        <section className="overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card">
+          <div className="flex items-start gap-3 px-4 pt-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mu-accent-soft text-mu-accent">
+              <Sparkles className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-mu-label font-bold text-mu-fg">에이전트 제안</p>
+              <p className="mt-0.5 text-mu-body text-mu-fg-2">
+                확인할 항목이{" "}
+                <span className="mu-num font-semibold">{inboxCount}건</span>{" "}
+                있어요.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2 border-t border-mu-line px-4 py-3">
+            <Link
+              href={`/trips/${tripId}/ledger/inbox`}
+              className="mu-focus flex min-h-tap flex-1 items-center justify-center rounded-mu-md bg-mu-accent text-mu-label font-semibold text-mu-on-accent"
+            >
+              확인
+            </Link>
+            <Link
+              href={`/trips/${tripId}/ledger/inbox`}
+              className="mu-focus flex min-h-tap flex-1 items-center justify-center rounded-mu-md border border-mu-line text-mu-label font-semibold text-mu-fg"
+            >
+              수정
+            </Link>
+          </div>
+          {inboxCount > 1 ? (
+            <Link
+              href={`/trips/${tripId}/ledger/inbox`}
+              className="mu-focus flex min-h-tap items-center justify-between border-t border-mu-line px-4 py-3 text-mu-body text-mu-accent"
+            >
+              <span>제안 {inboxCount - 1}개 더 보기</span>
+              <ChevronRight className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+            </Link>
+          ) : null}
+        </section>
       ) : null}
+
+      <button
+        type="button"
+        onClick={onSettle}
+        aria-label="정산으로 이동"
+        className="mu-focus flex min-h-tap w-full items-center gap-3 rounded-mu-xl border border-mu-line bg-mu-card px-4 py-3 text-left"
+      >
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-mu-sunken text-mu-fg-2">
+          <Scale className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-mu-body font-semibold text-mu-fg">정산</span>
+          <span className="mt-0.5 block text-mu-caption text-mu-fg-3">
+            누가 얼마를 받을지 정리해요
+          </span>
+        </span>
+        <ChevronRight
+          className="h-5 w-5 shrink-0 text-mu-fg-3"
+          strokeWidth={1.75}
+          aria-hidden
+        />
+      </button>
 
       {cancelNotice ? (
         <div
@@ -221,9 +307,9 @@ export function RecordStep({
       >
         <div className="flex items-baseline justify-between gap-2 border-b border-mu-line px-4 pt-4 pb-3">
           <h2 id="record-list-title" className="text-mu-heading text-mu-fg">
-            최근 지출
+            오늘 지출
           </h2>
-          {recent.length > 0 ? (
+          {todayExpenses.length > 0 ? (
             <button
               type="button"
               onClick={onAdjust}
@@ -233,7 +319,7 @@ export function RecordStep({
             </button>
           ) : null}
         </div>
-        {recent.length === 0 ? (
+        {todayExpenses.length === 0 ? (
           <div className="px-2">
             <EmptyState
               icon={Receipt}
@@ -249,7 +335,7 @@ export function RecordStep({
           </div>
         ) : (
           <div className="px-4 pb-1">
-            {recent.map((e) => {
+            {todayExpenses.map((e) => {
               const hint = planHint(e);
               return (
                 <ExpenseRow
