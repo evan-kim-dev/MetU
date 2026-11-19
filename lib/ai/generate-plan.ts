@@ -38,6 +38,11 @@ import type {
   RagSource,
   TripRecommendation,
 } from "./types";
+import {
+  budgetPlanToLegacyAllocation,
+  buildBudgetPlanFromForm,
+  clampScheduleToBudgetPlan,
+} from "@/lib/ai/plan-agent";
 
 const MIN_CANDIDATE_POOL = 8;
 
@@ -85,61 +90,6 @@ function getNights(form: OnboardingForm): number {
   }
   // 유연 일정 기본 5박 6일
   return 5;
-}
-
-function getBudgetWeights(styles: OnboardingForm["styles"]) {
-  const weights = {
-    flight: 0.38,
-    hotel: 0.28,
-    food: 0.16,
-    transport: 0.08,
-    activity: 0.1,
-  };
-
-  if (styles.includes("food")) {
-    weights.food += 0.04;
-    weights.activity -= 0.02;
-    weights.transport -= 0.02;
-  }
-  if (styles.includes("healing")) {
-    weights.hotel += 0.05;
-    weights.activity -= 0.05;
-  }
-  if (styles.includes("shopping")) {
-    weights.activity += 0.04;
-    weights.food -= 0.04;
-  }
-  if (styles.includes("sightseeing") || styles.includes("culture")) {
-    weights.activity += 0.03;
-    weights.transport += 0.02;
-    weights.food -= 0.05;
-  }
-
-  return weights;
-}
-
-function buildAllocation(
-  total: number,
-  weights: ReturnType<typeof getBudgetWeights>
-): BudgetAllocation[] {
-  const items = [
-    { id: "flight", label: "항공권", weight: weights.flight, color: "#2563EB" },
-    { id: "hotel", label: "숙소", weight: weights.hotel, color: "#7C3AED" },
-    { id: "food", label: "식비", weight: weights.food, color: "#F59E0B" },
-    { id: "transport", label: "교통", weight: weights.transport, color: "#10B981" },
-    { id: "activity", label: "관광·액티비티", weight: weights.activity, color: "#EC4899" },
-  ];
-
-  return items.map((item) => {
-    const amount = Math.round(total * item.weight);
-    return {
-      id: item.id,
-      label: item.label,
-      amount,
-      percent: Math.round(item.weight * 100),
-      color: item.color,
-    };
-  });
 }
 
 function buildDailySchedule(
@@ -509,8 +459,8 @@ export function buildFallbackTripPlan(
   const { city, country } = parseDestination(form.destination);
   const travelSources = retrieveTravelSources(form);
   const nights = getNights(form);
-  const weights = getBudgetWeights(form.styles);
-  const budgetAllocation = buildAllocation(totalBudget, weights);
+  const budgetPlan = buildBudgetPlanFromForm(form);
+  const budgetAllocation = budgetPlanToLegacyAllocation(budgetPlan);
   const flightAmount = budgetAllocation.find((a) => a.id === "flight")!.amount;
   const hotelAmount = budgetAllocation.find((a) => a.id === "hotel")!.amount;
   const pricePerNight = Math.round(hotelAmount / Math.max(1, nights));
@@ -533,7 +483,7 @@ export function buildFallbackTripPlan(
     styleLabels,
   });
 
-  const dailySchedule =
+  const rawSchedule =
     dailyScheduleOverride ??
     buildDailySchedule(
       form,
@@ -542,6 +492,10 @@ export function buildFallbackTripPlan(
       knowledge,
       candidatePool
     );
+  const { schedule: dailySchedule } = clampScheduleToBudgetPlan(
+    rawSchedule,
+    budgetPlan
+  );
 
   const tipsBase =
     summaryResult.tone === "factbomb"
@@ -684,8 +638,9 @@ export async function buildFallbackTripPlanAsync(
     try {
       const people = Math.max(1, form.people);
       const totalBudget = parseBudget(form.budget);
-      const weights = getBudgetWeights(form.styles);
-      const budgetAllocation = buildAllocation(totalBudget, weights);
+      const budgetAllocation = budgetPlanToLegacyAllocation(
+        buildBudgetPlanFromForm(form)
+      );
       const divisor = Math.max(1, nights);
       const budgets = {
         food: Math.round(
@@ -964,6 +919,9 @@ export async function enrichTripPlanWithAi(
     });
   }
 
+  const budgetPlan = buildBudgetPlanFromForm(form);
+  const clamped = clampScheduleToBudgetPlan(dailySchedule, budgetPlan);
+
   return {
     ...fallback,
     ...knowledgeAwareFallback,
@@ -971,6 +929,7 @@ export async function enrichTripPlanWithAi(
     dateRange,
     summary,
     summaryTone,
+    budgetAllocation: budgetPlanToLegacyAllocation(budgetPlan),
     flight: enriched.flight,
     hotel: {
       ...enriched.hotel,
@@ -978,7 +937,7 @@ export async function enrichTripPlanWithAi(
       pricePerNight: Math.round(hotelAmount / Math.max(1, nights)),
       total: hotelAmount,
     },
-    dailySchedule,
+    dailySchedule: clamped.schedule,
     tips: tipsOut,
     ragSources,
     routeOptimization,

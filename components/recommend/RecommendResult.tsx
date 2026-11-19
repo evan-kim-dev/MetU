@@ -19,6 +19,8 @@ import type { TripRecommendation } from "@/lib/ai/types";
 import { useTrips } from "@/lib/trips/TripProvider";
 import { planToTrip } from "@/components/recommend/planToTrip";
 import { planEstimateKrw } from "@/lib/ledger/plan-estimate";
+import { budgetPlanFromAllocation } from "@/lib/budget/adapters";
+import { variableLimitFromPlan } from "@/lib/ai/plan-agent";
 import { cn } from "@/lib/design/tokens";
 
 const EASTER_CELEB_PREFIX = "metu:easter-celeb:v2:";
@@ -258,12 +260,23 @@ export function RecommendResult({
     hotelPrice,
   ]);
 
+  const budgetPlan = useMemo(
+    () =>
+      budgetPlanFromAllocation({
+        tripId: plan.id,
+        total: plan.totalBudget,
+        people: plan.people,
+        allocation: plan.budgetAllocation,
+      }),
+    [plan.id, plan.totalBudget, plan.people, plan.budgetAllocation]
+  );
   const scheduleEstimate =
     planEstimateKrw({
       dailySchedule: plan.dailySchedule,
       budgetAllocation: plan.budgetAllocation,
     }) ?? 0;
-  const plannedTotal = scheduleEstimate + flightPrice + hotelPrice;
+  const variableCap = variableLimitFromPlan(budgetPlan);
+  const plannedTotal = Math.min(scheduleEstimate, variableCap) + flightPrice + hotelPrice;
   const slack = plan.totalBudget - plannedTotal;
   const budgetExceeded =
     liveBudget.overBudget || flightPrice + hotelPrice > plan.totalBudget;

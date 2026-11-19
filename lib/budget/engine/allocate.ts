@@ -64,7 +64,7 @@ export function baseAllocateWeights(args: {
 
 function normalizeWeights(w: AllocateWeights): AllocateWeights {
   const ids = Object.keys(w) as BudgetCategoryId[];
-  let sum = ids.reduce((s, id) => s + Math.max(0, w[id]), 0);
+  const sum = ids.reduce((s, id) => s + Math.max(0, w[id]), 0);
   if (!(sum > 0)) {
     return { flight: 0.28, stay: 0.3, food: 0.2, transport: 0.1, etc: 0.12 };
   }
@@ -102,7 +102,7 @@ export function allocate(input: AllocateInput): BudgetPlan {
     const floor = Math.floor(exact);
     return { id, floor, rem: exact - floor };
   });
-  let used = rows.reduce((s, r) => s + r.floor, 0);
+  const used = rows.reduce((s, r) => s + r.floor, 0);
   let left = total - used;
   const byRem = [...rows].sort((a, b) => {
     if (b.rem !== a.rem) return b.rem - a.rem;
