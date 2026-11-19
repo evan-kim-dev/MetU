@@ -221,7 +221,7 @@ export function RecordStep({
               <p className="mt-0.5 text-mu-body text-mu-fg-2">
                 확인할 항목이{" "}
                 <span className="mu-num font-semibold">{inboxCount}건</span>{" "}
-                있어요.
+                있어요. 확인 후에만 장부에 반영돼요.
               </p>
             </div>
           </div>

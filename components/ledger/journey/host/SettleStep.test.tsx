@@ -38,7 +38,19 @@ vi.mock("@/lib/auth/AuthProvider", () => ({
   useAuth: () => ({ user: { id: "u-a" }, isAnonymous: false }),
 }));
 vi.mock("@/lib/supabase/browser", () => ({
-  getBrowserSupabase: () => ({ rpc: (...a: unknown[]) => rpc(...a) }),
+  getBrowserSupabase: () => ({
+    rpc: (...a: unknown[]) => rpc(...a),
+    from: () => {
+      const chain = {
+        select: () => chain,
+        eq: () => chain,
+        order: () => chain,
+        limit: () => chain,
+        maybeSingle: async () => ({ data: null, error: null }),
+      };
+      return chain;
+    },
+  }),
 }));
 vi.mock("@/lib/ledger/fx", () => ({
   getFxRateToKrw: vi.fn(),

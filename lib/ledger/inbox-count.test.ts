@@ -7,15 +7,16 @@ import {
 } from "@/lib/ledger/inbox-count";
 
 describe("sumInboxCounts", () => {
-  it("events + proposals", () => {
+  it("events + proposals + suggestions", () => {
     expect(sumInboxCounts(2, 3)).toBe(5);
+    expect(sumInboxCounts(2, 3, 1)).toBe(6);
     expect(sumInboxCounts(null, 1)).toBe(1);
     expect(sumInboxCounts(undefined, undefined)).toBe(0);
   });
 });
 
 describe("fetchTripInboxCount", () => {
-  it("sums events and proposals when includeProposals", async () => {
+  it("sums events, proposals, and open rebalance/settle suggestions", async () => {
     const from = vi.fn((table: string) => {
       const chain = {
         select: () => chain,
@@ -31,11 +32,20 @@ describe("fetchTripInboxCount", () => {
           ? 3
           : table === "trip_bot_proposals"
             ? 1
-            : 0;
+            : table === "trip_suggestions"
+              ? 2
+              : 0;
+      const tail = {
+        in: () => Promise.resolve({ count }),
+        then: (
+          resolve: (v: { count: number }) => unknown,
+          reject?: (e: unknown) => unknown
+        ) => Promise.resolve({ count }).then(resolve, reject),
+      };
       return {
         select: () => ({
           eq: () => ({
-            eq: () => Promise.resolve({ count }),
+            eq: () => tail,
           }),
         }),
       };
@@ -45,7 +55,7 @@ describe("fetchTripInboxCount", () => {
       { from } as never,
       { tripId: "t1", userId: "u1", includeProposals: true }
     );
-    expect(n).toBe(6);
+    expect(n).toBe(8);
   });
 });
 

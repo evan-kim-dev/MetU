@@ -732,7 +732,6 @@ export async function processEvent(eventId: string): Promise<void> {
     const text = preferSmsParseText(payload);
 
     let drafts: ExpenseDraftInput[] = [];
-    let receiptPath: string | null = null;
     if (event.kind === "sms" || event.kind === "text") {
       const t0 = Date.now();
       drafts = extractTextDrafts(text, {
@@ -786,7 +785,7 @@ export async function processEvent(eventId: string): Promise<void> {
         return;
       }
       drafts = [read.draft];
-      receiptPath = read.path;
+      // receipt path 는 event.payload.path 에 있으며 confirm 시 서버가 읽어요.
     } else {
       await admin
         .from("agent_events")
@@ -1086,139 +1085,20 @@ export async function processEvent(eventId: string): Promise<void> {
       let mergeInto: string | undefined = decision.duplicateOfExpenseId;
       const mergeKind = decision.mergeKind;
 
+      // Budget-first: merge(청구액·영수증 붙이기)도 수락 전에는 원장을 바꾸지 않아요.
       if (decision.decision === "merge" && mergeKind === "billed_krw") {
         const target = decision.mergeExpenseId;
-        const tMerge = Date.now();
-        let applied: ApplyBilledResult = {
-          ok: false,
-          error: "no-target",
-        };
-        if (target && isOverseasKrw) {
-          // K 문자 → F 외화 지출에 청구액 붙이기
-          applied = await applyBilledKrw({
-            actorId: event.user_id,
-            expenseId: target,
-            billedKrw: priced.krwAmount,
-            source: "sms",
-            eventId: event.id,
-          });
-        } else if (target && isForeignDraft) {
-          // F 영수증/문자 → 기존 해외 원화 지출(K)을 외화로 전환
-          const kRow = existing.find((e) => e.id === target);
-          applied = await applyBilledKrw({
-            actorId: event.user_id,
-            expenseId: target,
-            billedKrw: kRow?.krwAmount ?? priced.krwAmount,
-            source: "sms",
-            eventId: event.id,
-            foreign: {
-              amount: priced.amount,
-              currency: priced.currency,
-              fx_rate: priced.__fxRate ?? 1,
-              fx_rate_date: priced.__fxDate ?? null,
-              fx_is_fallback: priced.fxIsFallback,
-              krw_base: priced.__krwBase ?? priced.krwAmount,
-              items: draft.items ?? null,
-              merchant_ko: draft.merchantKo ?? null,
-              billed_event_id: null,
-            },
-          });
-          if (applied.ok && receiptPath) {
-            const attached = await attachReceipt({
-              actorId: event.user_id,
-              expenseId: target,
-              receiptPath,
-              eventId: event.id,
-              draft,
-            });
-            if (attached.ok && attached.attached) {
-              receiptAttached.add(target);
-            }
-          }
-        }
-        await recordStep(
-          event.id,
-          ++seq,
-          "applyBilledKrw",
-          { index: i, expenseId: target ?? null },
-          applied.ok
-            ? { applied: applied.applied, already: applied.already ?? false }
-            : { ok: false, error: applied.error },
-          Date.now() - tMerge,
-          applied.ok
-        );
-        if (applied.ok && target) {
-          const idx = existing.findIndex((e) => e.id === target);
-          if (idx >= 0) {
-            const prev = existing[idx]!;
-            existing[idx] = {
-              ...prev,
-              billedKrw: isOverseasKrw
-                ? priced.krwAmount
-                : prev.krwAmount,
-              krwAmount: isOverseasKrw
-                ? priced.krwAmount
-                : prev.krwAmount,
-              currency: isForeignDraft ? priced.currency : prev.currency,
-              amount: isForeignDraft ? priced.amount : prev.amount,
-              overseas: true,
-            };
-          }
-          items.push({
-            ref: i,
-            decision: "merged",
-            mergeKind: "billed_krw",
-            expenseId: target,
-            reasons: decision.reasons,
-          });
-          continue;
-        }
-        console.error("[processEvent] apply billed failed", applied);
-        reviewReasons = [
-          "청구액을 합치지 못했어요 — 합치기/별개로 저장을 골라 주세요",
-        ];
+        reviewReasons =
+          decision.reasons.length > 0
+            ? decision.reasons
+            : ["청구액을 합칠까요? 확인 후 반영해요"];
         mergeInto = target;
       } else if (decision.decision === "merge") {
-        // Same payment already recorded: attach the receipt, never create a 2nd expense.
         const target = decision.mergeExpenseId;
-        const tMerge = Date.now();
-        const attached =
-          target && receiptPath
-            ? await attachReceipt({
-                actorId: event.user_id,
-                expenseId: target,
-                receiptPath,
-                eventId: event.id,
-                draft,
-              })
-            : ({ ok: false, error: "no-target" } as const);
-        await recordStep(
-          event.id,
-          ++seq,
-          "attachReceipt",
-          { index: i, expenseId: target ?? null },
-          attached.ok
-            ? { attached: attached.attached, reason: attached.reason ?? null }
-            : { ok: false },
-          Date.now() - tMerge,
-          attached.ok && attached.attached
-        );
-        if (attached.ok && attached.attached && target) {
-          receiptAttached.add(target);
-          items.push({
-            ref: i,
-            decision: "merged",
-            mergeKind: "receipt_attach",
-            expenseId: target,
-            reasons: decision.reasons,
-          });
-          continue;
-        }
-        // Could not attach (already has a receipt, RPC error …): leave it to the user.
-        if (!attached.ok) {
-          console.error("[processEvent] attach receipt failed", attached.error);
-        }
-        reviewReasons = ["이미 같은 결제가 있어요 — 합치기/별개로 저장"];
+        reviewReasons =
+          decision.reasons.length > 0
+            ? decision.reasons
+            : ["이미 같은 결제가 있어요 — 합치기/별개로 저장"];
         mergeInto = target;
       }
 
@@ -1238,25 +1118,24 @@ export async function processEvent(eventId: string): Promise<void> {
           reasonCode: "suggestion_only",
         });
         if (admin && event.trip_id) {
-          try {
-            await admin.rpc("agent_create_suggestion", {
-              p_actor: event.user_id,
-              p_trip_id: event.trip_id,
-              p_type: "record",
-              p_payload: {
-                eventId: event.id,
-                sourceIndex: i,
-                draft,
-                priced: {
-                  amount: priced.amount,
-                  currency: priced.currency,
-                  krwAmount: priced.krwAmount,
-                },
-                reasons: reasonCodes,
+          const { error: sugErr } = await admin.rpc("agent_create_suggestion", {
+            p_actor: event.user_id,
+            p_trip_id: event.trip_id,
+            p_type: "record",
+            p_payload: {
+              eventId: event.id,
+              sourceIndex: i,
+              draft,
+              priced: {
+                amount: priced.amount,
+                currency: priced.currency,
+                krwAmount: priced.krwAmount,
               },
-            });
-          } catch (err) {
-            console.error("[processEvent] create suggestion failed", err);
+              reasons: reasonCodes,
+            },
+          });
+          if (sugErr) {
+            console.error("[processEvent] create suggestion failed", sugErr.message);
           }
         }
         continue;
@@ -1278,26 +1157,27 @@ export async function processEvent(eventId: string): Promise<void> {
         },
       });
       if (admin && event.trip_id) {
-        try {
-          await admin.rpc("agent_create_suggestion", {
-            p_actor: event.user_id,
-            p_trip_id: event.trip_id,
-            p_type: "record",
-            p_payload: {
-              eventId: event.id,
-              sourceIndex: i,
-              draft,
-              priced: {
-                amount: priced.amount,
-                currency: priced.currency,
-                krwAmount: priced.krwAmount,
-              },
-              reasons: reviewReasons,
-              reasonCode: decision.reasonCode ?? null,
+        const { error: sugErr } = await admin.rpc("agent_create_suggestion", {
+          p_actor: event.user_id,
+          p_trip_id: event.trip_id,
+          p_type: "record",
+          p_payload: {
+            eventId: event.id,
+            sourceIndex: i,
+            draft,
+            priced: {
+              amount: priced.amount,
+              currency: priced.currency,
+              krwAmount: priced.krwAmount,
             },
-          });
-        } catch (err) {
-          console.error("[processEvent] create suggestion failed", err);
+            reasons: reviewReasons,
+            reasonCode: decision.reasonCode ?? null,
+            mergeInto: mergeInto ?? null,
+            mergeKind: mergeKind ?? null,
+          },
+        });
+        if (sugErr) {
+          console.error("[processEvent] create suggestion failed", sugErr.message);
         }
       }
       await notifyUsers({

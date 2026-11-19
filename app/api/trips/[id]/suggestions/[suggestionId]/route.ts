@@ -6,7 +6,7 @@ import {
   dismissSuggestion,
 } from "@/lib/agent/accept-suggestion";
 import { readJsonLimited } from "@/lib/agent/body-limit";
-import { guardApi } from "@/lib/security/guard";
+import { guardApi, rejectAnonymousWrite } from "@/lib/security/guard";
 
 const BodySchema = z.strictObject({
   decision: z.enum(["accepted", "dismissed"]),
@@ -26,6 +26,8 @@ export async function POST(request: Request, ctx: Ctx) {
   if (identity.kind !== "user") {
     return NextResponse.json({ error: "login-required" }, { status: 401 });
   }
+  const anon = rejectAnonymousWrite(identity);
+  if (anon) return anon;
 
   const { id: tripId, suggestionId } = await ctx.params;
   if (

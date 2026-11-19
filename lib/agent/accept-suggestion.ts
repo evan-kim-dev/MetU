@@ -1,6 +1,8 @@
 import "server-only";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
+import { computeTripSettlementBasis } from "@/lib/agent/handlers/settlement";
+import { mergeAdjustedIntoSchedule } from "@/lib/agent/suggestion-schedule";
 import { TABLES } from "@/lib/constants";
 import type { PlanItem } from "@/lib/budget/types";
 
@@ -43,61 +45,56 @@ function asPlanItems(raw: unknown): PlanItem[] | null {
   return out;
 }
 
-/** adjustedItems → trips.daily_schedule 형태 (기존 day 라벨 유지) */
-function mergeAdjustedIntoSchedule(
-  current: unknown,
-  adjusted: PlanItem[]
-): unknown {
-  const byKey = new Map(
-    adjusted.map((i) => [`${i.day}|${i.time}|${i.title}`, i.estCost])
-  );
-  if (!Array.isArray(current)) {
-    const byDay = new Map<number, PlanItem[]>();
-    for (const item of adjusted) {
-      const list = byDay.get(item.day) ?? [];
-      list.push(item);
-      byDay.set(item.day, list);
-    }
-    return [...byDay.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .map(([day, items]) => ({
-        day,
-        label: `${day}일차`,
-        items: items.map((i) => ({
-          time: i.time,
-          title: i.title,
-          cost: i.estCost,
-          category: i.category,
-        })),
-        dayTotal: items.reduce((s, i) => s + i.estCost, 0),
-      }));
+async function claimOpenSuggestion(args: {
+  suggestionId: string;
+  tripId: string;
+  actorUserId: string;
+}): Promise<SuggestionRow | null> {
+  const admin = getAgentAdmin();
+  if (!admin) return null;
+  const decidedAt = new Date().toISOString();
+  const { data, error } = await admin
+    .from(TABLES.tripSuggestions)
+    .update({
+      status: "accepted",
+      decided_by: args.actorUserId,
+      decided_at: decidedAt,
+    })
+    .eq("id", args.suggestionId)
+    .eq("trip_id", args.tripId)
+    .eq("status", "open")
+    .select("id, trip_id, type, status, payload")
+    .maybeSingle();
+  if (error) {
+    console.error("[claimOpenSuggestion]", error.message);
+    return null;
   }
+  return data as SuggestionRow | null;
+}
 
-  return current.map((day) => {
-    if (!day || typeof day !== "object") return day;
-    const d = day as Record<string, unknown>;
-    const dayNum = Number(d.day);
-    const items = Array.isArray(d.items) ? d.items : [];
-    const nextItems = items.map((it) => {
-      if (!it || typeof it !== "object") return it;
-      const row = it as Record<string, unknown>;
-      const key = `${dayNum}|${String(row.time ?? "")}|${String(row.title ?? "")}`;
-      const cost = byKey.get(key);
-      if (cost == null) return it;
-      return { ...row, cost };
-    });
-    const dayTotal = nextItems.reduce((s, it) => {
-      if (!it || typeof it !== "object") return s;
-      const c = (it as { cost?: unknown }).cost;
-      return s + (typeof c === "number" ? Math.max(0, Math.trunc(c)) : 0);
-    }, 0);
-    return { ...d, items: nextItems, dayTotal };
-  });
+async function reopenSuggestion(args: {
+  suggestionId: string;
+  actorUserId: string;
+}): Promise<void> {
+  const admin = getAgentAdmin();
+  if (!admin) return;
+  await admin
+    .from(TABLES.tripSuggestions)
+    .update({
+      status: "open",
+      decided_by: null,
+      decided_at: null,
+    })
+    .eq("id", args.suggestionId)
+    .eq("status", "accepted")
+    .eq("decided_by", args.actorUserId);
 }
 
 /**
- * 호스트가 Suggestion 수락. settle → settlement 스냅샷, rebalance → schedule 패치.
- * record 는 inbox confirm 경로를 쓰고 여기선 status 만 accepted.
+ * 호스트가 Suggestion 수락.
+ * settle: 원장에서 transfers 재계산 후 settlement 스냅샷.
+ * rebalance: daily_schedule 패치.
+ * record: confirmEventReviews 로 지출 확정.
  */
 export async function acceptSuggestion(args: {
   actorUserId: string;
@@ -117,86 +114,136 @@ export async function acceptSuggestion(args: {
     return { ok: false, error: "host-only" };
   }
 
-  const { data: row } = await admin
+  const { data: peek } = await admin
     .from(TABLES.tripSuggestions)
     .select("id, trip_id, type, status, payload")
     .eq("id", args.suggestionId)
     .eq("trip_id", args.tripId)
     .maybeSingle();
 
-  if (!row) return { ok: false, error: "not-found" };
-  const suggestion = row as SuggestionRow;
-  if (suggestion.status !== "open") {
+  if (!peek) return { ok: false, error: "not-found" };
+  if (String((peek as SuggestionRow).status) !== "open") {
+    return { ok: false, error: "not-open" };
+  }
+
+  const claimed = await claimOpenSuggestion({
+    suggestionId: args.suggestionId,
+    tripId: args.tripId,
+    actorUserId: args.actorUserId,
+  });
+  if (!claimed) {
     return { ok: false, error: "not-open" };
   }
 
   const payload =
-    suggestion.payload && typeof suggestion.payload === "object"
-      ? suggestion.payload
+    claimed.payload && typeof claimed.payload === "object"
+      ? claimed.payload
       : {};
 
   let settlementId: string | null = null;
 
-  if (suggestion.type === "settle") {
-    const basis =
-      typeof payload.basisHash === "string" ? payload.basisHash : "";
-    const transfers = Array.isArray(payload.transfers)
-      ? payload.transfers
-      : [];
-    if (!basis || transfers.length === 0) {
-      return { ok: false, error: "bad-settle-payload" };
+  try {
+    if (claimed.type === "settle") {
+      const basisPayload = await computeTripSettlementBasis(args.tripId);
+      if (!basisPayload || basisPayload.transfers.length === 0) {
+        await reopenSuggestion({
+          suggestionId: args.suggestionId,
+          actorUserId: args.actorUserId,
+        });
+        return { ok: false, error: "basis-unavailable" };
+      }
+      const { data, error } = await admin.rpc("agent_create_settlement", {
+        p_actor: args.actorUserId,
+        p_trip_id: args.tripId,
+        p_mode: "manual",
+        p_basis_hash: basisPayload.basis,
+        p_transfers: basisPayload.transfers,
+      });
+      if (error) {
+        console.error("[acceptSuggestion] settle", error.message);
+        await reopenSuggestion({
+          suggestionId: args.suggestionId,
+          actorUserId: args.actorUserId,
+        });
+        return { ok: false, error: "settle-failed" };
+      }
+      settlementId = data ? String(data) : null;
+    } else if (claimed.type === "rebalance") {
+      const adjusted = asPlanItems(payload.adjustedItems);
+      if (!adjusted) {
+        await reopenSuggestion({
+          suggestionId: args.suggestionId,
+          actorUserId: args.actorUserId,
+        });
+        return { ok: false, error: "bad-rebalance-payload" };
+      }
+      const nextSchedule = mergeAdjustedIntoSchedule(
+        trip.daily_schedule,
+        adjusted
+      );
+      const { error } = await admin
+        .from(TABLES.trips)
+        .update({ daily_schedule: nextSchedule })
+        .eq("id", args.tripId);
+      if (error) {
+        console.error("[acceptSuggestion] rebalance", error.message);
+        await reopenSuggestion({
+          suggestionId: args.suggestionId,
+          actorUserId: args.actorUserId,
+        });
+        return { ok: false, error: "rebalance-failed" };
+      }
+    } else if (claimed.type === "record") {
+      const eventId =
+        typeof payload.eventId === "string" ? payload.eventId : null;
+      const sourceIndex =
+        typeof payload.sourceIndex === "number" &&
+        Number.isInteger(payload.sourceIndex)
+          ? payload.sourceIndex
+          : 0;
+      if (!eventId) {
+        await reopenSuggestion({
+          suggestionId: args.suggestionId,
+          actorUserId: args.actorUserId,
+        });
+        return { ok: false, error: "bad-record-payload" };
+      }
+      const mergeInto =
+        typeof payload.mergeInto === "string" ? payload.mergeInto : null;
+      // 동적 import — run.ts ↔ accept 순환 방지
+      const { confirmEventReviews } = await import("@/lib/agent/run");
+      const outcome = await confirmEventReviews(
+        eventId,
+        args.actorUserId,
+        {
+          items: [{ index: sourceIndex }],
+          mode: mergeInto ? "merge" : "separate",
+        }
+      );
+      if (!outcome.ok) {
+        await reopenSuggestion({
+          suggestionId: args.suggestionId,
+          actorUserId: args.actorUserId,
+        });
+        return { ok: false, error: outcome.error };
+      }
+    } else {
+      await reopenSuggestion({
+        suggestionId: args.suggestionId,
+        actorUserId: args.actorUserId,
+      });
+      return { ok: false, error: "unknown-type" };
     }
-    const { data, error } = await admin.rpc("agent_create_settlement", {
-      p_actor: args.actorUserId,
-      p_trip_id: args.tripId,
-      p_mode: "manual",
-      p_basis_hash: basis,
-      p_transfers: transfers,
+  } catch (err) {
+    console.error("[acceptSuggestion]", err);
+    await reopenSuggestion({
+      suggestionId: args.suggestionId,
+      actorUserId: args.actorUserId,
     });
-    if (error) {
-      console.error("[acceptSuggestion] settle", error.message);
-      return { ok: false, error: "settle-failed" };
-    }
-    settlementId = data ? String(data) : null;
-  } else if (suggestion.type === "rebalance") {
-    const adjusted = asPlanItems(payload.adjustedItems);
-    if (!adjusted) {
-      return { ok: false, error: "bad-rebalance-payload" };
-    }
-    const nextSchedule = mergeAdjustedIntoSchedule(
-      trip.daily_schedule,
-      adjusted
-    );
-    const { error } = await admin
-      .from(TABLES.trips)
-      .update({ daily_schedule: nextSchedule })
-      .eq("id", args.tripId);
-    if (error) {
-      console.error("[acceptSuggestion] rebalance", error.message);
-      return { ok: false, error: "rebalance-failed" };
-    }
-  } else if (suggestion.type === "record") {
-    // 지출 반영은 confirmEventReviews. 여기선 표시용 status 만.
-  } else {
-    return { ok: false, error: "unknown-type" };
+    return { ok: false, error: "accept-failed" };
   }
 
-  const { error: updErr } = await admin
-    .from(TABLES.tripSuggestions)
-    .update({
-      status: "accepted",
-      decided_by: args.actorUserId,
-      decided_at: new Date().toISOString(),
-    })
-    .eq("id", args.suggestionId)
-    .eq("status", "open");
-
-  if (updErr) {
-    console.error("[acceptSuggestion] status", updErr.message);
-    return { ok: false, error: "status-failed" };
-  }
-
-  return { ok: true, type: suggestion.type, settlementId };
+  return { ok: true, type: claimed.type, settlementId };
 }
 
 export async function dismissSuggestion(args: {

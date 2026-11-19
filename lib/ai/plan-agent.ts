@@ -107,7 +107,24 @@ export function clampScheduleToBudgetPlan(
 ): { schedule: DaySchedule[]; clamped: boolean } {
   const limit = variableLimitFromPlan(plan);
   const sum = sumVariableScheduleCost(schedule);
-  if (limit <= 0 || sum <= limit) {
+  if (sum <= 0) {
+    return { schedule, clamped: false };
+  }
+  // 변동 한도 0이면 변동비 항목을 0으로 (초과 통과 금지)
+  if (limit <= 0) {
+    if (sum <= 0) return { schedule, clamped: false };
+    const next = schedule.map((day) => {
+      const items = day.items.map((item) => {
+        const variable = itemVariableCost(item.title, item.cost);
+        if (variable <= 0) return item;
+        return { ...item, cost: 0 };
+      });
+      const dayTotal = items.reduce((s, i) => s + (i.cost || 0), 0);
+      return { ...day, items, dayTotal };
+    });
+    return { schedule: next, clamped: true };
+  }
+  if (sum <= limit) {
     return { schedule, clamped: false };
   }
   const ratio = limit / sum;

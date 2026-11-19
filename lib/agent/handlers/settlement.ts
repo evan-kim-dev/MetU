@@ -139,7 +139,8 @@ async function memberUserIds(tripId: string): Promise<string[]> {
   return [...ids];
 }
 
-async function computeTripSettlementBasis(tripId: string): Promise<{
+/** 서버 재계산용 — Suggestion payload 의 transfers 를 믿지 않는다. */
+export async function computeTripSettlementBasis(tripId: string): Promise<{
   basis: string;
   transfers: Array<{ from: string; to: string; krw: number }>;
 } | null> {
