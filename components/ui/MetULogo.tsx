@@ -12,7 +12,7 @@ interface MetULogoProps {
 
 /** 앱 아이콘 (파비콘·PWA·로그인 히어로). */
 const ICON_SRC = "/brand/metu-icon.png";
-/** 웹 상단 가로 워드마크 + 마스코트 (투명 배경, 밝은 바용 파란 글자). */
+/** 웹 상단 가로 워드마크 + 마스코트 (투명 배경, 흰 글자 + 파란 외곽). */
 const LOCKUP_SRC = "/brand/metu-lockup.png";
 
 export function MetULogo({
