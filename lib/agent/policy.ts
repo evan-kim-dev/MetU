@@ -110,7 +110,9 @@ function isKrw(currency: string): boolean {
 }
 
 /**
- * Pure policy: auto_commit only when every gate passes.
+ * Pure policy: gates that used to allow auto_commit now return review.
+ * Budget-first: agents never write expenses directly — Suggestion + user accept.
+ * `auto_commit` remains in the union for legacy tests/logs but is not returned.
  * Never mutates input. No I/O.
  */
 export function decide(
@@ -308,8 +310,12 @@ export function decide(
     };
   }
 
-  reasons.push("조건이 맞아 자동으로 저장해요");
-  return { decision: "auto_commit", reasons };
+  reasons.push("조건이 맞아 확인함에서 반영할 수 있어요");
+  return {
+    decision: "review",
+    reasons,
+    reasonCode: "suggestion_only",
+  };
 }
 
 export function policyEnvFromProcess(

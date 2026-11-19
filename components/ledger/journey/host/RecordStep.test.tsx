@@ -11,6 +11,14 @@ const members: TripMember[] = [
   { id: "m2", tripId: "t1", displayName: "민수", isOwner: false, userId: "u2" },
 ];
 
+function todayIso(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function exp(over: Partial<LedgerExpenseRow> & { id: string }): LedgerExpenseRow {
   return {
     tripId: "t1",
@@ -43,6 +51,8 @@ function renderStep(props: Partial<React.ComponentProps<typeof RecordStep>> = {}
       inboxCount={0}
       cancelNotice={null}
       dashboard={<div>대시보드</div>}
+      tripBudgetKrw={300_000}
+      tripDays={3}
       {...handlers}
       {...props}
     />
@@ -70,6 +80,7 @@ describe("RecordStep", () => {
   });
 
   it("항공·숙소는 플랜 매칭 배지를 보여 줘요 (예상≠실제)", () => {
+    const today = todayIso();
     renderStep({
       planAllocation: [{ id: "1", label: "숙소", amount: 400_000 }],
       expenses: [
@@ -78,7 +89,7 @@ describe("RecordStep", () => {
           category: "숙소",
           merchant: "호텔",
           krwAmount: 450_000,
-          spentOn: "2026-07-20",
+          spentOn: today,
         }),
       ],
     });
@@ -86,42 +97,73 @@ describe("RecordStep", () => {
     expect(screen.getByText(/플랜보다/)).toBeTruthy();
   });
 
-  it("실제 지출·건수와 최근순 목록(외화·결제자), 누르면 분담 단계로", () => {
+  it("오늘 쓸 수 있는 돈과 오늘 지출 목록을 보여 줘요", () => {
+    const today = todayIso();
     const h = renderStep({
       expenses: [
-        exp({ id: "a", merchant: "카페", spentOn: "2026-07-20", krwAmount: 4500 }),
+        exp({ id: "a", merchant: "카페", spentOn: today, krwAmount: 4500 }),
         exp({
           id: "b",
           merchant: "라멘",
           merchantKo: "라멘집",
-          spentOn: "2026-07-21",
+          spentOn: today,
           currency: "JPY",
           amount: 1200,
           krwAmount: 11000,
           paidBy: "m2",
         }),
+        exp({
+          id: "old",
+          merchant: "어제",
+          spentOn: "2020-01-01",
+          krwAmount: 99_000,
+        }),
       ],
     });
-    expect(screen.getByLabelText("실제 지출 ₩15,500")).toBeTruthy();
-    expect(
-      screen.getByText((t) => t.includes("확정 2건"))
-    ).toBeTruthy();
-    const list = screen.getByRole("heading", { name: "최근 지출" }).closest("section")!;
+    expect(screen.getByLabelText(/오늘 쓸 수 있는 돈/)).toBeTruthy();
+    const list = screen.getByRole("heading", { name: "오늘 지출" }).closest("section")!;
     const rows = within(list)
       .getAllByRole("button")
       .filter((el) => el.getAttribute("aria-label"));
-    expect(rows[0]!.getAttribute("aria-label")).toContain("라멘집");
-    expect(screen.getByText("07/21 · 1,200 JPY · 민수 결제")).toBeTruthy();
-    fireEvent.click(rows[1]!);
-    expect(h.onAdjust).toHaveBeenCalledTimes(1);
+    expect(rows.some((r) => r.getAttribute("aria-label")?.includes("라멘집"))).toBe(
+      true
+    );
+    expect(screen.queryByText("어제")).toBeNull();
+    fireEvent.click(rows[0]!);
+    expect(h.onAdjust).toHaveBeenCalled();
     expect(screen.getByText("지출 분석 보기")).toBeTruthy();
   });
 
-  it("확인할 알림·제안이 있으면 인박스로 가는 링크를 보여 줘요", () => {
+  it("확인할 지출이 있으면 확인함 입구를 보여 줘요", () => {
     renderStep({ inboxCount: 3 });
-    const link = screen.getByRole("link", { name: /확인할 알림·제안/ });
+    expect(screen.getByText("확인할 지출")).toBeTruthy();
+    const link = screen.getByRole("link", { name: /확인함 열기/ });
     expect(link.getAttribute("href")).toBe("/trips/t1/ledger/inbox");
-    expect(link.textContent).toContain("3건");
+  });
+
+  it("예산 재조정 제안 카드를 보여 줘요", () => {
+    renderStep({
+      openSuggestions: [
+        {
+          id: "sug-1",
+          type: "rebalance",
+          message: "식비가 넘었어요",
+          createdAt: "2026-11-20T00:00:00Z",
+          overLabels: ["식비"],
+          adjustmentsLog: ["점심: 2만원 → 8천원"],
+          transferCount: 0,
+        },
+      ],
+    });
+    expect(screen.getByLabelText("예산 재조정 제안")).toBeTruthy();
+    expect(screen.getByText("식비가 넘었어요")).toBeTruthy();
+    expect(screen.getByText("식비")).toBeTruthy();
+  });
+
+  it("정산 줄은 onSettle 을 호출해요", () => {
+    const h = renderStep();
+    fireEvent.click(screen.getByRole("button", { name: "정산으로 이동" }));
+    expect(h.onSettle).toHaveBeenCalledTimes(1);
   });
 
   it("취소 문자 안내를 닫을 수 있어요", () => {

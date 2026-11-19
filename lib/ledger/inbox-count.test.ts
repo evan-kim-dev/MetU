@@ -15,7 +15,7 @@ describe("sumInboxCounts", () => {
 });
 
 describe("fetchTripInboxCount", () => {
-  it("sums events and proposals when includeProposals", async () => {
+  it("sums events and proposals when includeProposals (budget suggestions 제외)", async () => {
     const from = vi.fn((table: string) => {
       const chain = {
         select: () => chain,

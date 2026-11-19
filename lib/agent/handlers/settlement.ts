@@ -139,7 +139,8 @@ async function memberUserIds(tripId: string): Promise<string[]> {
   return [...ids];
 }
 
-async function computeTripSettlementBasis(tripId: string): Promise<{
+/** 서버 재계산용 — Suggestion payload 의 transfers 를 믿지 않는다. */
+export async function computeTripSettlementBasis(tripId: string): Promise<{
   basis: string;
   transfers: Array<{ from: string; to: string; krw: number }>;
 } | null> {
@@ -187,7 +188,11 @@ async function markSettlementStale(tripId: string): Promise<void> {
     .eq("status", "open");
 }
 
-async function createAutoProposal(
+/**
+ * Budget-first SettleAgent: 자동으로 trip_settlements 를 만들지 않고
+ * Suggestion(settle) 만 남긴다. 수락 시 agent_create_settlement.
+ */
+async function createSettleSuggestion(
   ownerUserId: string,
   tripId: string,
   basis: string,
@@ -196,16 +201,46 @@ async function createAutoProposal(
   const admin = getAgentAdmin();
   if (!admin) return null;
 
-  const { data, error } = await admin.rpc("agent_create_settlement", {
+  const { data: openExisting } = await admin
+    .from("trip_suggestions")
+    .select("id")
+    .eq("trip_id", tripId)
+    .eq("type", "settle")
+    .eq("status", "open")
+    .limit(1)
+    .maybeSingle();
+
+  if (openExisting?.id) {
+    // service_role 만 update 가능 (authenticated update 회수됨)
+    const { error: updErr } = await admin
+      .from("trip_suggestions")
+      .update({
+        payload: {
+          basisHash: basis,
+          transfers,
+          message: "정산 제안 금액이 바뀌었어요. 확인 후 반영해요.",
+        },
+      })
+      .eq("id", openExisting.id);
+    if (updErr) {
+      console.error("[createSettleSuggestion] refresh", updErr.message);
+    }
+    return String(openExisting.id);
+  }
+
+  const { data, error } = await admin.rpc("agent_create_suggestion", {
     p_actor: ownerUserId,
     p_trip_id: tripId,
-    p_mode: "auto",
-    p_basis_hash: basis,
-    p_transfers: transfers,
+    p_type: "settle",
+    p_payload: {
+      basisHash: basis,
+      transfers,
+      message: "정산 제안이 준비됐어요. 확인 후 반영해요.",
+    },
   });
 
   if (error) {
-    console.error("[createAutoProposal]", error.message);
+    console.error("[createSettleSuggestion]", error.message);
     return null;
   }
   return data as string;
@@ -380,13 +415,16 @@ async function evaluateTripSettlement(
       if (!basisPayload) {
         return { action: "none", reasons: ["basis-unavailable"] };
       }
-      const settlementId = await createAutoProposal(
+      if (basisPayload.transfers.length === 0) {
+        return { action: "none", reasons: ["no-transfers"] };
+      }
+      const suggestionId = await createSettleSuggestion(
         ownerUserId,
         tripId,
         basisPayload.basis,
         basisPayload.transfers
       );
-      result.settlementId = settlementId;
+      result.settlementId = suggestionId;
 
       const dedupe =
         options?.trigger === "daily"
@@ -398,11 +436,12 @@ async function evaluateTripSettlement(
         type: "settlement_ready",
         tripId,
         payload: {
-          settlementId,
+          suggestionId,
+          suggestionType: "settle",
           message:
             options?.trigger === "daily"
-              ? "여행이 끝났어요. 정산 제안이 준비됐어요. 금액을 확인하고 직접 송금해 주세요."
-              : "정산 제안 금액이 바뀌었어요. 송금은 직접 해 주세요.",
+              ? "여행이 끝났어요. 정산 제안을 확인한 뒤 반영해 주세요."
+              : "정산 제안 금액이 바뀌었어요. 확인 후 반영해 주세요.",
         },
         dedupeKey: dedupe,
       });

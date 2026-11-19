@@ -32,6 +32,7 @@ import {
   type SettlementSnapshot,
 } from "@/lib/ledger/supabase";
 import type { LedgerExpenseRow, TripMember } from "@/lib/ledger/types";
+import { TABLES } from "@/lib/constants";
 import { formatKRW } from "@/lib/shared/format";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -103,6 +104,10 @@ export function SettleStep({
   const [msg, setMsg] = useState("");
   const [loadError, setLoadError] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  /** 에이전트가 남긴 open settle Suggestion */
+  const [openSettleSuggestionId, setOpenSettleSuggestionId] = useState<
+    string | null
+  >(null);
 
   const localReference = useSettleReference();
   const reference = referenceProp ?? localReference;
@@ -121,6 +126,21 @@ export function SettleStep({
       return;
     }
     setSettlement(res.settlement);
+
+    if (typeof supabase.from === "function") {
+      const { data: sug } = await supabase
+        .from(TABLES.tripSuggestions)
+        .select("id")
+        .eq("trip_id", tripId)
+        .eq("type", "settle")
+        .eq("status", "open")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setOpenSettleSuggestionId(sug?.id ? String(sug.id) : null);
+    } else {
+      setOpenSettleSuggestionId(null);
+    }
   }, [tripId]);
 
   const reload = useCallback(async () => {
@@ -232,9 +252,41 @@ export function SettleStep({
     router.push(payHref);
   }
 
+  async function acceptSettleSuggestion() {
+    if (!user || creating || !openSettleSuggestionId) return;
+    setCreating(true);
+    setMsg("");
+    try {
+      const res = await fetch(
+        `/api/trips/${tripId}/suggestions/${openSettleSuggestionId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision: "accepted" }),
+        }
+      );
+      if (!res.ok) {
+        console.error("[acceptSettleSuggestion]", await res.text());
+        setMsg("정산 제안 반영에 실패했어요.");
+        return;
+      }
+      setMsg("정산 제안을 반영했어요.");
+      setOpenSettleSuggestionId(null);
+      await loadSettlement();
+      goPay();
+    } finally {
+      setCreating(false);
+    }
+  }
+
   async function createSettlement() {
     const supabase = getBrowserSupabase();
     if (!supabase || !user || creating) return;
+    // 열린 settle Suggestion 이 있으면 서버 재계산 수락 경로를 우선해요.
+    if (openSettleSuggestionId) {
+      await acceptSettleSuggestion();
+      return;
+    }
     setCreating(true);
     setMsg("");
     try {
@@ -336,6 +388,19 @@ export function SettleStep({
         >
           정산 정보를 모두 불러오지 못했어요. 새로고침해 주세요.
         </p>
+      ) : null}
+
+      {loaded && openSettleSuggestionId && canCreateSettlement ? (
+        <div
+          role="status"
+          className="rounded-mu-xl border border-mu-accent/25 bg-mu-accent-soft px-4 py-3"
+        >
+          <p className="text-mu-label font-bold text-mu-fg">정산 제안이 있어요</p>
+          <p className="mt-1 text-mu-caption text-mu-fg-2">
+            아래 버튼으로 확인하면 서버가 원장 기준으로 다시 계산한 뒤
+            반영해요. 금액은 화면 미리보기와 다를 수 있어요.
+          </p>
+        </div>
       ) : null}
 
       {loaded ? (
@@ -480,7 +545,9 @@ export function SettleStep({
           secondary={
             canCreateSettlement
               ? {
-                  label: "정산 다시 계산하기",
+                  label: openSettleSuggestionId
+                    ? "정산 제안 다시 반영하기"
+                    : "정산 다시 계산하기",
                   onClick: () => void createSettlement(),
                 }
               : undefined
@@ -488,10 +555,22 @@ export function SettleStep({
         />
       ) : canCreateSettlement ? (
         <BottomCTA
-          label={settlement ? "정산 다시 계산하기" : "정산 계산하기"}
+          label={
+            openSettleSuggestionId
+              ? "정산 제안 확인하기"
+              : settlement
+                ? "정산 다시 계산하기"
+                : "정산 계산하기"
+          }
           onClick={() => void createSettlement()}
           loading={creating}
-          hint={stale ? "지출이 바뀌었어요" : undefined}
+          hint={
+            openSettleSuggestionId
+              ? "에이전트 제안을 확인하면 서버가 다시 계산해요"
+              : stale
+                ? "지출이 바뀌었어요"
+                : undefined
+          }
         />
       ) : null}
 

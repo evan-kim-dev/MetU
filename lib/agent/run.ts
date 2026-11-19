@@ -1,11 +1,12 @@
 import "server-only";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
-import { createEvent } from "@/lib/agent/ingest";
 import {
   pushFollowUpEventId,
   runDomainFollowUps,
 } from "@/lib/agent/domain-followup";
+import { createEvent } from "@/lib/agent/ingest";
+import { maybeSuggestRebalance } from "@/lib/agent/rebalance-run";
 import { extractTextDrafts } from "@/lib/agent/extract-text";
 import { detectImageMime } from "@/lib/agent/image-magic";
 import {
@@ -702,11 +703,15 @@ export async function processEvent(eventId: string): Promise<void> {
           eventId: event.id,
           payload,
         });
+        const rebalance = await maybeSuggestRebalance({
+          tripId: event.trip_id,
+          actorUserId: ctx.trip.user_id,
+        });
         await admin
           .from("agent_events")
           .update({
             status: "done",
-            result: settlement,
+            result: { ...settlement, rebalance },
             processed_at: new Date().toISOString(),
             error: null,
           })
@@ -727,7 +732,6 @@ export async function processEvent(eventId: string): Promise<void> {
     const text = preferSmsParseText(payload);
 
     let drafts: ExpenseDraftInput[] = [];
-    let receiptPath: string | null = null;
     if (event.kind === "sms" || event.kind === "text") {
       const t0 = Date.now();
       drafts = extractTextDrafts(text, {
@@ -781,7 +785,7 @@ export async function processEvent(eventId: string): Promise<void> {
         return;
       }
       drafts = [read.draft];
-      receiptPath = read.path;
+      // receipt path 는 event.payload.path 에 있으며 confirm 시 서버가 읽어요.
     } else {
       await admin
         .from("agent_events")
@@ -867,13 +871,13 @@ export async function processEvent(eventId: string): Promise<void> {
     const fxBand = fxMergeBandFromEnv();
     const tripId = event.trip_id as string;
 
-    let autoCountToday = await countAutoToday(event.user_id, event.trip_id);
+    const autoCountToday = await countAutoToday(event.user_id, event.trip_id);
     const env = policyEnvFromProcess(ctx.ownerMember.id);
     // undefined = explicit trip (token / manual assign / attach RPC). near/single → never auto-save.
     const tripMatchRule = readTripMatchRule(event.result);
     const items: Array<Record<string, unknown>> = [];
     let anyReview = false;
-    let anyFailedCommit = false;
+    const anyFailedCommit = false;
     let allIgnore = true;
 
     for (let i = 0; i < drafts.length; i++) {
@@ -1081,231 +1085,58 @@ export async function processEvent(eventId: string): Promise<void> {
       let mergeInto: string | undefined = decision.duplicateOfExpenseId;
       const mergeKind = decision.mergeKind;
 
+      // Budget-first: merge(청구액·영수증 붙이기)도 수락 전에는 원장을 바꾸지 않아요.
       if (decision.decision === "merge" && mergeKind === "billed_krw") {
         const target = decision.mergeExpenseId;
-        const tMerge = Date.now();
-        let applied: ApplyBilledResult = {
-          ok: false,
-          error: "no-target",
-        };
-        if (target && isOverseasKrw) {
-          // K 문자 → F 외화 지출에 청구액 붙이기
-          applied = await applyBilledKrw({
-            actorId: event.user_id,
-            expenseId: target,
-            billedKrw: priced.krwAmount,
-            source: "sms",
-            eventId: event.id,
-          });
-        } else if (target && isForeignDraft) {
-          // F 영수증/문자 → 기존 해외 원화 지출(K)을 외화로 전환
-          const kRow = existing.find((e) => e.id === target);
-          applied = await applyBilledKrw({
-            actorId: event.user_id,
-            expenseId: target,
-            billedKrw: kRow?.krwAmount ?? priced.krwAmount,
-            source: "sms",
-            eventId: event.id,
-            foreign: {
-              amount: priced.amount,
-              currency: priced.currency,
-              fx_rate: priced.__fxRate ?? 1,
-              fx_rate_date: priced.__fxDate ?? null,
-              fx_is_fallback: priced.fxIsFallback,
-              krw_base: priced.__krwBase ?? priced.krwAmount,
-              items: draft.items ?? null,
-              merchant_ko: draft.merchantKo ?? null,
-              billed_event_id: null,
-            },
-          });
-          if (applied.ok && receiptPath) {
-            const attached = await attachReceipt({
-              actorId: event.user_id,
-              expenseId: target,
-              receiptPath,
-              eventId: event.id,
-              draft,
-            });
-            if (attached.ok && attached.attached) {
-              receiptAttached.add(target);
-            }
-          }
-        }
-        await recordStep(
-          event.id,
-          ++seq,
-          "applyBilledKrw",
-          { index: i, expenseId: target ?? null },
-          applied.ok
-            ? { applied: applied.applied, already: applied.already ?? false }
-            : { ok: false, error: applied.error },
-          Date.now() - tMerge,
-          applied.ok
-        );
-        if (applied.ok && target) {
-          const idx = existing.findIndex((e) => e.id === target);
-          if (idx >= 0) {
-            const prev = existing[idx]!;
-            existing[idx] = {
-              ...prev,
-              billedKrw: isOverseasKrw
-                ? priced.krwAmount
-                : prev.krwAmount,
-              krwAmount: isOverseasKrw
-                ? priced.krwAmount
-                : prev.krwAmount,
-              currency: isForeignDraft ? priced.currency : prev.currency,
-              amount: isForeignDraft ? priced.amount : prev.amount,
-              overseas: true,
-            };
-          }
-          items.push({
-            ref: i,
-            decision: "merged",
-            mergeKind: "billed_krw",
-            expenseId: target,
-            reasons: decision.reasons,
-          });
-          continue;
-        }
-        console.error("[processEvent] apply billed failed", applied);
-        reviewReasons = [
-          "청구액을 합치지 못했어요 — 합치기/별개로 저장을 골라 주세요",
-        ];
+        reviewReasons =
+          decision.reasons.length > 0
+            ? decision.reasons
+            : ["청구액을 합칠까요? 확인 후 반영해요"];
         mergeInto = target;
       } else if (decision.decision === "merge") {
-        // Same payment already recorded: attach the receipt, never create a 2nd expense.
         const target = decision.mergeExpenseId;
-        const tMerge = Date.now();
-        const attached =
-          target && receiptPath
-            ? await attachReceipt({
-                actorId: event.user_id,
-                expenseId: target,
-                receiptPath,
-                eventId: event.id,
-                draft,
-              })
-            : ({ ok: false, error: "no-target" } as const);
-        await recordStep(
-          event.id,
-          ++seq,
-          "attachReceipt",
-          { index: i, expenseId: target ?? null },
-          attached.ok
-            ? { attached: attached.attached, reason: attached.reason ?? null }
-            : { ok: false },
-          Date.now() - tMerge,
-          attached.ok && attached.attached
-        );
-        if (attached.ok && attached.attached && target) {
-          receiptAttached.add(target);
-          items.push({
-            ref: i,
-            decision: "merged",
-            mergeKind: "receipt_attach",
-            expenseId: target,
-            reasons: decision.reasons,
-          });
-          continue;
-        }
-        // Could not attach (already has a receipt, RPC error …): leave it to the user.
-        if (!attached.ok) {
-          console.error("[processEvent] attach receipt failed", attached.error);
-        }
-        reviewReasons = ["이미 같은 결제가 있어요 — 합치기/별개로 저장"];
+        reviewReasons =
+          decision.reasons.length > 0
+            ? decision.reasons
+            : ["이미 같은 결제가 있어요 — 합치기/별개로 저장"];
         mergeInto = target;
       }
 
+      // Budget-first: auto_commit 폐지. 예전 auto 경로도 확인함(review)으로만.
       if (decision.decision === "auto_commit") {
-        const expenseId = await commitExpense({
-          actorId: event.user_id,
-          tripId: event.trip_id,
-          eventId: event.id,
-          index: i,
-          priced,
-          draft,
-          reasons: reasonCodes,
-          status: "auto",
-          receiptPath,
-          flags: expenseFlags,
-        });
-
-        if (!expenseId) {
-          anyFailedCommit = true;
-          anyReview = true;
-          items.push({
-            ref: i,
-            decision: "review",
-            reasons: ["저장에 실패했어요. 다시 시도하거나 직접 확인해 주세요"],
-            draft,
-          });
-          continue;
-        }
-
-        autoCountToday += 1;
-        existing.unshift({
-          id: expenseId,
-          currency: priced.currency,
-          amount: priced.amount,
-          merchant: priced.__merchant ?? draft.merchant ?? "",
-          spentOn: draft.spentOn ?? "",
-          krwAmount: priced.krwAmount,
-          krwBase: priced.__krwBase ?? priced.krwAmount,
-          billedKrw: null,
-          paidAt: draft.paidAt ?? null,
-          source: draft.source === "receipt" ? "receipt" : "sms",
-          overseas: draft.overseas === true,
-          fxRate: priced.__fxRate ?? 1,
-          fxRateDate: priced.__fxDate ?? null,
-          fxIsFallback: priced.fxIsFallback,
-          items: draft.items ?? null,
-          merchantKo: draft.merchantKo ?? null,
-        });
-        if (receiptPath) receiptAttached.add(expenseId);
-
+        anyReview = true;
         items.push({
           ref: i,
-          decision: "auto_commit",
-          expenseId,
-          reasons: reasonCodes,
+          decision: "review",
+          reasons: [
+            ...reasonCodes,
+            "suggestion_only",
+            "확인 후 반영해요",
+          ],
+          draft,
           flags: expenseFlags,
+          reasonCode: "suggestion_only",
         });
-
-        const domainCreated = await createEvent({
-          userId: event.user_id,
-          tripId: event.trip_id,
-          source: "domain",
-          kind: "domain",
-          payload: { type: "expense_changed", expenseId },
-          idempotencyKey: `expense_changed:${event.trip_id}:${expenseId}`,
-        });
-        pushFollowUpEventId(domainFollowUpIds, domainCreated);
-        await notifyUsers({
-          userIds: [event.user_id],
-          type: "expense_added",
-          tripId: event.trip_id,
-          actorId: event.user_id,
-          payload: {
-            expenseId,
-            krwAmount: priced.krwAmount,
-            merchant: priced.__merchant ?? draft.merchant,
-          },
-          dedupeKey: `expense_added:${expenseId}`,
-        });
-        if (dcc.level !== "none") {
-          await notifyUsers({
-            userIds: [event.user_id],
-            type: "expense_dcc",
-            tripId: event.trip_id,
-            actorId: event.user_id,
-            payload: {
-              expenseId,
-              krwAmount: priced.krwAmount,
-              merchant: priced.__merchant ?? draft.merchant,
+        if (admin && event.trip_id) {
+          const { error: sugErr } = await admin.rpc("agent_create_suggestion", {
+            p_actor: event.user_id,
+            p_trip_id: event.trip_id,
+            p_type: "record",
+            p_payload: {
+              eventId: event.id,
+              sourceIndex: i,
+              draft,
+              priced: {
+                amount: priced.amount,
+                currency: priced.currency,
+                krwAmount: priced.krwAmount,
+              },
+              reasons: reasonCodes,
             },
-            dedupeKey: `expense_dcc:${expenseId}`,
           });
+          if (sugErr) {
+            console.error("[processEvent] create suggestion failed", sugErr.message);
+          }
         }
         continue;
       }
@@ -1325,6 +1156,30 @@ export async function processEvent(eventId: string): Promise<void> {
           amount: priced.amount,
         },
       });
+      if (admin && event.trip_id) {
+        const { error: sugErr } = await admin.rpc("agent_create_suggestion", {
+          p_actor: event.user_id,
+          p_trip_id: event.trip_id,
+          p_type: "record",
+          p_payload: {
+            eventId: event.id,
+            sourceIndex: i,
+            draft,
+            priced: {
+              amount: priced.amount,
+              currency: priced.currency,
+              krwAmount: priced.krwAmount,
+            },
+            reasons: reviewReasons,
+            reasonCode: decision.reasonCode ?? null,
+            mergeInto: mergeInto ?? null,
+            mergeKind: mergeKind ?? null,
+          },
+        });
+        if (sugErr) {
+          console.error("[processEvent] create suggestion failed", sugErr.message);
+        }
+      }
       await notifyUsers({
         userIds: [event.user_id],
         type: "expense_review",
@@ -1599,7 +1454,7 @@ export async function confirmEventReviews(
     const pos = items.findIndex((it) => Number(it.ref) === idx);
     const next: ResultItem = {
       ref: idx,
-      decision: "auto_commit",
+      decision: "confirmed",
       expenseId,
       reasons: existing?.reasons ?? ["inbox_confirm"],
     };
@@ -1623,6 +1478,55 @@ export async function confirmEventReviews(
       processed_at: new Date().toISOString(),
     })
     .eq("id", eventId);
+
+  const tripId = row.trip_id as string;
+
+  // 확인함에서 지출 확정 → 같은 event 의 open record Suggestion 도 accepted
+  try {
+    const { data: openRecords } = await admin
+      .from("trip_suggestions")
+      .select("id, payload")
+      .eq("trip_id", tripId)
+      .eq("type", "record")
+      .eq("status", "open")
+      .limit(50);
+    for (const sug of openRecords ?? []) {
+      const payload =
+        sug.payload && typeof sug.payload === "object"
+          ? (sug.payload as Record<string, unknown>)
+          : {};
+      if (payload.eventId !== eventId) continue;
+      const { error: markErr } = await admin.rpc(
+        "agent_mark_suggestion_accepted",
+        {
+          p_actor: actorId,
+          p_suggestion_id: sug.id,
+        }
+      );
+      if (markErr) {
+        console.error(
+          "[confirmEventReviews] mark suggestion",
+          markErr.message
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[confirmEventReviews] mark suggestions", err);
+  }
+
+  const domainFollowUpIds: string[] = [];
+  for (const expenseId of expenseIds) {
+    const domainCreated = await createEvent({
+      userId: actorId,
+      tripId,
+      source: "domain",
+      kind: "domain",
+      payload: { type: "expense_changed", expenseId },
+      idempotencyKey: `expense_changed:${tripId}:${expenseId}`,
+    });
+    pushFollowUpEventId(domainFollowUpIds, domainCreated);
+  }
+  await runDomainFollowUps("text", domainFollowUpIds, processEvent);
 
   return { ok: true, expenseIds, status: nextStatus };
 }

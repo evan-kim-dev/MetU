@@ -33,6 +33,10 @@ import { TripBotSheet } from "@/components/trips/TripBotSheet";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import type { ExpenseDraftInput } from "@/lib/ledger/draft";
 import { fetchTripInboxCount } from "@/lib/ledger/inbox-count";
+import {
+  fetchOpenBudgetSuggestions,
+  type OpenBudgetSuggestion,
+} from "@/lib/ledger/open-suggestions";
 import type { HostStepKey } from "@/lib/ledger/journey-state";
 import {
   buildLocalInsight,
@@ -133,19 +137,39 @@ export function LedgerShell({
   > | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
+  const [openSuggestions, setOpenSuggestions] = useState<
+    OpenBudgetSuggestion[]
+  >([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [intentOpen, setIntentOpen] = useState(false);
   const [cashOpen, setCashOpen] = useState(false);
   const [botOpen, setBotOpen] = useState(false);
 
-  const planAllocation = useMemo(() => {
+  const tripMeta = useMemo(() => {
     const trip = getTrip(tripId);
-    return (trip?.budgetAllocation ?? []).map((a) => ({
+    const planAllocation = (trip?.budgetAllocation ?? []).map((a) => ({
       id: a.id,
       label: a.label,
       amount: a.amount,
     }));
+    let tripDays = 1;
+    if (trip?.startDate && trip?.endDate) {
+      const a = Date.parse(`${trip.startDate}T00:00:00Z`);
+      const b = Date.parse(`${trip.endDate}T00:00:00Z`);
+      if (Number.isFinite(a) && Number.isFinite(b) && b >= a) {
+        tripDays = Math.floor((b - a) / 86_400_000) + 1;
+      }
+    } else if (trip?.dailySchedule && trip.dailySchedule.length > 0) {
+      tripDays = trip.dailySchedule.length;
+    }
+    return {
+      planAllocation,
+      tripBudgetKrw: trip?.budget ?? 0,
+      tripDays,
+    };
   }, [getTrip, tripId]);
+
+  const planAllocation = tripMeta.planAllocation;
 
   const reload = useCallback(async () => {
     const supabase = getBrowserSupabase();
@@ -168,7 +192,7 @@ export function LedgerShell({
       m = await listMembers(supabase, tripId);
     }
     const owner = m.find((row) => row.isOwner && row.userId === user.id);
-    const [e, p, pendingCount] = await Promise.all([
+    const [e, p, pendingCount, suggestions] = await Promise.all([
       listExpenses(supabase, tripId),
       listCardProfiles(supabase),
       fetchTripInboxCount(supabase, {
@@ -176,11 +200,15 @@ export function LedgerShell({
         userId: user.id,
         includeProposals: Boolean(owner),
       }),
+      owner
+        ? fetchOpenBudgetSuggestions(supabase, tripId)
+        : Promise.resolve([] as OpenBudgetSuggestion[]),
     ]);
     setMembers(m);
     setExpenses(e);
     setProfiles(p as typeof profiles);
     setInboxCount(pendingCount);
+    setOpenSuggestions(suggestions);
     setLoading(false);
   }, [tripId, user, provider]);
 
@@ -410,6 +438,8 @@ export function LedgerShell({
                   expenses={expenses}
                   members={members}
                   inboxCount={inboxCount}
+                  openSuggestions={openSuggestions}
+                  onSuggestionSettled={() => void reload()}
                   cancelNotice={cancelNotice}
                   onDismissCancel={() => setCancelNotice(null)}
                   onOpenAdd={openAdd}
@@ -418,6 +448,8 @@ export function LedgerShell({
                   onSettle={() => onNavigate?.("settle")}
                   dashboard={dashboard}
                   planAllocation={planAllocation}
+                  tripBudgetKrw={tripMeta.tripBudgetKrw}
+                  tripDays={tripMeta.tripDays}
                 />
               )}
             </>

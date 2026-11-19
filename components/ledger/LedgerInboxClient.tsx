@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { AgentInbox } from "@/components/agent/AgentInbox";
 import { BotProposalInbox } from "@/components/ledger/BotProposalInbox";
+import { BudgetSuggestionInbox } from "@/components/ledger/BudgetSuggestionInbox";
 import { ProposalInbox } from "@/components/ledger/ProposalInbox";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -73,9 +74,16 @@ export function LedgerInboxClient({ tripId }: Props) {
       showBottomNav
     >
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-4">
-        <p className="text-xs leading-relaxed text-mu-fg-2">
-          확정 전 대기열이에요. 확인하면 가계부에 들어가요.
+        <p className="text-mu-caption leading-relaxed text-mu-fg-2">
+          확정 전 대기열이에요. 확인하면 가계부에 들어가요. 예산·정산 제안도
+          여기서 같이 볼 수 있어요.
         </p>
+        {isOwner ? (
+          <BudgetSuggestionInbox
+            tripId={tripId}
+            settleHref={`/trips/${tripId}/ledger/settle`}
+          />
+        ) : null}
         <BotProposalInbox tripId={tripId} isHost={isOwner} />
         {isOwner ? (
           <ProposalInbox

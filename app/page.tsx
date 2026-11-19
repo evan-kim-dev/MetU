@@ -1,13 +1,11 @@
-import Link from "next/link";
 import { Suspense } from "react";
-import { Plus } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SectionSkeleton } from "@/components/ui/PageSkeleton";
 import { ActiveTripSection } from "@/components/home/ActiveTripSection";
 import { AISmartTipsShortcut } from "@/components/home/AISmartTipsShortcut";
 import { HomeGreeting } from "@/components/home/HomeGreeting";
-import { GuestHomeCard } from "@/components/home/GuestHomeCard";
+import { StartTripLink } from "@/components/home/StartTripLink";
 import { FirstRunChecklist } from "@/components/home/FirstRunChecklist";
 import { AutomationStatusBanner } from "@/components/home/AutomationStatusBanner";
 import { UnassignedInboxBanner } from "@/components/home/UnassignedInboxBanner";
@@ -34,28 +32,12 @@ export default async function HomePage() {
           </h2>
         </section>
 
-        <GuestHomeCard />
         <FirstRunChecklist />
         <AutomationStatusBanner />
         <UnassignedInboxBanner />
 
         <div className="flex flex-col gap-2">
-          <Link
-            href="/onboarding"
-            className="mu-focus flex items-center justify-between rounded-mu-xl bg-mu-accent px-5 py-4 transition-transform active:scale-[0.99]"
-          >
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-mu-on-accent">
-                새로운 여행 계획하기
-              </span>
-              <span className="text-xs font-medium text-mu-on-accent/80">
-                예산만 알려주면 AI가 코스를 짜드려요
-              </span>
-            </div>
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-mu-card">
-              <Plus className="h-5 w-5 text-mu-accent" strokeWidth={2.6} />
-            </span>
-          </Link>
+          <StartTripLink />
         </div>
 
         <Suspense

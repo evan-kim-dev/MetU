@@ -158,6 +158,9 @@ vi.mock("@/lib/agent/domain-followup", () => ({
 vi.mock("@/lib/agent/handlers/settlement", () => ({
   onExpenseChanged: async () => ({}),
 }));
+vi.mock("@/lib/agent/rebalance-run", () => ({
+  maybeSuggestRebalance: async () => ({ suggested: false }),
+}));
 vi.mock("@/lib/onboarding/agent-context", () => ({
   pickTripForReceivedAt: async () => null,
 }));
@@ -308,31 +311,22 @@ describe("processEvent — image (receipt)", () => {
     expect(items[0]!.reasons).toEqual(["영수증은 기본으로 확인이 필요해요"]);
   });
 
-  it("AGENT_AUTO_RECEIPT=1 → source receipt 로 저장하고 receipt_path 를 붙이며 카드로 고정하지 않는다", async () => {
+  it("AGENT_AUTO_RECEIPT=1 이어도 자동 저장하지 않고 needs_review 예요", async () => {
     process.env.AGENT_AUTO_RECEIPT = "1";
     extractReceiptFromImage.mockResolvedValue(visionOk());
     const { processEvent } = await import("@/lib/agent/run");
     await processEvent(EVENT);
 
-    const saves = calls("agent_save_expense");
-    expect(saves).toHaveLength(1);
-    const expense = saves[0]!.args.p_expense as Row;
-    expect(expense.source).toBe("receipt");
-    expect(expense.payment_method).toBeUndefined();
-    expect(expense.merchant_ko).toBe("로손");
-    expect(expense.items).toHaveLength(1);
-    expect(saves[0]!.args.p_status).toBe("auto");
-
-    const attach = calls("agent_attach_receipt");
-    expect(attach).toHaveLength(1);
-    expect(attach[0]!.args.p_receipt_path).toBe(PATH);
-    expect(attach[0]!.args.p_expense_id).toBe("exp-new");
-    expect(attach[0]!.args.p_clear_payment_method).toBe(true);
-    expect(lastEventUpdate().status).toBe("done");
+    expect(calls("agent_save_expense")).toHaveLength(0);
+    expect(calls("agent_attach_receipt")).toHaveLength(0);
+    const upd = lastEventUpdate();
+    expect(upd.status).toBe("needs_review");
+    const items = (upd.result as { items: Row[] }).items;
+    expect(items[0]!.decision).toBe("review");
+    expect((items[0]!.draft as Row).source).toBe("receipt");
   });
 
-  it("같은 결제의 카드 알림 지출이 있으면 새 지출 없이 영수증만 붙인다 (상호 달라도)", async () => {
-    // 자동 저장이 켜져 있어도 중복이면 새 지출을 만들지 않는다.
+  it("같은 결제의 카드 알림이 있어도 수락 전에는 영수증을 붙이지 않아요", async () => {
     process.env.AGENT_AUTO_RECEIPT = "1";
     expenseRows = [CARD_EXPENSE];
     extractReceiptFromImage.mockResolvedValue(visionOk());
@@ -340,16 +334,13 @@ describe("processEvent — image (receipt)", () => {
     await processEvent(EVENT);
 
     expect(calls("agent_save_expense")).toHaveLength(0);
-    const attach = calls("agent_attach_receipt");
-    expect(attach).toHaveLength(1);
-    expect(attach[0]!.args.p_expense_id).toBe("card-exp-1");
-    expect(attach[0]!.args.p_receipt_path).toBe(PATH);
+    expect(calls("agent_attach_receipt")).toHaveLength(0);
 
     const upd = lastEventUpdate();
-    expect(upd.status).toBe("done");
+    expect(upd.status).toBe("needs_review");
     const items = (upd.result as { items: Row[] }).items;
-    expect(items[0]!.decision).toBe("merged");
-    expect(items[0]!.expenseId).toBe("card-exp-1");
+    expect(items[0]!.decision).toBe("review");
+    expect(items[0]!.mergeInto).toBe("card-exp-1");
   });
 
   it("중복이고 자동 저장 미설정이어도 새 지출을 만들지 않는다", async () => {

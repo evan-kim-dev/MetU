@@ -20,7 +20,7 @@ type CountClient = Pick<SupabaseClient, "from">;
 
 /**
  * 여행 스코프 확인함 건수 = 대기 agent_events + (선택) pending proposals.
- * 배너·쉘·여정이 같은 식을 쓴다.
+ * rebalance/settle Suggestion 은 Today 카드로 보여서 배지에서 제외한다.
  */
 export async function fetchTripInboxCount(
   supabase: CountClient,

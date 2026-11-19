@@ -34,6 +34,9 @@ vi.mock("@/lib/ledger/supabase", () => ({
 vi.mock("@/lib/supabase/browser", () => ({
   getBrowserSupabase: () => getBrowserSupabase(),
 }));
+vi.mock("@/lib/ledger/open-suggestions", () => ({
+  fetchOpenBudgetSuggestions: vi.fn(async () => []),
+}));
 vi.mock("@/components/ledger/ExpenseConfirmSheet", () => ({
   ExpenseConfirmSheet: (props: { drafts: ExpenseDraftInput[] }) => {
     confirmSheet(props);
@@ -85,11 +88,20 @@ beforeEach(() => {
   ]);
   listExpenses.mockResolvedValue([]);
   listCardProfiles.mockResolvedValue([]);
-  const chain = {
-    select: () => chain,
-    eq: () => chain,
-    in: () => Promise.resolve({ count: 0, error: null }),
+  const chain: Record<string, unknown> = {};
+  const result = { count: 0, data: null, error: null };
+  const asThenable = {
+    then: (
+      resolve: (v: typeof result) => unknown,
+      reject?: (e: unknown) => unknown
+    ) => Promise.resolve(result).then(resolve, reject),
   };
+  chain.select = () => chain;
+  chain.eq = () => chain;
+  chain.in = () => Object.assign(asThenable, chain);
+  chain.order = () => chain;
+  chain.limit = () => chain;
+  chain.maybeSingle = async () => result;
   getBrowserSupabase.mockReturnValue({ from: () => chain });
   Element.prototype.scrollIntoView = scrollIntoView;
 });
@@ -99,9 +111,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** 호스트 기록 단계는 "최근 지출", 게스트 읽기 전용은 "지출 목록" 이 보이면 로드 끝. */
+/** 호스트 기록 단계는 "오늘 지출", 게스트 읽기 전용은 "지출 목록" 이 보이면 로드 끝. */
 async function loaded() {
-  await screen.findByText(/^(최근 지출|지출 목록)$/);
+  await screen.findByText(/^(오늘 지출|지출 목록)$/);
 }
 
 describe("LedgerShell 바로가기 쿼리", () => {
