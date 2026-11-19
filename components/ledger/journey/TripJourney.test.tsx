@@ -38,6 +38,9 @@ vi.mock("@/lib/ledger/supabase", () => ({
 vi.mock("@/lib/supabase/browser", () => ({
   getBrowserSupabase: () => getBrowserSupabase(),
 }));
+vi.mock("@/lib/ledger/open-suggestions", () => ({
+  fetchOpenBudgetSuggestions: vi.fn(async () => []),
+}));
 vi.mock("@/components/ledger/ExpenseConfirmSheet", () => ({
   ExpenseConfirmSheet: () => null,
 }));
@@ -127,11 +130,20 @@ beforeEach(() => {
   fetchLatestSettlement.mockResolvedValue({ ok: true, settlement: null });
   fetchSettlementHistory.mockResolvedValue([]);
   listVoidedExpenseIds.mockResolvedValue(new Set());
-  const chain = {
-    select: () => chain,
-    eq: () => chain,
-    in: () => Promise.resolve({ count: 0, error: null }),
+  const chain: Record<string, unknown> = {};
+  const result = { count: 0, data: null, error: null };
+  const asThenable = {
+    then: (
+      resolve: (v: typeof result) => unknown,
+      reject?: (e: unknown) => unknown
+    ) => Promise.resolve(result).then(resolve, reject),
   };
+  chain.select = () => chain;
+  chain.eq = () => chain;
+  chain.in = () => Object.assign(asThenable, chain);
+  chain.order = () => chain;
+  chain.limit = () => chain;
+  chain.maybeSingle = async () => result;
   getBrowserSupabase.mockReturnValue({ from: () => chain });
 });
 
