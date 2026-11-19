@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { ChevronRight, Plus, Zap } from "lucide-react";
+import { Plus } from "lucide-react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SectionSkeleton } from "@/components/ui/PageSkeleton";
@@ -54,29 +54,6 @@ export default async function HomePage() {
             </div>
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-mu-card">
               <Plus className="h-5 w-5 text-mu-accent" strokeWidth={2.6} />
-            </span>
-          </Link>
-          <Link
-            href="/onboarding/result?sample=tokyo"
-            className="mu-focus flex min-h-tap items-center justify-between rounded-mu-xl border border-mu-accent/30 bg-mu-accent-soft px-5 py-3 text-mu-accent transition-colors active:scale-[0.99]"
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <Zap
-                className="h-4 w-4 shrink-0 text-mu-accent"
-                strokeWidth={2.4}
-                aria-hidden
-              />
-              <span className="text-xs font-bold text-mu-fg">
-                [1초 데모] 100만원 도쿄 2인 AI 추천 플랜 바로보기
-              </span>
-            </div>
-            <span className="flex shrink-0 items-center gap-0.5 text-xs font-bold text-mu-accent">
-              체험하기
-              <ChevronRight
-                className="h-3.5 w-3.5"
-                strokeWidth={2.4}
-                aria-hidden
-              />
             </span>
           </Link>
         </div>
