@@ -195,6 +195,45 @@ export function RecordStep({
         </p>
       </section>
 
+      {openSuggestions.map((s) => (
+        <OpenBudgetSuggestionCard
+          key={s.id}
+          tripId={tripId}
+          suggestion={s}
+          onSettled={() => onSuggestionSettled?.()}
+          onGoSettle={s.type === "settle" ? onSettle : undefined}
+        />
+      ))}
+
+      {inboxCount > 0 ? (
+        <section className="overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card">
+          <div className="flex items-start gap-3 px-4 pt-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mu-accent-soft text-mu-accent">
+              <Sparkles className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-mu-label font-bold text-mu-fg">확인할 지출</p>
+              <p className="mt-0.5 text-mu-body text-mu-fg-2">
+                영수증·문자 제안이{" "}
+                <span className="mu-num font-semibold">{inboxCount}건</span>{" "}
+                있어요. 확인 후에만 장부에 들어가요.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 border-t border-mu-line px-4 py-3">
+            <Link
+              href={`/trips/${tripId}/ledger/inbox`}
+              className="mu-focus flex min-h-tap w-full items-center justify-center rounded-mu-md bg-mu-accent text-mu-label font-semibold text-mu-on-accent"
+            >
+              확인함 열기
+              {inboxCount > 1 ? (
+                <span className="mu-num ml-1.5 opacity-90">· {inboxCount}건</span>
+              ) : null}
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       <CashPocketCard expenses={expenses} />
 
       <div
@@ -217,57 +256,6 @@ export function RecordStep({
         ))}
       </div>
 
-      {openSuggestions.map((s) => (
-        <OpenBudgetSuggestionCard
-          key={s.id}
-          tripId={tripId}
-          suggestion={s}
-          onSettled={() => onSuggestionSettled?.()}
-          onGoSettle={s.type === "settle" ? onSettle : undefined}
-        />
-      ))}
-
-      {inboxCount > 0 ? (
-        <section className="overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card">
-          <div className="flex items-start gap-3 px-4 pt-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mu-accent-soft text-mu-accent">
-              <Sparkles className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-mu-label font-bold text-mu-fg">에이전트 제안</p>
-              <p className="mt-0.5 text-mu-body text-mu-fg-2">
-                확인할 항목이{" "}
-                <span className="mu-num font-semibold">{inboxCount}건</span>{" "}
-                있어요. 확인 후에만 장부에 반영돼요.
-              </p>
-            </div>
-          </div>
-          <div className="mt-3 flex gap-2 border-t border-mu-line px-4 py-3">
-            <Link
-              href={`/trips/${tripId}/ledger/inbox`}
-              className="mu-focus flex min-h-tap flex-1 items-center justify-center rounded-mu-md bg-mu-accent text-mu-label font-semibold text-mu-on-accent"
-            >
-              확인
-            </Link>
-            <Link
-              href={`/trips/${tripId}/ledger/inbox`}
-              className="mu-focus flex min-h-tap flex-1 items-center justify-center rounded-mu-md border border-mu-line text-mu-label font-semibold text-mu-fg"
-            >
-              수정
-            </Link>
-          </div>
-          {inboxCount > 1 ? (
-            <Link
-              href={`/trips/${tripId}/ledger/inbox`}
-              className="mu-focus flex min-h-tap items-center justify-between border-t border-mu-line px-4 py-3 text-mu-body text-mu-accent"
-            >
-              <span>제안 {inboxCount - 1}개 더 보기</span>
-              <ChevronRight className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-            </Link>
-          ) : null}
-        </section>
-      ) : null}
-
       <button
         type="button"
         onClick={onSettle}
@@ -278,9 +266,20 @@ export function RecordStep({
           <Scale className="h-5 w-5" strokeWidth={1.75} aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-mu-body font-semibold text-mu-fg">정산</span>
+          <span className="flex items-center gap-2">
+            <span className="block text-mu-body font-semibold text-mu-fg">
+              정산
+            </span>
+            {openSuggestions.some((s) => s.type === "settle") ? (
+              <span className="rounded-mu-sm bg-mu-accent-soft px-1.5 py-0.5 text-mu-caption font-bold text-mu-accent">
+                제안 있음
+              </span>
+            ) : null}
+          </span>
           <span className="mt-0.5 block text-mu-caption text-mu-fg-3">
-            누가 얼마를 받을지 정리해요
+            {openSuggestions.some((s) => s.type === "settle")
+              ? "에이전트 정산 제안을 확인해 주세요"
+              : "누가 얼마를 받을지 정리해요"}
           </span>
         </span>
         <ChevronRight

@@ -390,6 +390,19 @@ export function SettleStep({
         </p>
       ) : null}
 
+      {loaded && openSettleSuggestionId && canCreateSettlement ? (
+        <div
+          role="status"
+          className="rounded-mu-xl border border-mu-accent/25 bg-mu-accent-soft px-4 py-3"
+        >
+          <p className="text-mu-label font-bold text-mu-fg">정산 제안이 있어요</p>
+          <p className="mt-1 text-mu-caption text-mu-fg-2">
+            아래 버튼으로 확인하면 서버가 원장 기준으로 다시 계산한 뒤
+            반영해요. 금액은 화면 미리보기와 다를 수 있어요.
+          </p>
+        </div>
+      ) : null}
+
       {loaded ? (
         <div className="flex flex-col gap-3">
           {me ? (

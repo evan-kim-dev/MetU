@@ -134,14 +134,30 @@ describe("RecordStep", () => {
     expect(screen.getByText("지출 분석 보기")).toBeTruthy();
   });
 
-  it("확인할 제안이 있으면 인박스 카드와 더보기를 보여 줘요", () => {
+  it("확인할 지출이 있으면 확인함 입구를 보여 줘요", () => {
     renderStep({ inboxCount: 3 });
-    expect(screen.getByText("에이전트 제안")).toBeTruthy();
-    const more = screen.getByRole("link", { name: /제안 2개 더 보기/ });
-    expect(more.getAttribute("href")).toBe("/trips/t1/ledger/inbox");
-    expect(screen.getAllByRole("link", { name: "확인" })[0]!.getAttribute("href")).toBe(
-      "/trips/t1/ledger/inbox"
-    );
+    expect(screen.getByText("확인할 지출")).toBeTruthy();
+    const link = screen.getByRole("link", { name: /확인함 열기/ });
+    expect(link.getAttribute("href")).toBe("/trips/t1/ledger/inbox");
+  });
+
+  it("예산 재조정 제안 카드를 보여 줘요", () => {
+    renderStep({
+      openSuggestions: [
+        {
+          id: "sug-1",
+          type: "rebalance",
+          message: "식비가 넘었어요",
+          createdAt: "2026-11-20T00:00:00Z",
+          overLabels: ["식비"],
+          adjustmentsLog: ["점심: 2만원 → 8천원"],
+          transferCount: 0,
+        },
+      ],
+    });
+    expect(screen.getByLabelText("예산 재조정 제안")).toBeTruthy();
+    expect(screen.getByText("식비가 넘었어요")).toBeTruthy();
+    expect(screen.getByText("식비")).toBeTruthy();
   });
 
   it("정산 줄은 onSettle 을 호출해요", () => {
