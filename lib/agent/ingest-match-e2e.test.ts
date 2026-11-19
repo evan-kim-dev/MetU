@@ -474,7 +474,7 @@ afterEach(() => {
 // 시나리오
 // ---------------------------------------------------------------------------
 describe("ingest → match → process (e2e, fake supabase)", () => {
-  it("(a) 창 안 여행 + 멤버 행 있음 → exact 로 붙고 자동 저장(done)", async () => {
+  it("(a) 창 안 여행 + 멤버 행 있음 → exact 로 붙고 needs_review (자동 저장 없음)", async () => {
     seedTrip({ id: TRIP_A, start: "2026-03-01", end: "2026-03-05" });
     seedOwnerMember(TRIP_A);
 
@@ -492,16 +492,14 @@ describe("ingest → match → process (e2e, fake supabase)", () => {
 
     const id = outcome.result.ok ? outcome.result.id : "";
     const event = db.event(id);
-    expect(event.status).toBe("done");
+    expect(event.status).toBe("needs_review");
     expect(event.error).toBeNull();
     expect(resultOf(id).match).toEqual({ rule: "exact" });
-    expect(resultOf(id).items?.[0]?.decision).toBe("auto_commit");
+    expect(resultOf(id).items?.[0]?.decision).toBe("review");
 
-    const saved = db.calls("agent_save_expense");
-    expect(saved).toHaveLength(1);
-    expect(saved[0]!.p_status).toBe("auto");
+    expect(db.calls("agent_save_expense")).toHaveLength(0);
     expect(db.calls("agent_ensure_owner_member")).toHaveLength(0);
-    expect(db.tables.trip_expenses).toHaveLength(1);
+    expect(db.tables.trip_expenses).toHaveLength(0);
   });
 
   it("(b) 창 안 + 본인 trip_members 행 없음 → 서버가 owner 멤버를 만든 뒤 성공 (no-owner-member 아님)", async () => {
@@ -514,7 +512,7 @@ describe("ingest → match → process (e2e, fake supabase)", () => {
 
     const id = outcome.result.ok ? outcome.result.id : "";
     const event = db.event(id);
-    expect(event.status).toBe("done");
+    expect(event.status).toBe("needs_review");
     expect(event.error).not.toBe("no-owner-member");
 
     expect(db.calls("agent_ensure_owner_member")).toEqual([
@@ -525,7 +523,7 @@ describe("ingest → match → process (e2e, fake supabase)", () => {
       trip_id: TRIP_A,
       user_id: OWNER,
     });
-    expect(db.calls("agent_save_expense")).toHaveLength(1);
+    expect(db.calls("agent_save_expense")).toHaveLength(0);
   });
 
   it("(c) 출발 5일 전 알림 → received + match.rule=near, 자동 저장 안 하고 needs_review", async () => {
@@ -601,8 +599,8 @@ describe("ingest → match → process (e2e, fake supabase)", () => {
     });
 
     await flushAfter();
-    expect(db.event(id).status).toBe("done");
-    expect(db.calls("agent_save_expense")).toHaveLength(1);
+    expect(db.event(id).status).toBe("needs_review");
+    expect(db.calls("agent_save_expense")).toHaveLength(0);
   });
 
   it("(d-2) trips.start_date 가 NULL 이면 날짜 인자 없이는 붙지 않고, startDate 를 넘기면 붙는다", async () => {
@@ -633,11 +631,13 @@ describe("ingest → match → process (e2e, fake supabase)", () => {
     scheduleProcessIfNeeded(first);
     scheduleProcessIfNeeded(second);
     await flushAfter();
-    // 다시 처리를 시도해도 이미 done 이라 claim 되지 않는다.
+    // 다시 처리를 시도해도 이미 needs_review 이라 claim 되지 않는다.
     const { processEvent } = await import("@/lib/agent/run");
     await processEvent(first.result.ok ? first.result.id : "");
 
-    expect(db.tables.trip_expenses).toHaveLength(1);
+    // Budget-first: 자동 지출 없음. 이벤트는 1건(멱등).
+    expect(db.tables.trip_expenses).toHaveLength(0);
+    expect(db.tables.agent_events).toHaveLength(1);
   });
 
   it("(e) trips select 문자열에 존재하지 않는 컬럼이 없다 (currency 오타 재발 방지)", async () => {
@@ -660,6 +660,6 @@ describe("ingest → match → process (e2e, fake supabase)", () => {
     expect(db.schemaErrors).toEqual([]);
     // 쿼리 오류가 났다면 예전처럼 failed / no-owner-member 로 보였을 것이다.
     const id = outcome.result.ok ? outcome.result.id : "";
-    expect(db.event(id).status).toBe("done");
+    expect(db.event(id).status).toBe("needs_review");
   });
 });

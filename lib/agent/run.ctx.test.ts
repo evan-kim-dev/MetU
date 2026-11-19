@@ -196,9 +196,9 @@ describe("processEvent — loadCtx", () => {
     const upd = lastEventUpdate();
     expect(upd.status).not.toBe("failed");
     expect(upd.error).toBeNull();
-    // 매칭 규칙이 없는(명시 배정) 이벤트는 기존처럼 자동 저장된다.
-    expect(calls("agent_save_expense")).toHaveLength(1);
-    expect(calls("agent_save_expense")[0]!.args.p_status).toBe("auto");
+    // Budget-first: 자동 저장 없음 → 확인함(needs_review) + suggestion
+    expect(calls("agent_save_expense")).toHaveLength(0);
+    expect(lastEventUpdate().status).toBe("needs_review");
   });
 
   it("이미 멤버 행이 있으면 RPC 를 부르지 않는다", async () => {
@@ -244,14 +244,14 @@ describe("processEvent — 여행 매칭 규칙 게이트", () => {
     ];
   });
 
-  it("match.rule=exact → 자동 저장 (done)", async () => {
+  it("match.rule=exact → 자동 저장 없이 needs_review", async () => {
     state.eventResult = { match: { rule: "exact" } };
     const { processEvent } = await import("@/lib/agent/run");
     await processEvent(EVENT);
 
-    expect(calls("agent_save_expense")).toHaveLength(1);
+    expect(calls("agent_save_expense")).toHaveLength(0);
     const upd = lastEventUpdate();
-    expect(upd.status).toBe("done");
+    expect(upd.status).toBe("needs_review");
     expect((upd.result as Row).match).toEqual({ rule: "exact" });
   });
 

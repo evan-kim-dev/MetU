@@ -1,11 +1,7 @@
 import "server-only";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
-import { createEvent } from "@/lib/agent/ingest";
-import {
-  pushFollowUpEventId,
-  runDomainFollowUps,
-} from "@/lib/agent/domain-followup";
+import { runDomainFollowUps } from "@/lib/agent/domain-followup";
 import { extractTextDrafts } from "@/lib/agent/extract-text";
 import { detectImageMime } from "@/lib/agent/image-magic";
 import {
@@ -867,13 +863,13 @@ export async function processEvent(eventId: string): Promise<void> {
     const fxBand = fxMergeBandFromEnv();
     const tripId = event.trip_id as string;
 
-    let autoCountToday = await countAutoToday(event.user_id, event.trip_id);
+    const autoCountToday = await countAutoToday(event.user_id, event.trip_id);
     const env = policyEnvFromProcess(ctx.ownerMember.id);
     // undefined = explicit trip (token / manual assign / attach RPC). near/single → never auto-save.
     const tripMatchRule = readTripMatchRule(event.result);
     const items: Array<Record<string, unknown>> = [];
     let anyReview = false;
-    let anyFailedCommit = false;
+    const anyFailedCommit = false;
     let allIgnore = true;
 
     for (let i = 0; i < drafts.length; i++) {
@@ -1217,95 +1213,44 @@ export async function processEvent(eventId: string): Promise<void> {
         mergeInto = target;
       }
 
+      // Budget-first: auto_commit 폐지. 예전 auto 경로도 확인함(review)으로만.
       if (decision.decision === "auto_commit") {
-        const expenseId = await commitExpense({
-          actorId: event.user_id,
-          tripId: event.trip_id,
-          eventId: event.id,
-          index: i,
-          priced,
-          draft,
-          reasons: reasonCodes,
-          status: "auto",
-          receiptPath,
-          flags: expenseFlags,
-        });
-
-        if (!expenseId) {
-          anyFailedCommit = true;
-          anyReview = true;
-          items.push({
-            ref: i,
-            decision: "review",
-            reasons: ["저장에 실패했어요. 다시 시도하거나 직접 확인해 주세요"],
-            draft,
-          });
-          continue;
-        }
-
-        autoCountToday += 1;
-        existing.unshift({
-          id: expenseId,
-          currency: priced.currency,
-          amount: priced.amount,
-          merchant: priced.__merchant ?? draft.merchant ?? "",
-          spentOn: draft.spentOn ?? "",
-          krwAmount: priced.krwAmount,
-          krwBase: priced.__krwBase ?? priced.krwAmount,
-          billedKrw: null,
-          paidAt: draft.paidAt ?? null,
-          source: draft.source === "receipt" ? "receipt" : "sms",
-          overseas: draft.overseas === true,
-          fxRate: priced.__fxRate ?? 1,
-          fxRateDate: priced.__fxDate ?? null,
-          fxIsFallback: priced.fxIsFallback,
-          items: draft.items ?? null,
-          merchantKo: draft.merchantKo ?? null,
-        });
-        if (receiptPath) receiptAttached.add(expenseId);
-
+        anyReview = true;
         items.push({
           ref: i,
-          decision: "auto_commit",
-          expenseId,
-          reasons: reasonCodes,
+          decision: "review",
+          reasons: [
+            ...reasonCodes,
+            "suggestion_only",
+            "확인 후 반영해요",
+          ],
+          draft,
           flags: expenseFlags,
+          reasonCode: "suggestion_only",
         });
-
-        const domainCreated = await createEvent({
-          userId: event.user_id,
-          tripId: event.trip_id,
-          source: "domain",
-          kind: "domain",
-          payload: { type: "expense_changed", expenseId },
-          idempotencyKey: `expense_changed:${event.trip_id}:${expenseId}`,
-        });
-        pushFollowUpEventId(domainFollowUpIds, domainCreated);
-        await notifyUsers({
-          userIds: [event.user_id],
-          type: "expense_added",
-          tripId: event.trip_id,
-          actorId: event.user_id,
-          payload: {
-            expenseId,
-            krwAmount: priced.krwAmount,
-            merchant: priced.__merchant ?? draft.merchant,
-          },
-          dedupeKey: `expense_added:${expenseId}`,
-        });
-        if (dcc.level !== "none") {
-          await notifyUsers({
-            userIds: [event.user_id],
-            type: "expense_dcc",
-            tripId: event.trip_id,
-            actorId: event.user_id,
-            payload: {
-              expenseId,
-              krwAmount: priced.krwAmount,
-              merchant: priced.__merchant ?? draft.merchant,
-            },
-            dedupeKey: `expense_dcc:${expenseId}`,
-          });
+        // fall through to suggestion create below via review path — handled after loop
+        // Actually we continue after creating suggestion RPC
+        if (admin && event.trip_id) {
+          try {
+            await admin.rpc("agent_create_suggestion", {
+              p_actor: event.user_id,
+              p_trip_id: event.trip_id,
+              p_type: "record",
+              p_payload: {
+                eventId: event.id,
+                sourceIndex: i,
+                draft,
+                priced: {
+                  amount: priced.amount,
+                  currency: priced.currency,
+                  krwAmount: priced.krwAmount,
+                },
+                reasons: reasonCodes,
+              },
+            });
+          } catch (err) {
+            console.error("[processEvent] create suggestion failed", err);
+          }
         }
         continue;
       }
@@ -1325,6 +1270,29 @@ export async function processEvent(eventId: string): Promise<void> {
           amount: priced.amount,
         },
       });
+      if (admin && event.trip_id) {
+        try {
+          await admin.rpc("agent_create_suggestion", {
+            p_actor: event.user_id,
+            p_trip_id: event.trip_id,
+            p_type: "record",
+            p_payload: {
+              eventId: event.id,
+              sourceIndex: i,
+              draft,
+              priced: {
+                amount: priced.amount,
+                currency: priced.currency,
+                krwAmount: priced.krwAmount,
+              },
+              reasons: reviewReasons,
+              reasonCode: decision.reasonCode ?? null,
+            },
+          });
+        } catch (err) {
+          console.error("[processEvent] create suggestion failed", err);
+        }
+      }
       await notifyUsers({
         userIds: [event.user_id],
         type: "expense_review",
@@ -1599,7 +1567,7 @@ export async function confirmEventReviews(
     const pos = items.findIndex((it) => Number(it.ref) === idx);
     const next: ResultItem = {
       ref: idx,
-      decision: "auto_commit",
+      decision: "confirmed",
       expenseId,
       reasons: existing?.reasons ?? ["inbox_confirm"],
     };
