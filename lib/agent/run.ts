@@ -1480,6 +1480,40 @@ export async function confirmEventReviews(
     .eq("id", eventId);
 
   const tripId = row.trip_id as string;
+
+  // 확인함에서 지출 확정 → 같은 event 의 open record Suggestion 도 accepted
+  try {
+    const { data: openRecords } = await admin
+      .from("trip_suggestions")
+      .select("id, payload")
+      .eq("trip_id", tripId)
+      .eq("type", "record")
+      .eq("status", "open")
+      .limit(50);
+    for (const sug of openRecords ?? []) {
+      const payload =
+        sug.payload && typeof sug.payload === "object"
+          ? (sug.payload as Record<string, unknown>)
+          : {};
+      if (payload.eventId !== eventId) continue;
+      const { error: markErr } = await admin.rpc(
+        "agent_mark_suggestion_accepted",
+        {
+          p_actor: actorId,
+          p_suggestion_id: sug.id,
+        }
+      );
+      if (markErr) {
+        console.error(
+          "[confirmEventReviews] mark suggestion",
+          markErr.message
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[confirmEventReviews] mark suggestions", err);
+  }
+
   const domainFollowUpIds: string[] = [];
   for (const expenseId of expenseIds) {
     const domainCreated = await createEvent({

@@ -11,21 +11,16 @@ export const PENDING_EVENT_STATUSES = [
 
 export function sumInboxCounts(
   eventCount: number | null | undefined,
-  proposalCount: number | null | undefined = 0,
-  suggestionCount: number | null | undefined = 0
+  proposalCount: number | null | undefined = 0
 ): number {
-  return (
-    Math.max(0, eventCount ?? 0) +
-    Math.max(0, proposalCount ?? 0) +
-    Math.max(0, suggestionCount ?? 0)
-  );
+  return Math.max(0, eventCount ?? 0) + Math.max(0, proposalCount ?? 0);
 }
 
 type CountClient = Pick<SupabaseClient, "from">;
 
 /**
  * 여행 스코프 확인함 건수 = 대기 agent_events + (선택) pending proposals.
- * 배너·쉘·여정이 같은 식을 쓴다.
+ * rebalance/settle Suggestion 은 Today 카드로 보여서 배지에서 제외한다.
  */
 export async function fetchTripInboxCount(
   supabase: CountClient,
@@ -43,9 +38,8 @@ export async function fetchTripInboxCount(
     .in("status", [...PENDING_EVENT_STATUSES]);
 
   let proposalCount = 0;
-  let suggestionCount = 0;
   if (args.includeProposals) {
-    const [proposalRes, botRes, suggestionRes] = await Promise.all([
+    const [proposalRes, botRes] = await Promise.all([
       supabase
         .from(TABLES.tripExpenseProposals)
         .select("id", { count: "exact", head: true })
@@ -56,18 +50,11 @@ export async function fetchTripInboxCount(
         .select("id", { count: "exact", head: true })
         .eq("trip_id", args.tripId)
         .eq("status", "pending"),
-      supabase
-        .from(TABLES.tripSuggestions)
-        .select("id", { count: "exact", head: true })
-        .eq("trip_id", args.tripId)
-        .eq("status", "open")
-        .in("type", ["rebalance", "settle"]),
     ]);
     proposalCount = (proposalRes.count ?? 0) + (botRes.count ?? 0);
-    suggestionCount = suggestionRes.count ?? 0;
   }
 
-  return sumInboxCounts(pendingRes.count, proposalCount, suggestionCount);
+  return sumInboxCounts(pendingRes.count, proposalCount);
 }
 
 /** 전역 확인함 — 미배정(unassigned)만. */
