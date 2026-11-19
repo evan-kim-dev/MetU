@@ -2,7 +2,7 @@
 
 import { TopAppBar } from "@/components/ui/TopAppBar";
 import { BottomNav } from "@/components/ui/BottomNav";
-import { InboxTopButton } from "@/components/ui/InboxTopButton";
+import { ProfileTopButton } from "@/components/ui/ProfileTopButton";
 
 interface MobileShellProps {
   children: React.ReactNode;
@@ -13,12 +13,13 @@ interface MobileShellProps {
   rightSlot?: React.ReactNode;
   showAppBar?: boolean;
   showBottomNav?: boolean;
-  /** 상단 바 우측 확인함. 기본 on (하단 탭에서 확인함을 뺀 뒤 입구) */
-  showInbox?: boolean;
+  /** 상단 바 우측 내 정보. 기본 on */
+  showProfile?: boolean;
 }
 
-/** 하단 네비 높이(72px) + 여유 공간 */
-const BOTTOM_NAV_PADDING = "pb-[calc(4.5rem+env(safe-area-inset-bottom))]";
+/** 떠 있는 하단 네비(56px) + 하단 여백 + safe-area */
+const BOTTOM_NAV_PADDING =
+  "pb-[calc(5.25rem+env(safe-area-inset-bottom))]";
 
 /**
  * 화면 공통 셸.
@@ -33,13 +34,13 @@ export function MobileShell({
   rightSlot,
   showAppBar = true,
   showBottomNav = true,
-  showInbox = true,
+  showProfile = true,
 }: MobileShellProps) {
   const appBarRight =
-    rightSlot || showInbox ? (
+    rightSlot || showProfile ? (
       <>
         {rightSlot}
-        {showInbox ? <InboxTopButton /> : null}
+        {showProfile ? <ProfileTopButton /> : null}
       </>
     ) : undefined;
 

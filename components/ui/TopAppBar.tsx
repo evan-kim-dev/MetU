@@ -13,7 +13,7 @@ interface TopAppBarProps {
   onBack?: () => void;
   /** 히스토리가 없을 때 이동할 경로 */
   backHref?: string;
-  /** 우측 액션 영역 (확인함 등) */
+  /** 우측 액션 영역 (내 정보 등) */
   rightSlot?: React.ReactNode;
 }
 

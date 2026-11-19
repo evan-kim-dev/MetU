@@ -86,13 +86,22 @@ describe("FirstRunChecklist", () => {
     expect(container.textContent).toBe("");
   });
 
-  it("hides after 숨기기 and writes localStorage", () => {
+  it("hides after 다시 보지 않기 and writes localStorage", () => {
     mockLoggedIn({ uiState: "off" });
     render(<FirstRunChecklist />);
-    expect(screen.getByText("시작하기")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "숨기기" }));
+    expect(screen.getByText("첫 설정")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "다시 보지 않기" }));
     expect(localStorage.getItem(FIRST_RUN_DISMISSED_KEY)).toBe("1");
-    expect(screen.queryByText("시작하기")).toBeNull();
+    expect(screen.queryByText("첫 설정")).toBeNull();
+  });
+
+  it("collapses steps with the header toggle", () => {
+    mockLoggedIn({ uiState: "off" });
+    render(<FirstRunChecklist />);
+    expect(screen.getByText("연결하기")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { expanded: true }));
+    expect(screen.queryByText("연결하기")).toBeNull();
+    expect(screen.getByText("눌러서 이어서 준비하기")).toBeTruthy();
   });
 
   it("disables expense CTA without trip", () => {
@@ -100,7 +109,7 @@ describe("FirstRunChecklist", () => {
     render(<FirstRunChecklist />);
     const btn = screen.getByRole("button", { name: "기록하기" });
     expect((btn as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("먼저 여행을 만들어 주세요.")).toBeTruthy();
+    expect(screen.getByText("여행을 만든 뒤 기록할 수 있어요")).toBeTruthy();
   });
 
   it("shows allDone message and persists done flag", () => {
