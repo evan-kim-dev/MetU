@@ -147,14 +147,10 @@ export function AgentInbox({
     [tripsProp, activeTrips]
   );
   const automationEnabled = authReady && isLoggedIn && !isGuest;
-  const { data: automationData, uiState } = useAutomationStatus({
+  const { uiState } = useAutomationStatus({
     enabled: automationEnabled,
     lite: true,
   });
-  const showBottomNav =
-    automationData?.status === "done" ||
-    automationData?.status === "partial" ||
-    automationData?.status === "skipped";
 
   const [events, setEvents] = useState<AgentEventRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1255,9 +1251,9 @@ export function AgentInbox({
   return (
     <MobileShell
       title="확인함"
-      showBack
+      showBack={Boolean(tripId)}
       backHref={backHref}
-      showBottomNav={showBottomNav}
+      showBottomNav
     >
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-4">
         {body}

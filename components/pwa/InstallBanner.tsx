@@ -164,7 +164,7 @@ export function InstallBanner() {
       className="pointer-events-none fixed inset-x-0 z-50 flex justify-center px-3"
       style={{
         bottom: hasBottomNav
-          ? "calc(env(safe-area-inset-bottom) + 4.75rem)"
+          ? "calc(env(safe-area-inset-bottom) + 5.5rem)"
           : "calc(env(safe-area-inset-bottom) + 1rem)",
       }}
     >

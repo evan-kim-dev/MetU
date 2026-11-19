@@ -43,6 +43,18 @@ async function registrationReady(): Promise<ServiceWorkerRegistration> {
   });
 }
 
+export async function isPushSubscribed(): Promise<boolean> {
+  if (!getPushSupport().supported) return false;
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    if (!registration) return false;
+    const sub = await registration.pushManager.getSubscription();
+    return Boolean(sub);
+  } catch {
+    return false;
+  }
+}
+
 export async function enablePush(): Promise<
   { ok: true } | { ok: false; error: string }
 > {
@@ -84,4 +96,41 @@ export async function enablePush(): Promise<
   }
 
   return { ok: true };
+}
+
+export async function disablePush(): Promise<
+  { ok: true } | { ok: false; error: string }
+> {
+  const support = getPushSupport();
+  if (!support.supported) {
+    return { ok: false, error: support.reason ?? "unsupported" };
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    const subscription = registration
+      ? await registration.pushManager.getSubscription()
+      : null;
+    const endpoint = subscription?.endpoint;
+
+    if (subscription) {
+      await subscription.unsubscribe();
+    }
+
+    const res = await fetch("/api/push/subscribe", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(endpoint ? { endpoint } : {}),
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      return { ok: false, error: data.error ?? `http-${res.status}` };
+    }
+
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "unsubscribe-failed" };
+  }
 }

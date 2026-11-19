@@ -56,7 +56,8 @@ export const INITIAL_FORM: OnboardingForm = {
   people: 2,
   origin: "",
   destination: "",
-  dateType: "specific",
+  /** 기본은 언제든 — 날짜 미입력으로 CTA가 막히지 않게 */
+  dateType: "flexible",
   startDate: "",
   endDate: "",
   flexibleYear: new Date().getFullYear(),

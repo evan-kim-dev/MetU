@@ -85,6 +85,19 @@ function OnboardingPageContent() {
     return false;
   }, [step, form, freeText]);
 
+  const proceedHint = useMemo(() => {
+    if (step !== 2 || canProceed) return undefined;
+    const dest = form.destination.trim() || hintDestination(freeText);
+    if (!dest) return "목적지를 골라 주세요";
+    if (form.styles.length === 0) return "여행 스타일을 하나 이상 골라 주세요";
+    if (form.dateType === "specific") {
+      if (!form.startDate || !form.endDate) return "출발·귀국 날짜를 선택해 주세요";
+    } else if (!isFlexibleScheduleValid(form.flexibleMonth, form.flexibleYear)) {
+      return "예정 연·월을 확인해 주세요";
+    }
+    return undefined;
+  }, [step, canProceed, form, freeText]);
+
   const handleBack = () => {
     if (isSubmitting || showThinking) return;
     if (step > 1) return setStep((s) => s - 1);
@@ -163,8 +176,7 @@ function OnboardingPageContent() {
       )}
 
       <ScreenHeader
-        step={step}
-        totalSteps={TOTAL_STEPS}
+        title={step === 1 ? "예산" : "일정 확인"}
         left={
           <button
             type="button"
@@ -174,6 +186,11 @@ function OnboardingPageContent() {
           >
             <ChevronLeft className="h-6 w-6" aria-hidden />
           </button>
+        }
+        right={
+          <span className="text-mu-caption font-medium text-mu-fg-3">
+            {step}/{TOTAL_STEPS}
+          </span>
         }
       />
 
@@ -218,6 +235,7 @@ function OnboardingPageContent() {
         }}
         disabled={!canProceed || isSubmitting}
         loading={isSubmitting}
+        hint={proceedHint}
       />
     </div>
   );

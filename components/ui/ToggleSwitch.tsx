@@ -4,19 +4,30 @@ interface ToggleSwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: string;
+  disabled?: boolean;
 }
 
-export function ToggleSwitch({ checked, onChange, label }: ToggleSwitchProps) {
+export function ToggleSwitch({
+  checked,
+  onChange,
+  label,
+  disabled = false,
+}: ToggleSwitchProps) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
-      onClick={() => onChange(!checked)}
+      disabled={disabled}
+      onClick={() => {
+        if (disabled) return;
+        onChange(!checked);
+      }}
       className={[
         "mu-focus relative h-7 w-12 shrink-0 rounded-full transition-colors duration-mu",
         checked ? "bg-mu-accent" : "bg-mu-line-strong",
+        disabled ? "cursor-not-allowed opacity-50" : "",
       ].join(" ")}
     >
       <span

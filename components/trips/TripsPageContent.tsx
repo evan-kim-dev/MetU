@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plane, Trash2, X } from "lucide-react";
 import { AutomationStatusBanner } from "@/components/home/AutomationStatusBanner";
 import { MobileShell } from "@/components/layout/MobileShell";
-import { QuickTripSheet } from "@/components/trips/QuickTripSheet";
 import { TripListCard } from "@/components/trips/TripListCard";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useTrips } from "@/lib/trips/TripProvider";
+
+const emptyCtaClass =
+  "mu-focus inline-flex h-14 w-full items-center justify-center rounded-mu-lg bg-mu-accent px-5 text-mu-body font-semibold text-mu-on-accent";
 
 const VisitedWorldMap = dynamic(
   () =>
@@ -30,7 +32,6 @@ export function TripsPageContent() {
   const { trips, isReady, removeTrip } = useTrips();
   const [editMode, setEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [quickTripOpen, setQuickTripOpen] = useState(false);
   const isGuest = provider === "guest";
   const canCreateTrip = !isAnonymous && !isGuest;
 
@@ -173,47 +174,35 @@ export function TripsPageContent() {
             </Link>
           </div>
         ) : trips.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-mu-accent/20 bg-gradient-to-b from-brand/5 to-surface-soft/40 px-5 py-14 text-center">
+          <div className="flex flex-col items-center gap-4 rounded-mu-xl border border-dashed border-mu-line bg-mu-card px-5 py-12 text-center">
             <span
-              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-mu-accent text-2xl"
+              className="flex h-14 w-14 items-center justify-center rounded-mu-lg bg-mu-accent-soft text-mu-accent"
               aria-hidden
             >
-              ✈
+              <Plane className="h-7 w-7" strokeWidth={2.2} />
             </span>
             <div className="flex flex-col gap-1.5">
-              <p className="text-base font-extrabold text-mu-fg">
+              <p className="text-mu-body font-bold text-mu-fg">
                 아직 여행이 없어요
               </p>
-              <p className="text-sm leading-relaxed text-mu-fg-3">
-                여행을 만들면 가계부와 알림 자동 기록이 여행별로 모여요.
+              <p className="text-mu-caption leading-relaxed text-mu-fg-3">
+                여행을 만들면 가계부와 알림 기록이 여행별로 모여요.
               </p>
             </div>
-            <div className="mt-1 flex w-full max-w-xs flex-col gap-2">
+            <div className="mt-1 w-full max-w-xs">
               {canCreateTrip ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setQuickTripOpen(true)}
-                    className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-mu-accent px-6 text-sm font-bold text-mu-on-accent transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
-                  >
-                    빠르게 여행 만들기
-                  </button>
-                  <Link
-                    href="/onboarding"
-                    className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-mu-card px-6 text-sm font-bold text-mu-accent ring-1 ring-mu-line focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
-                  >
-                    AI로 일정까지 계획하기
-                  </Link>
-                </>
+                <Link href="/onboarding" className={emptyCtaClass}>
+                  여행 만들기
+                </Link>
               ) : isGuest ? (
                 <Link
                   href={`/login?next=${encodeURIComponent("/trips")}`}
-                  className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-mu-accent px-6 text-sm font-bold text-mu-on-accent transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent"
+                  className={emptyCtaClass}
                 >
                   로그인하고 여행 만들기
                 </Link>
               ) : (
-                <p className="text-center text-sm text-mu-fg-3">
+                <p className="text-center text-mu-caption text-mu-fg-3">
                   초대 링크로 합류한 뒤에는 새 여행을 만들 수 없어요.
                 </p>
               )}
@@ -254,13 +243,6 @@ export function TripsPageContent() {
           </div>
         )}
       </div>
-      {canCreateTrip ? (
-        <QuickTripSheet
-          open={quickTripOpen}
-          onClose={() => setQuickTripOpen(false)}
-          reason="first-run"
-        />
-      ) : null}
     </MobileShell>
   );
 }

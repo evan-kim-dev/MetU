@@ -30,7 +30,12 @@ import {
   detectCursorPetsFromBio,
   hasDogBuddyInBio,
 } from "@/lib/easter/pet-buddy";
-import { enablePush, getPushSupport } from "@/lib/push/client";
+import {
+  disablePush,
+  enablePush,
+  getPushSupport,
+  isPushSubscribed,
+} from "@/lib/push/client";
 
 function isDataUrl(src: string): boolean {
   return src.startsWith("data:");
@@ -90,8 +95,6 @@ export function ProfileContent() {
     styleInsightLoading,
     currency,
     setCurrency,
-    notifications,
-    setNotifications,
     isEditing,
     setIsEditing,
     draftName,
@@ -119,8 +122,50 @@ export function ProfileContent() {
 
   const profilePageRef = useRef<HTMLDivElement | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
+  const [pushOn, setPushOn] = useState(false);
   const [pushMsg, setPushMsg] = useState<string | null>(null);
+  const [pushReady, setPushReady] = useState(false);
   const pushSupport = getPushSupport();
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!pushSupport.supported) {
+        if (!cancelled) {
+          setPushOn(false);
+          setPushReady(true);
+        }
+        return;
+      }
+      const on = await isPushSubscribed();
+      if (!cancelled) {
+        setPushOn(on);
+        setPushReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pushSupport.supported]);
+
+  const handlePushToggle = async (next: boolean) => {
+    if (!pushSupport.supported || pushBusy) return;
+    setPushBusy(true);
+    setPushMsg(null);
+    const result = next ? await enablePush() : await disablePush();
+    setPushBusy(false);
+    if (result.ok) {
+      setPushOn(next);
+      setPushMsg(next ? "브라우저 푸시가 켜졌어요." : "알림을 꺼 두었어요.");
+    } else {
+      setPushMsg(
+        next
+          ? "푸시를 켜지 못했어요. 브라우저 권한을 확인해 주세요."
+          : "알림을 끄지 못했어요."
+      );
+    }
+  };
+
   const bioText = isEditing ? draftBio : profile.bio;
   const dogBuddyActive = hasDogBuddyInBio(bioText);
   const catBuddyActive = detectCursorPetsFromBio(bioText).includes("cat");
@@ -378,49 +423,40 @@ export function ProfileContent() {
                 </div>
               </button>
 
-              <div className="flex items-center justify-between border-t border-membership py-4">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-membership">
-                    <Bell className="h-4 w-4 text-mu-fg-2" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold tracking-wide text-mu-fg">
-                      알림
-                    </p>
-                    <p className="text-sm text-mu-fg-2">여행 팁 및 예산 알림</p>
+              <div className="flex flex-col gap-2 border-t border-membership py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-membership">
+                      <Bell className="h-4 w-4 text-mu-fg-2" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold tracking-wide text-mu-fg">
+                        알림
+                      </p>
+                      <p className="text-sm text-mu-fg-2">
+                        {pushSupport.supported
+                          ? "결제·정산 푸시 알림"
+                          : "이 브라우저는 푸시를 지원하지 않아요"}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <ToggleSwitch
-                  checked={notifications}
-                  onChange={setNotifications}
-                  label="알림 설정"
-                />
-              </div>
-              {pushSupport.supported ? (
-                <div className="flex flex-col gap-2 border-t border-membership pt-3">
-                  <button
-                    type="button"
-                    disabled={pushBusy}
-                    className="self-start rounded-full bg-mu-accent-soft px-3 py-1.5 text-xs font-semibold text-mu-accent active:opacity-80 disabled:opacity-50"
-                    onClick={async () => {
-                      setPushBusy(true);
-                      setPushMsg(null);
-                      const result = await enablePush();
-                      setPushBusy(false);
-                      setPushMsg(
-                        result.ok
-                          ? "브라우저 푸시가 켜졌어요."
-                          : "푸시를 켜지 못했어요."
-                      );
+                  <ToggleSwitch
+                    checked={pushOn}
+                    onChange={(next) => {
+                      void handlePushToggle(next);
                     }}
-                  >
-                    {pushBusy ? "연결 중…" : "알림 켜기"}
-                  </button>
-                  {pushMsg ? (
-                    <p className="text-xs text-mu-fg-3">{pushMsg}</p>
-                  ) : null}
+                    label="알림 설정"
+                    disabled={
+                      !pushSupport.supported || pushBusy || !pushReady
+                    }
+                  />
                 </div>
-              ) : null}
+                {pushMsg ? (
+                  <p className="pl-11 text-xs text-mu-fg-3" role="status">
+                    {pushMsg}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </section>
 

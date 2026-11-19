@@ -33,7 +33,6 @@ export function useProfileContent() {
   );
   const [styleInsightLoading, setStyleInsightLoading] = useState(false);
   const [currency, setCurrency] = useState("KRW");
-  const [notifications, setNotifications] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [draftName, setDraftName] = useState(profile.name);
   const [draftBio, setDraftBio] = useState(profile.bio ?? "");
@@ -261,8 +260,6 @@ export function useProfileContent() {
     styleInsightLoading,
     currency,
     setCurrency,
-    notifications,
-    setNotifications,
     isEditing,
     setIsEditing,
     draftName,
