@@ -26,7 +26,7 @@ export function LoginWorldHero() {
 
   return (
     <div
-      className="w-full max-w-[18rem]"
+      className="w-full max-w-[16rem]"
       data-testid="login-world-hero"
       aria-hidden
     >
@@ -39,7 +39,7 @@ export function LoginWorldHero() {
         playsInline
         preload="auto"
         poster="/brand/login-traveler.png"
-        className="mx-auto h-auto w-full max-h-[min(32vh,16rem)] object-contain object-center"
+        className="mx-auto h-auto w-full max-h-[min(28vh,14rem)] object-contain object-center"
       />
     </div>
   );
