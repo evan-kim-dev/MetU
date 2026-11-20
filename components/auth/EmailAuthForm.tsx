@@ -16,10 +16,11 @@ import {
   type PasswordStrengthLevel,
 } from "@/lib/auth/password-strength";
 import {
-  getRememberMe,
-  markAuthSessionAlive,
-  setRememberMe,
-} from "@/lib/auth/remember-me";
+  getSavedEmail,
+  getSaveIdPref,
+  persistSavedEmail,
+  setSaveIdPref,
+} from "@/lib/auth/saved-id";
 import type { UserFacingError } from "@/lib/errors/user-message";
 
 const STRENGTH_BAR: Record<
@@ -91,12 +92,17 @@ export function EmailAuthForm({
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [rememberMe, setRememberMeState] = useState(true);
+  const [saveId, setSaveIdState] = useState(true);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setRememberMeState(getRememberMe());
+    const preferSave = getSaveIdPref();
+    setSaveIdState(preferSave);
+    if (preferSave) {
+      const saved = getSavedEmail();
+      if (saved) setEmail(saved);
+    }
   }, []);
 
   const strength = evaluatePassword(password);
@@ -167,8 +173,6 @@ export function EmailAuthForm({
     setInfo(null);
 
     if (mode === "login") {
-      setRememberMe(rememberMe);
-      if (!rememberMe) markAuthSessionAlive();
       const result = await signInWithEmail(email, password);
       if (!result.ok) {
         setError(result.error);
@@ -176,6 +180,8 @@ export function EmailAuthForm({
         focusFirstError();
         return;
       }
+      setSaveIdPref(saveId);
+      if (saveId) persistSavedEmail(email);
       onSignedIn?.();
       return;
     }
@@ -402,19 +408,33 @@ export function EmailAuthForm({
             className="flex min-h-9 items-center justify-between gap-2"
           >
             {mode === "login" ? (
-              <label className="flex min-h-9 cursor-pointer items-center gap-1.5 text-xs font-semibold text-ink-caption">
+              <label className="flex min-h-11 cursor-pointer items-center gap-1.5 text-xs font-semibold text-ink-caption">
                 <input
                   type="checkbox"
-                  checked={rememberMe}
+                  checked={saveId}
                   disabled={busy}
                   onChange={(e) => {
                     const next = e.target.checked;
-                    setRememberMeState(next);
-                    setRememberMe(next);
+                    setSaveIdState(next);
+                    setSaveIdPref(next);
+                    if (next && email.trim()) persistSavedEmail(email);
                   }}
-                  className="h-4 w-4 shrink-0 rounded border-line-soft accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                  className="peer sr-only"
                 />
-                로그인 유지
+                <span
+                  aria-hidden
+                  className={[
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition",
+                    saveId
+                      ? "border-mu-accent bg-mu-accent text-white"
+                      : "border-line-soft bg-surface-white text-transparent",
+                    "peer-focus-visible:ring-2 peer-focus-visible:ring-brand/40",
+                    "peer-disabled:opacity-50",
+                  ].join(" ")}
+                >
+                  <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                </span>
+                아이디 저장
               </label>
             ) : (
               <span />
