@@ -44,4 +44,16 @@ describe("InstallBanner", () => {
     expect(container.firstChild).toBeNull();
     expect(screen.queryByText(/홈 화면/)).toBeNull();
   });
+
+  it("renders null inside Capacitor native shell", () => {
+    (window as Window & { Capacitor?: unknown }).Capacitor = {
+      isNativePlatform: () => true,
+      getPlatform: () => "ios",
+    };
+    authState.user = { id: "u1" };
+    authState.provider = "kakao";
+    const { container } = render(<InstallBanner />);
+    expect(container.firstChild).toBeNull();
+    delete (window as Window & { Capacitor?: unknown }).Capacitor;
+  });
 });

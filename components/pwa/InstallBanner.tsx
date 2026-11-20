@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Share, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { isNativeApp } from "@/lib/native/capacitor";
 
 const DISMISS_KEY = "metu-pwa-install-dismissed-at";
 const VISIT_KEY = "metu.visit.count";
@@ -108,6 +109,8 @@ export function InstallBanner() {
   }, [isLoggedIn]);
 
   useEffect(() => {
+    // Capacitor App Store 셸에서는 PWA 설치 배너를 띄우지 않아요.
+    if (isNativeApp()) return;
     if (isStandaloneDisplay()) return;
     if (wasDismissedRecently()) return;
     if (!isLoggedIn) return;
@@ -134,6 +137,7 @@ export function InstallBanner() {
     };
   }, [isLoggedIn, pathname, visits]);
 
+  if (isNativeApp()) return null;
   if (!visible || !mode) return null;
 
   async function handleInstall() {

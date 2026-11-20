@@ -27,6 +27,14 @@ supabase/.temp/
 next-env.d.ts
 .vercel
 
+# Capacitor / Xcode (ios/.gitignore 도 참고)
+ios/App/Pods
+ios/DerivedData
+ios/**/*.xcuserdata
+ios/App/App/public
+ios/App/App/capacitor.config.json
+ios/capacitor-cordova-ios-plugins
+
 # Receipt eval private assets (K4)
 /eval/receipts/images/
 /eval/receipts/labels.json
