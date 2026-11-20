@@ -108,6 +108,17 @@ describe("LoginContent", () => {
     ).toBeNull();
   });
 
+  it("카카오 로그인에 next 경로를 넘겨요", async () => {
+    searchParams.set("next", "/trips/abc/ledger");
+    render(<LoginContent />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "카카오 간편로그인" })
+    );
+    await waitFor(() => {
+      expect(signInWithKakao).toHaveBeenCalledWith("/trips/abc/ledger");
+    });
+  });
+
   it("updates post-login status after 5 seconds", () => {
     vi.useFakeTimers();
     render(<LoginContent />);
