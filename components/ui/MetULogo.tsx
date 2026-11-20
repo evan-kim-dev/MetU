@@ -20,12 +20,7 @@ export function MetULogo({
 }: MetULogoProps) {
   if (variant === "hero") {
     return (
-      <div className={`flex flex-col items-center gap-3 ${className}`}>
-        {showPlannerBadge ? (
-          <span className="rounded-full border border-mu-line bg-mu-accent-soft px-3 py-1 text-xs font-bold text-mu-accent">
-            AI 여행 플래너
-          </span>
-        ) : null}
+      <div className={`flex flex-col items-center gap-2 ${className}`}>
         {/* 상단바와 같은 lockup (사각 아이콘 칩 없음) */}
         <Image
           src={LOCKUP_SRC}
@@ -33,8 +28,13 @@ export function MetULogo({
           width={280}
           height={112}
           priority
-          className="h-16 w-auto max-w-[14rem] object-contain"
+          className="h-10 w-auto max-w-[9.5rem] object-contain"
         />
+        {showPlannerBadge ? (
+          <span className="text-mu-caption font-medium text-mu-fg-3">
+            AI 여행 플래너
+          </span>
+        ) : null}
       </div>
     );
   }

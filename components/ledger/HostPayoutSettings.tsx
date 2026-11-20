@@ -62,25 +62,24 @@ export function HostPayoutSettings({ userId }: Props) {
   }
 
   return (
-    <div className="rounded-xl bg-mu-sunken p-3">
-      <p className="text-xs font-bold text-mu-fg">입금 계좌 (토스 송금)</p>
-      <p className="mt-1 text-mu-caption text-mu-fg-3">
-        게스트 공유 링크(`/s/…`)에서 토스 딥링크에 쓰여요. 본인만 읽고 쓸 수
-        있고, 유효한 공유 토큰으로만 게스트에게 전달돼요.
+    <div className="rounded-mu-lg border border-mu-line bg-mu-card p-3.5">
+      <p className="text-mu-label font-bold text-mu-fg">입금 계좌</p>
+      <p className="mt-1 text-mu-caption leading-snug text-mu-fg-3">
+        공유 링크에서 게스트가 토스로 송금할 때 써요.
       </p>
       {!loaded ? (
-        <p className="mt-2 text-xs text-mu-fg-3">불러오는 중…</p>
+        <p className="mt-3 text-mu-caption text-mu-fg-3">불러오는 중…</p>
       ) : (
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="mt-3 flex flex-col gap-2">
           <input
-            className="min-h-11 rounded-lg border border-mu-line bg-mu-card px-3 text-sm"
+            className="min-h-11 rounded-mu-md border border-mu-line bg-mu-bg px-3 text-sm text-mu-fg"
             placeholder="은행명 (예: 국민은행)"
             value={bank}
             onChange={(e) => setBank(e.target.value)}
             autoComplete="off"
           />
           <input
-            className="min-h-11 rounded-lg border border-mu-line bg-mu-card px-3 text-sm"
+            className="min-h-11 rounded-mu-md border border-mu-line bg-mu-bg px-3 text-sm text-mu-fg"
             placeholder="계좌번호"
             value={accountNo}
             onChange={(e) => setAccountNo(e.target.value)}
@@ -89,19 +88,19 @@ export function HostPayoutSettings({ userId }: Props) {
           />
           <button
             type="button"
-            className="min-h-11 rounded-lg bg-mu-accent px-3 text-sm font-bold text-white disabled:opacity-50"
+            className="min-h-11 rounded-mu-md bg-mu-accent px-3 text-sm font-bold text-mu-on-accent disabled:opacity-50"
             disabled={saving}
             onClick={() => void save()}
           >
-            {saving ? "저장 중…" : "입금 계좌 저장"}
+            {saving ? "저장 중…" : "저장"}
           </button>
           {error ? (
-            <p role="alert" className="text-xs font-bold text-mu-err">
+            <p role="alert" className="text-mu-caption font-semibold text-mu-err">
               {error}
             </p>
           ) : null}
           {msg ? (
-            <p role="status" className="text-xs font-bold text-mu-ok">
+            <p role="status" className="text-mu-caption font-semibold text-mu-ok">
               {msg}
             </p>
           ) : null}

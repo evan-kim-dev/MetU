@@ -23,6 +23,11 @@ const rpc = vi.fn();
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "trip-1" }),
   useRouter: () => ({ push, replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(""),
+}));
+vi.mock("@/components/ledger/SplitChatRoom", () => ({
+  SplitChatRoom: () => null,
+  toSplitChatMembers: (members: unknown) => members,
 }));
 vi.mock("next/link", () => ({
   default: ({
@@ -146,7 +151,7 @@ describe("LedgerSettlePage", () => {
     expect(fetchLatestSettlement).toHaveBeenCalledTimes(2);
   });
 
-  it("highlights own row and shows signed balances", async () => {
+  it("shows my share hero and other members only", async () => {
     fetchLatestSettlement.mockResolvedValue({
       ok: true,
       settlement: await settlement(),
@@ -154,11 +159,9 @@ describe("LedgerSettlePage", () => {
     render(<LedgerSettlePage />);
     await screen.findByText(/지영 → 민수/);
 
-    const mine = screen.getByTestId("balance-a");
-    expect(mine.getAttribute("data-mine")).toBe("true");
-    expect(mine.textContent).toContain("+₩5,000");
+    expect(screen.getByLabelText(/받을 돈 ₩5,000/)).toBeTruthy();
+    expect(screen.queryByTestId("balance-a")).toBeNull();
     const other = screen.getByTestId("balance-b");
-    expect(other.getAttribute("data-mine")).toBeNull();
     expect(other.textContent).toContain("-₩5,000");
   });
 
@@ -216,7 +219,7 @@ describe("LedgerSettlePage", () => {
     fetchLatestSettlement.mockResolvedValue({ ok: true, settlement: null });
     render(<LedgerSettlePage />);
     await screen.findByText(/아직 만든 정산표가 없어요/);
-    expect(screen.getByTestId("balance-a").textContent).toContain("₩0");
+    expect(screen.getByLabelText(/예상 내 몫 ₩0/)).toBeTruthy();
   });
 
   it("warns (without blocking) when fx fallback rates are used", async () => {
@@ -231,7 +234,8 @@ describe("LedgerSettlePage", () => {
     expect(
       await screen.findByText(/1건은 마지막으로 확인한 환율로 계산됐어요/)
     ).toBeTruthy();
-    expect(screen.getByText("ExchangeRate-API")).toBeTruthy();
+    // 정산 요약에서는 FX 출처 푸터를 숨기고, 경고만 남겨 둬요.
+    expect(screen.queryByText("ExchangeRate-API")).toBeNull();
     expect(
       (screen.getByRole("button", { name: "문구 복사" }) as HTMLButtonElement)
         .disabled

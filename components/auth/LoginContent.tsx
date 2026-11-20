@@ -1,21 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { AuthMessage } from "@/components/auth/AuthMessage";
 import { EmailAuthForm } from "@/components/auth/EmailAuthForm";
+import { LoginWorldHero } from "@/components/auth/LoginWorldHero";
 import { useAuthActions } from "@/components/auth/useAuthActions";
-import { MetULogo } from "@/components/ui/MetULogo";
 import {
   callbackErrorCode,
   callbackErrorToUserFacing,
 } from "@/lib/auth/callback-error";
 import { safeNextPath } from "@/lib/security/safe-next";
 import type { UserFacingError } from "@/lib/errors/user-message";
-
-const FEATURES = ["예산 맞춤", "AI 일정", "자동 가계부", "정산"] as const;
 
 export function LoginContent() {
   const router = useRouter();
@@ -24,7 +23,6 @@ export function LoginContent() {
 
   const [kakaoLoading, setKakaoLoading] = useState(false);
   const [kakaoSlowHint, setKakaoSlowHint] = useState(false);
-  const [emailOpen, setEmailOpen] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
   const [postLoginStatus, setPostLoginStatus] = useState<string | null>(null);
   const deleted = searchParams.get("deleted") === "1";
@@ -113,73 +111,78 @@ export function LoginContent() {
     goNext();
   };
 
-  const anyLoading = kakaoLoading;
-
   return (
     <div className="relative flex min-h-dvh flex-col overflow-y-auto overscroll-contain bg-mu-bg">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute inset-0 bg-gradient-to-b from-surface-base via-canvas to-canvas-deep" />
+      <div
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+        aria-hidden
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-mu-bg via-mu-bg to-mu-sunken" />
         <div className="absolute -left-16 top-8 h-48 w-48 rounded-full bg-mu-accent-soft blur-3xl" />
-        <div className="absolute -right-10 top-28 h-40 w-40 rounded-full bg-mu-accent-mid/12 blur-3xl" />
-        <div className="absolute bottom-48 left-1/2 h-28 w-56 -translate-x-1/2 rounded-full bg-mu-accent/[0.06] blur-2xl" />
+        <div className="absolute -right-10 top-28 h-40 w-40 rounded-full bg-mu-accent-soft/60 blur-3xl" />
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-mobile flex-1 flex-col px-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="flex flex-1 flex-col items-center justify-center py-6">
-          <header className="flex w-full flex-col items-center gap-5 text-center animate-fade-up">
-            <MetULogo variant="hero" showPlannerBadge />
+      <div className="relative z-10 mx-auto flex w-full max-w-mobile flex-1 flex-col px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
+        <header className="flex w-full shrink-0 flex-col items-center pt-2 text-center animate-fade-up">
+          <p
+            className="flex items-end justify-center gap-2.5"
+            aria-label="Nice to Met U"
+          >
+            <span className="pb-1.5 text-mu-heading font-semibold tracking-wide text-mu-fg-3">
+              Nice to
+            </span>
+            <Image
+              src="/brand/metu-lockup.png"
+              alt=""
+              width={240}
+              height={96}
+              priority
+              className="h-14 w-auto max-w-[12rem] object-contain"
+            />
+          </p>
+        </header>
 
-            <div className="flex max-w-prose flex-col items-center gap-3">
-              <p className="text-xs font-semibold tracking-wide text-mu-accent">
-                Nice to Met U!
-              </p>
-              <h1 className="text-lg font-bold leading-7 tracking-tight text-mu-fg">
-                여행 경비, 같이 쓰고 알아서 정산해요
-              </h1>
-              <p className="text-sm leading-6 text-mu-fg-2">
-                카드 알림이 오면 자동으로 가계부에 적고, 동행과 정산까지 한 번에
-                끝내요.
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {FEATURES.map((feature, index) => (
-                  <span
-                    key={feature}
-                    className="rounded-full border border-mu-line bg-mu-card animate-fade-up px-3 py-1.5 text-xs"
-                    style={{ animationDelay: `${120 + index * 80}ms` }}
-                  >
-                    {feature}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </header>
+        <div className="flex min-h-0 flex-1 items-center justify-center py-4">
+          <LoginWorldHero />
         </div>
 
         <div
-          className="flex w-full shrink-0 flex-col gap-4 animate-fade-up"
-          style={{ animationDelay: "180ms" }}
+          className="mt-auto flex w-full shrink-0 flex-col gap-3.5 pb-1 animate-fade-up"
+          style={{ animationDelay: "120ms" }}
         >
-          <div className="flex flex-col gap-3">
-            {deleted && !error ? (
-              <AuthMessage kind="info">
-                회원 탈퇴가 완료되었어요. 이용해 주셔서 감사합니다.
-              </AuthMessage>
-            ) : null}
-            {error ? (
-              <AuthMessage kind="error">{error.message}</AuthMessage>
-            ) : null}
-            {postLoginStatus ? (
-              <p role="status" className="text-center text-xs text-mu-fg-2">
-                {postLoginStatus}
-              </p>
-            ) : null}
+          {deleted && !error ? (
+            <AuthMessage kind="info">
+              회원 탈퇴가 완료되었어요. 이용해 주셔서 감사합니다.
+            </AuthMessage>
+          ) : null}
+          {error ? (
+            <AuthMessage kind="error">{error.message}</AuthMessage>
+          ) : null}
+          {postLoginStatus ? (
+            <p role="status" className="text-center text-mu-caption text-mu-fg-2">
+              {postLoginStatus}
+            </p>
+          ) : null}
 
+          <section aria-label="이메일 로그인" className="flex flex-col gap-2">
+            <EmailAuthForm variant="full" onSignedIn={handleEmailSignedIn} />
+          </section>
+
+          <div className="flex items-center gap-3" aria-hidden>
+            <span className="h-px flex-1 bg-mu-line" />
+            <span className="text-mu-caption font-medium text-mu-fg-3">
+              또는 간편로그인
+            </span>
+            <span className="h-px flex-1 bg-mu-line" />
+          </div>
+
+          <section aria-label="간편로그인" className="flex flex-col gap-2">
             <button
               type="button"
               onClick={() => void handleKakaoLogin()}
-              disabled={anyLoading}
+              disabled={kakaoLoading}
               aria-busy={kakaoLoading}
-              className="relative flex min-h-touch w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-kakao text-base font-bold text-kakao-ink shadow-kakao-sm transition-transform active:scale-99 disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent/40"
+              className="relative flex min-h-touch w-full items-center justify-center gap-2 overflow-hidden rounded-mu-lg bg-kakao text-mu-body font-bold text-kakao-ink shadow-kakao-sm transition-transform active:scale-99 disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent/40"
             >
               {kakaoLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
@@ -189,37 +192,22 @@ export function LoginContent() {
               {kakaoLoading ? "카카오로 이동 중…" : "카카오 간편로그인"}
             </button>
             {kakaoSlowHint ? (
-              <p className="text-center text-xs text-mu-fg-3">
+              <p className="text-center text-mu-caption text-mu-fg-3">
                 오래 걸리면 다시 눌러 주세요
               </p>
             ) : null}
+          </section>
 
-            <button
-              type="button"
-              onClick={() => {
-                setEmailOpen((prev) => !prev);
-                setError(null);
-              }}
-              disabled={anyLoading}
-              aria-expanded={emailOpen}
-              className="flex min-h-touch w-full items-center justify-center gap-2 rounded-2xl border border-mu-line bg-mu-card text-sm font-bold text-mu-fg shadow-sm transition-colors active:scale-99 active:bg-mu-sunken disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent/40"
-            >
-              <Mail className="h-4 w-4 text-mu-accent" strokeWidth={2.4} />
-              이메일로 계속하기
-            </button>
-
-            {emailOpen ? (
-              <EmailAuthForm variant="full" onSignedIn={handleEmailSignedIn} />
-            ) : null}
-          </div>
-
-          <p className="text-center text-xs leading-5 text-mu-fg-2">
+          <p className="mt-1 text-center text-mu-caption leading-5 text-mu-fg-2">
             계속하면{" "}
             <Link href="/legal/terms" className="underline underline-offset-2">
               이용약관
             </Link>
             과{" "}
-            <Link href="/legal/privacy" className="underline underline-offset-2">
+            <Link
+              href="/legal/privacy"
+              className="underline underline-offset-2"
+            >
               개인정보처리방침
             </Link>
             에 동의하게 돼요.
@@ -232,7 +220,13 @@ export function LoginContent() {
 
 function KakaoIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="text-kakao-ink">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      aria-hidden
+      className="text-kakao-ink"
+    >
       <path
         fill="currentColor"
         d="M10 3.2c-4.1 0-7.4 2.6-7.4 5.8 0 2.1 1.4 3.9 3.5 5l-.9 3.3c-.1.3.3.5.5.4l4-2.6c.2 0 .3 0 .5 0 4.1 0 7.4-2.6 7.4-5.8S14.1 3.2 10 3.2z"

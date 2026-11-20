@@ -53,22 +53,20 @@ export function HostTransferSettings({
   }
 
   return (
-    <div className="rounded-xl bg-mu-sunken p-3">
-      <p className="text-xs font-bold text-mu-fg">호스트 넘기기</p>
-      <p className="mt-1 text-mu-caption text-mu-fg-3">
-        가입한 동행에게만 넘길 수 있어요. 넘기면 설정·초대·정산 권한이 그쪽으로
-        옮겨지고, 나는 일반 멤버가 돼요.
+    <div className="rounded-mu-lg border border-mu-line bg-mu-card p-3.5">
+      <p className="text-mu-label font-bold text-mu-fg">호스트 넘기기</p>
+      <p className="mt-1 text-mu-caption leading-snug text-mu-fg-3">
+        설정·초대·정산 권한이 선택한 동행에게 넘어가요.
       </p>
 
       {candidates.length === 0 ? (
-        <p className="mt-2 text-xs text-mu-fg-3">
-          넘길 수 있는 가입 동행이 아직 없어요. 초대 링크로 들어오게 한 뒤 다시
-          시도해 주세요.
+        <p className="mt-3 text-mu-caption text-mu-fg-3">
+          가입한 동행이 생기면 넘길 수 있어요.
         </p>
       ) : (
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="mt-3 flex flex-col gap-2">
           <select
-            className="min-h-11 w-full rounded-lg border border-mu-line bg-mu-card px-3 text-sm"
+            className="min-h-11 w-full rounded-mu-md border border-mu-line bg-mu-bg px-3 text-sm text-mu-fg"
             value={targetId}
             onChange={(e) => {
               setTargetId(e.target.value);
@@ -89,7 +87,7 @@ export function HostTransferSettings({
           {!confirm ? (
             <button
               type="button"
-              className="min-h-11 rounded-lg border border-mu-line bg-mu-card px-3 text-sm font-bold text-mu-fg disabled:opacity-50"
+              className="min-h-11 rounded-mu-md border border-mu-line bg-mu-bg px-3 text-sm font-bold text-mu-fg disabled:opacity-50"
               disabled={!target}
               onClick={() => setConfirm(true)}
             >
@@ -97,14 +95,14 @@ export function HostTransferSettings({
             </button>
           ) : (
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-bold text-mu-warn">
-                {target?.displayName}님에게 호스트를 넘길까요? 되돌리려면 새
-                호스트가 다시 넘겨줘야 해요.
+              <p className="text-mu-caption font-semibold text-mu-warn">
+                {target?.displayName}님에게 넘길까요? 되돌리려면 새 호스트가 다시
+                넘겨줘야 해요.
               </p>
               <div className="flex gap-2">
                 <button
                   type="button"
-                  className="min-h-11 flex-1 rounded-lg border border-mu-line bg-mu-card px-3 text-sm font-bold"
+                  className="min-h-11 flex-1 rounded-mu-md border border-mu-line bg-mu-bg px-3 text-sm font-bold text-mu-fg"
                   disabled={busy}
                   onClick={() => setConfirm(false)}
                 >
@@ -112,7 +110,7 @@ export function HostTransferSettings({
                 </button>
                 <button
                   type="button"
-                  className="min-h-11 flex-1 rounded-lg bg-mu-accent px-3 text-sm font-bold text-white disabled:opacity-50"
+                  className="min-h-11 flex-1 rounded-mu-md bg-mu-accent px-3 text-sm font-bold text-mu-on-accent disabled:opacity-50"
                   disabled={busy}
                   onClick={() => void submit()}
                 >
@@ -125,12 +123,12 @@ export function HostTransferSettings({
       )}
 
       {error ? (
-        <p role="alert" className="mt-2 text-xs font-bold text-mu-err">
+        <p role="alert" className="mt-2 text-mu-caption font-semibold text-mu-err">
           {error}
         </p>
       ) : null}
       {ok ? (
-        <p role="status" className="mt-2 text-xs font-bold text-mu-ok">
+        <p role="status" className="mt-2 text-mu-caption font-semibold text-mu-ok">
           {ok}
         </p>
       ) : null}

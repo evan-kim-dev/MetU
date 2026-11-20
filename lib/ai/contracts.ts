@@ -191,6 +191,25 @@ export function parsePlanItinerary(content: string): Partial<PlanItineraryOut> |
   };
 }
 
+/** Home tip cards: keep body to one short line. */
+export function truncateTipDescription(
+  text: string,
+  maxChars = 40
+): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxChars) return normalized;
+  const slice = normalized.slice(0, maxChars);
+  const breakAt = Math.max(
+    slice.lastIndexOf("."),
+    slice.lastIndexOf("!"),
+    slice.lastIndexOf("?"),
+    slice.lastIndexOf(" "),
+    slice.lastIndexOf("요")
+  );
+  const cut = breakAt >= Math.floor(maxChars * 0.5) ? breakAt + 1 : maxChars;
+  return `${slice.slice(0, cut).trimEnd()}…`;
+}
+
 export function parseTipsOut(content: string): TipsOut | null {
   const root = asRecord(parseJsonContent(content));
   if (!root || !Array.isArray(root.tips) || root.tips.length === 0) return null;
@@ -204,7 +223,7 @@ export function parseTipsOut(content: string): TipsOut | null {
     tips.push({
       emoji: asString(t.emoji) || "💡",
       title: asString(t.title) || "팁",
-      description,
+      description: truncateTipDescription(description),
     });
   }
   return tips.length > 0 ? { tips } : null;

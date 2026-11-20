@@ -40,12 +40,54 @@ describe("Stepper", () => {
     const current = nav.querySelector('[aria-current="step"]');
     expect(current).toBeTruthy();
     expect(current?.getAttribute("aria-label")).toContain("확인 필요 2건");
+    expect(
+      Array.from(nav.querySelectorAll("button")).some((b) =>
+        b.textContent?.includes("연결")
+      )
+    ).toBe(true);
+    expect(
+      Array.from(nav.querySelectorAll("button")).some((b) =>
+        b.textContent?.includes("기록")
+      )
+    ).toBe(true);
     const invite = Array.from(nav.querySelectorAll("button")).find((b) =>
       (b.getAttribute("aria-label") ?? "").startsWith("초대")
     );
     expect(invite).toBeTruthy();
     fireEvent.click(invite!);
     expect(onSelect).toHaveBeenCalledWith("invite");
+  });
+
+  it("shows current step description under the nav", () => {
+    render(
+      <Stepper
+        currentKey="prep"
+        onSelect={() => {}}
+        steps={[
+          {
+            key: "prep",
+            label: "준비",
+            status: "current",
+            description: "자동화 연결하고 친구를 초대해요",
+          },
+          {
+            key: "spend",
+            label: "기록",
+            status: "todo",
+            description: "지출을 모으고 분담을 맞춰요",
+          },
+          {
+            key: "close",
+            label: "정산",
+            status: "todo",
+            description: "정산을 계산하고 송금해요",
+          },
+        ]}
+      />
+    );
+    expect(
+      screen.getByText("자동화 연결하고 친구를 초대해요")
+    ).toBeTruthy();
   });
 });
 

@@ -12,6 +12,8 @@ export type StepItem = {
   label: string;
   status: StepStatus;
   badge?: string | number;
+  /** 단계 한 줄 설명 (현재 단계 아래에 보여 줘요) */
+  description?: string;
 };
 
 export type StepperProps = {
@@ -131,7 +133,7 @@ export function Stepper({
                   aria-label={aria}
                   aria-current={isCurrent ? "step" : undefined}
                   onClick={() => onSelect(step.key)}
-                  className="mu-focus flex h-11 w-full flex-col justify-center"
+                  className="mu-focus flex h-11 w-full flex-col items-stretch justify-center gap-1.5"
                 >
                   <span
                     className={cn(
@@ -142,11 +144,24 @@ export function Stepper({
                       step.status === "attention" && "bg-mu-warn"
                     )}
                   />
+                  <span
+                    className={cn(
+                      "text-center text-mu-caption font-semibold",
+                      isCurrent ? "text-mu-accent" : "text-mu-fg-3"
+                    )}
+                  >
+                    {step.label}
+                  </span>
                 </button>
               </li>
             );
           })}
         </ol>
+        {current?.description ? (
+          <p className="mt-2 text-center text-mu-caption leading-snug text-mu-fg-2">
+            {current.description}
+          </p>
+        ) : null}
       </nav>
       <Sheet
         open={listOpen}
@@ -164,17 +179,24 @@ export function Stepper({
                   setListOpen(false);
                 }}
                 className={cn(
-                  "mu-focus flex min-h-tap w-full items-center justify-between rounded-mu-md px-3 text-left",
+                  "mu-focus flex min-h-tap w-full flex-col items-start justify-center gap-0.5 rounded-mu-md px-3 py-2 text-left",
                   step.key === currentKey && "bg-mu-accent-soft"
                 )}
               >
-                <span className="text-mu-body text-mu-fg">
-                  {i + 1}. {step.label}
+                <span className="flex w-full items-center justify-between gap-2">
+                  <span className="text-mu-body text-mu-fg">
+                    {i + 1}. {step.label}
+                  </span>
+                  <span className="shrink-0 text-mu-caption text-mu-fg-3">
+                    {statusLabel(step.status)}
+                    {step.badge != null ? ` · ${step.badge}` : ""}
+                  </span>
                 </span>
-                <span className="text-mu-caption text-mu-fg-3">
-                  {statusLabel(step.status)}
-                  {step.badge != null ? ` · ${step.badge}` : ""}
-                </span>
+                {step.description ? (
+                  <span className="text-mu-caption text-mu-fg-3">
+                    {step.description}
+                  </span>
+                ) : null}
               </button>
             </li>
           ))}

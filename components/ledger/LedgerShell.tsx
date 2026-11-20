@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Settings } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { INBOX_NAME } from "@/lib/ledger/inbox-copy";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CardProfileSettings } from "@/components/ledger/CardProfileSettings";
 import { CashWithdrawSheet } from "@/components/ledger/CashWithdrawSheet";
@@ -340,34 +341,18 @@ export function LedgerShell({
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-mobile flex-col gap-5 px-4 pb-28 pt-3">
-      {!guestReadonly ? (
-        <div className="flex items-center justify-end gap-1">
-          <Link
-            href={`/trips/${tripId}/ledger/inbox`}
-            className="mu-focus relative inline-flex min-h-tap items-center rounded-mu-md px-3 text-mu-label font-bold text-mu-accent"
-          >
-            인박스
-            {inboxCount > 0 ? (
-              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-mu-err px-1.5 text-mu-caption font-extrabold text-mu-on-accent">
-                {inboxCount > 9 ? "9+" : inboxCount}
-              </span>
-            ) : null}
-          </Link>
-          <button
-            type="button"
-            aria-label="설정"
-            className="mu-focus flex h-11 w-11 items-center justify-center rounded-mu-md text-mu-fg-2"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <Settings className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-          </button>
-        </div>
-      ) : (
+    <div
+      className={
+        showSettle
+          ? "mx-auto flex min-h-full w-full max-w-mobile flex-col gap-4 px-4 pt-3"
+          : "mx-auto flex w-full max-w-mobile flex-col gap-5 px-4 pb-28 pt-3"
+      }
+    >
+      {guestReadonly ? (
         <p className="text-mu-caption text-mu-fg-3">
           합계 <span className="mu-num font-bold text-mu-fg">{formatKRW(total)}</span>
         </p>
-      )}
+      ) : null}
 
       {error ? (
         <p
@@ -475,6 +460,7 @@ export function LedgerShell({
               mode="journey"
               onAdjust={() => onNavigate?.("adjust")}
               onPay={() => onNavigate?.("pay")}
+              onOpenSettings={() => setSettingsOpen(true)}
             />
           ) : null}
 
@@ -497,9 +483,12 @@ export function LedgerShell({
           onClose={() => setSettingsOpen(false)}
           title="설정"
         >
-          <div ref={settingsRef} className="flex flex-col gap-4">
+          <div ref={settingsRef} className="flex flex-col gap-6 pb-2">
             {user ? (
-              <>
+              <section className="flex flex-col gap-3" aria-label="정산 설정">
+                <h3 className="text-mu-caption font-bold tracking-wide text-mu-fg-3">
+                  정산
+                </h3>
                 <HostPayoutSettings userId={user.id} />
                 {me?.isOwner ? (
                   <HostTransferSettings
@@ -511,38 +500,75 @@ export function LedgerShell({
                     }}
                   />
                 ) : null}
-                <CardProfileSettings
-                  userId={user.id}
-                  profiles={profiles}
-                  onChange={setProfiles}
-                />
-              </>
+              </section>
             ) : null}
-            {me ? <CashRateSettings tripId={tripId} memberId={me.id} /> : null}
-            <Link
-              href={`/trips/${tripId}/ledger/inbox`}
-              className="text-sm font-bold text-mu-accent"
-            >
-              인박스
-            </Link>
-            <Link
-              href={`/trips/${tripId}/ledger/report`}
-              className="text-sm font-bold text-mu-accent"
-            >
-              리포트
-            </Link>
-            <Link
-              href={`/trips/${tripId}/ledger/wallet`}
-              className="text-sm font-bold text-mu-accent"
-            >
-              면세 지갑
-            </Link>
-            <Link
-              href={`/trips/${tripId}/ledger/recap`}
-              className="text-sm font-bold text-mu-accent"
-            >
-              리캡
-            </Link>
+
+            {user || me ? (
+              <section className="flex flex-col gap-3" aria-label="카드·환율">
+                <h3 className="text-mu-caption font-bold tracking-wide text-mu-fg-3">
+                  카드 · 환율
+                </h3>
+                {user ? (
+                  <CardProfileSettings
+                    userId={user.id}
+                    profiles={profiles}
+                    onChange={setProfiles}
+                  />
+                ) : null}
+                {me ? (
+                  <CashRateSettings tripId={tripId} memberId={me.id} />
+                ) : null}
+              </section>
+            ) : null}
+
+            <section className="flex flex-col gap-2" aria-label="바로가기">
+              <h3 className="text-mu-caption font-bold tracking-wide text-mu-fg-3">
+                바로가기
+              </h3>
+              <ul className="overflow-hidden rounded-mu-lg border border-mu-line bg-mu-card">
+                {(
+                  [
+                    {
+                      href: `/trips/${tripId}/ledger/inbox`,
+                      label: INBOX_NAME,
+                    },
+                    {
+                      href: `/trips/${tripId}/ledger/report`,
+                      label: "리포트",
+                    },
+                    {
+                      href: `/trips/${tripId}/ledger/wallet`,
+                      label: "면세 지갑",
+                    },
+                    {
+                      href: `/trips/${tripId}/ledger/recap`,
+                      label: "리캡",
+                    },
+                  ] as const
+                ).map((item, index, list) => (
+                  <li
+                    key={item.href}
+                    className={
+                      index < list.length - 1
+                        ? "border-b border-mu-line"
+                        : undefined
+                    }
+                  >
+                    <Link
+                      href={item.href}
+                      className="mu-focus flex min-h-11 items-center justify-between gap-3 px-3.5 text-sm font-semibold text-mu-fg"
+                    >
+                      {item.label}
+                      <ChevronRight
+                        className="h-4 w-4 shrink-0 text-mu-fg-3"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
         </Sheet>
       ) : null}

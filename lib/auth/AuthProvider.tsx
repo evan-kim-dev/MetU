@@ -28,6 +28,7 @@ import {
   getBrowserSupabase,
   resetBrowserSupabase,
 } from "@/lib/supabase/browser";
+import { signupPasswordErrorMessage } from "@/lib/auth/password-strength";
 import { resolveSiteOrigin } from "@/lib/site-url";
 
 const AUTH_UNAVAILABLE: UserFacingError = {
@@ -223,12 +224,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         };
       }
-      if (password.length < 6) {
+      const weakMsg = signupPasswordErrorMessage(password);
+      if (weakMsg) {
         return {
           status: "error",
           error: {
             code: "weak-password",
-            message: "비밀번호는 6자 이상으로 만들어 주세요.",
+            message: weakMsg,
             retryable: false,
           },
         };

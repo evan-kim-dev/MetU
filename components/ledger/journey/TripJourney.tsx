@@ -375,7 +375,9 @@ export function TripJourney({ tripId }: Props) {
           }
           navAriaLabel="가계부 · 정산"
         />
-        <div className="flex-1 overflow-y-auto">{body}</div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {body}
+        </div>
         {role === "host" && cta ? (
           <BottomCTA label={cta.label} onClick={onCta} />
         ) : null}
