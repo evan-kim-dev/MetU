@@ -18,7 +18,7 @@ PRD Flow A/B 요약은 [prd-v1.md](./prd-v1.md) §4 · 부록 A 를 참고하세
 ## 사전 (전날)
 
 - Vercel env 확인 (값은 대시보드에서만, 레포/커밋 금지)
-  - `GEMINI_API_KEY`, `SUPABASE_*`, `AGENT_INGEST_PEPPER`, `CRON_SECRET`
+  - `OPENAI_API_KEY`, `SUPABASE_*`, `AGENT_INGEST_PEPPER`, `CRON_SECRET`
   - 데모용으로 `AGENT_SETTLE_COALESCE_SEC` 를 10~30 근처로 (Evan이 Vercel에서 직접 설정)
   - UI 노출 + 데모 라우트: `NEXT_PUBLIC_DEMO_MODE=1` (`.env.example` 참고) — **시연 전용 on**, 제출 URL은 off
     - **빌드 타임 변수**예요. Vercel 에 설정/변경한 뒤 **재배포**해야 반영돼요.
@@ -116,7 +116,7 @@ PRD Flow A/B 요약은 [prd-v1.md](./prd-v1.md) §4 · 부록 A 를 참고하세
    - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - [ ] `SUPABASE_URL`
    - [ ] `SUPABASE_SERVICE_ROLE_KEY`
-   - [ ] `GEMINI_API_KEY`
+   - [ ] `OPENAI_API_KEY`
    - [ ] `AGENT_INGEST_PEPPER`
    - [ ] `GUEST_COOKIE_SECRET`
    - [ ] `CRON_SECRET`

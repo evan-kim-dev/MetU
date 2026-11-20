@@ -5,14 +5,14 @@
 
 ## 스택
 Next.js ^15.1.6 (App Router, Route Handlers = BFF) · React ^19 · TypeScript strict · Tailwind ^3.4 · zod ^4
-Supabase(@supabase/ssr, RLS, 익명 로그인, security definer RPC, 마이그레이션 `supabase/migrations`) · Gemini(`lib/ai/gemini.ts`, Next 서버에서만)
+Supabase(@supabase/ssr, RLS, 익명 로그인, security definer RPC, 마이그레이션 `supabase/migrations`) · OpenAI GPT(`lib/ai/gemini.ts` 파사드, Next 서버에서만)
 vitest ^3 + testing-library(jsdom) · lucide-react · @dnd-kit · web-push · qrcode · Kakao/Google 지도
 경로 별칭 `@/*` = 레포 루트. 새 의존성은 꼭 필요할 때만, 이유를 PR 에 적는다. shadcn/radix/framer-motion 없음.
 
 ## 명령 (package.json 기준)
 - `npm install` — **`npm ci` 쓰지 말 것**(npm 11/Node 24 에서 락파일 불일치로 실패. CI 도 npm install). `package-lock.json` 변경은 커밋하지 않는다.
 - `npm run dev` · `npm run build`(= `node scripts/clean-next.cjs && next build`) · `npm run lint`(`--max-warnings 0` — 경고도 실패) · `npm run typecheck` · `npm test`(vitest run)
-- build 는 더미 env 가 필요: `NEXT_PUBLIC_SUPABASE_URL` `NEXT_PUBLIC_SUPABASE_ANON_KEY` `GUEST_COOKIE_SECRET` `GEMINI_API_KEY` 에 임의 문자열(CI 와 동일). 진짜 키를 쓰지 않는다.
+- build 는 더미 env 가 필요: `NEXT_PUBLIC_SUPABASE_URL` `NEXT_PUBLIC_SUPABASE_ANON_KEY` `GUEST_COOKIE_SECRET` `OPENAI_API_KEY` 에 임의 문자열(CI 와 동일). 진짜 키를 쓰지 않는다.
 - PR 전 필수: `npm run typecheck && npm run lint && npm test` (UI/라우트 변경이면 `npm run build` 도).
 
 ## 절대 규칙

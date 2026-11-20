@@ -13,6 +13,9 @@ const ServerEnvSchema = z.object({
   AGENT_INGEST_PEPPER: optionalTrimmed,
   CRON_SECRET: optionalTrimmed,
   GUEST_COOKIE_SECRET: optionalTrimmed,
+  OPENAI_API_KEY: optionalTrimmed,
+  OPENAI_TIMEOUT_MS: optionalTrimmed,
+  /** @deprecated Prefer OPENAI_*; kept soft for transition logs only */
   GEMINI_API_KEY: optionalTrimmed,
   GEMINI_TIMEOUT_MS: optionalTrimmed,
   VAPID_PUBLIC_KEY: optionalTrimmed,

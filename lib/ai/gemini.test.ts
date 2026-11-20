@@ -22,6 +22,7 @@ beforeEach(() => {
 
 afterEach(() => {
   setGeminiClientForTests(null);
+  delete process.env.OPENAI_API_KEY;
   delete process.env.GEMINI_API_KEY;
   __resetMemoryUsageSinkForTests();
   resetUsageSinkForTests();
@@ -73,8 +74,8 @@ describe("geminiStructured", () => {
     if (!res.ok) expect(res.error).toBe("zod_failed");
   });
 
-  it("retries on 429 up to GEMINI_MAX_RETRIES then succeeds", async () => {
-    process.env.GEMINI_MAX_RETRIES = "2";
+  it("retries on 429 up to OPENAI_MAX_RETRIES then succeeds", async () => {
+    process.env.OPENAI_MAX_RETRIES = "2";
     const err429 = Object.assign(new Error("rate limited"), { status: 429 });
     const create = vi
       .fn()

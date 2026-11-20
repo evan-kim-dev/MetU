@@ -1,6 +1,6 @@
 import "server-only";
 
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 import { z } from "zod";
 
 import { getUsageSink } from "@/lib/ai/usage";
@@ -43,6 +43,10 @@ type InteractionLike = {
 
 type CreateParams = Record<string, unknown>;
 
+/**
+ * Test seam — mocks use the same shape as the OpenAI adapter
+ * (`interactions.create` → InteractionLike).
+ */
 export type GeminiInteractionsClient = {
   interactions: {
     create: (
@@ -70,27 +74,30 @@ function envInt(name: string, fallback: number): number {
 function modelName(kind: GeminiModelKind): string {
   if (kind === "main") {
     return (
-      process.env.GEMINI_MODEL_MAIN?.trim() || "gemini-3.8-flash"
+      process.env.OPENAI_MODEL_MAIN?.trim() ||
+      process.env.GEMINI_MODEL_MAIN?.trim() ||
+      "gpt-4o"
     );
   }
   return (
-    process.env.GEMINI_MODEL_FAST?.trim() || "gemini-3.5-flash-lite"
+    process.env.OPENAI_MODEL_FAST?.trim() ||
+    process.env.GEMINI_MODEL_FAST?.trim() ||
+    "gpt-4o-mini"
   );
 }
 
-function thinkingLevel(kind: GeminiModelKind): string {
-  if (kind === "main") {
-    return process.env.GEMINI_THINKING_MAIN?.trim() || "low";
-  }
-  return process.env.GEMINI_THINKING_FAST?.trim() || "minimal";
-}
-
 function timeoutMs(): number {
-  return envInt("GEMINI_TIMEOUT_MS", 25_000);
+  return envInt(
+    "OPENAI_TIMEOUT_MS",
+    envInt("GEMINI_TIMEOUT_MS", 25_000)
+  );
 }
 
 function maxRetries(): number {
-  return envInt("GEMINI_MAX_RETRIES", 2);
+  return envInt(
+    "OPENAI_MAX_RETRIES",
+    envInt("GEMINI_MAX_RETRIES", 2)
+  );
 }
 
 function dailyCap(): number {
@@ -98,21 +105,12 @@ function dailyCap(): number {
 }
 
 function getApiKey(): string | null {
-  const key = process.env.GEMINI_API_KEY?.trim();
+  const key = process.env.OPENAI_API_KEY?.trim();
   return key || null;
-}
-
-function getClient(): GeminiInteractionsClient | null {
-  if (clientOverride) return clientOverride;
-  const key = getApiKey();
-  if (!key) return null;
-  const ai = new GoogleGenAI({ apiKey: key });
-  return ai as unknown as GeminiInteractionsClient;
 }
 
 function zodToJsonSchema(schema: z.ZodType): Record<string, unknown> {
   const raw = z.toJSONSchema(schema) as Record<string, unknown>;
-  // Gemini rejects some meta keys; keep a plain JSON Schema object.
   const { $schema: _s, ...rest } = raw;
   return rest;
 }
@@ -186,6 +184,121 @@ async function recordUsage(args: {
   }
 }
 
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+function buildUserContent(
+  input: unknown
+): string | ContentPart[] {
+  if (typeof input === "string") return input;
+  if (!Array.isArray(input)) return String(input ?? "");
+
+  const parts: ContentPart[] = [];
+  for (const item of input) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (row.type === "text" && typeof row.text === "string") {
+      parts.push({ type: "text", text: row.text });
+      continue;
+    }
+    if (row.type === "image") {
+      const data = typeof row.data === "string" ? row.data : "";
+      const mime =
+        typeof row.mime_type === "string" ? row.mime_type : "image/jpeg";
+      if (!data) continue;
+      parts.push({
+        type: "image_url",
+        image_url: { url: `data:${mime};base64,${data}` },
+      });
+    }
+  }
+  if (parts.length === 0) return "";
+  if (parts.length === 1 && parts[0].type === "text") return parts[0].text;
+  return parts;
+}
+
+function buildOpenAiClient(): GeminiInteractionsClient {
+  const key = getApiKey();
+  if (!key) {
+    throw new Error("no_api_key");
+  }
+  const openai = new OpenAI({ apiKey: key });
+
+  return {
+    interactions: {
+      create: async (params, options) => {
+        const model = String(params.model ?? "gpt-4o-mini");
+        const system =
+          typeof params.system_instruction === "string"
+            ? params.system_instruction
+            : "";
+        const userContent = buildUserContent(params.input);
+        const responseFormat = params.response_format as
+          | {
+              type?: string;
+              mime_type?: string;
+              schema?: Record<string, unknown>;
+            }
+          | undefined;
+
+        const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
+        if (system.trim()) {
+          messages.push({ role: "system", content: system });
+        }
+        messages.push({ role: "user", content: userContent });
+
+        let format: OpenAI.Chat.ChatCompletionCreateParams["response_format"];
+        const wantsJson =
+          responseFormat?.mime_type === "application/json" ||
+          responseFormat?.type === "json_object" ||
+          Boolean(responseFormat?.schema);
+
+        if (responseFormat?.schema && wantsJson) {
+          format = {
+            type: "json_schema",
+            json_schema: {
+              name: "metu_schema",
+              strict: false,
+              schema: responseFormat.schema,
+            },
+          };
+        } else if (wantsJson) {
+          format = { type: "json_object" };
+        }
+
+        const completion = await openai.chat.completions.create(
+          {
+            model,
+            messages,
+            response_format: format,
+          },
+          {
+            signal: options?.abortSignal,
+            timeout: options?.timeout ?? timeoutMs(),
+          }
+        );
+
+        const text = completion.choices[0]?.message?.content?.trim() ?? "";
+        return {
+          id: completion.id,
+          output_text: text,
+          usage: {
+            total_input_tokens: completion.usage?.prompt_tokens,
+            total_output_tokens: completion.usage?.completion_tokens,
+          },
+        };
+      },
+    },
+  };
+}
+
+function getClient(): GeminiInteractionsClient | null {
+  if (clientOverride) return clientOverride;
+  if (!getApiKey()) return null;
+  return buildOpenAiClient();
+}
+
 async function createInteraction(
   client: GeminiInteractionsClient,
   params: CreateParams
@@ -233,7 +346,6 @@ export async function geminiText(args: {
   const cap = await guardDaily(args.userId);
   if (cap) return { ...cap, model };
 
-  const thinking = thinkingLevel(args.model);
   const system = args.json
     ? `${args.system}\n\n[출력] JSON만 출력하세요. 마크다운 코드펜스 금지.`
     : args.system;
@@ -260,9 +372,6 @@ export async function geminiText(args: {
         response_format: args.json
           ? { type: "text", mime_type: "application/json" }
           : { type: "text" },
-        generation_config: {
-          thinking_level: thinking,
-        },
       })
     );
 
@@ -316,7 +425,7 @@ export async function geminiText(args: {
     });
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "gemini_error",
+      error: err instanceof Error ? err.message : "openai_error",
       model,
       ms,
     };
@@ -343,7 +452,6 @@ export async function geminiStructured<T>(args: {
   if (cap) return { ...cap, model };
 
   const jsonSchema = zodToJsonSchema(args.schema);
-  const thinking = thinkingLevel(args.model);
 
   const runOnce = async (extraHint?: string): Promise<GeminiResult<T>> => {
     const inputText = extraHint
@@ -360,9 +468,6 @@ export async function geminiStructured<T>(args: {
           type: "text",
           mime_type: "application/json",
           schema: jsonSchema,
-        },
-        generation_config: {
-          thinking_level: thinking,
         },
       })
     );
@@ -453,7 +558,7 @@ export async function geminiStructured<T>(args: {
     });
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "gemini_error",
+      error: err instanceof Error ? err.message : "openai_error",
       model,
       ms,
     };
@@ -489,7 +594,6 @@ export async function geminiVision<T>(args: {
   if (cap) return { ...cap, model };
 
   const jsonSchema = zodToJsonSchema(args.schema);
-  const thinking = thinkingLevel(kind);
   const input: Array<Record<string, unknown>> = [];
   if (args.text?.trim()) {
     input.push({ type: "text", text: args.text.trim() });
@@ -513,9 +617,6 @@ export async function geminiVision<T>(args: {
           type: "text",
           mime_type: "application/json",
           schema: jsonSchema,
-        },
-        generation_config: {
-          thinking_level: thinking,
         },
       })
     );
@@ -594,7 +695,7 @@ export async function geminiVision<T>(args: {
     });
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "gemini_error",
+      error: err instanceof Error ? err.message : "openai_error",
       model,
       ms,
     };

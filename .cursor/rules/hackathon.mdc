@@ -6,7 +6,7 @@ alwaysApply: true
 # 프로젝트 맥락
 - MetU: AI 여행 플래너. Next.js 15 App Router(BFF Route Handlers, app/api/*), React 19, TypeScript 5.7 strict, Tailwind 3.4, PWA.
 - 호스팅: 프론트·BFF는 Vercel. DB/Auth/Realtime/Storage는 Supabase (Postgres, RLS).
-- LLM: Next 서버 Gemini만 (`lib/ai/gemini.ts`). 레거시 FastAPI/Render/OpenRouter 스택은 제거됨.
+- LLM: Next 서버 OpenAI GPT만 (`lib/ai/gemini.ts` 파사드, `OPENAI_API_KEY`). 레거시 FastAPI/Render/OpenRouter/Gemini 스택은 제거됨.
 - 경로 별칭: "@/*" 는 레포 루트.
 
 # 반드시 지킬 것
@@ -32,6 +32,6 @@ alwaysApply: true
 18. 외부로 나가는 LLM 입력은 `redactSms` 등으로 마스킹 후에만. 카드 전체 번호, 주민번호 형태는 저장도 전송도 금지.
 19. LLM 호출(에이전트)은 `lib/ai/gemini.ts` 한 곳만 거친다. 키가 없거나 호출이 실패해도 앱은 깨지지 않고 이벤트는 `review` 로 남는다. 모든 호출은 `ai_usage_log` 에 기록하고 사용자별 일일 상한을 지킨다. (레거시 FastAPI OpenRouter 일정 경로는 별도 유지)
 20. 알림은 `lib/agent/notify.ts` 한 곳만 거친다 (DB 알림 + 웹 푸시). 푸시 실패는 본 처리를 실패시키지 않는다. 같은 대상에게 짧은 시간에 여러 건이면 digest 로 묶는다.
-21. 새 기능마다 순수 함수는 vitest 로, 라우트는 인증/검증/멱등 케이스를 테스트한다. 외부 API(Gemini, Frankfurter, web-push)는 테스트에서 모킹한다.
+21. 새 기능마다 순수 함수는 vitest 로, 라우트는 인증/검증/멱등 케이스를 테스트한다. 외부 API(OpenAI, Frankfurter, web-push)는 테스트에서 모킹한다.
 22. 수수료율·환율 스프레드·카드 약관 수치는 코드에 확정값으로 박지 않는다. 사용자 설정(`ledger_card_profiles`)이고 미설정이면 0 + "수수료 미설정" 표시. 문서 예시는 "예시, 약관 확인 필요".
 23. 카드 문자 포맷, 모델 이름, 환율/수수료 수치, 브라우저 지원 현황은 "작성 시점 조사 기준 예시"다. 주석에 `VERIFY:` 로 표시한다.
