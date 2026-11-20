@@ -29,8 +29,8 @@ if (!apiKey) {
   process.exit(0);
 }
 
-const modelMain = process.env.OPENAI_MODEL_MAIN?.trim() || "gpt-4o";
-const modelFast = process.env.OPENAI_MODEL_FAST?.trim() || "gpt-4o-mini";
+const modelMain = process.env.OPENAI_MODEL_MAIN?.trim() || "gpt-6-luna";
+const modelFast = process.env.OPENAI_MODEL_FAST?.trim() || "gpt-6-luna";
 
 const openai = new OpenAI({ apiKey });
 
