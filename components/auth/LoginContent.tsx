@@ -13,6 +13,7 @@ import {
   callbackErrorCode,
   callbackErrorToUserFacing,
 } from "@/lib/auth/callback-error";
+import { getRememberMe, markAuthSessionAlive } from "@/lib/auth/remember-me";
 import { safeNextPath } from "@/lib/security/safe-next";
 import type { UserFacingError } from "@/lib/errors/user-message";
 
@@ -98,6 +99,8 @@ export function LoginContent() {
     if (kakaoLoading) return;
     setKakaoLoading(true);
     setError(null);
+
+    if (!getRememberMe()) markAuthSessionAlive();
 
     const next = safeNextPath(searchParams.get("next"), "/");
     const result = await signInWithKakao(next);
