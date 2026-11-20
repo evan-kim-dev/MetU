@@ -1,21 +1,27 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 /**
- * 로그인 중앙 비주얼. 걷기 루프 영상(또는 reduced-motion 시 정지 PNG).
+ * 로그인 중앙 비주얼. 걷기 루프 MP4 (자동 재생·무음·루프).
+ * 장식용이라 prefers-reduced-motion 이어도 영상 자체를 유지해요.
  */
 export function LoginWorldHero() {
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduceMotion(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    const el = videoRef.current;
+    if (!el) return;
+    el.muted = true;
+    el.defaultMuted = true;
+    const play = () => {
+      void el.play().catch(() => {
+        /* 브라우저 자동재생 차단 시 poster 유지 */
+      });
+    };
+    play();
+    el.addEventListener("loadeddata", play);
+    return () => el.removeEventListener("loadeddata", play);
   }, []);
 
   return (
@@ -24,29 +30,17 @@ export function LoginWorldHero() {
       data-testid="login-world-hero"
       aria-hidden
     >
-      {reduceMotion ? (
-        <Image
-          src="/brand/login-traveler.png"
-          alt=""
-          width={1024}
-          height={1024}
-          priority
-          unoptimized
-          className="mx-auto h-auto w-full max-h-[min(32vh,16rem)] object-contain object-center"
-          draggable={false}
-        />
-      ) : (
-        <video
-          src="/brand/login-traveler-walk.mp4"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          poster="/brand/login-traveler.png"
-          className="mx-auto h-auto w-full max-h-[min(32vh,16rem)] object-contain object-center"
-        />
-      )}
+      <video
+        ref={videoRef}
+        src="/brand/login-traveler-walk.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        poster="/brand/login-traveler.png"
+        className="mx-auto h-auto w-full max-h-[min(32vh,16rem)] object-contain object-center"
+      />
     </div>
   );
 }
