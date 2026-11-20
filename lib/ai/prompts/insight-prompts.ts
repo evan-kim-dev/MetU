@@ -476,7 +476,7 @@ ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 규칙:
 - 정확히 6곳, 서로 다른 도시
 - tier는 가성비/보통/프리미엄 중 하나 (영문 value/standard/premium 허용)
-- highlight는 한국어 40~80자, 해요체, 시즌 이유·누구에게 맞는지 포함
+- highlight는 한국어 1문장(필요하면 최대 2문장), 24~40자, 해요체. 시즌 이유만 짧게. 누구에게 맞는지·나열형 설명 금지
 - 항공·호텔·총액 등 숫자 가격/시세/원·만원 표현 금지 (fromPrice, flightFrom, hotelFrom 필드 금지)
 - 허위 시세 단정 금지
 - ${AI_VOICE}`;
