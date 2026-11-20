@@ -122,7 +122,7 @@ export function LoginContent() {
         <div className="absolute -right-10 top-28 h-40 w-40 rounded-full bg-mu-accent-soft/60 blur-3xl" />
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-mobile flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="relative z-10 mx-auto flex w-full max-w-mobile flex-1 flex-col px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         <header className="flex w-full shrink-0 flex-col items-center pt-1 text-center animate-fade-up">
           <p
             className="flex items-end justify-center gap-2"
@@ -142,63 +142,70 @@ export function LoginContent() {
           </p>
         </header>
 
-        <div className="flex min-h-0 flex-1 items-center justify-center py-2">
+        <div className="flex min-h-0 flex-1 items-center justify-center py-1">
           <LoginWorldHero />
         </div>
 
         <div
-          className="mt-auto flex w-full shrink-0 flex-col gap-2.5 pb-0.5 animate-fade-up"
+          className="mt-auto flex w-full shrink-0 flex-col pb-1 animate-fade-up"
           style={{ animationDelay: "120ms" }}
         >
           {deleted && !error ? (
-            <AuthMessage kind="info">
+            <AuthMessage kind="info" className="mb-2.5">
               회원 탈퇴가 완료되었어요. 이용해 주셔서 감사합니다.
             </AuthMessage>
           ) : null}
           {error ? (
-            <AuthMessage kind="error">{error.message}</AuthMessage>
+            <AuthMessage kind="error" className="mb-2.5">
+              {error.message}
+            </AuthMessage>
           ) : null}
           {postLoginStatus ? (
-            <p role="status" className="text-center text-mu-caption text-mu-fg-2">
+            <p
+              role="status"
+              className="mb-2.5 text-center text-mu-caption text-mu-fg-2"
+            >
               {postLoginStatus}
             </p>
           ) : null}
 
-          <section aria-label="이메일 로그인" className="flex flex-col">
-            <EmailAuthForm variant="full" onSignedIn={handleEmailSignedIn} />
-          </section>
+          <div className="flex flex-col gap-2">
+            <section aria-label="이메일 로그인" className="flex flex-col">
+              <EmailAuthForm variant="full" onSignedIn={handleEmailSignedIn} />
+            </section>
 
-          <div className="flex items-center gap-2.5" aria-hidden>
-            <span className="h-px flex-1 bg-mu-line" />
-            <span className="text-xs font-medium text-mu-fg-3">
-              또는 간편로그인
-            </span>
-            <span className="h-px flex-1 bg-mu-line" />
+            <div className="flex items-center gap-2.5" aria-hidden>
+              <span className="h-px flex-1 bg-mu-line" />
+              <span className="text-xs font-medium text-mu-fg-3">
+                또는 간편로그인
+              </span>
+              <span className="h-px flex-1 bg-mu-line" />
+            </div>
+
+            <section aria-label="간편로그인" className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => void handleKakaoLogin()}
+                disabled={kakaoLoading}
+                aria-busy={kakaoLoading}
+                className="relative flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-mu-lg bg-kakao text-sm font-bold text-kakao-ink shadow-kakao-sm transition-transform active:scale-99 disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent/40"
+              >
+                {kakaoLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                ) : (
+                  <KakaoIcon />
+                )}
+                {kakaoLoading ? "카카오로 이동 중…" : "카카오 간편로그인"}
+              </button>
+              {kakaoSlowHint ? (
+                <p className="text-center text-mu-caption text-mu-fg-3">
+                  오래 걸리면 다시 눌러 주세요
+                </p>
+              ) : null}
+            </section>
           </div>
 
-          <section aria-label="간편로그인" className="flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={() => void handleKakaoLogin()}
-              disabled={kakaoLoading}
-              aria-busy={kakaoLoading}
-              className="relative flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-mu-lg bg-kakao text-sm font-bold text-kakao-ink shadow-kakao-sm transition-transform active:scale-99 disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent/40"
-            >
-              {kakaoLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              ) : (
-                <KakaoIcon />
-              )}
-              {kakaoLoading ? "카카오로 이동 중…" : "카카오 간편로그인"}
-            </button>
-            {kakaoSlowHint ? (
-              <p className="text-center text-mu-caption text-mu-fg-3">
-                오래 걸리면 다시 눌러 주세요
-              </p>
-            ) : null}
-          </section>
-
-          <p className="text-center text-xs leading-4 text-mu-fg-2">
+          <p className="mt-4 text-center text-xs leading-4 text-mu-fg-2">
             계속하면{" "}
             <Link href="/legal/terms" className="underline underline-offset-2">
               이용약관
