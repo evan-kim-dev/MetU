@@ -84,4 +84,13 @@ describe("middleware (자동 기록 하드 게이트 제거)", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("location")).toBeNull();
   });
+
+  it("matcher 는 mp4·webm 정적 파일을 제외해요", async () => {
+    const { config } = await import("../middleware");
+    const pattern = config.matcher[0];
+    // Next matcher negative lookahead — 제외되면 middleware 가 아예 안 돌아요.
+    expect(pattern).toContain("mp4");
+    expect(pattern).toContain("webm");
+    expect(pattern).toContain("avif");
+  });
 });
