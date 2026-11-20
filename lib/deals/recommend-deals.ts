@@ -57,7 +57,7 @@ export function ragFallbackDeals(now = Date.now()): DealPlace[] {
       name: clean,
       country: PLACE_COUNTRY[name] ?? PLACE_COUNTRY[clean] ?? "해외",
       bestMonth: `${month}월`,
-      highlight: tip.dealReason.slice(0, 120),
+      highlight: shortenDealHighlight(tip.dealReason),
       tier: "가성비",
     };
   });
@@ -77,7 +77,21 @@ function kstYmd(now = Date.now()): string {
 }
 
 function dealsCacheKey(now = Date.now()): string {
-  return `deals:v1:${kstYmd(now)}`;
+  return `deals:v2:${kstYmd(now)}`;
+}
+
+/** 카드용 하이라이트 — 1문장 우선, 최대 max자 */
+export function shortenDealHighlight(text: string, max = 40): string {
+  const cleaned = text.trim().replace(/\s+/g, " ");
+  if (!cleaned) return "";
+  if (cleaned.length <= max) return cleaned;
+
+  const sentence = /^(.*?[.!?])(?:\s+|$)/.exec(cleaned)?.[1];
+  if (sentence && sentence.length <= max) return sentence;
+
+  const sliced = cleaned.slice(0, max);
+  const lastSpace = sliced.lastIndexOf(" ");
+  return (lastSpace > 12 ? sliced.slice(0, lastSpace) : sliced).trim();
 }
 
 function kstMonthYear(now = Date.now()): { month: number; year: number } {
@@ -116,7 +130,7 @@ function toDealPlaces(
       country,
       budgetLabel: normalizeDealTierLabel(row.tier),
       bestMonth: row.bestMonth.trim().slice(0, 40) || `${kstMonthYear().month}월`,
-      highlight: row.highlight.trim().slice(0, 120),
+      highlight: shortenDealHighlight(row.highlight),
       imageUrl: resolveDestinationImage(name, country),
     });
   }
@@ -166,7 +180,7 @@ async function generateDeals(): Promise<CachedDealsPayload> {
 
 /**
  * 이번 달 시즌 RAG + LLM으로 홈 추천 여행지 생성.
- * 캐시 키 `deals:v1:YYYY-MM-DD`(KST), TTL 24h, staleIfError.
+ * 캐시 키 `deals:v2:YYYY-MM-DD`(KST), TTL 24h, staleIfError.
  * 키/실패 + 캐시 없음 → 빈 목록.
  */
 export async function curateRecommendedDeals(): Promise<CuratedDealsResult> {

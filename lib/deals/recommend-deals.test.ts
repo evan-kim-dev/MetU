@@ -36,6 +36,31 @@ function sampleAiJson(count = 6) {
   };
 }
 
+describe("shortenDealHighlight", () => {
+  it("긴 두 문장은 첫 문장만 남겨요", async () => {
+    const { shortenDealHighlight } = await import(
+      "@/lib/deals/recommend-deals"
+    );
+    expect(
+      shortenDealHighlight(
+        "연말 성수기 전이라 비교적 한적하게 즐기기 좋아요. 단풍 산책과 쇼핑을 함께 원하는 여행자에게 잘 맞아요."
+      )
+    ).toBe("연말 성수기 전이라 비교적 한적하게 즐기기 좋아요.");
+  });
+
+  it("한 문장이 길면 max 자 근처에서 잘라요", async () => {
+    const { shortenDealHighlight } = await import(
+      "@/lib/deals/recommend-deals"
+    );
+    const out = shortenDealHighlight(
+      "성수기 전 아시아 근거리 여행지로 계획하기 좋아요 선선한 계절에 도심 풍경과 미식 쇼핑을 두루 즐기고 싶은 분께 어울려요",
+      40
+    );
+    expect(out.length).toBeLessThanOrEqual(40);
+    expect(out.length).toBeGreaterThan(12);
+  });
+});
+
 describe("curateRecommendedDeals", () => {
   beforeEach(() => {
     vi.clearAllMocks();

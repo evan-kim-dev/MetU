@@ -139,7 +139,7 @@ export function RecommendedGrid({ places }: RecommendedGridProps) {
                 {place.name}
               </p>
               {place.highlight ? (
-                <p className="mt-1 text-mu-caption font-medium leading-snug opacity-90">
+                <p className="mt-1 line-clamp-2 text-mu-caption font-medium leading-snug opacity-90">
                   {place.highlight}
                 </p>
               ) : null}
