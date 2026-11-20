@@ -79,4 +79,10 @@ describe("isPublicPagePath (AuthGate)", () => {
     expect(isPublicPagePath("/sw.js")).toBe(false);
     expect(isPublicPagePath("/share-target")).toBe(false);
   });
+
+  it("개발 환경에서는 /dev 테스트 화면이 공개, /devices 같은 비슷한 경로는 아님", () => {
+    expect(process.env.NODE_ENV).not.toBe("production");
+    expect(isPublicPagePath("/dev/card-benefits")).toBe(true);
+    expect(isPublicPagePath("/devices")).toBe(false);
+  });
 });
