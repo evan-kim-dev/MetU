@@ -234,7 +234,8 @@ describe("LedgerSettlePage", () => {
     expect(
       await screen.findByText(/1건은 마지막으로 확인한 환율로 계산됐어요/)
     ).toBeTruthy();
-    expect(screen.getByText("ExchangeRate-API")).toBeTruthy();
+    // 정산 요약에서는 FX 출처 푸터를 숨기고, 경고만 남겨 둬요.
+    expect(screen.queryByText("ExchangeRate-API")).toBeNull();
     expect(
       (screen.getByRole("button", { name: "문구 복사" }) as HTMLButtonElement)
         .disabled
