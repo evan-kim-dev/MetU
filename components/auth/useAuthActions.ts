@@ -33,6 +33,7 @@ export function useAuthActions() {
     loginWithEmail,
     signUpWithEmail,
     resendSignupConfirmation,
+    resetPasswordWithEmail,
     loginAsGuest,
   } = useAuth();
 
@@ -94,11 +95,23 @@ export function useAuthActions() {
     });
   }, [loginAsGuest]);
 
+  const resetPassword = useCallback(
+    async (email: string): Promise<AuthOk | AuthFail> => {
+      return wrap(async () => {
+        const result = await resetPasswordWithEmail(email);
+        if (!result.ok) return result;
+        return { ok: true };
+      });
+    },
+    [resetPasswordWithEmail]
+  );
+
   return {
     signInWithKakao,
     signInWithEmail,
     signUpWithEmail: signUpWithEmailAction,
     resendConfirmation,
+    resetPassword,
     continueAsGuest,
   };
 }

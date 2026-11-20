@@ -39,6 +39,7 @@ vi.mock("@/components/auth/useAuthActions", () => ({
     signInWithEmail: vi.fn(),
     signUpWithEmail: vi.fn(),
     resendConfirmation: vi.fn(),
+    resetPassword: vi.fn(),
   }),
 }));
 

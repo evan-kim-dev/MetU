@@ -64,6 +64,7 @@ interface AuthContextValue {
   loginWithEmail: (email: string, password: string) => Promise<AuthActionResult>;
   signUpWithEmail: (email: string, password: string) => Promise<SignUpResult>;
   resendSignupConfirmation: (email: string) => Promise<AuthActionResult>;
+  resetPasswordWithEmail: (email: string) => Promise<AuthActionResult>;
   loginAsGuest: () => Promise<AuthActionResult>;
   logout: () => void;
 }
@@ -307,6 +308,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const resetPasswordWithEmail = useCallback(
+    async (email: string): Promise<AuthActionResult> => {
+      const supabase = getBrowserSupabase();
+      if (!supabase) {
+        warnAuthConfig();
+        return { ok: false, error: AUTH_UNAVAILABLE };
+      }
+
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) {
+        return {
+          ok: false,
+          error: {
+            code: "validation",
+            message: "재설정 메일을 받을 이메일을 입력해 주세요.",
+            retryable: false,
+          },
+        };
+      }
+
+      const redirectTo = `${resolveSiteOrigin(window.location.origin)}/auth/callback?next=${encodeURIComponent("/login")}`;
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+        redirectTo,
+      });
+
+      if (error) {
+        return {
+          ok: false,
+          error: toUserFacingError({
+            source: "supabase-auth",
+            message: error.message,
+          }),
+        };
+      }
+
+      return { ok: true };
+    },
+    []
+  );
+
   const loginAsGuest = useCallback(async (): Promise<AuthActionResult> => {
     clearLegacyWithactKeys();
     const saved = await saveGuestSession();
@@ -369,6 +410,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loginWithEmail,
       signUpWithEmail,
       resendSignupConfirmation,
+      resetPasswordWithEmail,
       loginAsGuest,
       logout,
     }),
@@ -382,6 +424,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loginWithEmail,
       signUpWithEmail,
       resendSignupConfirmation,
+      resetPasswordWithEmail,
       loginAsGuest,
       logout,
     ]
