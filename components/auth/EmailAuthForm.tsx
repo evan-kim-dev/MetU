@@ -15,6 +15,11 @@ import {
   evaluatePassword,
   type PasswordStrengthLevel,
 } from "@/lib/auth/password-strength";
+import {
+  getRememberMe,
+  markAuthSessionAlive,
+  setRememberMe,
+} from "@/lib/auth/remember-me";
 import type { UserFacingError } from "@/lib/errors/user-message";
 
 const STRENGTH_BAR: Record<
@@ -86,8 +91,13 @@ export function EmailAuthForm({
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [rememberMe, setRememberMeState] = useState(true);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setRememberMeState(getRememberMe());
+  }, []);
 
   const strength = evaluatePassword(password);
   const emailReady = EMAIL_RE.test(email.trim());
@@ -157,6 +167,8 @@ export function EmailAuthForm({
     setInfo(null);
 
     if (mode === "login") {
+      setRememberMe(rememberMe);
+      if (!rememberMe) markAuthSessionAlive();
       const result = await signInWithEmail(email, password);
       if (!result.ok) {
         setError(result.error);
@@ -387,28 +399,48 @@ export function EmailAuthForm({
 
           <nav
             aria-label="계정 도움말"
-            className="flex min-h-9 items-center justify-end gap-1.5"
+            className="flex min-h-9 items-center justify-between gap-2"
           >
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleFindPassword()}
-              className={linkBtnClass}
-            >
-              비밀번호 찾기
-            </button>
-            <span className="text-xs text-ink-caption" aria-hidden>
-              |
-            </span>
-            <button
-              type="button"
-              onClick={() =>
-                switchMode(mode === "login" ? "signup" : "login")
-              }
-              className={linkBtnClass}
-            >
-              {mode === "login" ? "회원가입" : "로그인"}
-            </button>
+            {mode === "login" ? (
+              <label className="flex min-h-9 cursor-pointer items-center gap-1.5 text-xs font-semibold text-ink-caption">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  disabled={busy}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setRememberMeState(next);
+                    setRememberMe(next);
+                  }}
+                  className="h-4 w-4 shrink-0 rounded border-line-soft accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                />
+                로그인 유지
+              </label>
+            ) : (
+              <span />
+            )}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handleFindPassword()}
+                className={linkBtnClass}
+              >
+                비밀번호 찾기
+              </button>
+              <span className="text-xs text-ink-caption" aria-hidden>
+                |
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  switchMode(mode === "login" ? "signup" : "login")
+                }
+                className={linkBtnClass}
+              >
+                {mode === "login" ? "회원가입" : "로그인"}
+              </button>
+            </div>
           </nav>
 
           {mode === "signup" &&

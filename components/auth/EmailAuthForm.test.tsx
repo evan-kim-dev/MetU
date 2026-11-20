@@ -56,6 +56,10 @@ describe("EmailAuthForm", () => {
     render(<EmailAuthForm />);
     expect(screen.getByLabelText("아이디")).toBeTruthy();
     expect(screen.getByLabelText("비밀번호")).toBeTruthy();
+    expect(screen.getByLabelText("로그인 유지")).toBeTruthy();
+    expect(
+      (screen.getByLabelText("로그인 유지") as HTMLInputElement).checked
+    ).toBe(true);
     expect(screen.getByRole("button", { name: "비밀번호 찾기" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "회원가입" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "로그인" })).toBeTruthy();
@@ -64,6 +68,14 @@ describe("EmailAuthForm", () => {
       name: "로그인",
     }) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
+  });
+
+  it("로그인 유지 토글을 끄면 선호를 저장해요", () => {
+    render(<EmailAuthForm />);
+    const toggle = screen.getByLabelText("로그인 유지") as HTMLInputElement;
+    fireEvent.click(toggle);
+    expect(toggle.checked).toBe(false);
+    expect(window.localStorage.getItem("metu.auth.remember")).toBe("0");
   });
 
   it("비밀번호 찾기는 아이디가 있을 때 재설정 메일을 보내요", async () => {

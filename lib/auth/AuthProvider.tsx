@@ -33,6 +33,11 @@ import {
   buildAuthCallbackUrl,
 } from "@/lib/auth/callback-url";
 import { signupPasswordErrorMessage } from "@/lib/auth/password-strength";
+import {
+  getRememberMe,
+  markAuthSessionAlive,
+  shouldClearPersistedSession,
+} from "@/lib/auth/remember-me";
 
 const AUTH_UNAVAILABLE: UserFacingError = {
   code: "auth-unconfigured",
@@ -85,6 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearLegacyWithactKeys();
     clearLegacyGuestSession();
 
+    if (shouldClearPersistedSession()) {
+      clearSupabaseAuthStorage();
+      clearSupabaseAuthCookies();
+      resetBrowserSupabase();
+    } else if (!getRememberMe()) {
+      markAuthSessionAlive();
+    }
+
     async function init() {
       const guest = await syncGuestSession();
       const supabase = getBrowserSupabase();
@@ -103,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await clearGuestSession();
         setUser(data.session.user as AuthUser);
         setIsGuest(false);
+        if (!getRememberMe()) markAuthSessionAlive();
       } else {
         setUser(null);
         setIsGuest(guest);
