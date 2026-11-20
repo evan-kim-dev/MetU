@@ -351,7 +351,7 @@ export function SettleStep({
       className={
         mode === "page"
           ? "mx-auto flex max-w-mobile flex-col gap-5 px-4 py-6 pb-8"
-          : "flex h-full min-h-0 flex-col pb-[calc(5.75rem+env(safe-area-inset-bottom))]"
+          : "flex flex-col gap-3 px-4 pt-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
       }
     >
       {mode === "page" ? (
@@ -373,35 +373,30 @@ export function SettleStep({
           </div>
         </>
       ) : (
-        <div className="shrink-0 px-4 pt-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h2 className="text-mu-title text-mu-fg">이 금액으로 정산해요</h2>
-              <p className="mt-1 text-mu-body text-mu-fg-2">
-                내 몫을 확인하고 정산표를 만들어요.
-              </p>
-            </div>
-            {onOpenSettings ? (
-              <button
-                type="button"
-                aria-label="설정"
-                className="mu-focus -mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-mu-md text-mu-fg-2"
-                onClick={onOpenSettings}
-              >
-                <Settings className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-              </button>
-            ) : null}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-mu-title text-mu-fg">이 금액으로 정산해요</h2>
+            <p className="mt-1 text-mu-body text-mu-fg-2">
+              내 몫을 확인하고 정산표를 만들어요.
+            </p>
           </div>
+          {onOpenSettings ? (
+            <button
+              type="button"
+              aria-label="설정"
+              className="mu-focus -mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-mu-md text-mu-fg-2"
+              onClick={onOpenSettings}
+            >
+              <Settings className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+            </button>
+          ) : null}
         </div>
       )}
 
       {loadError ? (
         <p
           role="alert"
-          className={[
-            "shrink-0 rounded-mu-lg border border-mu-warn/30 bg-mu-warn-soft px-4 py-3 text-mu-caption font-semibold text-mu-warn",
-            mode === "journey" ? "mx-4 mt-3" : "",
-          ].join(" ")}
+          className="rounded-mu-lg border border-mu-warn/30 bg-mu-warn-soft px-4 py-3 text-mu-caption font-semibold text-mu-warn"
         >
           정산 정보를 모두 불러오지 못했어요. 새로고침해 주세요.
         </p>
@@ -410,10 +405,7 @@ export function SettleStep({
       {loaded && openSettleSuggestionId && canCreateSettlement ? (
         <div
           role="status"
-          className={[
-            "shrink-0 rounded-mu-xl border border-mu-accent/25 bg-mu-accent-soft px-4 py-3",
-            mode === "journey" ? "mx-4 mt-3" : "",
-          ].join(" ")}
+          className="rounded-mu-xl border border-mu-accent/25 bg-mu-accent-soft px-4 py-3"
         >
           <p className="text-mu-label font-bold text-mu-fg">정산 제안이 있어요</p>
           <p className="mt-1 text-mu-caption text-mu-fg-2">
@@ -426,11 +418,7 @@ export function SettleStep({
       {loaded ? (
         <section
           aria-label="정산 요약"
-          className={
-            mode === "journey"
-              ? "mx-4 mt-3 shrink-0 overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card"
-              : "overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card"
-          }
+          className="overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card"
         >
           {me ? (
             <MyShareCard
@@ -509,14 +497,7 @@ export function SettleStep({
       ) : null}
 
       {loaded ? (
-        <div
-          ref={chatAnchorRef}
-          className={
-            mode === "journey"
-              ? "mt-3 flex min-h-0 flex-1 flex-col"
-              : "flex min-h-[22rem] flex-col"
-          }
-        >
+        <div ref={chatAnchorRef} className="-mx-4 flex min-h-[28rem] flex-col">
           <SplitChatRoom
             tripId={tripId}
             members={toSplitChatMembers(members)}
@@ -529,10 +510,7 @@ export function SettleStep({
       {stale ? (
         <div
           role="status"
-          className={[
-            "shrink-0 rounded-mu-lg border border-mu-warn/30 bg-mu-warn-soft px-4 py-3 text-mu-caption font-semibold text-mu-warn",
-            mode === "journey" ? "mx-4 mt-2" : "",
-          ].join(" ")}
+          className="rounded-mu-lg border border-mu-warn/30 bg-mu-warn-soft px-4 py-3 text-mu-caption font-semibold text-mu-warn"
         >
           <p>정산 후 지출이 바뀌었어요. 다시 계산할까요?</p>
           {hasPaid ? (
@@ -545,12 +523,7 @@ export function SettleStep({
       ) : null}
 
       {!canCreateSettlement && loaded ? (
-        <p
-          className={[
-            "shrink-0 text-mu-caption text-mu-fg-3",
-            mode === "journey" ? "mx-4" : "",
-          ].join(" ")}
-        >
+        <p className="text-mu-caption text-mu-fg-3">
           {isAnonymous
             ? "호스트가 정산을 계산해요. 송금은 송금 단계에서 표시할 수 있어요."
             : "정산표는 여행을 만든 분만 만들 수 있어요. 송금은 송금 단계에서 표시할 수 있어요."}
@@ -558,26 +531,12 @@ export function SettleStep({
       ) : null}
 
       {loaded && !settlement && canCreateSettlement ? (
-        <p
-          className={[
-            "shrink-0 text-mu-caption text-mu-fg-3",
-            mode === "journey" ? "mx-4" : "",
-          ].join(" ")}
-        >
+        <p className="text-mu-caption text-mu-fg-3">
           아직 만든 정산표가 없어요. 아래 버튼으로 계산해 보세요.
         </p>
       ) : null}
 
-      {msg ? (
-        <p
-          className={[
-            "shrink-0 text-mu-caption text-mu-fg-3",
-            mode === "journey" ? "mx-4" : "",
-          ].join(" ")}
-        >
-          {msg}
-        </p>
-      ) : null}
+      {msg ? <p className="text-mu-caption text-mu-fg-3">{msg}</p> : null}
 
       <SettleExplainSheet
         open={explainOpen}
@@ -628,10 +587,7 @@ export function SettleStep({
       {fxFallbackCount > 0 ? (
         <p
           role="alert"
-          className={[
-            "shrink-0 rounded-mu-md border border-mu-warn/30 bg-mu-warn-soft px-3 py-2 text-mu-caption font-semibold text-mu-warn",
-            mode === "journey" ? "mx-4" : "",
-          ].join(" ")}
+          className="rounded-mu-md border border-mu-warn/30 bg-mu-warn-soft px-3 py-2 text-mu-caption font-semibold text-mu-warn"
         >
           {fxFallbackCount}건은 마지막으로 확인한 환율로 계산됐어요. 송금하기
           전에 금액을 한 번 더 확인해 주세요.

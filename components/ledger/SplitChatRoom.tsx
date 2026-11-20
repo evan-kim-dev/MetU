@@ -509,7 +509,7 @@ export function SplitChatRoom({
     <div
       className={
         inline
-          ? "flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden border-y border-mu-line bg-mu-sunken"
+          ? "flex min-h-[28rem] w-full flex-col border-y border-mu-line bg-mu-sunken"
           : "relative z-10 flex h-[min(92dvh,720px)] w-full max-w-mobile flex-col overflow-hidden rounded-t-mu-xl border border-mu-line bg-mu-sunken shadow-mu-sheet sm:rounded-mu-xl"
       }
       data-testid="split-chat-room"
@@ -586,7 +586,13 @@ export function SplitChatRoom({
         ) : null}
       </header>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3">
+      <div
+        className={
+          inline
+            ? "flex-1 space-y-3 px-3 py-3"
+            : "min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3"
+        }
+      >
         {!loading ? (
           <SystemBanner
             body={
