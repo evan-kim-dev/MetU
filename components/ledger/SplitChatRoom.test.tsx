@@ -127,10 +127,10 @@ describe("SplitChatRoom", () => {
     expect(screen.getByText(/저녁/)).toBeTruthy();
   });
 
-  it("맞아요를 누르면 confirm API 를 호출해요", async () => {
+  it("적용을 누르면 confirm API 를 호출해요", async () => {
     render(<SplitChatRoom tripId="trip-1" variant="inline" />);
     await screen.findByTestId("split-preview-card");
-    fireEvent.click(screen.getByRole("button", { name: "맞아요" }));
+    fireEvent.click(screen.getByRole("button", { name: "적용" }));
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/trips/trip-1/split-chat/confirm",

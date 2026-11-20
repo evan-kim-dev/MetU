@@ -375,7 +375,13 @@ export function TripJourney({ tripId }: Props) {
           }
           navAriaLabel="가계부 · 정산"
         />
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div
+          className={[
+            "flex min-h-0 flex-1 flex-col",
+            // 정산 단계는 분담 채팅이 화면을 채우고 메시지 영역만 스크롤해요.
+            hostStep === "settle" ? "overflow-hidden" : "overflow-y-auto",
+          ].join(" ")}
+        >
           {body}
         </div>
         {role === "host" && cta ? (
