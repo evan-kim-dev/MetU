@@ -17,7 +17,7 @@ describe("LoginWorldHero", () => {
     const root = screen.getByTestId("login-world-hero");
     const video = root.querySelector("video");
     expect(video?.getAttribute("src")).toBe(
-      "/brand/login-traveler-walk.mp4?v=2"
+      "/brand/login-traveler-walk.mp4?v=3"
     );
     expect(video?.hasAttribute("autoplay")).toBe(true);
     expect(video?.hasAttribute("loop")).toBe(true);
