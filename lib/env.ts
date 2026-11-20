@@ -19,6 +19,12 @@ const ServerEnvSchema = z.object({
   VAPID_PRIVATE_KEY: optionalTrimmed,
   VAPID_SUBJECT: optionalTrimmed,
   KAKAO_REST_API_KEY: optionalTrimmed,
+  // CODEF 카드 실적조회 (lib/cards/codef-client.ts). 없으면 예시 데이터로만 동작.
+  CODEF_CLIENT_ID: optionalTrimmed,
+  CODEF_CLIENT_SECRET: optionalTrimmed,
+  CODEF_API_ENV: optionalTrimmed,
+  // 계정등록(connectedId 발급)용 RSA 공개키. 개발자 콘솔에서 확인.
+  CODEF_PUBLIC_KEY: optionalTrimmed,
   NODE_ENV: z.enum(["development", "test", "production"]).optional(),
 });
 

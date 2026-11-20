@@ -28,7 +28,8 @@ export type GuardBucket =
   | "places"
   | "places/route"
   | "ledger-parse"
-  | "ledger-vision";
+  | "ledger-vision"
+  | "cards";
 
 function clientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -77,6 +78,9 @@ function bucketLimits(bucket: GuardBucket): { limit: number; windowMs: number } 
       return { limit: 30, windowMs };
     case "ledger-parse":
       return { limit: 20, windowMs };
+    case "cards":
+      // CODEF: 과도한 호출 시 카드사 IP 차단 위험 → 낮게
+      return { limit: 6, windowMs };
     case "ledger-vision": {
       const parsed = Number(process.env.AI_VISION_RATE_LIMIT_PER_MIN ?? "6");
       const limit = Number.isFinite(parsed) && parsed > 0 ? parsed : 6;

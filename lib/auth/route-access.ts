@@ -21,6 +21,13 @@ const PUBLIC_PAGE_PREFIXES = [
   "/join",
 ] as const;
 
+/**
+ * 개발 환경에서만 로그인 없이 여는 임시 테스트 화면 prefix.
+ * 배포(production)에서는 공개 경로가 아니에요(로그인 필요 + 페이지 자체도 기본 404).
+ */
+const DEV_PUBLIC_PAGE_PREFIXES =
+  process.env.NODE_ENV === "production" ? ([] as const) : (["/dev"] as const);
+
 const STATIC_PUBLIC_EXACT = new Set([
   "/sw.js",
   "/site.webmanifest",
@@ -35,6 +42,13 @@ const STATIC_PUBLIC_EXACT = new Set([
  */
 export function isPublicPagePath(pathname: string): boolean {
   if (PUBLIC_PAGE_EXACT.has(pathname)) return true;
+  if (
+    DEV_PUBLIC_PAGE_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    )
+  ) {
+    return true;
+  }
   return PUBLIC_PAGE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );

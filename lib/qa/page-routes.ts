@@ -21,6 +21,12 @@ export type PageRouteSpec = {
  */
 export const PAGE_ROUTES: readonly PageRouteSpec[] = [
   {
+    path: "/dev/card-benefits",
+    file: "app/dev/card-benefits/page.tsx",
+    access: "public",
+    note: "임시 테스트 · 카드 혜택 계획 (개발 환경만 공개, 배포는 NEXT_PUBLIC_CARD_LAB=1 일 때만)",
+  },
+  {
     path: "/",
     file: "app/page.tsx",
     access: "public",
