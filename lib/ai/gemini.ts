@@ -71,33 +71,20 @@ function envInt(name: string, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+/** main/fast 모두 기본 gpt-6-luna (env로만 분기 가능). */
 function modelName(kind: GeminiModelKind): string {
   if (kind === "main") {
-    return (
-      process.env.OPENAI_MODEL_MAIN?.trim() ||
-      process.env.GEMINI_MODEL_MAIN?.trim() ||
-      "gpt-4o"
-    );
+    return process.env.OPENAI_MODEL_MAIN?.trim() || "gpt-6-luna";
   }
-  return (
-    process.env.OPENAI_MODEL_FAST?.trim() ||
-    process.env.GEMINI_MODEL_FAST?.trim() ||
-    "gpt-4o-mini"
-  );
+  return process.env.OPENAI_MODEL_FAST?.trim() || "gpt-6-luna";
 }
 
 function timeoutMs(): number {
-  return envInt(
-    "OPENAI_TIMEOUT_MS",
-    envInt("GEMINI_TIMEOUT_MS", 25_000)
-  );
+  return envInt("OPENAI_TIMEOUT_MS", 25_000);
 }
 
 function maxRetries(): number {
-  return envInt(
-    "OPENAI_MAX_RETRIES",
-    envInt("GEMINI_MAX_RETRIES", 2)
-  );
+  return envInt("OPENAI_MAX_RETRIES", 2);
 }
 
 function dailyCap(): number {
@@ -228,7 +215,7 @@ function buildOpenAiClient(): GeminiInteractionsClient {
   return {
     interactions: {
       create: async (params, options) => {
-        const model = String(params.model ?? "gpt-4o-mini");
+        const model = String(params.model ?? "gpt-6-luna");
         const system =
           typeof params.system_instruction === "string"
             ? params.system_instruction
@@ -267,17 +254,21 @@ function buildOpenAiClient(): GeminiInteractionsClient {
           format = { type: "json_object" };
         }
 
-        const completion = await openai.chat.completions.create(
+        // gpt-6-luna: Chat Completions 에서는 reasoning_effort=none 일 때
+        // structured/function 경로가 안정적이에요.
+        const completion = (await openai.chat.completions.create(
           {
             model,
             messages,
+            stream: false,
             response_format: format,
-          },
+            reasoning_effort: "none",
+          } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
           {
             signal: options?.abortSignal,
             timeout: options?.timeout ?? timeoutMs(),
           }
-        );
+        )) as OpenAI.Chat.ChatCompletion;
 
         const text = completion.choices[0]?.message?.content?.trim() ?? "";
         return {

@@ -27,7 +27,7 @@ AI 여행 플래너 + 원장/에이전트. Next.js 15 App Router + Supabase.
 | `NEXT_PUBLIC_KAKAO_JS_KEY` / `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` | 브라우저 지도 |
 | `KAKAO_REST_API_KEY` / `GOOGLE_MAPS_SERVER_API_KEY` | 장소·경로 서버 키 |
 | `ROUTE_MATRIX_PROVIDER` / `OSRM_BASE_URL` | 이동시간 행렬 |
-| `GEMINI_MODEL_*` / `AGENT_AUTO_*` / `FX_*` | 모델·정책·환율 튜닝 |
+| `OPENAI_MODEL_*` / `AGENT_AUTO_*` / `FX_*` | 모델·정책·환율 튜닝 (기본 gpt-6-luna) |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | 웹 푸시 |
 | `NEXT_PUBLIC_DEMO_MODE` | `1` 이면 가계부의 데모 패널과 `/api/agent/demo/*` 가 켜져요. 기본 꺼짐(라우트 404). **빌드 타임 변수라 설정 후 재배포 필요** |
 | `DUP_CHARGE_WINDOW_MIN` | 중복 결제(DCC) 판정 창(분). 기본 10. 수수료 값이 아니에요 |

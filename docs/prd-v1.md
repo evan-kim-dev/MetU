@@ -98,7 +98,7 @@ Product Requirements Document (제품 요구사항 명세서) v1.0
 
 ## 6. 보안 및 프라이버시 (Security & Privacy)
 
-1. 시크릿 격리: 브라우저 클라이언트 번들에 `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `CRON_SECRET` 등 서버 전용 환경변수가 누출되지 않도록 엄격 분리한다.
+1. 시크릿 격리: 브라우저 클라이언트 번들에 `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `CRON_SECRET` 등 서버 전용 환경변수가 누출되지 않도록 엄격 분리한다.
 2. RLS(Row Level Security) 정책:
    - 초대 토큰 기반 공유 정산은 오직 해당 트립의 멤버 및 유효 토큰 소지자만 읽을 수 있다.
    - 비인증 게스트의 임의 데이터 수정 및 타인 계좌 변조 시도를 원천 차단한다.
