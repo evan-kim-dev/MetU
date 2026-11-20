@@ -20,6 +20,7 @@ import { EmailAuthForm } from "@/components/auth/EmailAuthForm";
 const signInWithEmail = vi.fn();
 const signUpWithEmail = vi.fn();
 const resendConfirmation = vi.fn();
+const resetPassword = vi.fn();
 
 vi.mock("@/components/auth/useAuthActions", () => ({
   useAuthActions: () => ({
@@ -27,15 +28,15 @@ vi.mock("@/components/auth/useAuthActions", () => ({
     signInWithEmail,
     signUpWithEmail,
     resendConfirmation,
+    resetPassword,
     continueAsGuest: vi.fn(),
   }),
 }));
 
 function typeValidEmail(value = "a@b.com") {
-  const email = screen.getByLabelText("이메일");
-  fireEvent.change(email, { target: { value } });
-  // 비밀번호 단계는 이메일 blur/Enter 후에만 열려요.
-  fireEvent.blur(email);
+  fireEvent.change(screen.getByLabelText("아이디"), {
+    target: { value },
+  });
 }
 
 afterEach(() => {
@@ -48,33 +49,31 @@ describe("EmailAuthForm", () => {
   beforeEach(() => {
     signInWithEmail.mockResolvedValue({ ok: true });
     signUpWithEmail.mockResolvedValue({ ok: true, status: "signed-in" });
+    resetPassword.mockResolvedValue({ ok: true });
   });
 
-  it("starts with email only until a valid email is entered", () => {
+  it("처음부터 아이디·비밀번호와 비밀번호 찾기|회원가입을 보여 줘요", () => {
     render(<EmailAuthForm />);
-    expect(screen.getByLabelText("이메일")).toBeTruthy();
-    expect(screen.queryByLabelText("비밀번호")).toBeNull();
-    expect(screen.queryByRole("tab", { name: "로그인" })).toBeNull();
-    expect(document.querySelector('button[type="submit"]')).toBeNull();
-
-    const email = screen.getByLabelText("이메일");
-    fireEvent.change(email, { target: { value: "user@gmail.c" } });
-    expect(screen.queryByLabelText("비밀번호")).toBeNull();
-
-    fireEvent.change(email, { target: { value: "user@gmail.com" } });
-    expect(screen.queryByLabelText("비밀번호")).toBeNull();
-
-    fireEvent.blur(email);
-
+    expect(screen.getByLabelText("아이디")).toBeTruthy();
     expect(screen.getByLabelText("비밀번호")).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "로그인" })).toBeTruthy();
-    expect(
-      screen.queryByText("이메일과 비밀번호(6자 이상)를 입력해 주세요.")
-    ).toBeNull();
-    const submit = document.querySelector(
-      'button[type="submit"]'
-    ) as HTMLButtonElement;
+    expect(screen.getByRole("button", { name: "비밀번호 찾기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "회원가입" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "로그인" })).toBeTruthy();
+    expect(screen.queryByRole("tablist")).toBeNull();
+    const submit = screen.getByRole("button", {
+      name: "로그인",
+    }) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
+  });
+
+  it("비밀번호 찾기는 아이디가 있을 때 재설정 메일을 보내요", async () => {
+    render(<EmailAuthForm />);
+    typeValidEmail("user@example.com");
+    fireEvent.click(screen.getByRole("button", { name: "비밀번호 찾기" }));
+    await waitFor(() => {
+      expect(resetPassword).toHaveBeenCalledWith("user@example.com");
+    });
+    expect(screen.getByText(/비밀번호 재설정 메일을 보냈어요/)).toBeTruthy();
   });
 
   it("로그인에서는 보안 강도를 숨겨요", () => {
@@ -92,7 +91,7 @@ describe("EmailAuthForm", () => {
   it("회원가입에서만 보안 강도와 규칙을 보여 줘요", () => {
     render(<EmailAuthForm />);
     typeValidEmail();
-    fireEvent.click(screen.getByRole("tab", { name: "회원가입" }));
+    fireEvent.click(screen.getByRole("button", { name: "회원가입" }));
     fireEvent.change(screen.getByLabelText("비밀번호"), {
       target: { value: "123456" },
     });
@@ -100,17 +99,17 @@ describe("EmailAuthForm", () => {
     expect(screen.getByRole("meter", { name: "비밀번호 보안 강도" })).toBeTruthy();
     expect(screen.getByLabelText("비밀번호 규칙")).toBeTruthy();
     expect(screen.getByText("8자 이상")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "로그인" })).toBeTruthy();
     const submit = screen.getByRole("button", { name: "가입하기" });
     expect((submit as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("shows inline email validation after blur", () => {
     render(<EmailAuthForm />);
-    const email = screen.getByLabelText("이메일");
+    const email = screen.getByLabelText("아이디");
     fireEvent.change(email, { target: { value: "bad" } });
     fireEvent.blur(email);
     expect(screen.getByText("이메일 형식을 확인해 주세요.")).toBeTruthy();
-    expect(screen.queryByLabelText("비밀번호")).toBeNull();
   });
 
   it("toggles password visibility", () => {
@@ -158,7 +157,7 @@ describe("EmailAuthForm", () => {
 
     render(<EmailAuthForm />);
     typeValidEmail("user@example.com");
-    fireEvent.click(screen.getByRole("tab", { name: "회원가입" }));
+    fireEvent.click(screen.getByRole("button", { name: "회원가입" }));
     fireEvent.change(screen.getByLabelText("비밀번호"), {
       target: { value: "Abcd123!" },
     });

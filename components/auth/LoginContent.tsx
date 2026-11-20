@@ -122,32 +122,32 @@ export function LoginContent() {
         <div className="absolute -right-10 top-28 h-40 w-40 rounded-full bg-mu-accent-soft/60 blur-3xl" />
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-mobile flex-1 flex-col px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
-        <header className="flex w-full shrink-0 flex-col items-center pt-2 text-center animate-fade-up">
+      <div className="relative z-10 mx-auto flex w-full max-w-mobile flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <header className="flex w-full shrink-0 flex-col items-center pt-1 text-center animate-fade-up">
           <p
-            className="flex items-end justify-center gap-2.5"
+            className="flex items-end justify-center gap-2"
             aria-label="Nice to Met U"
           >
-            <span className="pb-1.5 text-mu-heading font-semibold tracking-wide text-mu-fg-3">
+            <span className="pb-1 text-mu-body font-semibold tracking-wide text-mu-fg-3">
               Nice to
             </span>
             <Image
               src="/brand/metu-lockup.png"
               alt=""
-              width={240}
-              height={96}
+              width={200}
+              height={80}
               priority
-              className="h-14 w-auto max-w-[12rem] object-contain"
+              className="h-11 w-auto max-w-[10rem] object-contain"
             />
           </p>
         </header>
 
-        <div className="flex min-h-0 flex-1 items-center justify-center py-4">
+        <div className="flex min-h-0 flex-1 items-center justify-center py-2">
           <LoginWorldHero />
         </div>
 
         <div
-          className="mt-auto flex w-full shrink-0 flex-col gap-3.5 pb-1 animate-fade-up"
+          className="mt-auto flex w-full shrink-0 flex-col gap-2.5 pb-0.5 animate-fade-up"
           style={{ animationDelay: "120ms" }}
         >
           {deleted && !error ? (
@@ -164,25 +164,25 @@ export function LoginContent() {
             </p>
           ) : null}
 
-          <section aria-label="이메일 로그인" className="flex flex-col gap-2">
+          <section aria-label="이메일 로그인" className="flex flex-col">
             <EmailAuthForm variant="full" onSignedIn={handleEmailSignedIn} />
           </section>
 
-          <div className="flex items-center gap-3" aria-hidden>
+          <div className="flex items-center gap-2.5" aria-hidden>
             <span className="h-px flex-1 bg-mu-line" />
-            <span className="text-mu-caption font-medium text-mu-fg-3">
+            <span className="text-xs font-medium text-mu-fg-3">
               또는 간편로그인
             </span>
             <span className="h-px flex-1 bg-mu-line" />
           </div>
 
-          <section aria-label="간편로그인" className="flex flex-col gap-2">
+          <section aria-label="간편로그인" className="flex flex-col gap-1.5">
             <button
               type="button"
               onClick={() => void handleKakaoLogin()}
               disabled={kakaoLoading}
               aria-busy={kakaoLoading}
-              className="relative flex min-h-touch w-full items-center justify-center gap-2 overflow-hidden rounded-mu-lg bg-kakao text-mu-body font-bold text-kakao-ink shadow-kakao-sm transition-transform active:scale-99 disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent/40"
+              className="relative flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-mu-lg bg-kakao text-sm font-bold text-kakao-ink shadow-kakao-sm transition-transform active:scale-99 disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent/40"
             >
               {kakaoLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
@@ -198,7 +198,7 @@ export function LoginContent() {
             ) : null}
           </section>
 
-          <p className="mt-1 text-center text-mu-caption leading-5 text-mu-fg-2">
+          <p className="text-center text-xs leading-4 text-mu-fg-2">
             계속하면{" "}
             <Link href="/legal/terms" className="underline underline-offset-2">
               이용약관

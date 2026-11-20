@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   type FormEvent,
-  type KeyboardEvent,
 } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { AuthMessage } from "@/components/auth/AuthMessage";
@@ -70,6 +69,7 @@ export function EmailAuthForm({
     signInWithEmail,
     signUpWithEmail,
     resendConfirmation,
+    resetPassword,
   } = useAuthActions();
   const reduceMotion = useReducedMotion();
   const emailId = useId();
@@ -81,19 +81,16 @@ export function EmailAuthForm({
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
-  /** 이메일 입력을 마친 뒤(blur/Enter)에만 비밀번호 단계를 연다. */
-  const [emailStepDone, setEmailStepDone] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
-  const wasEmailStepDone = useRef(false);
 
   const strength = evaluatePassword(password);
   const emailReady = EMAIL_RE.test(email.trim());
-  const showPasswordStep = emailStepDone && emailReady;
   const emailInvalid =
     emailTouched && email.trim().length > 0 && !emailReady;
   const passwordInvalid =
@@ -103,7 +100,7 @@ export function EmailAuthForm({
       ? !strength.meetsSignupPolicy
       : !strength.meetsLoginPolicy);
   const canSubmit =
-    showPasswordStep &&
+    emailReady &&
     !busy &&
     (mode === "signup"
       ? strength.meetsSignupPolicy
@@ -116,29 +113,6 @@ export function EmailAuthForm({
     }, 1000);
     return () => window.clearInterval(t);
   }, [resendCooldown]);
-
-  useEffect(() => {
-    if (showPasswordStep && !wasEmailStepDone.current) {
-      wasEmailStepDone.current = true;
-      window.requestAnimationFrame(() => {
-        passwordRef.current?.focus();
-      });
-      return;
-    }
-    if (!showPasswordStep) {
-      wasEmailStepDone.current = false;
-    }
-  }, [showPasswordStep]);
-
-  const commitEmailStep = useCallback(() => {
-    setEmailTouched(true);
-    if (!EMAIL_RE.test(email.trim())) {
-      setEmailStepDone(false);
-      return false;
-    }
-    setEmailStepDone(true);
-    return true;
-  }, [email]);
 
   const focusFirstError = useCallback(() => {
     if (emailInvalid || !email.trim()) {
@@ -172,9 +146,15 @@ export function EmailAuthForm({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!canSubmit) return;
+    setEmailTouched(true);
+    setPasswordTouched(true);
+    if (!canSubmit) {
+      focusFirstError();
+      return;
+    }
     setBusy(true);
     setError(null);
+    setInfo(null);
 
     if (mode === "login") {
       const result = await signInWithEmail(email, password);
@@ -220,35 +200,56 @@ export function EmailAuthForm({
     setResendCooldown(60);
   };
 
-  const switchTab = (next: EmailMode) => {
+  const switchMode = (next: EmailMode) => {
     setMode(next);
     setError(null);
+    setInfo(null);
     setConfirmEmail(null);
+    setPasswordTouched(false);
   };
 
-  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, next: EmailMode) => {
-    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-      event.preventDefault();
-      switchTab(next === "login" ? "signup" : "login");
+  const handleFindPassword = async () => {
+    setError(null);
+    setInfo(null);
+    setEmailTouched(true);
+    if (!EMAIL_RE.test(email.trim())) {
+      setInfo("비밀번호 재설정 메일을 받을 아이디(이메일)를 먼저 입력해 주세요.");
+      emailRef.current?.focus();
+      return;
     }
+    setBusy(true);
+    const result = await resetPassword(email);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setInfo(
+      `${email.trim()} 로 비밀번호 재설정 메일을 보냈어요. 메일의 링크를 확인해 주세요.`
+    );
   };
+
+  const linkBtnClass =
+    "px-1 text-xs font-semibold text-ink-caption underline-offset-2 hover:text-ink-body hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-50";
 
   const compact = variant === "compact";
-  const formPad = compact ? "p-3 gap-2" : "p-3.5 gap-2.5";
+  const formPad = compact ? "p-2.5 gap-1.5" : "p-3 gap-2";
+  const fieldHeight =
+    "min-h-11 rounded-xl border border-line-soft bg-surface-base px-3 text-sm text-ink-heading outline-none placeholder:text-ink-caption focus:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/30 disabled:opacity-60";
 
   if (confirmEmail) {
     return (
       <div
         role="status"
         className={[
-          "flex flex-col gap-3 rounded-2xl border border-line-soft bg-surface-white/95 shadow-sm backdrop-blur-sm",
+          "flex flex-col gap-2.5 rounded-2xl border border-line-soft bg-surface-white/95 shadow-sm backdrop-blur-sm",
           formPad,
           className,
         ].join(" ")}
       >
         <div className="text-left">
           <p className="text-sm font-bold text-ink-heading">확인 메일을 보냈어요</p>
-          <p className="mt-2 text-sm leading-6 text-ink-body">
+          <p className="mt-1.5 text-sm leading-5 text-ink-body">
             {confirmEmail} 로 보낸 메일의 &apos;이메일 확인&apos;을 누르면 가입이
             끝나요. 메일이 안 보이면 스팸함도 확인해 주세요.
           </p>
@@ -261,7 +262,7 @@ export function EmailAuthForm({
           disabled={resendCooldown > 0 || busy}
           aria-busy={busy}
           onClick={() => void handleResend()}
-          className="relative flex min-h-touch w-full items-center justify-center gap-2 rounded-xl bg-brand text-sm font-bold text-surface-white disabled:opacity-50"
+          className="relative flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand text-sm font-bold text-surface-white disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
           {resendCooldown > 0
@@ -276,7 +277,7 @@ export function EmailAuthForm({
             setPassword("");
             setMode("signup");
           }}
-          className="min-h-touch w-full rounded-xl border border-line-soft bg-surface-white text-sm font-semibold text-ink-body"
+          className="min-h-11 w-full rounded-xl border border-line-soft bg-surface-white text-sm font-semibold text-ink-body"
         >
           다른 이메일로 가입
         </button>
@@ -297,57 +298,11 @@ export function EmailAuthForm({
       {error ? (
         <AuthMessage kind="error">{error.message}</AuthMessage>
       ) : null}
+      {info ? <AuthMessage kind="info">{info}</AuthMessage> : null}
 
-      {showPasswordStep ? (
-        <div
-          role="tablist"
-          aria-label="로그인 또는 회원가입"
-          className="flex gap-2 rounded-xl bg-surface-soft p-1"
-        >
-          <button
-            type="button"
-            role="tab"
-            id={`${emailId}-tab-login`}
-            aria-selected={mode === "login"}
-            aria-controls={`${emailId}-panel`}
-            onKeyDown={(e) => onTabKeyDown(e, "login")}
-            onClick={() => switchTab("login")}
-            className={[
-              "flex-1 rounded-lg py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
-              mode === "login"
-                ? "bg-surface-white text-ink-heading shadow-sm"
-                : "text-ink-caption",
-            ].join(" ")}
-          >
-            로그인
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id={`${emailId}-tab-signup`}
-            aria-selected={mode === "signup"}
-            aria-controls={`${emailId}-panel`}
-            onKeyDown={(e) => onTabKeyDown(e, "signup")}
-            onClick={() => switchTab("signup")}
-            className={[
-              "flex-1 rounded-lg py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
-              mode === "signup"
-                ? "bg-surface-white text-ink-heading shadow-sm"
-                : "text-ink-caption",
-            ].join(" ")}
-          >
-            회원가입
-          </button>
-        </div>
-      ) : null}
-
-      <div
-        id={showPasswordStep ? `${emailId}-panel` : undefined}
-        role={showPasswordStep ? "tabpanel" : undefined}
-        className="flex flex-col gap-2"
-      >
-        <label htmlFor={emailId} className="flex flex-col gap-1.5 text-left">
-          <span className="text-xs font-bold text-ink-caption">이메일</span>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={emailId} className="flex flex-col gap-1 text-left">
+          <span className="text-xs font-bold text-ink-caption">아이디</span>
           <input
             ref={emailRef}
             id={emailId}
@@ -359,31 +314,16 @@ export function EmailAuthForm({
             spellCheck={false}
             required
             value={email}
-            onChange={(e) => {
-              const next = e.target.value;
-              setEmail(next);
-              if (emailStepDone && !EMAIL_RE.test(next.trim())) {
-                setEmailStepDone(false);
-              }
-            }}
+            onChange={(e) => setEmail(e.target.value)}
             onBlur={() => {
-              commitEmailStep();
+              setEmailTouched(true);
               scrollFieldIntoView(emailRef.current);
-            }}
-            onKeyDown={(e) => {
-              if (e.key !== "Enter") return;
-              e.preventDefault();
-              if (commitEmailStep()) {
-                window.requestAnimationFrame(() => {
-                  passwordRef.current?.focus();
-                });
-              }
             }}
             disabled={busy}
             placeholder="you@example.com"
             aria-invalid={emailInvalid}
             aria-describedby={emailInvalid ? `${emailId}-err` : undefined}
-            className="min-h-touch rounded-xl border border-line-soft bg-surface-base px-3.5 text-base text-ink-heading outline-none placeholder:text-ink-caption focus:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/30 disabled:opacity-60"
+            className={fieldHeight}
           />
           {emailInvalid ? (
             <span id={`${emailId}-err`} className="text-xs text-danger">
@@ -392,170 +332,190 @@ export function EmailAuthForm({
           ) : null}
         </label>
 
-        {showPasswordStep ? (
-          <>
-            <div className="flex flex-col gap-1.5 text-left">
-              <label
-                htmlFor={passwordId}
-                className="text-xs font-bold text-ink-caption"
-              >
-                비밀번호
-              </label>
-              <div className="relative">
-                <input
-                  ref={passwordRef}
-                  id={passwordId}
-                  type={showPassword ? "text" : "password"}
-                  autoComplete={
-                    mode === "signup" ? "new-password" : "current-password"
-                  }
-                  required
-                  minLength={mode === "signup" ? 8 : 6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onBlur={() => {
-                    setPasswordTouched(true);
-                    scrollFieldIntoView(passwordRef.current);
-                  }}
-                  disabled={busy}
-                  placeholder={
-                    mode === "signup"
-                      ? "8자 이상, 영문·숫자·특수문자"
-                      : "비밀번호"
-                  }
-                  aria-invalid={passwordInvalid}
-                  aria-describedby={[
-                    mode === "signup" && password.length > 0
-                      ? `${passwordId}-strength`
-                      : null,
-                    passwordInvalid ? `${passwordId}-err` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" ") || undefined}
-                  className="min-h-touch w-full rounded-xl border border-line-soft bg-surface-base px-3.5 pr-16 text-base text-ink-heading outline-none placeholder:text-ink-caption focus:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/30 disabled:opacity-60"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-pressed={showPassword}
-                  aria-label={
-                    showPassword ? "비밀번호 숨기기" : "비밀번호 표시"
-                  }
-                  className="absolute right-1 top-1/2 flex min-h-touch min-w-11 -translate-y-1/2 items-center justify-center rounded-lg px-2 text-xs font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-                >
-                  {showPassword ? "숨기기" : "표시"}
-                </button>
-              </div>
-
-              {mode === "signup" &&
-              password.length > 0 &&
-              strength.level !== "empty"
-                ? (() => {
-                    const level = strength.level;
-                    return (
-                      <div
-                        id={`${passwordId}-strength`}
-                        className="flex flex-col gap-1.5"
-                        aria-live="polite"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-ink-caption">
-                            보안 강도
-                          </span>
-                          <span
-                            className={[
-                              "text-xs font-bold",
-                              STRENGTH_TEXT[level],
-                            ].join(" ")}
-                          >
-                            {strength.label}
-                          </span>
-                        </div>
-                        <div
-                          className="grid grid-cols-4 gap-1"
-                          role="meter"
-                          aria-label="비밀번호 보안 강도"
-                          aria-valuemin={0}
-                          aria-valuemax={4}
-                          aria-valuenow={strength.score}
-                          aria-valuetext={strength.label}
-                        >
-                          {([1, 2, 3, 4] as const).map((step) => (
-                            <span
-                              key={step}
-                              className={[
-                                "h-1.5 rounded-full transition-colors duration-mu-fast",
-                                strength.score >= step
-                                  ? STRENGTH_BAR[level]
-                                  : "bg-mu-sunken",
-                              ].join(" ")}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()
-                : null}
-
-              {mode === "signup" ? (
-                <ul
-                  className="grid grid-cols-2 gap-x-2 gap-y-1"
-                  aria-label="비밀번호 규칙"
-                >
-                  {strength.rules.map((rule) => (
-                    <li
-                      key={rule.id}
-                      className={[
-                        "flex items-center gap-1.5 text-xs",
-                        rule.ok
-                          ? "font-semibold text-mu-ok"
-                          : "text-ink-caption",
-                      ].join(" ")}
-                    >
-                      {rule.ok ? (
-                        <Check
-                          className="h-3.5 w-3.5 shrink-0"
-                          strokeWidth={2.5}
-                          aria-hidden
-                        />
-                      ) : (
-                        <span
-                          className="inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-mu-line"
-                          aria-hidden
-                        />
-                      )}
-                      {rule.label}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-
-              {passwordInvalid ? (
-                <span id={`${passwordId}-err`} className="text-xs text-danger">
-                  {mode === "signup"
-                    ? "비밀번호 규칙을 모두 채워 주세요."
-                    : "비밀번호는 6자 이상이에요."}
-                </span>
-              ) : null}
-            </div>
-
+        <div className="flex flex-col gap-1 text-left">
+          <label
+            htmlFor={passwordId}
+            className="text-xs font-bold text-ink-caption"
+          >
+            비밀번호
+          </label>
+          <div className="relative">
+            <input
+              ref={passwordRef}
+              id={passwordId}
+              type={showPassword ? "text" : "password"}
+              autoComplete={
+                mode === "signup" ? "new-password" : "current-password"
+              }
+              required
+              minLength={mode === "signup" ? 8 : 6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onBlur={() => {
+                setPasswordTouched(true);
+                scrollFieldIntoView(passwordRef.current);
+              }}
+              disabled={busy}
+              placeholder={
+                mode === "signup"
+                  ? "8자 이상, 영문·숫자·특수문자"
+                  : "비밀번호"
+              }
+              aria-invalid={passwordInvalid}
+              aria-describedby={[
+                mode === "signup" && password.length > 0
+                  ? `${passwordId}-strength`
+                  : null,
+                passwordInvalid ? `${passwordId}-err` : null,
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined}
+              className={`${fieldHeight} w-full pr-14`}
+            />
             <button
-              type="submit"
-              disabled={!canSubmit}
-              aria-busy={busy}
-              className="relative mt-0.5 flex min-h-touch w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-brand text-sm font-bold text-surface-white transition-transform active:scale-99 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-pressed={showPassword}
+              aria-label={
+                showPassword ? "비밀번호 숨기기" : "비밀번호 표시"
+              }
+              className="absolute right-0.5 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-lg px-2 text-xs font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
             >
-              {busy ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : null}
-              {busy
-                ? "확인 중…"
-                : mode === "signup"
-                  ? "가입하기"
-                  : "로그인"}
+              {showPassword ? "숨기기" : "표시"}
             </button>
-          </>
-        ) : null}
+          </div>
+
+          <nav
+            aria-label="계정 도움말"
+            className="flex min-h-9 items-center justify-end gap-1.5"
+          >
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleFindPassword()}
+              className={linkBtnClass}
+            >
+              비밀번호 찾기
+            </button>
+            <span className="text-xs text-ink-caption" aria-hidden>
+              |
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                switchMode(mode === "login" ? "signup" : "login")
+              }
+              className={linkBtnClass}
+            >
+              {mode === "login" ? "회원가입" : "로그인"}
+            </button>
+          </nav>
+
+          {mode === "signup" &&
+          password.length > 0 &&
+          strength.level !== "empty"
+            ? (() => {
+                const level = strength.level;
+                return (
+                  <div
+                    id={`${passwordId}-strength`}
+                    className="flex flex-col gap-1.5"
+                    aria-live="polite"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-ink-caption">보안 강도</span>
+                      <span
+                        className={[
+                          "text-xs font-bold",
+                          STRENGTH_TEXT[level],
+                        ].join(" ")}
+                      >
+                        {strength.label}
+                      </span>
+                    </div>
+                    <div
+                      className="grid grid-cols-4 gap-1"
+                      role="meter"
+                      aria-label="비밀번호 보안 강도"
+                      aria-valuemin={0}
+                      aria-valuemax={4}
+                      aria-valuenow={strength.score}
+                      aria-valuetext={strength.label}
+                    >
+                      {([1, 2, 3, 4] as const).map((step) => (
+                        <span
+                          key={step}
+                          className={[
+                            "h-1.5 rounded-full transition-colors duration-mu-fast",
+                            strength.score >= step
+                              ? STRENGTH_BAR[level]
+                              : "bg-mu-sunken",
+                          ].join(" ")}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()
+            : null}
+
+          {mode === "signup" ? (
+            <ul
+              className="grid grid-cols-2 gap-x-2 gap-y-1"
+              aria-label="비밀번호 규칙"
+            >
+              {strength.rules.map((rule) => (
+                <li
+                  key={rule.id}
+                  className={[
+                    "flex items-center gap-1.5 text-xs",
+                    rule.ok
+                      ? "font-semibold text-mu-ok"
+                      : "text-ink-caption",
+                  ].join(" ")}
+                >
+                  {rule.ok ? (
+                    <Check
+                      className="h-3.5 w-3.5 shrink-0"
+                      strokeWidth={2.5}
+                      aria-hidden
+                    />
+                  ) : (
+                    <span
+                      className="inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-mu-line"
+                      aria-hidden
+                    />
+                  )}
+                  {rule.label}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {passwordInvalid ? (
+            <span id={`${passwordId}-err`} className="text-xs text-danger">
+              {mode === "signup"
+                ? "비밀번호 규칙을 모두 채워 주세요."
+                : "비밀번호는 6자 이상이에요."}
+            </span>
+          ) : null}
+        </div>
+
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          aria-busy={busy}
+          className="relative mt-0.5 flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-brand text-sm font-bold text-surface-white transition-transform active:scale-99 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : null}
+          {busy
+            ? "확인 중…"
+            : mode === "signup"
+              ? "가입하기"
+              : "로그인"}
+        </button>
       </div>
     </form>
   );

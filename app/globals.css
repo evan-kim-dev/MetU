@@ -305,33 +305,6 @@
   }
 }
 
-@keyframes login-traveler-walk {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-  25% {
-    transform: translate3d(2px, -10px, 0) rotate(-2deg);
-  }
-  50% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-  75% {
-    transform: translate3d(-2px, -8px, 0) rotate(2deg);
-  }
-}
-
-.login-traveler-walk {
-  transform-origin: 50% 90%;
-  will-change: transform;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .login-traveler-walk {
-    animation: login-traveler-walk 0.9s ease-in-out infinite;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   :root {
     --mu-dur-fast: 1ms;

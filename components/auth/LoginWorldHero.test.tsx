@@ -17,13 +17,46 @@ vi.mock("next/image", () => ({
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 describe("LoginWorldHero", () => {
-  it("여행자 일러스트와 걷기 모션 클래스를 보여 줘요", () => {
+  it("걷기 루프 영상을 보여 줘요", () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
     render(<LoginWorldHero />);
     const root = screen.getByTestId("login-world-hero");
-    expect(root.className).toContain("login-traveler-walk");
+    const video = root.querySelector("video");
+    expect(video?.getAttribute("src")).toBe("/brand/login-traveler-walk.mp4");
+    expect(video?.hasAttribute("autoplay")).toBe(true);
+    expect(video?.hasAttribute("loop")).toBe(true);
+    expect((video as HTMLVideoElement).muted).toBe(true);
+  });
+
+  it("모션 줄이기면 정지 PNG를 보여 줘요", () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    render(<LoginWorldHero />);
+    const root = screen.getByTestId("login-world-hero");
+    expect(root.querySelector("video")).toBeNull();
     const img = root.querySelector("img");
     expect(img?.getAttribute("src")).toBe("/brand/login-traveler.png");
   });
