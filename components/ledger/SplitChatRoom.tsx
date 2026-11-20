@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Paperclip, Send, X } from "lucide-react";
+import { Bot, Paperclip, Send, X, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ds/Button";
@@ -201,12 +201,12 @@ function PreviewCard({
   return (
     <div
       data-testid="split-preview-card"
-      className="mt-1.5 w-full rounded-mu-lg border border-mu-line bg-mu-card p-3 shadow-sm"
+      className="mt-2 border-t border-mu-line pt-2"
     >
       <p className="text-mu-caption font-semibold text-mu-fg-2">
-        이렇게 맞을까요? · {payload.label}
+        {payload.label}
       </p>
-      <ul className="mt-2 space-y-1">
+      <ul className="mt-1.5 space-y-1">
         {payload.after.map((row) => {
           const before =
             payload.before.find((b) => b.memberId === row.memberId)?.krw ?? 0;
@@ -239,25 +239,43 @@ function PreviewCard({
             type="button"
             variant="primary"
             size="md"
-            className="flex-1"
+            className="min-h-11 flex-1 rounded-full"
             loading={busy}
             disabled={busy}
             onClick={() => onConfirm(message, payload)}
           >
-            맞아요
+            적용
           </Button>
           <Button
             type="button"
             variant="secondary"
             size="md"
-            className="flex-1"
+            className="min-h-11 flex-1 rounded-full"
             disabled={busy}
             onClick={() => onDismiss(message.id)}
           >
-            아니요
+            되돌리기
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+function SystemBanner({ body }: { body: string }) {
+  const looksLikeCard =
+    body.includes("카드") || body.includes("승인") || body.includes("알림");
+  return (
+    <div
+      className="mx-auto flex max-w-[94%] items-start gap-2 rounded-mu-lg border border-mu-line bg-mu-card px-3 py-2.5 text-left text-mu-caption text-mu-fg shadow-sm"
+      role="status"
+    >
+      {looksLikeCard ? (
+        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-mu-warn-soft text-mu-warn">
+          <Zap className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+        </span>
+      ) : null}
+      <p className="min-w-0 flex-1 leading-snug">{body}</p>
     </div>
   );
 }
@@ -491,7 +509,7 @@ export function SplitChatRoom({
     <div
       className={
         inline
-          ? "flex h-full min-h-[18rem] w-full flex-1 flex-col overflow-hidden rounded-mu-xl border border-mu-line bg-mu-sunken"
+          ? "flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden border-y border-mu-line bg-mu-sunken"
           : "relative z-10 flex h-[min(92dvh,720px)] w-full max-w-mobile flex-col overflow-hidden rounded-t-mu-xl border border-mu-line bg-mu-sunken shadow-mu-sheet sm:rounded-mu-xl"
       }
       data-testid="split-chat-room"
@@ -499,7 +517,7 @@ export function SplitChatRoom({
       aria-modal={inline ? undefined : true}
       aria-label="분담 대화방"
     >
-      <header className="flex items-center gap-2 border-b border-mu-line bg-mu-card px-3 py-2.5">
+      <header className="flex shrink-0 items-center gap-2 border-b border-mu-line bg-mu-card px-3 py-2.5">
         <div
           className="relative h-9 shrink-0"
           style={{
@@ -568,13 +586,15 @@ export function SplitChatRoom({
         ) : null}
       </header>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3">
         {!loading ? (
-          <p className="mx-auto max-w-[90%] rounded-mu-md bg-black/5 px-3 py-1.5 text-center text-mu-caption text-mu-fg-2">
-            {members.length > 0
-              ? `${headerNames.slice(0, -1).join(", ") || "멤버"}와 MetU가 함께 있어요. 미리보기를 확인해야 반영돼요.`
-              : "MetU와 분담을 맞춰 보세요. 미리보기를 확인해야 반영돼요."}
-          </p>
+          <SystemBanner
+            body={
+              members.length > 0
+                ? `${headerNames.slice(0, -1).join(", ") || "멤버"}와 MetU가 함께 있어요. 미리보기를 확인해야 반영돼요.`
+                : "MetU와 분담을 맞춰 보세요. 미리보기를 확인해야 반영돼요."
+            }
+          />
         ) : null}
 
         {loading ? (
@@ -586,11 +606,11 @@ export function SplitChatRoom({
         {!loading && messages.length === 0 ? (
           <div className="flex items-end gap-2">
             <MemberAvatar name="MetU" toneKey="metu" bot size="sm" />
-            <div className="min-w-0 max-w-[78%]">
+            <div className="min-w-0 max-w-[82%]">
               <p className="mb-0.5 px-1 text-mu-caption font-medium text-mu-fg-2">
                 MetU
               </p>
-              <div className="rounded-2xl rounded-tl-sm bg-mu-card px-3 py-2 text-mu-body text-mu-fg shadow-sm">
+              <div className="rounded-2xl rounded-tl-sm bg-mu-card px-3.5 py-2.5 text-mu-body text-mu-fg shadow-sm">
                 분담을 바꾸고 싶으면 말해 주세요.
                 <br />
                 예: 「{exampleName}는 이 건에서 빼줘」
@@ -610,20 +630,13 @@ export function SplitChatRoom({
           const name = resolveSenderName(m);
 
           if (isSystem) {
-            return (
-              <p
-                key={m.id}
-                className="mx-auto max-w-[90%] rounded-mu-md bg-black/5 px-3 py-1.5 text-center text-mu-caption text-mu-fg-2"
-              >
-                {m.body}
-              </p>
-            );
+            return <SystemBanner key={m.id} body={m.body} />;
           }
 
           if (mine) {
             return (
               <div key={m.id} className="flex flex-col items-end gap-1">
-                <div className="max-w-[78%] rounded-2xl rounded-tr-sm bg-mu-accent px-3 py-2 text-mu-body text-mu-on-accent shadow-sm">
+                <div className="max-w-[82%] rounded-2xl rounded-tr-sm bg-mu-accent px-3.5 py-2.5 text-mu-body text-mu-on-accent shadow-sm">
                   <MessageBubbleContent message={m} onAccent />
                 </div>
               </div>
@@ -638,25 +651,25 @@ export function SplitChatRoom({
                 bot={isAgent}
                 size="sm"
               />
-              <div className="min-w-0 max-w-[78%]">
+              <div className="min-w-0 max-w-[82%]">
                 <p className="mb-0.5 px-1 text-mu-caption font-medium text-mu-fg-2">
                   {name}
                 </p>
-                <div className="rounded-2xl rounded-tl-sm bg-mu-card px-3 py-2 text-mu-body text-mu-fg shadow-sm">
+                <div className="rounded-2xl rounded-tl-sm bg-mu-card px-3.5 py-2.5 text-mu-body text-mu-fg shadow-sm">
                   <MessageBubbleContent message={m} />
+                  {showPreview && m.payload?.type === "split_preview" ? (
+                    <PreviewCard
+                      message={m}
+                      payload={m.payload}
+                      isAnonymous={Boolean(isAnonymous)}
+                      confirmingId={confirmingId}
+                      onConfirm={handleConfirm}
+                      onDismiss={(id) =>
+                        setDismissed((prev) => new Set(prev).add(id))
+                      }
+                    />
+                  ) : null}
                 </div>
-                {showPreview && m.payload?.type === "split_preview" ? (
-                  <PreviewCard
-                    message={m}
-                    payload={m.payload}
-                    isAnonymous={Boolean(isAnonymous)}
-                    confirmingId={confirmingId}
-                    onConfirm={handleConfirm}
-                    onDismiss={(id) =>
-                      setDismissed((prev) => new Set(prev).add(id))
-                    }
-                  />
-                ) : null}
               </div>
             </div>
           );
@@ -665,14 +678,17 @@ export function SplitChatRoom({
       </div>
 
       {error ? (
-        <p role="alert" className="bg-mu-card px-3 py-1 text-mu-caption text-mu-err">
+        <p
+          role="alert"
+          className="shrink-0 bg-mu-card px-3 py-1 text-mu-caption text-mu-err"
+        >
           {error}
         </p>
       ) : null}
 
       <form
         onSubmit={handleSend}
-        className="flex items-center gap-2 border-t border-mu-line bg-mu-card px-3 py-2"
+        className="flex shrink-0 items-center gap-2 border-t border-mu-line bg-mu-card px-3 py-2"
       >
         <input
           ref={fileRef}
