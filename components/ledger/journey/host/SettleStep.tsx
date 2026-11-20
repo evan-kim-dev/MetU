@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Settings } from "lucide-react";
 import { AmountCard } from "@/components/ds/AmountCard";
 import { BottomCTA } from "@/components/ds/BottomCTA";
-import { FxAttribution } from "@/components/fx/FxAttribution";
 import { CurrencyTotals } from "@/components/ledger/CurrencyTotals";
 import { FeeLeakCard } from "@/components/ledger/FeeLeakCard";
 import { MyShareCard } from "@/components/ledger/MyShareCard";
 import { SettleExplainSheet } from "@/components/ledger/SettleExplainSheet";
+import {
+  SplitChatRoom,
+  toSplitChatMembers,
+} from "@/components/ledger/SplitChatRoom";
 import {
   useSettleReference,
   type SettleReference,
@@ -48,12 +52,6 @@ function balanceTone(value: number): string {
   return "text-mu-fg-3";
 }
 
-function balanceLabel(value: number): string {
-  if (value > 0) return "받을 돈";
-  if (value < 0) return "보낼 돈";
-  return "정산 없음";
-}
-
 function toSettleExpense(row: LedgerExpenseRow): LedgerExpense {
   return {
     id: row.id,
@@ -71,6 +69,8 @@ type Props = {
   onAdjust?: () => void;
   /** journey 모드에서 송금 단계로 이동 */
   onPay?: () => void;
+  /** journey 모드 제목 옆 설정(톱니) */
+  onOpenSettings?: () => void;
   /** settle URL 에서 PayStep 과 공유할 참고 환율 상태 */
   reference?: SettleReference;
 };
@@ -84,15 +84,17 @@ export function SettleStep({
   mode = "page",
   onAdjust,
   onPay,
+  onOpenSettings,
   reference: referenceProp,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAnonymous } = useAuth();
   const [members, setMembers] = useState<TripMember[]>([]);
   const [creating, setCreating] = useState(false);
+  const chatAnchorRef = useRef<HTMLDivElement>(null);
   const [expenseRows, setExpenseRows] = useState<LedgerExpenseRow[]>([]);
   const [fxFallbackCount, setFxFallbackCount] = useState(0);
-  const [hasForeign, setHasForeign] = useState(false);
   const [expenseLabels, setExpenseLabels] = useState<Record<string, string>>({});
   const [tripCurrencies, setTripCurrencies] = useState<string[]>([]);
   const [explainOpen, setExplainOpen] = useState(false);
@@ -156,9 +158,6 @@ export function SettleStep({
     setMembers(m);
     setExpenseRows(active);
     setFxFallbackCount(active.filter((row) => row.fxIsFallback).length);
-    setHasForeign(
-      active.some((row) => (row.currency || "KRW").trim().toUpperCase() !== "KRW")
-    );
     setExpenseLabels(
       Object.fromEntries(
         active.map((row) => [row.id, row.merchant || row.label || ""])
@@ -323,35 +322,36 @@ export function SettleStep({
     hasSettlement: Boolean(settlement),
     stale,
   });
+  /** 내 몫은 위 히어로에 있으므로 목록에서는 제외해요. */
+  const others = useMemo(
+    () => members.filter((m) => m.id !== me?.id),
+    [members, me?.id]
+  );
 
   /** 정산표가 있고 최신이면 송금 단계로 갈 수 있어요(송금 0건·completed 포함). */
   const canGoPay = Boolean(settlement) && !stale;
 
   const adjustHref = `/trips/${tripId}/ledger?step=adjust`;
-  const adjustControl =
-    onAdjust != null ? (
-      <button
-        type="button"
-        className="inline-flex min-h-tap items-center text-mu-caption font-bold text-mu-accent"
-        onClick={onAdjust}
-      >
-        분담 수정하기
-      </button>
-    ) : (
-      <Link
-        href={adjustHref}
-        className="inline-flex min-h-tap items-center text-mu-caption font-bold text-mu-accent"
-      >
-        분담 수정하기
-      </Link>
-    );
+
+  useEffect(() => {
+    if (searchParams.get("splitChat") !== "1") return;
+    chatAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [searchParams, loaded]);
+
+  const openAdvanced = useCallback(() => {
+    if (onAdjust) {
+      onAdjust();
+      return;
+    }
+    router.push(adjustHref);
+  }, [adjustHref, onAdjust, router]);
 
   return (
     <div
       className={
         mode === "page"
           ? "mx-auto flex max-w-mobile flex-col gap-5 px-4 py-6 pb-8"
-          : "flex flex-col gap-5 pb-24"
+          : "flex min-h-[calc(100dvh-10.5rem)] flex-col gap-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
       }
     >
       {mode === "page" ? (
@@ -374,9 +374,21 @@ export function SettleStep({
         </>
       ) : (
         <div>
-          <h2 className="text-mu-title text-mu-fg">이 금액으로 정산해요</h2>
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="text-mu-title text-mu-fg">이 금액으로 정산해요</h2>
+            {onOpenSettings ? (
+              <button
+                type="button"
+                aria-label="설정"
+                className="mu-focus -mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-mu-md text-mu-fg-2"
+                onClick={onOpenSettings}
+              >
+                <Settings className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+              </button>
+            ) : null}
+          </div>
           <p className="mt-1 text-mu-body text-mu-fg-2">
-            멤버 잔액을 확인하고 정산표를 만들어요. 송금은 다음 단계에서 해요.
+            내 몫을 확인하고 정산표를 만들어요.
           </p>
         </div>
       )}
@@ -404,18 +416,37 @@ export function SettleStep({
       ) : null}
 
       {loaded ? (
-        <div className="flex flex-col gap-3">
+        <section
+          aria-label="정산 요약"
+          className="overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card"
+        >
           {me ? (
             <MyShareCard
-              view={myShare}
+              view={{
+                ...myShare,
+                hint: null,
+              }}
+              cardClassName="rounded-none border-0 pb-3"
               action={
-                <button
-                  type="button"
-                  className="mu-focus min-h-tap text-mu-caption font-bold text-mu-accent"
-                  onClick={() => setExplainOpen(true)}
-                >
-                  왜 이 금액?
-                </button>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span
+                    className="text-mu-caption text-mu-fg-3"
+                    aria-label={`여행 총액 ${formatKRW(totalKrw)}`}
+                  >
+                    여행 총액{" "}
+                    <span className="mu-num font-semibold text-mu-fg-2">
+                      {formatKRW(totalKrw)}
+                    </span>
+                    {myShare.mode === "estimate" ? " · 아직 예상" : null}
+                  </span>
+                  <button
+                    type="button"
+                    className="mu-focus min-h-tap text-mu-caption font-bold text-mu-accent"
+                    onClick={() => setExplainOpen(true)}
+                  >
+                    왜 이 금액?
+                  </button>
+                </div>
               }
             />
           ) : (
@@ -424,66 +455,58 @@ export function SettleStep({
               amount={0}
               tone="neutral"
               sub="멤버로 합류하면 내 몫이 보여요"
+              className="rounded-none border-0"
             />
           )}
-          <AmountCard label="총액" amount={totalKrw} tone="neutral" />
-        </div>
-      ) : null}
 
-      <section
-        aria-label="멤버별 잔액"
-        className="overflow-hidden rounded-mu-xl border border-mu-line bg-mu-card"
-      >
-        <p className="border-b border-mu-line px-4 py-3 text-mu-heading text-mu-fg">
-          잔액
-        </p>
-        <ul className="divide-y divide-mu-line">
-          {members.map((m) => {
-            const value = balances[m.id] ?? 0;
-            const mine = me?.id === m.id;
-            return (
-              <li
-                key={m.id}
-                data-testid={`balance-${m.id}`}
-                data-mine={mine ? "true" : undefined}
-                className={`flex min-h-tap items-center justify-between gap-3 px-4 py-3 ${
-                  mine ? "bg-mu-accent-soft" : ""
-                }`}
-              >
-                <span
-                  className={`text-mu-body ${mine ? "font-extrabold text-mu-fg" : "font-semibold text-mu-fg"}`}
-                >
-                  {m.displayName}
-                  {mine ? " (나)" : ""}
-                </span>
-                <span className="shrink-0 text-right">
-                  <span
-                    className={`mu-num block text-mu-body font-bold ${balanceTone(value)}`}
+          {others.length > 0 ? (
+            <ul
+              aria-label="다른 멤버"
+              className="border-t border-mu-line divide-y divide-mu-line"
+            >
+              {others.map((m) => {
+                const value = balances[m.id] ?? 0;
+                return (
+                  <li
+                    key={m.id}
+                    data-testid={`balance-${m.id}`}
+                    className="flex min-h-tap items-center justify-between gap-3 px-6 py-2.5"
                   >
-                    {signedKRW(value)}
-                  </span>
-                  <span className="text-mu-caption text-mu-fg-3">
-                    {balanceLabel(value)}
-                  </span>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+                    <span className="text-mu-body text-mu-fg-2">
+                      {m.displayName}
+                    </span>
+                    <span
+                      className={`mu-num text-mu-body font-semibold ${balanceTone(value)}`}
+                    >
+                      {signedKRW(value)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
 
-      {loaded ? (
-        <CurrencyTotals totals={currencyTotals} totalKrw={totalKrw} />
+          <CurrencyTotals
+            totals={currencyTotals}
+            totalKrw={totalKrw}
+            className="mx-4 mb-3 rounded-mu-lg bg-mu-sunken px-4 py-3"
+          />
+
+          <FeeLeakCard expenses={expenseRows} embedded />
+        </section>
       ) : null}
 
-      {loaded ? <FeeLeakCard expenses={expenseRows} /> : null}
-
       {loaded ? (
-        <div className="flex items-center justify-between gap-3 rounded-mu-xl border border-mu-line bg-mu-card px-4 py-3">
-          <p className="text-mu-caption text-mu-fg-2">
-            사람별 몫이 안 맞으면 분담을 먼저 고쳐 주세요.
-          </p>
-          {adjustControl}
+        <div
+          ref={chatAnchorRef}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <SplitChatRoom
+            tripId={tripId}
+            members={toSplitChatMembers(members)}
+            variant="inline"
+            onOpenAdvanced={openAdvanced}
+          />
         </div>
       ) : null}
 
@@ -514,16 +537,6 @@ export function SettleStep({
         <p className="text-mu-caption text-mu-fg-3">
           아직 만든 정산표가 없어요. 아래 버튼으로 계산해 보세요.
         </p>
-      ) : null}
-
-      {loaded && canGoPay ? (
-        <div className="rounded-mu-xl border border-mu-line bg-mu-accent-soft px-4 py-3">
-          <p className="text-mu-caption font-semibold text-mu-fg-2">
-            {transfers.length > 0
-              ? "정산표가 있어요. 아래 버튼으로 송금 단계로 넘어가요."
-              : "정산이 맞춰져 송금할 금액이 없어요. 송금 단계에서 현황을 확인할 수 있어요."}
-          </p>
-        </div>
       ) : null}
 
       {msg ? <p className="text-mu-caption text-mu-fg-3">{msg}</p> : null}
@@ -574,22 +587,15 @@ export function SettleStep({
         />
       ) : null}
 
-      <footer className="flex flex-col gap-1 text-mu-caption leading-snug text-mu-fg-3">
-        <p>
-          정산은 원화 기준이에요. 외화 지출은 기록할 때의 환율로 바꾼 금액이고,
-          송금은 각자 앱에서 직접 해 주세요.
+      {fxFallbackCount > 0 ? (
+        <p
+          role="alert"
+          className="rounded-mu-md border border-mu-warn/30 bg-mu-warn-soft px-3 py-2 text-mu-caption font-semibold text-mu-warn"
+        >
+          {fxFallbackCount}건은 마지막으로 확인한 환율로 계산됐어요. 송금하기
+          전에 금액을 한 번 더 확인해 주세요.
         </p>
-        {fxFallbackCount > 0 ? (
-          <p
-            role="alert"
-            className="rounded-mu-md border border-mu-warn/30 bg-mu-warn-soft px-3 py-2 font-semibold text-mu-warn"
-          >
-            {fxFallbackCount}건은 마지막으로 확인한 환율로 계산됐어요. 송금하기
-            전에 금액을 한 번 더 확인해 주세요.
-          </p>
-        ) : null}
-        {hasForeign ? <FxAttribution /> : null}
-      </footer>
+      ) : null}
     </div>
   );
 }

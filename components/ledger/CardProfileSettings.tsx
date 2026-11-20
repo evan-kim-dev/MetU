@@ -58,11 +58,10 @@ export function CardProfileSettings({ userId, profiles, onChange }: Props) {
   }
 
   return (
-    <div className="rounded-xl bg-mu-sunken p-3">
-      <p className="text-xs font-bold text-mu-fg">카드 프로필</p>
-      <p className="mt-1 text-mu-caption text-mu-fg-3">
-        카드사/약관의 해외결제 수수료를 직접 입력하세요. 비워 두면 0으로 계산하고
-        표시해요.
+    <div className="rounded-mu-lg border border-mu-line bg-mu-card p-3.5">
+      <p className="text-mu-label font-bold text-mu-fg">카드 프로필</p>
+      <p className="mt-1 text-mu-caption leading-snug text-mu-fg-3">
+        해외결제 수수료를 직접 넣어요. 비우면 0으로 계산해요.
       </p>
       <ul className="mt-2 flex flex-col gap-1 text-xs">
         {profiles.map((p) => (

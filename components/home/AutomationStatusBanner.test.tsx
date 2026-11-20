@@ -44,9 +44,10 @@ describe("AutomationStatusBanner", () => {
     });
     render(<AutomationStatusBanner />);
     expect(
-      screen.getByText(
-        "자동 기록 꺼짐 · 연결하면 카드 알림이 가계부에 자동으로 적혀요"
-      )
+      screen.getByRole("region", { name: "자동 기록 꺼짐" })
+    ).toBeTruthy();
+    expect(
+      screen.getByText("연결하면 카드 알림이 가계부에 자동으로 적혀요")
     ).toBeTruthy();
     expect(screen.getByText("연결하기")).toBeTruthy();
   });
@@ -74,7 +75,12 @@ describe("AutomationStatusBanner", () => {
 
     // 가계부(/agent)·내 여행(/trips) 처럼 체크리스트가 없는 화면
     render(<AutomationStatusBanner ignoreFirstRun />);
-    expect(screen.getByText(/자동 기록 꺼짐/)).toBeTruthy();
+    expect(
+      screen.getByRole("region", { name: "자동 기록 꺼짐" })
+    ).toBeTruthy();
+    expect(
+      screen.getByText("연결하면 카드 알림이 가계부에 자동으로 적혀요")
+    ).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "연결하기" }).getAttribute("href")
     ).toBe("/onboarding/automation");

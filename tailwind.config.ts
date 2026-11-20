@@ -260,6 +260,20 @@ const config: Config = {
           "0%": { strokeDashoffset: "0" },
           "100%": { strokeDashoffset: "-32" },
         },
+        "traveler-walk": {
+          "0%, 100%": {
+            transform: "translateY(0) rotate(0deg)",
+          },
+          "25%": {
+            transform: "translateY(-6px) rotate(-1.5deg)",
+          },
+          "50%": {
+            transform: "translateY(0) rotate(0deg)",
+          },
+          "75%": {
+            transform: "translateY(-4px) rotate(1.5deg)",
+          },
+        },
       },
       animation: {
         shimmer: "shimmer 1.4s ease-in-out infinite",
@@ -276,6 +290,7 @@ const config: Config = {
         "globe-spin-x": "globe-spin-x 16s linear infinite",
         "globe-route": "globe-route 4.8s ease-in-out infinite",
         "globe-dash": "globe-dash 1.6s linear infinite",
+        "traveler-walk": "traveler-walk 1.1s ease-in-out infinite",
       },
     },
   },

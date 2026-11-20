@@ -49,6 +49,8 @@ export type JourneyPhaseKey = HostPhaseKey | GuestPhaseKey;
 export type JourneyPhaseStep = {
   key: JourneyPhaseKey;
   label: string;
+  /** 스테퍼에 보이는 한 줄 설명 */
+  description: string;
   status: JourneyStepStatus;
   badge?: string | number;
 };
@@ -278,11 +280,27 @@ function buildGuestSteps(
 const HOST_PHASE_DEFS: {
   key: HostPhaseKey;
   label: string;
+  description: string;
   members: HostStepKey[];
 }[] = [
-  { key: "prep", label: "준비", members: ["connect", "invite"] },
-  { key: "spend", label: "기록", members: ["record", "adjust"] },
-  { key: "close", label: "정산", members: ["settle", "pay"] },
+  {
+    key: "prep",
+    label: "준비",
+    description: "자동화 연결하고 친구를 초대해요",
+    members: ["connect", "invite"],
+  },
+  {
+    key: "spend",
+    label: "기록",
+    description: "지출을 모으고 분담을 맞춰요",
+    members: ["record", "adjust"],
+  },
+  {
+    key: "close",
+    label: "정산",
+    description: "정산을 계산하고 송금해요",
+    members: ["settle", "pay"],
+  },
 ];
 
 export function hostPhaseOf(step: HostStepKey): HostPhaseKey {
@@ -358,7 +376,13 @@ function buildHostPhaseSteps(
     } else {
       status = "todo";
     }
-    return { key: phase.key, label: phase.label, status, badge };
+    return {
+      key: phase.key,
+      label: phase.label,
+      description: phase.description,
+      status,
+      badge,
+    };
   });
 }
 
@@ -368,12 +392,28 @@ function buildGuestPhaseSteps(
 ): JourneyPhaseStep[] {
   const unpaid = unpaidTransfers(input.settlement);
   const currentPhase = guestPhaseOf(current);
-  const defs: { key: GuestPhaseKey; label: string }[] = [
-    { key: "share", label: "내 몫" },
-    { key: "pay", label: "송금" },
-    { key: "done", label: "완료" },
+  const defs: {
+    key: GuestPhaseKey;
+    label: string;
+    description: string;
+  }[] = [
+    {
+      key: "share",
+      label: "내 몫",
+      description: "내 분담 금액을 확인해요",
+    },
+    {
+      key: "pay",
+      label: "송금",
+      description: "보낼 금액을 송금해요",
+    },
+    {
+      key: "done",
+      label: "완료",
+      description: "정산이 끝났어요",
+    },
   ];
-  return defs.map(({ key, label }) => {
+  return defs.map(({ key, label, description }) => {
     const done =
       key === "done"
         ? current === "done"
@@ -396,7 +436,7 @@ function buildGuestPhaseSteps(
     } else {
       status = "todo";
     }
-    return { key, label, status, badge };
+    return { key, label, description, status, badge };
   });
 }
 

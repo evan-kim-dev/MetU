@@ -24,8 +24,11 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParams,
 }));
 
-vi.mock("@/components/ui/MetULogo", () => ({
-  MetULogo: () => <div data-testid="logo" />,
+vi.mock("next/image", () => ({
+  default: (props: { alt?: string }) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img alt={props.alt ?? ""} data-testid="logo" />
+  ),
 }));
 
 const signInWithKakao = vi.fn();
@@ -45,6 +48,10 @@ vi.mock("@/components/auth/EmailAuthForm", () => ({
       mock-email-signed-in
     </button>
   ),
+}));
+
+vi.mock("@/components/auth/LoginWorldHero", () => ({
+  LoginWorldHero: () => <div data-testid="login-world-hero-mock" />,
 }));
 
 afterEach(() => {
@@ -72,13 +79,10 @@ describe("LoginContent", () => {
     expect(replace).toHaveBeenCalledWith("/login");
   });
 
-  it("keeps fixed h1 copy", () => {
+  it("shows Nice to Met U lockup and world hero", () => {
     render(<LoginContent />);
-    expect(
-      screen.getByRole("heading", {
-        name: "여행 경비, 같이 쓰고 알아서 정산해요",
-      })
-    ).toBeTruthy();
+    expect(screen.getByLabelText("Nice to Met U")).toBeTruthy();
+    expect(screen.getByTestId("login-world-hero-mock")).toBeTruthy();
     expect(window.setInterval).not.toHaveBeenCalled();
   });
 
@@ -89,12 +93,23 @@ describe("LoginContent", () => {
     ).toBeNull();
   });
 
+  it("shows email form first and kakao under 간편로그인", () => {
+    render(<LoginContent />);
+    expect(
+      screen.getByRole("button", { name: "mock-email-signed-in" })
+    ).toBeTruthy();
+    expect(screen.getByText("또는 간편로그인")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "카카오 간편로그인" })
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "이메일로 계속하기" })
+    ).toBeNull();
+  });
+
   it("updates post-login status after 5 seconds", () => {
     vi.useFakeTimers();
     render(<LoginContent />);
-    fireEvent.click(
-      screen.getByRole("button", { name: "이메일로 계속하기" })
-    );
     fireEvent.click(screen.getByRole("button", { name: "mock-email-signed-in" }));
 
     expect(screen.getByRole("status").textContent).toContain(

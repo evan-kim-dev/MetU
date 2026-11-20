@@ -239,11 +239,12 @@ ${AI_QUALITY_FIRST}
 ${params.ragContexts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
 출력(JSON만):
-{"tips":[{"emoji":"✈️","title":"짧은 제목","description":"2~3문장 실용 팁"}]}
+{"tips":[{"emoji":"✈️","title":"짧은 제목","description":"한 문장 실용 팁"}]}
 
 규칙:
 - tips 정확히 8개
-- title 10자 내외, description 2~3문장 (해요체) — 이유와 실행 방법을 포함
+- title 8자 내외
+- description은 해요체 한 문장, 40자 이내 (이유·실행을 짧게 한 줄로)
 - 예산·교통·식사·숙소·시즌·스타일·현지 매너·예약 타이밍을 골고루
 - 목적지·예산·스타일에 맞출 것
 - 임의 항공/숙소 가격·환율 수치 단정 금지

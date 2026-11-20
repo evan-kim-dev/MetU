@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parsePlanItinerary } from "@/lib/ai/contracts";
+import {
+  parsePlanItinerary,
+  parseTipsOut,
+  truncateTipDescription,
+} from "@/lib/ai/contracts";
 
 const sample = {
   summary: "후쿠오카 일정 요약입니다요.",
@@ -40,5 +44,19 @@ describe("parsePlanItinerary", () => {
 
   it("깨진 JSON → null", () => {
     expect(parsePlanItinerary("{not-json")).toBeNull();
+  });
+});
+
+describe("parseTipsOut", () => {
+  it("긴 description을 짧게 잘라요", () => {
+    const long =
+      "여행 출발일이 코앞으로 다가왔으니 남은 항공권을 빠르게 비교하고 예약해 보세요. 인기 노선은 실시간으로 가격이 변동될 수 있어서 지금 바로 일정을 확정하는 게 가장 안전해요.";
+    const parsed = parseTipsOut(
+      JSON.stringify({
+        tips: [{ emoji: "✈️", title: "항공", description: long }],
+      })
+    );
+    expect(parsed?.tips[0]?.description.length).toBeLessThanOrEqual(42);
+    expect(truncateTipDescription("짧은 팁이에요.")).toBe("짧은 팁이에요.");
   });
 });

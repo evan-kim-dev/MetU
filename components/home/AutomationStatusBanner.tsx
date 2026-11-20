@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BellOff } from "lucide-react";
 
 import { formatRelativeTime } from "@/lib/format/relative-time";
 import { useAutomationStatus } from "@/lib/hooks/useAutomationStatus";
@@ -44,12 +45,20 @@ export function AutomationStatusBanner({ ignoreFirstRun = false }: Props) {
     if (firstRunVisible) return null;
     return (
       <section
-        aria-label="자동 기록 상태"
+        aria-label="자동 기록 꺼짐"
         className="flex min-h-14 items-center justify-between gap-3 rounded-mu-xl bg-mu-sunken px-4 py-3"
       >
-        <p className="min-w-0 text-sm text-mu-fg">
-          자동 기록 꺼짐 · 연결하면 카드 알림이 가계부에 자동으로 적혀요
-        </p>
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mu-card text-mu-fg-3"
+            aria-hidden
+          >
+            <BellOff className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <p className="min-w-0 text-sm leading-snug text-mu-fg">
+            연결하면 카드 알림이 가계부에 자동으로 적혀요
+          </p>
+        </div>
         <Link href="/onboarding/automation" className={linkClass}>
           연결하기
         </Link>

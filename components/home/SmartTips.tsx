@@ -3,6 +3,7 @@
 import { memo, useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { truncateTipDescription } from "@/lib/ai/contracts";
 import type { SmartTip } from "@/lib/mock/home";
 
 interface SmartTipsProps {
@@ -70,7 +71,9 @@ const TipCard = memo(function TipCard({ tip }: { tip: SmartTip }) {
           {tip.title}
         </span>
       </div>
-      <p className="text-xs leading-relaxed text-mu-fg-3">{tip.description}</p>
+      <p className="line-clamp-2 text-xs leading-snug text-mu-fg-3">
+        {truncateTipDescription(tip.description)}
+      </p>
     </article>
   );
 });

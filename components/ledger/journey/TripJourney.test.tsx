@@ -77,6 +77,10 @@ vi.mock("@/components/ui/OfflineBanner", () => ({
 vi.mock("@/components/ledger/SplitBatchBox", () => ({
   SplitBatchBox: () => <div>한 줄 분담</div>,
 }));
+vi.mock("@/components/ledger/SplitChatRoom", () => ({
+  SplitChatRoom: () => <div data-testid="split-chat-room">분담 대화</div>,
+  toSplitChatMembers: (members: unknown) => members,
+}));
 vi.mock("@/components/ledger/GuestExpenseSlot", () => ({
   GuestExpenseSlot: () => <div>내가 냈어요 슬롯</div>,
 }));
@@ -183,9 +187,7 @@ describe("TripJourney", () => {
     expect(
       await screen.findByRole("heading", { name: "이 금액으로 정산해요" })
     ).toBeTruthy();
-    expect(
-      await screen.findByRole("button", { name: "분담 수정하기" })
-    ).toBeTruthy();
+    expect(await screen.findByTestId("split-chat-room")).toBeTruthy();
     expect(
       await screen.findAllByRole("button", { name: "정산 계산하기" })
     ).toHaveLength(1);

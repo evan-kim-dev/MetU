@@ -12,9 +12,16 @@ type Props = {
   action?: React.ReactNode;
   /** 송금 앱 버튼 영역 (showPayActions일 때만 의미) */
   payActions?: React.ReactNode;
+  /** AmountCard에 전달 (통합 카드 안에서는 border 제거용) */
+  cardClassName?: string;
 };
 
-export function MyShareCard({ view, action, payActions }: Props) {
+export function MyShareCard({
+  view,
+  action,
+  payActions,
+  cardClassName,
+}: Props) {
   const tone =
     view.kind === "owe" ? "accent" : view.kind === "receive" ? "ok" : "neutral";
   const sub =
@@ -29,6 +36,7 @@ export function MyShareCard({ view, action, payActions }: Props) {
         tone={tone}
         sub={sub}
         action={action}
+        className={cardClassName}
       />
       {view.showPayActions && payActions ? (
         <div className="flex flex-col gap-2">{payActions}</div>
