@@ -10,18 +10,25 @@ afterEach(() => {
 });
 
 describe("LoginWorldHero", () => {
-  it("걷기 루프 MP4를 항상 보여 줘요", () => {
+  it("투명 처리를 위해 숨긴 video 와 canvas 를 보여 줘요", () => {
     HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
+      drawImage: vi.fn(),
+      clearRect: vi.fn(),
+      getImageData: vi.fn().mockReturnValue({
+        data: new Uint8ClampedArray(4),
+      }),
+      putImageData: vi.fn(),
+    });
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
 
     render(<LoginWorldHero />);
     const root = screen.getByTestId("login-world-hero");
     const video = root.querySelector("video");
+    const canvas = root.querySelector("canvas");
     expect(video?.getAttribute("src")).toBe(
-      "/brand/login-traveler-walk.mp4?v=3"
+      "/brand/login-traveler-walk.mp4?v=5"
     );
-    expect(video?.hasAttribute("autoplay")).toBe(true);
-    expect(video?.hasAttribute("loop")).toBe(true);
-    expect((video as HTMLVideoElement).muted).toBe(true);
-    expect(root.querySelector("img")).toBeNull();
+    expect(canvas).toBeTruthy();
   });
 });
