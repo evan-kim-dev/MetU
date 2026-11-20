@@ -13,7 +13,7 @@ AI 여행 플래너 + 원장/에이전트. Next.js 15 App Router + Supabase.
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` (또는 `…_PUBLISHABLE_KEY`) | 브라우저 키 (RLS) |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | 서버 admin (agent/places cache) |
-| `GEMINI_API_KEY` | 에이전트·인사이트 LLM |
+| `OPENAI_API_KEY` | 에이전트·인사이트 LLM (GPT) |
 | `AGENT_INGEST_PEPPER` | 수집 토큰 해시 |
 | `GUEST_COOKIE_SECRET` | 게스트 쿠키 HMAC (프로덕션) |
 | `CRON_SECRET` | `/api/agent/sweep`, cron Bearer |
@@ -70,11 +70,11 @@ npm run typecheck && npm test && npm run lint && npm run build
 | `verify-supabase.mjs` | 테이블·인증 접근 점검 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (`backend/.env`) | `npm run db:verify` |
 | `bootstrap-new-supabase.mjs` | 새 Supabase 프로젝트 ref 로 로컬 env·적용 스크립트 설정 (한 번만) | 프로젝트 ref 인자, `.env.local` 에 `NEXT_PUBLIC_SUPABASE_*` 기록 | `node scripts/bootstrap-new-supabase.mjs <ref>` |
 | `sync-vercel-supabase-env.mjs` | `.env.local` 의 Supabase 관련 값을 연결된 Vercel 프로젝트 env 로 올림 | `.env.local` 의 `NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL` + Vercel CLI 로그인 | `node scripts/sync-vercel-supabase-env.mjs` |
-| `gemini-smoke.ts` | Gemini Interactions API 수동 점검 | `GEMINI_API_KEY` (+ `GEMINI_MODEL_*`·`GEMINI_THINKING_*` 선택) | `npx tsx scripts/gemini-smoke.ts` |
+| `openai-smoke.ts` | OpenAI Chat Completions 수동 점검 | `OPENAI_API_KEY` (+ `OPENAI_MODEL_*` 선택) | `npx tsx scripts/openai-smoke.ts` |
 | `gen-vapid.mjs` | 웹 푸시 VAPID 키 생성(로컬에서만, 값은 Vercel env 에) | 없음 | `node scripts/gen-vapid.mjs` |
 | `demo-ingest.mjs` | 합성 문자를 `/api/ingest/sms` 로 보내는 실제 경로 스모크 | `DEMO_BASE_URL`, `METU_INGEST_TOKEN` | `node scripts/demo-ingest.mjs` |
 | `preview-smoke.mjs` (+ `.test.mjs`) | 프리뷰 URL 상태 코드만 점검(본문·토큰 출력 없음) | `DEMO_BASE_URL` | `npm run smoke:preview` |
-| `eval-receipts.ts` | 영수증 추출 평가(K4). `--dry` 는 라벨 스키마만 | `GEMINI_API_KEY`(실행 시), `eval/receipts/*` | `npm run eval:receipts -- --dry` |
+| `eval-receipts.ts` | 영수증 추출 평가(K4). `--dry` 는 라벨 스키마만 | `OPENAI_API_KEY`(실행 시), `eval/receipts/*` | `npm run eval:receipts -- --dry` |
 | `clean-next.cjs` | `.next` 와 webpack 캐시 삭제(`build`·`dev:clean` 이 호출) | 없음 | `node scripts/clean-next.cjs` |
 | `make-favicon.py` | 로고 이미지로 파비콘·앱 아이콘 생성 (용도 확인 필요: 원본 경로가 로컬 첨부 기준) | 없음 (Python + Pillow) | `python scripts/make-favicon.py` |
 

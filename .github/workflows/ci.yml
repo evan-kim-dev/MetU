@@ -25,7 +25,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-ci-build-only
       GUEST_COOKIE_SECRET: ci-build-dummy
-      GEMINI_API_KEY: ci-build-dummy
+      OPENAI_API_KEY: ci-build-dummy
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
