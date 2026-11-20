@@ -12,6 +12,7 @@ vi.mock("@/lib/auth/AuthProvider", () => ({
     signUpWithEmail: vi.fn(),
     resendSignupConfirmation: vi.fn(),
     resetPasswordWithEmail: vi.fn(),
+    updatePassword: vi.fn(),
     loginAsGuest,
   }),
 }));

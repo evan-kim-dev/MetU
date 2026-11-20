@@ -28,8 +28,11 @@ import {
   getBrowserSupabase,
   resetBrowserSupabase,
 } from "@/lib/supabase/browser";
+import {
+  UPDATE_PASSWORD_PATH,
+  buildAuthCallbackUrl,
+} from "@/lib/auth/callback-url";
 import { signupPasswordErrorMessage } from "@/lib/auth/password-strength";
-import { resolveSiteOrigin } from "@/lib/site-url";
 
 const AUTH_UNAVAILABLE: UserFacingError = {
   code: "auth-unconfigured",
@@ -60,11 +63,12 @@ interface AuthContextValue {
   provider: AuthProviderKind;
   /** Supabase 익명 세션. 쿠키 guest(provider==="guest")와는 별개. */
   isAnonymous: boolean;
-  loginWithKakao: () => Promise<AuthActionResult>;
+  loginWithKakao: (next?: string | null) => Promise<AuthActionResult>;
   loginWithEmail: (email: string, password: string) => Promise<AuthActionResult>;
   signUpWithEmail: (email: string, password: string) => Promise<SignUpResult>;
   resendSignupConfirmation: (email: string) => Promise<AuthActionResult>;
   resetPasswordWithEmail: (email: string) => Promise<AuthActionResult>;
+  updatePassword: (password: string) => Promise<AuthActionResult>;
   loginAsGuest: () => Promise<AuthActionResult>;
   logout: () => void;
 }
@@ -117,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       void (async () => {
         if (session?.user) {
           await clearGuestSession();
@@ -128,6 +132,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsGuest(loadGuestSession());
         }
         setIsReady(true);
+
+        if (
+          event === "PASSWORD_RECOVERY" &&
+          typeof window !== "undefined" &&
+          window.location.pathname !== UPDATE_PASSWORD_PATH
+        ) {
+          window.location.replace(UPDATE_PASSWORD_PATH);
+        }
       })();
     });
 
@@ -137,33 +149,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const loginWithKakao = useCallback(async (): Promise<AuthActionResult> => {
-    const supabase = getBrowserSupabase();
-    if (!supabase) {
-      warnAuthConfig();
-      return { ok: false, error: AUTH_UNAVAILABLE };
-    }
+  const loginWithKakao = useCallback(
+    async (next?: string | null): Promise<AuthActionResult> => {
+      const supabase = getBrowserSupabase();
+      if (!supabase) {
+        warnAuthConfig();
+        return { ok: false, error: AUTH_UNAVAILABLE };
+      }
 
-    const redirectTo = `${resolveSiteOrigin(window.location.origin)}/auth/callback`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "kakao",
-      options: {
-        redirectTo,
-        skipBrowserRedirect: false,
-      },
-    });
+      const redirectTo = buildAuthCallbackUrl(window.location.origin, next);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "kakao",
+        options: {
+          redirectTo,
+          skipBrowserRedirect: false,
+        },
+      });
 
-    if (error) {
-      return {
-        ok: false,
-        error: toUserFacingError({
-          source: "supabase-auth",
-          message: error.message,
-        }),
-      };
-    }
-    return { ok: true };
-  }, []);
+      if (error) {
+        return {
+          ok: false,
+          error: toUserFacingError({
+            source: "supabase-auth",
+            message: error.message,
+          }),
+        };
+      }
+      return { ok: true };
+    },
+    []
+  );
 
   const loginWithEmail = useCallback(
     async (email: string, password: string): Promise<AuthActionResult> => {
@@ -237,7 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      const redirectTo = `${resolveSiteOrigin(window.location.origin)}/auth/callback`;
+      const redirectTo = buildAuthCallbackUrl(window.location.origin);
       const { data, error } = await supabase.auth.signUp({
         email: trimmedEmail,
         password,
@@ -286,7 +301,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      const redirectTo = `${resolveSiteOrigin(window.location.origin)}/auth/callback`;
+      const redirectTo = buildAuthCallbackUrl(window.location.origin);
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: trimmedEmail,
@@ -328,11 +343,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      const redirectTo = `${resolveSiteOrigin(window.location.origin)}/auth/callback?next=${encodeURIComponent("/login")}`;
+      const redirectTo = buildAuthCallbackUrl(
+        window.location.origin,
+        UPDATE_PASSWORD_PATH
+      );
       const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
         redirectTo,
       });
 
+      if (error) {
+        return {
+          ok: false,
+          error: toUserFacingError({
+            source: "supabase-auth",
+            message: error.message,
+          }),
+        };
+      }
+
+      return { ok: true };
+    },
+    []
+  );
+
+  const updatePassword = useCallback(
+    async (password: string): Promise<AuthActionResult> => {
+      const supabase = getBrowserSupabase();
+      if (!supabase) {
+        warnAuthConfig();
+        return { ok: false, error: AUTH_UNAVAILABLE };
+      }
+
+      const weakMsg = signupPasswordErrorMessage(password);
+      if (weakMsg) {
+        return {
+          ok: false,
+          error: {
+            code: "weak-password",
+            message: weakMsg,
+            retryable: false,
+          },
+        };
+      }
+
+      const { error } = await supabase.auth.updateUser({ password });
       if (error) {
         return {
           ok: false,
@@ -411,6 +465,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUpWithEmail,
       resendSignupConfirmation,
       resetPasswordWithEmail,
+      updatePassword,
       loginAsGuest,
       logout,
     }),
@@ -425,6 +480,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUpWithEmail,
       resendSignupConfirmation,
       resetPasswordWithEmail,
+      updatePassword,
       loginAsGuest,
       logout,
     ]

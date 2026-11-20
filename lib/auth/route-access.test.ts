@@ -50,6 +50,11 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/agent")).toBe(false);
     expect(isPublicPath("/sx")).toBe(false);
   });
+
+  it("keeps update-password behind auth (recovery session)", () => {
+    expect(isPublicPath("/update-password")).toBe(false);
+    expect(isPublicPagePath("/update-password")).toBe(false);
+  });
 });
 
 describe("isPublicPagePath (AuthGate)", () => {

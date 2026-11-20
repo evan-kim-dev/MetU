@@ -99,7 +99,8 @@ export function LoginContent() {
     setKakaoLoading(true);
     setError(null);
 
-    const result = await signInWithKakao();
+    const next = safeNextPath(searchParams.get("next"), "/");
+    const result = await signInWithKakao(next);
     if (!result.ok) {
       setError(result.error);
       setKakaoLoading(false);

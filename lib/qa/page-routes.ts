@@ -39,6 +39,12 @@ export const PAGE_ROUTES: readonly PageRouteSpec[] = [
     note: "로그인",
   },
   {
+    path: "/update-password",
+    file: "app/update-password/page.tsx",
+    access: "auth",
+    note: "비밀번호 재설정(복구 세션)",
+  },
+  {
     path: "/legal/[slug]",
     file: "app/legal/[slug]/page.tsx",
     access: "public",

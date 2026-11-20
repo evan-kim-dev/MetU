@@ -8,6 +8,7 @@ import { EmailAuthForm } from "@/components/auth/EmailAuthForm";
 import { useAuthActions } from "@/components/auth/useAuthActions";
 import { LOGIN_METHODS } from "@/lib/auth/login-methods";
 import type { UserFacingError } from "@/lib/errors/user-message";
+import { safeNextPath } from "@/lib/security/safe-next";
 
 interface LoginMethodListProps {
   /** true면 로그인 박스 탭 시 방법 목록 펼침 */
@@ -54,7 +55,12 @@ export function LoginMethodList({
     if (kakaoLoading) return;
     setKakaoLoading(true);
     setError(null);
-    const result = await signInWithKakao();
+    const rawNext =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("next")
+        : null;
+    const next = safeNextPath(rawNext, "/");
+    const result = await signInWithKakao(next);
     if (!result.ok) {
       setError(result.error);
       setKakaoLoading(false);
