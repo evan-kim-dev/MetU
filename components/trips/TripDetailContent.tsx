@@ -14,6 +14,7 @@ import {
   TripIntentSheet,
   type TripIntent,
 } from "@/components/trips/TripIntentSheet";
+import { ScheduleRebalanceSheet } from "@/components/trips/ScheduleRebalanceSheet";
 import { TripDetailBudgetSection } from "@/components/trips/detail/TripDetailBudgetSection";
 import { TripDetailHero } from "@/components/trips/detail/TripDetailHero";
 import { TripDetailMemoSection } from "@/components/trips/detail/TripDetailMemoSection";
@@ -53,9 +54,11 @@ function nextScheduleLineFromTrip(trip: {
 export function TripDetailContent({ tripId }: TripDetailContentProps) {
   const router = useRouter();
   const { user, provider } = useAuth();
-  const { updateTrip } = useTrips();
+  const { updateTrip, afterJoinTrip } = useTrips();
   const isGuest = !user || provider === "guest";
   const [detailTab, setDetailTab] = useState<DetailTab>("summary");
+  const [rebalanceOpen, setRebalanceOpen] = useState(false);
+  const scheduleSectionRef = useRef<HTMLDivElement>(null);
   const {
     trip,
     isReady,
@@ -231,10 +234,20 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
           onOpenEdit={openBudgetEdit}
           onCancel={() => setEditSection(null)}
           onSave={saveBudget}
-          onReviewSchedule={() => setDetailTab("schedule")}
+          onReviewSchedule={() => {
+            setDetailTab("schedule");
+            if (canEdit && !isGuest) setRebalanceOpen(true);
+            window.requestAnimationFrame(() => {
+              scheduleSectionRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            });
+          }}
         />
 
         <div
+          ref={scheduleSectionRef}
           className="flex rounded-full bg-surface-soft p-1"
           role="tablist"
           aria-label="여행 상세 탭"
@@ -375,6 +388,14 @@ export function TripDetailContent({ tripId }: TripDetailContentProps) {
             tripId={tripId}
             open={botOpen}
             onClose={() => setBotOpen(false)}
+          />
+          <ScheduleRebalanceSheet
+            open={rebalanceOpen}
+            tripId={tripId}
+            onClose={() => setRebalanceOpen(false)}
+            onApplied={() => {
+              void afterJoinTrip(tripId);
+            }}
           />
         </>
       ) : null}

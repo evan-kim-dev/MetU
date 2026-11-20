@@ -1,13 +1,13 @@
 import "server-only";
 
 import { getAgentAdmin } from "@/lib/agent/admin";
-import { buildRebalanceProposal } from "@/lib/agent/rebalance-agent";
+import { proposeScheduleAfterCardNotify } from "@/lib/agent/card-notify-schedule";
+import { notifyUsers } from "@/lib/agent/notify";
 import {
   budgetPlanFromAllocation,
   planItemsFromDailySchedule,
 } from "@/lib/budget/adapters";
 import { TABLES } from "@/lib/constants";
-import { notifyUsers } from "@/lib/agent/notify";
 
 export type RebalanceRunResult = {
   suggested: boolean;
@@ -108,7 +108,7 @@ export async function maybeSuggestRebalance(args: {
       typeof e.spent_on === "string" ? e.spent_on : null,
   }));
 
-  const proposal = buildRebalanceProposal({
+  const proposal = proposeScheduleAfterCardNotify({
     plan,
     expenses,
     remainingItems,
@@ -132,6 +132,11 @@ export async function maybeSuggestRebalance(args: {
           threshold: proposal.threshold,
           variances: proposal.variances,
           adjustedItems: proposal.adjustedItems,
+          remainingBudgetKrw: proposal.remainingBudgetKrw,
+          remainingScheduleEstKrw: proposal.remainingScheduleEstKrw,
+          gapKrw: proposal.gapKrw,
+          dropped: proposal.dropped,
+          source: proposal.source,
           planVersion: plan.version,
         },
       }
