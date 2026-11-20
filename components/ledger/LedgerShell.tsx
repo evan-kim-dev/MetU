@@ -344,7 +344,7 @@ export function LedgerShell({
     <div
       className={
         showSettle
-          ? "mx-auto flex h-full min-h-0 w-full max-w-mobile flex-1 flex-col"
+          ? "mx-auto flex w-full max-w-mobile flex-col"
           : "mx-auto flex w-full max-w-mobile flex-col gap-5 px-4 pb-28 pt-3"
       }
     >
