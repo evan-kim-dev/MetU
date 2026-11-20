@@ -16,7 +16,9 @@ describe("LoginWorldHero", () => {
     render(<LoginWorldHero />);
     const root = screen.getByTestId("login-world-hero");
     const video = root.querySelector("video");
-    expect(video?.getAttribute("src")).toBe("/brand/login-traveler-walk.mp4");
+    expect(video?.getAttribute("src")).toBe(
+      "/brand/login-traveler-walk.mp4?v=2"
+    );
     expect(video?.hasAttribute("autoplay")).toBe(true);
     expect(video?.hasAttribute("loop")).toBe(true);
     expect((video as HTMLVideoElement).muted).toBe(true);

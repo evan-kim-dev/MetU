@@ -14,14 +14,20 @@ export function LoginWorldHero() {
     if (!el) return;
     el.muted = true;
     el.defaultMuted = true;
+    el.setAttribute("muted", "");
+    el.setAttribute("playsinline", "");
     const play = () => {
       void el.play().catch(() => {
-        /* 브라우저 자동재생 차단 시 poster 유지 */
+        /* 자동재생 차단 시 poster 유지 */
       });
     };
     play();
+    el.addEventListener("canplay", play);
     el.addEventListener("loadeddata", play);
-    return () => el.removeEventListener("loadeddata", play);
+    return () => {
+      el.removeEventListener("canplay", play);
+      el.removeEventListener("loadeddata", play);
+    };
   }, []);
 
   return (
@@ -32,7 +38,7 @@ export function LoginWorldHero() {
     >
       <video
         ref={videoRef}
-        src="/brand/login-traveler-walk.mp4"
+        src="/brand/login-traveler-walk.mp4?v=2"
         autoPlay
         loop
         muted
