@@ -41,12 +41,14 @@ function typeValidEmail(value = "a@b.com") {
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   vi.clearAllMocks();
   vi.useRealTimers();
 });
 
 describe("EmailAuthForm", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     signInWithEmail.mockResolvedValue({ ok: true });
     signUpWithEmail.mockResolvedValue({ ok: true, status: "signed-in" });
     resetPassword.mockResolvedValue({ ok: true });
@@ -56,9 +58,9 @@ describe("EmailAuthForm", () => {
     render(<EmailAuthForm />);
     expect(screen.getByLabelText("아이디")).toBeTruthy();
     expect(screen.getByLabelText("비밀번호")).toBeTruthy();
-    expect(screen.getByLabelText("로그인 유지")).toBeTruthy();
+    expect(screen.getByLabelText("아이디 저장")).toBeTruthy();
     expect(
-      (screen.getByLabelText("로그인 유지") as HTMLInputElement).checked
+      (screen.getByLabelText("아이디 저장") as HTMLInputElement).checked
     ).toBe(true);
     expect(screen.getByRole("button", { name: "비밀번호 찾기" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "회원가입" })).toBeTruthy();
@@ -70,12 +72,21 @@ describe("EmailAuthForm", () => {
     expect(submit.disabled).toBe(true);
   });
 
-  it("로그인 유지 토글을 끄면 선호를 저장해요", () => {
+  it("아이디 저장 토글을 끄면 선호를 저장해요", () => {
     render(<EmailAuthForm />);
-    const toggle = screen.getByLabelText("로그인 유지") as HTMLInputElement;
+    const toggle = screen.getByLabelText("아이디 저장") as HTMLInputElement;
     fireEvent.click(toggle);
     expect(toggle.checked).toBe(false);
-    expect(window.localStorage.getItem("metu.auth.remember")).toBe("0");
+    expect(window.localStorage.getItem("metu.auth.saveId")).toBe("0");
+  });
+
+  it("저장된 아이디가 있으면 로그인 폼에 채워 줘요", () => {
+    window.localStorage.setItem("metu.auth.saveId", "1");
+    window.localStorage.setItem("metu.auth.savedEmail", "saved@example.com");
+    render(<EmailAuthForm />);
+    expect(
+      (screen.getByLabelText("아이디") as HTMLInputElement).value
+    ).toBe("saved@example.com");
   });
 
   it("비밀번호 찾기는 아이디가 있을 때 재설정 메일을 보내요", async () => {
