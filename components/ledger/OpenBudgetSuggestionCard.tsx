@@ -105,9 +105,9 @@ export function OpenBudgetSuggestionCard({
           ) : null}
           {previewLines.length > 0 ? (
             <ul className="mt-2 space-y-1 rounded-mu-md bg-mu-sunken px-3 py-2">
-              {previewLines.map((line, i) => (
+              {previewLines.map((line) => (
                 <li
-                  key={`adj-${i}`}
+                  key={line}
                   className="truncate text-mu-caption text-mu-fg-2"
                 >
                   {line}

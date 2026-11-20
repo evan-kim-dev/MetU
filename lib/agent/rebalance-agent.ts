@@ -75,12 +75,10 @@ export function cutRemainingPlanItems(args: {
         : Math.floor((cur * cap) / sum);
       allocated += isLast ? 0 : next;
       if (next !== cur) {
-        const row = items[i]!;
-        // 같은 제목 일정이 여러 개여도 로그·리스트 key 가 겹치지 않게 day/time 을 넣어요.
         log.push(
-          `Day${row.day} ${row.time} ${row.title}: ${fmtWon(cur)} → ${fmtWon(next)} (${BUDGET_CATEGORY_LABELS[category]})`
+          `${items[i]!.title}: ${fmtWon(cur)} → ${fmtWon(next)} (${BUDGET_CATEGORY_LABELS[category]})`
         );
-        items[i] = { ...row, estCost: next };
+        items[i] = { ...items[i]!, estCost: next };
       }
     });
   }
