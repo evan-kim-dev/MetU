@@ -70,20 +70,20 @@ export function UpdatePasswordForm({
   };
 
   const fieldHeight =
-    "min-h-11 w-full rounded-xl border border-line-soft bg-surface-base px-3 text-sm text-ink-heading outline-none placeholder:text-ink-caption focus:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/30 disabled:opacity-60";
+    "min-h-11 w-full rounded-mu-lg border border-mu-line bg-mu-sunken px-3 text-sm text-mu-fg outline-none placeholder:text-mu-fg-3 focus:border-mu-accent/40 focus-visible:ring-2 focus-visible:ring-mu-accent/30 disabled:opacity-60";
 
   return (
     <form
       onSubmit={(e) => void handleSubmit(e)}
       className={[
-        "flex flex-col gap-2 rounded-2xl border border-line-soft bg-surface-white/95 p-3 shadow-sm backdrop-blur-sm",
+        "flex flex-col gap-2 rounded-mu-xl border border-mu-line bg-mu-card p-3 shadow-sm",
         className,
       ].join(" ")}
       noValidate
     >
       <div className="text-left">
-        <p className="text-sm font-bold text-ink-heading">새 비밀번호 설정</p>
-        <p className="mt-1 text-xs leading-5 text-ink-body">
+        <p className="text-sm font-bold text-mu-fg">새 비밀번호 설정</p>
+        <p className="mt-1 text-xs leading-5 text-mu-fg-2">
           재설정 메일로 오신 거예요. 새 비밀번호를 입력해 주세요.
         </p>
       </div>
@@ -93,7 +93,7 @@ export function UpdatePasswordForm({
       <div className="flex flex-col gap-1 text-left">
         <label
           htmlFor={passwordId}
-          className="text-xs font-bold text-ink-caption"
+          className="text-xs font-bold text-mu-fg-3"
         >
           새 비밀번호
         </label>
@@ -116,7 +116,7 @@ export function UpdatePasswordForm({
             onClick={() => setShowPassword((v) => !v)}
             aria-pressed={showPassword}
             aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
-            className="absolute right-0.5 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-lg px-2 text-xs font-bold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            className="absolute right-0.5 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-mu-md px-2 text-xs font-bold text-mu-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent/40"
           >
             {showPassword ? "숨기기" : "표시"}
           </button>
@@ -129,7 +129,7 @@ export function UpdatePasswordForm({
             return (
               <div className="flex flex-col gap-1.5" aria-live="polite">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-ink-caption">보안 강도</span>
+                  <span className="text-xs text-mu-fg-3">보안 강도</span>
                   <span
                     className={["text-xs font-bold", STRENGTH_TEXT[level]].join(
                       " "
@@ -173,7 +173,7 @@ export function UpdatePasswordForm({
             key={rule.id}
             className={[
               "flex items-center gap-1.5 text-xs",
-              rule.ok ? "font-semibold text-mu-ok" : "text-ink-caption",
+              rule.ok ? "font-semibold text-mu-ok" : "text-mu-fg-3",
             ].join(" ")}
           >
             {rule.ok ? (
@@ -197,7 +197,7 @@ export function UpdatePasswordForm({
         htmlFor={`${passwordId}-confirm`}
         className="flex flex-col gap-1 text-left"
       >
-        <span className="text-xs font-bold text-ink-caption">
+        <span className="text-xs font-bold text-mu-fg-3">
           새 비밀번호 확인
         </span>
         <input
@@ -214,7 +214,7 @@ export function UpdatePasswordForm({
           className={fieldHeight}
         />
         {touched && mismatch ? (
-          <span className="text-xs text-danger">
+          <span className="text-xs text-mu-err">
             비밀번호가 서로 달라요.
           </span>
         ) : null}
@@ -224,7 +224,7 @@ export function UpdatePasswordForm({
         type="submit"
         disabled={!canSubmit}
         aria-busy={busy}
-        className="relative mt-0.5 flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-brand text-sm font-bold text-surface-white transition-transform active:scale-99 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        className="relative mt-0.5 flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-mu-lg bg-mu-accent text-sm font-bold text-mu-card transition-transform active:scale-99 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mu-accent/40"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
         {busy ? "저장 중…" : "비밀번호 저장"}
